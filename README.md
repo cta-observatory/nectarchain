@@ -1,7 +1,21 @@
 # nectarcam
 
-Repository for the high level analysis of the NectarCAM.
+Repository for the high level analysis of the NectarCAM.  
 The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe).
+
+
+## Installation
+
+At this moment, we depend on Franca's nectarcamreader fork of ctapipe, which includes `ctapipe.io.nectarcameventsource`.
+
+```
+git clone https://github.com/cta-observatory/ctapipe
+git remote add nectarcamreader https://github.com/FrancaCassol/ctapipe.git
+git fetch nectarcamreader
+git checkout -b nectar nectarcamreader/nectarCAM_reader
+```
+
+Note that `protozfitsreader` should be installed (see https://github.com/cta-sst-1m/protozfitsreader) because `ctapipe.io.nectarcameventsource` depends on it to read Zfits files.
 
 
 ## Contributing
