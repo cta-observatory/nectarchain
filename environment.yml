@@ -1,0 +1,12 @@
+# A conda environment with all necessary packages for nectarchain developers
+name: nectarchain-dev
+channels:
+  - default
+  - cta-observatory
+dependencies:
+  - python=3.7  # nail the python version, so conda does not try upgrading / dowgrading
+  - ctapipe  # version 0.6.2 as of 15.07.2019
+  - pip
+  - pip:
+      - https://github.com/cta-sst-1m/protozfitsreader/archive/v1.4.2.tar.gz
+      - git+git://github.com/cta-observatory/ctapipe_io_nectarcam.git
