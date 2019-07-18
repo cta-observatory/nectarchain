@@ -9,7 +9,7 @@ The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ct
 The recommended way to install `nectarchain` is via [conda](https://anaconda.org/):
 
 ```
-conda create --name nectarchain-dev python=3.7
+conda env create -f environment.yml
 conda activate nectarchain-dev
 ```
 
