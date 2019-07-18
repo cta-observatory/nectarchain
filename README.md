@@ -1,4 +1,4 @@
-# nectarcam
+# nectarchain
 
 Repository for the high level analysis of the NectarCAM.  
 The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe).
