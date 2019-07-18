@@ -6,16 +6,12 @@ The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ct
 
 ## Installation
 
-At this moment, we depend on Franca's nectarcamreader fork of ctapipe, which includes `ctapipe.io.nectarcameventsource`.
+The recommended way to install `nectarchain` is via [conda](https://anaconda.org/):
 
 ```
-git clone https://github.com/cta-observatory/ctapipe
-git remote add nectarcamreader https://github.com/FrancaCassol/ctapipe.git
-git fetch nectarcamreader
-git checkout -b nectar nectarcamreader/nectarCAM_reader
+conda create --name nectarchain-dev python=3.7
+conda activate nectarchain-dev
 ```
-
-Note that `protozfitsreader` should be installed (see https://github.com/cta-sst-1m/protozfitsreader) because `ctapipe.io.nectarcameventsource` depends on it to read Zfits files.
 
 
 ## Contributing
