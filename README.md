@@ -7,18 +7,20 @@ master branch status: [![Build Status](https://travis-ci.org/cta-observatory/nec
 
 
 Current `nectarchain` build uses `ctapipe` master version.
+
 Here is how you should install:
 ```
 git clone https://github.com/cta-observatory/nectarchain.git
 cd nectarchain
 conda env create --name cta --file environment.yml
-conda activate cta
+source activate cta
 pip install https://github.com/cta-observatory/ctapipe/archive/master.tar.gz
 pip install https://github.com/cta-sst-1m/protozfitsreader/archive/v1.4.2.tar.gz
 pip install https://github.com/cta-observatory/ctapipe_io_nectarcam/archive/master.tar.gz
 pip install -e .
 ```
-
+If you are a developper, better you install ctapipe as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html
+and periodically perform a "git pull upstream master" in order to be updated with the master
 
 ## Contributing
 
