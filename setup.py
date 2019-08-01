@@ -1,21 +1,32 @@
 #!/usr/bin/env python
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # import sys
-import setuptools
+
+from setuptools import setup, find_packages
+from os import path
+
+# read the contents of your README file
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 
-setuptools.setup(name='nectarchain',
-                 version=0.1,
-                 description="DESCRIPTION",  # these should be minimum list of what is needed to run
-                 packages=setuptools.find_packages(),
-                 install_requires=['h5py',
-                                   'seaborn'
-                                   ],
-                 tests_require=['pytest', 'pytest-ordering'],
-                 author='NectarCAM collaboration',
-                 author_email='',
-                 license='',
-                 url='https://github.com/cta-observatory/nectarchain',
-                 long_description='',
-                 classifiers=[],
-                 )
+setup(
+    name='nectarchain',
+    packages=find_packages(),
+    version='0.1',
+    description='',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    install_requires=[
+        'astropy',
+        'ctapipe',
+        'protozfits',
+    ],
+    tests_require=['pytest'],
+    setup_requires=['pytest_runner'],
+    author='NectarCAM collaboration',
+    url='https://github.com/cta-observatory/nectarchain',
+    license=''
+)
+
