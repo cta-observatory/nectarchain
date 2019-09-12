@@ -1,22 +1,26 @@
-# nectarcam
+# nectarchain
 
-Repository for the high level analysis of the NectarCAM.  
-The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe).
+Repository for the high level analysis of the NectarCAM data.
+The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe), adding custom code for mono reconstruction.
+
+master branch status: [![Build Status](https://travis-ci.org/cta-observatory/nectatchain.svg?branch=master)](https://travis-ci.org/cta-observatory/nectarchain)
 
 
-## Installation
+Current `nectarchain` build uses `ctapipe` master version.
 
-At this moment, we depend on Franca's nectarcamreader fork of ctapipe, which includes `ctapipe.io.nectarcameventsource`.
-
+Here is how you should install:
 ```
-git clone https://github.com/cta-observatory/ctapipe
-git remote add nectarcamreader https://github.com/FrancaCassol/ctapipe.git
-git fetch nectarcamreader
-git checkout -b nectar nectarcamreader/nectarCAM_reader
+git clone https://github.com/cta-observatory/nectarchain.git
+cd nectarchain
+conda env create --name cta --file environment.yml
+source activate cta
+pip install https://github.com/cta-observatory/ctapipe/archive/master.tar.gz
+pip install https://github.com/cta-sst-1m/protozfitsreader/archive/v1.4.2.tar.gz
+pip install https://github.com/cta-observatory/ctapipe_io_nectarcam/archive/master.tar.gz
+pip install -e .
 ```
-
-Note that `protozfitsreader` should be installed (see https://github.com/cta-sst-1m/protozfitsreader) because `ctapipe.io.nectarcameventsource` depends on it to read Zfits files.
-
+If you are a developper, better you install ctapipe as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html
+and periodically perform a "git pull upstream master" in order to be updated with the master
 
 ## Contributing
 
@@ -29,3 +33,5 @@ See [here](https://cta-observatory.github.io/ctapipe/development/pullrequests.ht
 ## Report issue / Ask a question
 
 Use GitHub Issues.
+
+
