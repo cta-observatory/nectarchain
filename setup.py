@@ -21,7 +21,7 @@ setup(
     install_requires=[
         'astropy',
         'ctapipe',
-        'protozfits',
+        'protozfits @ https://github.com/cta-sst-1m/protozfitsreader/archive/v1.5.0.tar.gz',
     ],
     tests_require=['pytest'],
     setup_requires=['pytest_runner'],
