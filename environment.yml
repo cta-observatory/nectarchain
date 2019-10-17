@@ -10,4 +10,4 @@ dependencies:
   - pip:
       - pytest_runner
       - pytest-ordering
-      - https://github.com/cta-sst-1m/protozfitsreader/archive/v1.4.2.tar.gz
+      - https://github.com/cta-sst-1m/protozfitsreader/archive/v1.5.0.tar.gz
