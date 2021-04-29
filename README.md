@@ -14,7 +14,7 @@ git clone https://github.com/cta-observatory/nectarchain.git
 cd nectarchain
 conda env create --name cta --file environment.yml
 conda activate cta
-conda install -c conda-forge ctapipe
+pip install git+https://github.com/cta-observatory/ctapipe.git#egg=ctapipe
 pip install https://github.com/cta-sst-1m/protozfitsreader/archive/v1.5.0.tar.gz
 pip install https://github.com/cta-observatory/ctapipe_io_nectarcam/archive/master.tar.gz
 pip install -e .
