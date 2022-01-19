@@ -1,5 +1,5 @@
 Three environement variables are needed: 
-export NECTARDIR=path/to/ParentFoder
+export NECTARDIR=path/to/ParentFoder/
 export NECTARDATA=path/to/ParentFoder/data/
 export NECTARPROCESSINGDIR=path/to/ParentFoder/nectarchain/LowLevel_analysis_pipeline/
 
