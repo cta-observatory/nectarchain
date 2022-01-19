@@ -1,0 +1,8 @@
+Three environement variables are needed: 
+export NECTARDIR=path/to/ParentFoder
+export NECTARDATA=path/to/ParentFoder/data/
+export NECTARPROCESSINGDIR=path/to/ParentFoder/nectarchain/LowLevel_analysis_pipeline/
+
+To launch the script: 
+source activate cta
+python StartCalib.py /path/NectarCAM.Run2720.0000.fits.fz /path/NectarCAM.Run2720.0001.fits.fz 
