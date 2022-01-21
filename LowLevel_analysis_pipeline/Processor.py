@@ -34,6 +34,22 @@ class Processor:
     def __init__(self):
         print('Processor 0')
 
+    def DefineForRun(self, path):
+        #read header
+        hdul = fits.open(path)
+        header = hdul[1].header
+
+        #define number of channels 
+        self.Chan = header['ZFORM7']
+        self.Chan = int(str(self.Chan[0:4]))
+
+        #define number of samples 
+        reader1 = EventSource(input_url=path, max_events=1)
+        for i, evt1 in enumerate(reader1):
+            self.Samp= len(evt1.r0.tel[0].waveform[0][0])
+
+        return self.Chan, self.Samp
+
     def ConfigureForRun(self):
         print('Processor 1')
 
@@ -49,19 +65,10 @@ class Processor:
     def PlotResults(self, name,FigPath,k, M, M_ped, Mean_M_overChan, Mean_M_ped_overChan):
         print('Processor 5')
 
-    def WriteResults(self):
-        print('Processor 6')
-        '''
-        PickleName = name + '_MeanWaveForms_Results.pickle'
-        with open(PickleName, 'wb') as handle:
-            pickle.dump(DICT, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        return None
-        '''
 
     def WriteAllResults(self,path, DICT):
         PickleName = path + '_Results.pickle'
         with open(PickleName, 'wb') as handle:
             pickle.dump(DICT, handle, protocol=pickle.HIGHEST_PROTOCOL) 
         return None
-
 

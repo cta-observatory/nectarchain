@@ -4,16 +4,14 @@ from Processor import *
 class ChargeIntegration_HighLowGain(Processor):
 
     def __init__(self, gaink):
+
     	self.k = gaink
     	return None
 
-    def ConfigureForRun(self, path):
-        hdul = fits.open(path)
-        header = hdul[1].header
-
-        #define number of channels 
-        self.Chan = header['ZFORM7']
-        self.Chan = int(str(self.Chan[0:4]))
+    def ConfigureForRun(self,path, Chan, Samp):
+        #define number of channels and samples
+        self.Chan = Chan
+        self.Samp= Samp
 
         self.counter_evt = 0
         self.counter_ped = 0
@@ -262,7 +260,7 @@ class ChargeIntegration_HighLowGain(Processor):
         fig9, disp = plt.subplots()
         for i in range(self.Chan):
             plt.hist(self.image_all[:,i],100, fill=False, density = True, stacked=True, linewidth=1, log = True, alpha = 0.01)
-        plt.hist(np.mean(self.image_all, axis=1),100, color = 'r', fill=False, density = True, stacked=True, linewidth=1, log = True, alpha = 1, label = 'Camera average')
+        plt.hist(np.mean(self.image_all, axis=1),100, color = 'r', linewidth=1, log = True, alpha = 1, label = 'Camera average')
         plt.legend()
         plt.xlabel("Charge (DC)")
         plt.title("Charge spectrum %s gain (ALL)" %gain_c)
@@ -278,7 +276,7 @@ class ChargeIntegration_HighLowGain(Processor):
             fig10, disp = plt.subplots()
             for i in range(self.Chan):
                 plt.hist(self.image_ped[:,i],100, fill=False, density = True, stacked=True, linewidth=1, log = True, alpha = 0.01)
-            plt.hist(np.mean(self.image_ped, axis=1),100, color = 'r', fill=False, density = True, stacked=True, linewidth=1, log = True, alpha = 1, label = 'Camera average')
+            plt.hist(np.mean(self.image_ped, axis=1),100, color = 'r', linewidth=1, log = True, alpha = 1, label = 'Camera average')
             plt.legend()
             plt.xlabel("Charge (DC)")
             plt.title("Charge spectrum %s gain (PED)" %gain_c)

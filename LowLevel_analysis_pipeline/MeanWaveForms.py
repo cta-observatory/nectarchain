@@ -2,50 +2,17 @@
 from Processor import *
 
 
-#RunFile = './NectarCAM.Run2720.0000.fits.fz'
-#k = 0
-
-#Note: The job of the processor is justot give the results. Write results should be in the Start_ file. 
-#MONGO: store results 
-#Note2: Plot should not be called by GetResults. Plot should make and return figures not write them. Higher level class. 
-
-
 class MeanWaveForms_HighLowGain(Processor):
 
     def __init__(self, gaink):
 
         self.k = gaink
-
-        self.Chan = 1855
-        self.Samp = 60
-
-        self.Mwf = np.zeros((self.Chan,self.Samp))
-        self.Mwf_ped = np.zeros((self.Chan,self.Samp))
-        self.counter_evt = 0
-        self.counter_ped = 0
-
-        self.Mwf_average = np.zeros((self.Chan,self.Samp))
-        self.Mwf_ped_average = np.zeros((self.Chan,self.Samp))
-
-        self.wf_list_plot = list(range(1, self.Samp+1))#used for plotting later on
-
         return None
 
-    def ConfigureForRun(self,path):
-
-        #read header
-        hdul = fits.open(path)
-        header = hdul[1].header
-
-        #define number of channels 
-        self.Chan = header['ZFORM7']
-        self.Chan = int(str(self.Chan[0:4]))
-
-        #define number of samples 
-        reader1 = EventSource(input_url=path, max_events=1)
-        for i, evt1 in enumerate(reader1):
-            self.Samp= len(evt1.r0.tel[0].waveform[0][0])
-
+    def ConfigureForRun(self,path, Chan, Samp):
+        #define number of channels and samples
+        self.Chan = Chan
+        self.Samp= Samp
 
         #redefine everything
         self.Mwf = np.zeros((self.Chan,self.Samp))
