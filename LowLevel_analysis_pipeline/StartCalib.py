@@ -79,18 +79,16 @@ d = MeanCameraDisplay_HighLowGain(1)
 e = ChargeIntegration_HighLowGain(0)
 f = ChargeIntegration_HighLowGain(1)
 g = TriggerStatistics_HighLowGain(0)
-h = TriggerStatistics_HighLowGain(1)
 
 processors = list()
 
-processors.append(a)
-processors.append(b)
-processors.append(c)
-processors.append(d)
-processors.append(e)
-processors.append(f)
+#processors.append(a)
+#processors.append(b)
+#processors.append(c)
+#processors.append(d)
+#processors.append(e)
+#processors.append(f)
 processors.append(g)
-processors.append(h)
 #######################################################################################################################
 
 
@@ -114,8 +112,8 @@ Results_TriggerStatistics_HighGain = {}
 Results_TriggerStatistics_LowGain = {}
 
 NESTED_DICT = {} #The final results dictionary
-NESTED_DICT_KEYS = ["Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_LowGain", "Results_MeanCameraDisplay_HighGain", "Results_MeanCameraDisplay_LowGain", "Results_ChargeIntegration_HighGain", "Results_ChargeIntegration_LowGain", "Results_TriggerStatistics_HighGain", "Results_TriggerStatistics_LowGain"]
-#NESTED_DICT_KEYS = ["Results_TriggerStatistics_HighGain"]
+#NESTED_DICT_KEYS = ["Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_LowGain", "Results_MeanCameraDisplay_HighGain", "Results_MeanCameraDisplay_LowGain", "Results_ChargeIntegration_HighGain", "Results_ChargeIntegration_LowGain", "Results_TriggerStatistics"]
+NESTED_DICT_KEYS = ["Results_TriggerStatistics"]
 
 
 #######################################################################################################################
@@ -131,7 +129,6 @@ NESTED_DICT_KEYS = ["Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_Low
 #######################################################################################################################
 for p in processors:
     Chan, Samp = p.DefineForRun(path)
-    print(p)
     break
     
 for p in processors:  

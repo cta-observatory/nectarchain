@@ -28,7 +28,7 @@ from ctapipe.io.hdf5tableio import HDF5TableWriter, HDF5TableReader
 from ctapipe.io import EventSource
 import ctapipe.instrument.camera.readout
 
-
+from astropy import time as astropytime
 
 class Processor:
     def __init__(self):
