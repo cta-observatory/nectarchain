@@ -30,7 +30,7 @@ import ctapipe.instrument.camera.readout
 
 from astropy import time as astropytime
 
-class Processor:
+class dqm_summary:
     def __init__(self):
         print('Processor 0')
 

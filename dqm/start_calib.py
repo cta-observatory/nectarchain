@@ -10,10 +10,10 @@ import time
 from ctapipe.io import EventSource, EventSeeker
 
 
-from MeanWaveForms import MeanWaveForms_HighLowGain
-from MeanCameraDisplay import MeanCameraDisplay_HighLowGain
-from ChargeIntegration import ChargeIntegration_HighLowGain
-from TriggerStatistics import TriggerStatistics_HighLowGain
+from mean_waveforms import MeanWaveForms_HighLowGain
+from mean_camera_display import MeanCameraDisplay_HighLowGain
+from charge_integration import ChargeIntegration_HighLowGain
+from trigger_statistics import TriggerStatistics
 
 
 print(sys.argv)
@@ -72,22 +72,22 @@ ResPath = NectarPath + 'output/%s/%s' %(ChildrenFolderName, name)
 
 #LIST OF PROCESSES TO RUN
 #######################################################################################################################
-a = MeanWaveForms_HighLowGain(0) #0 is for high gain and 1 is for low gain
-b = MeanWaveForms_HighLowGain(1)
-c = MeanCameraDisplay_HighLowGain(0)
-d = MeanCameraDisplay_HighLowGain(1)
-e = ChargeIntegration_HighLowGain(0)
-f = ChargeIntegration_HighLowGain(1)
-g = TriggerStatistics_HighLowGain(0)
+a = TriggerStatistics(0)
+b = MeanWaveForms_HighLowGain(0) #0 is for high gain and 1 is for low gain
+c = MeanWaveForms_HighLowGain(1)
+d = MeanCameraDisplay_HighLowGain(0)
+e = MeanCameraDisplay_HighLowGain(1)
+f = ChargeIntegration_HighLowGain(0)
+g = ChargeIntegration_HighLowGain(1)
 
 processors = list()
 
-#processors.append(a)
-#processors.append(b)
-#processors.append(c)
-#processors.append(d)
-#processors.append(e)
-#processors.append(f)
+processors.append(a)
+processors.append(b)
+processors.append(c)
+processors.append(d)
+processors.append(e)
+processors.append(f)
 processors.append(g)
 #######################################################################################################################
 
@@ -112,8 +112,8 @@ Results_TriggerStatistics_HighGain = {}
 Results_TriggerStatistics_LowGain = {}
 
 NESTED_DICT = {} #The final results dictionary
-#NESTED_DICT_KEYS = ["Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_LowGain", "Results_MeanCameraDisplay_HighGain", "Results_MeanCameraDisplay_LowGain", "Results_ChargeIntegration_HighGain", "Results_ChargeIntegration_LowGain", "Results_TriggerStatistics"]
-NESTED_DICT_KEYS = ["Results_TriggerStatistics"]
+NESTED_DICT_KEYS = ["Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_LowGain", "Results_MeanCameraDisplay_HighGain", "Results_MeanCameraDisplay_LowGain", "Results_ChargeIntegration_HighGain", "Results_ChargeIntegration_LowGain", "Results_TriggerStatistics"]
+#NESTED_DICT_KEYS = ["Results_TriggerStatistics"]
 
 
 #######################################################################################################################
@@ -177,8 +177,6 @@ print("Processing time:", end-start)
 
 #TODOS
 #######################################################################################################################
-#change name of processors: event summary
 #Reduce code by using loops: for figs and results
 #MONGO: store results 
-#Note2: Plot should not be called by GetResults. Plot should make and return figures not write them. Higher level class. 
 

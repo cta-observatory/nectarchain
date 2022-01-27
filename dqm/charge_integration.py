@@ -1,7 +1,7 @@
 
-from Processor import *
+from dqm_summary_processor import *
 
-class ChargeIntegration_HighLowGain(Processor):
+class ChargeIntegration_HighLowGain(dqm_summary):
 
     def __init__(self, gaink):
 

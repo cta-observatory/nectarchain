@@ -1,8 +1,8 @@
 
-from Processor import *
+from dqm_summary_processor import *
 
 
-class MeanWaveForms_HighLowGain(Processor):
+class MeanWaveForms_HighLowGain(dqm_summary):
 
     def __init__(self, gaink):
 

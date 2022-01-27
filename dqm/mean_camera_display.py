@@ -1,6 +1,6 @@
-from Processor import *
+from dqm_summary_processor import *
 
-class MeanCameraDisplay_HighLowGain(Processor):
+class MeanCameraDisplay_HighLowGain(dqm_summary):
 
 
     def __init__(self, gaink):
