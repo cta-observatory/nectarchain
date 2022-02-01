@@ -72,8 +72,8 @@ class MeanWaveForms_HighLowGain(dqm_summary):
 
         #ASSIGN RESUTLS TO DICT
         if (self.k==0):
-            self.MeanWaveForms_Results_Dict["WF-AVERAGE-HIGH-GAIN"]  = self.Mwf_average
-            self.MeanWaveForms_Results_Dict["WF-AVERAGE-CHAN-HIGH-GAIN"]  = self.Mwf_Mean_overChan
+            self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-HIGH-GAIN"]  = self.Mwf_average
+            self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-CHAN-HIGH-GAIN"]  = self.Mwf_Mean_overChan
             if self.counter_ped > 0:
                 self.MeanWaveForms_Results_Dict["WF-PED-AVERAGE-HIGH-GAIN"] = self.Mwf_ped_average
                 self.MeanWaveForms_Results_Dict["WF-AVERAGE-PED-CHAN-HIGH-GAIN"]  = self.Mwf_ped_Mean_overChan
@@ -84,8 +84,8 @@ class MeanWaveForms_HighLowGain(dqm_summary):
             self.MeanWaveForms_Results_Dict["WF-AVERAGE-LOW-GAIN"]  = self.Mwf_average
             self.MeanWaveForms_Results_Dict["WF-AVERAGE-CHAN-LOW-GAIN"]  = self.Mwf_Mean_overChan
             if self.counter_ped > 0:
-                self.MeanWaveForms_Results_Dict["WF-PED-AVERAGE-LOW-GAIN"] = self.Mwf_ped_average
-                self.MeanWaveForms_Results_Dict["WF-AVERAGE-PED-CHAN-LOW-GAIN"]  = self.Mwf_ped_Mean_overChan
+                self.MeanWaveForms_Results_Dict["WF-PHY-PED-AVERAGE-LOW-GAIN"] = self.Mwf_ped_average
+                self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PED-CHAN-LOW-GAIN"]  = self.Mwf_ped_Mean_overChan
                 
 
 
@@ -101,7 +101,7 @@ class MeanWaveForms_HighLowGain(dqm_summary):
         counter_fig = 0
         colors = ['blue', 'red']
         colors2 = ['cyan', 'orange']
-        titles = ['All', 'Pedestals']
+        titles = ['Physical', 'Pedestals']
 
         Mean_plot_array = [self.Mwf_Mean_overChan, self.Mwf_ped_Mean_overChan]
 
