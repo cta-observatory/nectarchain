@@ -9,7 +9,7 @@ class TriggerStatistics(dqm_summary):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self,path, Chan, Samp):
+    def ConfigureForRun(self,path, Chan, Samp, Reader1):
         #define number of channels and samples
         self.Chan = Chan
         self.Samp= Samp
@@ -43,8 +43,11 @@ class TriggerStatistics(dqm_summary):
 
         self.run_start1 = self.run_times[self.event_id == np.min(self.event_id)]
 
-        self.run_end = self.event_times[self.event_id == np.max(self.event_id)]
+        #Choose between the following two methods. time for max id can be sometimes 0.
+        #self.run_end = self.event_times[self.event_id == np.max(self.event_id)]
         self.run_start = self.event_times[self.event_id == np.min(self.event_id)]
+        #self.run_start = np.min(self.event_times)
+        self.run_end = np.max(self.event_times)
 
         self.event_ped_times = self.event_times[self.event_type == 32]
         self.event_phy_times = self.event_times[self.event_type == 1]
@@ -68,7 +71,7 @@ class TriggerStatistics(dqm_summary):
         self.TriggerStat_Results_Dict = {}
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
         self.TriggerStat_Results_Dict["TRIGGER-STATISTICS"] = "All: %s, Physical: %s, Pedestals: %s, Others: %s, Wrong times: %s" %(len(self.event_times), len(self.event_phy_times), len(self.event_ped_times), len(self.event_other_times), len(self.event_wrong_times))
-        self.TriggerStat_Results_Dict["START-TIMES"] = "Run start time: %s, First event: %s, Last event: %s" %(self.run_start, self.run_start1, self.run_end)
+        self.TriggerStat_Results_Dict["START-TIMES"] = "Run start time: %s, First event: %s, Last event: %s" %(self.run_start1, self.run_start, self.run_end)
         return self.TriggerStat_Results_Dict
 
 

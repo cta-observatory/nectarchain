@@ -1,8 +1,6 @@
-Three environement variables are needed: 
-export NECTARDIR=path/to/ParentFoder/
-export NECTARDATA=path/to/ParentFoder/data/
-export NECTARPROCESSINGDIR=path/to/ParentFoder/nectarchain/LowLevel_analysis_pipeline/
+Environment variable needed: 
+export NECTARDIR=path/to/ParentFoderOfNectarchain/ #This is where the nectarchain folder is checked out. The output folder will be created there also. 
 
 To launch the script: 
-source activate cta
-python StartCalib.py /path/NectarCAM.Run2720.0000.fits.fz /path/NectarCAM.Run2720.0001.fits.fz 
+source activate cta #this is the  environment required for the nectarchain analysis
+python start_calib.py /path/NectarCAM.Run2720.0000.fits.fz /path/NectarCAM.Run2720.0001.fits.fz 

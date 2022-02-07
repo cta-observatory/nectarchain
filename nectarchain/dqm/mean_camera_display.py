@@ -8,7 +8,7 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self,path, Chan, Samp):
+    def ConfigureForRun(self,path, Chan, Samp, Reader1):
         #define number of channels and samples
         self.Chan = Chan
         self.Samp= Samp
@@ -30,12 +30,12 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
     def ProcessEvent(self, evt):
         if evt.trigger.event_type == 32: #count peds 
             self.counter_ped += 1
-        if evt.trigger.event_type == 1:
+        else:
             self.counter_evt += 1
 
         if evt.trigger.event_type == 32: #only peds now
             self.CameraAverage_ped += evt.r0.tel[0].waveform[self.k].sum(axis=1) # fill channels one by one and sum them for peds only
-        if evt.trigger.event_type == 1:
+        else:
             self.CameraAverage += evt.r0.tel[0].waveform[self.k].sum(axis=1) # fill channels one by one and sum them
         return None
 

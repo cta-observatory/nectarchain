@@ -8,7 +8,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
     	self.k = gaink
     	return None
 
-    def ConfigureForRun(self,path, Chan, Samp):
+    def ConfigureForRun(self,path, Chan, Samp, Reader1):
         #define number of channels and samples
         self.Chan = Chan
         self.Samp= Samp
@@ -19,9 +19,9 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.camera = CameraGeometry.from_name("NectarCam-003")
         self.cmap = 'gnuplot2'
 
-        reader1=EventSource(input_url=path, max_events = 1)
-        self.subarray = reader1.subarray
-        subarray = reader1.subarray
+        #reader1=EventSource(input_url=path, max_events = 1)
+        self.subarray = Reader1.subarray
+        subarray = Reader1.subarray
         subarray.tel[0].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name("NectarCam")
         config = Config({"LocalPeakWindowSum": {"window_shift": 12, "window_width": 12}})
 

@@ -12,7 +12,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 from scipy.stats import norm
 from traitlets.config.loader import Config 
-import seaborn as sns
 from astropy.io import fits
 
 # ctapipe modules
@@ -35,20 +34,13 @@ class dqm_summary:
         print('Processor 0')
 
     def DefineForRun(self, path):
-        #read header
-        hdul = fits.open(path)
-        header = hdul[1].header
-
-        #define number of channels 
-        self.Chan = header['ZFORM7']
-        self.Chan = int(str(self.Chan[0:4]))
-
-        #define number of samples 
         reader1 = EventSource(input_url=path, max_events=1)
         for i, evt1 in enumerate(reader1):
+            self.FirstReader = reader1
             self.Samp= len(evt1.r0.tel[0].waveform[0][0])
+            self.Chan = len(evt1.r0.tel[0].waveform[0])
 
-        return self.Chan, self.Samp
+        return self.Chan, self.Samp, self.FirstReader
 
     def ConfigureForRun(self):
         print('Processor 1')

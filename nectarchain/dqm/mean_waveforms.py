@@ -9,7 +9,7 @@ class MeanWaveForms_HighLowGain(dqm_summary):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self,path, Chan, Samp):
+    def ConfigureForRun(self,path, Chan, Samp, Reader1):
         #define number of channels and samples
         self.Chan = Chan
         self.Samp= Samp
