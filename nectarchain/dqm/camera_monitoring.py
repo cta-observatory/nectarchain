@@ -4,6 +4,8 @@ import math
 import sqlite3
 import os
 
+#todo: don't use NECTARDATA in path... just get it from path 
+
 class CameraMonitoring(dqm_summary):
 
     def __init__(self, gaink):
@@ -30,7 +32,7 @@ class CameraMonitoring(dqm_summary):
             self.run_start1= evt1.nectarcam.tel[0].svc.date 
 
         SqlFileDate = (astropytime.Time(self.run_start1, format='unix').iso).split(" ")
-        SqlFileDate = '2022-01-26'
+        #SqlFileDate = '2022-01-26'
         SqlFileName = str(os.environ['NECTARDATA']) + "nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
         #print(SqlFileName)
 
@@ -58,11 +60,11 @@ class CameraMonitoring(dqm_summary):
         self.event_id = np.array(self.event_id)
         self.event_times = np.array(self.event_times)
 
-        self.run_start = self.event_times[self.event_id == np.min(self.event_id)]
-        self.run_end = np.max(self.event_times)
+        self.run_start = self.event_times[self.event_id == np.min(self.event_id)] - 100
+        self.run_end = np.max(self.event_times) + 100
 
-        #self.run_start = 1643198406 #should be removed
-        #self.run_end = 1643284747 #should be removed
+        #self.run_start = 1643198406 - 100 #should be removed
+        #self.run_end = 1643284747 + 100#should be removed
 
 
         self.DrawerTemp = np.array(self.DrawerTemp)
