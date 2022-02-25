@@ -4,7 +4,6 @@ import math
 import sqlite3
 import os
 
-#todo: don't use NECTARDATA in path... just get it from path 
 
 class CameraMonitoring(dqm_summary):
 
@@ -22,7 +21,6 @@ class CameraMonitoring(dqm_summary):
         self.camera = CameraGeometry.from_name("NectarCam", 3)
         self.cmap = 'gnuplot2'
 
-        #reader1=EventSource(input_url=path, max_events = 1)
         self.subarray = Reader1.subarray
 
         self.event_id = []
@@ -31,15 +29,19 @@ class CameraMonitoring(dqm_summary):
         for i, evt1 in enumerate(Reader1):
             self.run_start1= evt1.nectarcam.tel[0].svc.date 
 
-        SqlFileDate = (astropytime.Time(self.run_start1, format='unix').iso).split(" ")
-        #SqlFileDate = '2022-01-26'
-        SqlFileName = str(os.environ['NECTARDATA']) + "nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
-        #print(SqlFileName)
+        SqlFileDate = (astropytime.Time(self.run_start1, format='unix').iso).split(" ")[0]
+
+        SqlFilePath = ""
+        for i in range(len(path.split("/"))-1):
+            SqlFilePath = SqlFilePath  +  path.split("/")[i] + "/"
+
+        SqlFileName = SqlFilePath + "nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
+        print("SqlFileName", SqlFileName)
 
         con = sqlite3.connect(SqlFileName) 
         cursor = con.cursor()  
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         #print(cursor.fetchall())
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         TempData=cursor.execute('''SELECT * FROM monitoring_drawer_temperatures''')
         #print(TempData.description)
 
@@ -63,10 +65,6 @@ class CameraMonitoring(dqm_summary):
         self.run_start = self.event_times[self.event_id == np.min(self.event_id)] - 100
         self.run_end = np.max(self.event_times) + 100
 
-        #self.run_start = 1643198406 - 100 #should be removed
-        #self.run_end = 1643284747 + 100#should be removed
-
-
         self.DrawerTemp = np.array(self.DrawerTemp)
         self.DrawerTimes = np.array(self.DrawerTemp[:,3])
 
@@ -80,9 +78,9 @@ class CameraMonitoring(dqm_summary):
 
         self.DrawerTimes_new = self.DrawerTimes[self.DrawerTimes > self.run_start]
 
-        self.DrawerTemp12 = self.DrawerTemp[:,4][self.DrawerTimes_new < self.run_end]
-        self.DrawerTemp22 = self.DrawerTemp[:,5][self.DrawerTimes_new < self.run_end]
-        self.DrawerNum2 = self.DrawerTemp[:,2][self.DrawerTimes_new < self.run_end]   
+        self.DrawerTemp12 = self.DrawerTemp11[self.DrawerTimes_new < self.run_end]
+        self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
+        self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]   
 
         self.DrawerTemp1_mean = []
         self.DrawerTemp2_mean = []
