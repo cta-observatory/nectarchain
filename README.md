@@ -13,7 +13,7 @@ Here is how you should install:
 git clone git@github.com:cta-observatory/nectarchain.git
 cd nectarchain
 conda env create --name nectarchain --file environment.yml
-conda activate cta
+conda activate nectarchain
 cd ..
 git clone git@github.com:cta-observatory/ctapipe_io_nectarcam.git
 cd ctapipe_io_nectarcam
