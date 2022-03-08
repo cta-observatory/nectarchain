@@ -1,4 +1,4 @@
-name: cta
+name: nectarchain
 channels:
   - default
 dependencies:
