@@ -10,21 +10,23 @@ Current `nectarchain` build uses `ctapipe` master version.
 
 Here is how you should install:
 ```
-git clone https://github.com/cta-observatory/nectarchain.git
+git clone git@github.com:cta-observatory/nectarchain.git
 cd nectarchain
 conda env create --name cta --file environment.yml
 conda activate cta
-pip install git+https://github.com/cta-observatory/ctapipe.git#egg=ctapipe
-pip install https://github.com/cta-sst-1m/protozfitsreader/archive/v1.5.0.tar.gz
-pip install https://github.com/cta-observatory/ctapipe_io_nectarcam/archive/master.tar.gz
+cd ..
+git clone git@github.com:cta-observatory/ctapipe_io_nectarcam.git
+cd ctapipe_io_nectarcam
+pip install -e .
+cd ../nectarchain
 pip install -e .
 ```
-If you are a developper, better you install ctapipe as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html
+If you are a developer, better you install ctapipe as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html
 and periodically perform a "git pull upstream master" in order to be updated with the master
 
 ## Contributing
 
-All contribution are welcomed.
+All contribution are welcome.
 
 Guidelines are the same as [ctapipe's ones](https://cta-observatory.github.io/ctapipe/development/index.html)
 See [here](https://cta-observatory.github.io/ctapipe/development/pullrequests.html) how to make a pull request to contribute.

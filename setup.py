@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# import sys
 
 from setuptools import setup, find_packages
 from os import path
@@ -21,7 +20,6 @@ setup(
     install_requires=[
         'astropy',
         'ctapipe',
-        'protozfits @ https://github.com/cta-sst-1m/protozfitsreader/archive/v1.5.0.tar.gz',
     ],
     tests_require=['pytest'],
     setup_requires=['pytest_runner'],
