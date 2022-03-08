@@ -7,3 +7,5 @@ dependencies:
   - jupyterlab
   - conda-forge::protozfits=2.0
   - pytest-runner
+  - pip
+  
