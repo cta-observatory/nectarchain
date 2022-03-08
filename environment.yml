@@ -1,13 +1,14 @@
-name: cta
+name: nectarchain
 channels:
   - default
   - cta-observatory
   - conda-forge
 dependencies:
-  - python=3.7
-  - ctapipe
+  - python=3.8 # nail the python version, so conda does not try upgrading / dowgrading
+  - ctapipe=0.12
   - gammapy
+  - pip
+  - protozfits~=2.0
   - pip:
       - pytest_runner
       - pytest-ordering
-      - https://github.com/cta-sst-1m/protozfitsreader/archive/v1.5.0.tar.gz
