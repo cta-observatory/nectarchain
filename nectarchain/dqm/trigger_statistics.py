@@ -20,8 +20,8 @@ class TriggerStatistics(dqm_summary):
         self.run_times = []
 
     def ProcessEvent(self, evt):
-        trigger_type = evt.trigger.event_type
-        trigger_time = evt.trigger.time
+        trigger_type = evt.trigger.event_type.value
+        trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
         trigger_run_time = evt.nectarcam.tel[0].svc.date
 
@@ -34,7 +34,8 @@ class TriggerStatistics(dqm_summary):
 
     def FinishRun(self):
         self.triggers = np.unique(self.event_type)
-
+        pedestal_num = 32
+        physical_num = 2
 
         self.event_id = np.array(self.event_id)
         self.run_times = np.array(self.run_times)
@@ -49,14 +50,14 @@ class TriggerStatistics(dqm_summary):
         #self.run_start = np.min(self.event_times)
         self.run_end = np.max(self.event_times)
 
-        self.event_ped_times = self.event_times[self.event_type == 32]
-        self.event_phy_times = self.event_times[self.event_type == 1]
-        mask = ((self.event_type != 1) & (self.event_type != 32))
+        self.event_ped_times = self.event_times[self.event_type == pedestal_num]
+        self.event_phy_times = self.event_times[self.event_type == physical_num]
+        mask = ((self.event_type != physical_num) & (self.event_type != pedestal_num))
         self.event_other_times = self.event_times[mask]
 
-        self.event_ped_id = self.event_id[self.event_type == 32]
-        self.event_phy_id = self.event_id[self.event_type == 1]
-        mask = ((self.event_type != 1) & (self.event_type != 32))
+        self.event_ped_id = self.event_id[self.event_type == pedestal_num]
+        self.event_phy_id = self.event_id[self.event_type == physical_num]
+        mask = ((self.event_type != physical_num) & (self.event_type != pedestal_num))
         self.event_other_id = self.event_id[mask]
 
         self.event_ped_times = self.event_ped_times[self.event_ped_times > self.run_start]
@@ -78,7 +79,8 @@ class TriggerStatistics(dqm_summary):
     def PlotResults(self,name,FigPath):
 
         w = 1
-        n = math.ceil((self.event_times.max() - self.event_times.min())/w)
+        n1 = np.array(self.event_times.max() - self.event_times.min(), dtype= object)
+        n = math.ceil(n1/w)
 
         self.TriggerStat_Figures_Dict = {}
         self.TriggerStat_Figures_Names_Dict = {}
@@ -99,7 +101,8 @@ class TriggerStatistics(dqm_summary):
         plt.close()
 
         w = 15
-        n = math.ceil((self.event_times.max() - self.event_times.min())/w)
+        n1 = self.event_times.max() - self.event_times.min()
+        n = math.ceil(n1/w)
 
 
         fig2, ax = plt.subplots()

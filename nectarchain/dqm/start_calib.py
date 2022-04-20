@@ -52,7 +52,9 @@ cmap = 'gnuplot2'
 #Read and seek
 reader=EventSource(input_url=path)
 seeker = EventSeeker(reader)
+reader1 = EventSource(input_url=path, max_events=1)
 #print(reader.file_list)
+
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
 ResPath = NectarPath + 'output/%s/%s' %(ChildrenFolderName, name)
@@ -103,15 +105,13 @@ processors.append(h)
 
 #LIST OF DICT RESULTS
 #######################################################################################################################
-Results_TriggerStatistics = {}
-Results_MeanWaveForms_HighGain = {}
+Results_MeanWaveForms_HighGain ={}
 Results_MeanWaveForms_LowGain = {}
 Results_MeanCameraDisplay_HighGain = {}
 Results_MeanCameraDisplay_LowGain = {}
 Results_ChargeIntegration_HighGain = {}
 Results_ChargeIntegration_LowGain = {}
-Results_TriggerStatistics_HighGain = {}
-Results_TriggerStatistics_LowGain = {}
+Results_TriggerStatistics = {}
 Results_CameraMonitoring = {}
 
 NESTED_DICT = {} #The final results dictionary
@@ -131,11 +131,11 @@ NESTED_DICT_KEYS = ["Results_TriggerStatistics", "Results_MeanWaveForms_HighGain
 #START
 #######################################################################################################################
 for p in processors:
-    Chan, Samp, Reader1 = p.DefineForRun(path)
+    Chan, Samp = p.DefineForRun(reader1)
     break
     
 for p in processors:  
-    p.ConfigureForRun(path, Chan, Samp, Reader1)
+    p.ConfigureForRun(path, Chan, Samp, reader1)
 
 for i, evt in enumerate(reader):
 	for p in processors:

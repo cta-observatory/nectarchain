@@ -28,12 +28,12 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
 
 
     def ProcessEvent(self, evt):
-        if evt.trigger.event_type == 32: #count peds 
+        if evt.trigger.event_type.value == 32: #count peds 
             self.counter_ped += 1
         else:
             self.counter_evt += 1
 
-        if evt.trigger.event_type == 32: #only peds now
+        if evt.trigger.event_type.value == 32: #only peds now
             self.CameraAverage_ped += evt.r0.tel[0].waveform[self.k].sum(axis=1) # fill channels one by one and sum them for peds only
         else:
             self.CameraAverage += evt.r0.tel[0].waveform[self.k].sum(axis=1) # fill channels one by one and sum them
@@ -84,20 +84,20 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         if (self.k ==1):
             gain_c = 'Low'
 
-       
-        fig1, self.disp1 = plt.subplots()
-        self.disp1 = CameraDisplay(geometry=self.camera, image=self.CameraAverage_overEvents_overSamp, cmap=self.cmap)
-        self.disp1.cmap = self.cmap
-        self.disp1.cmap = plt.cm.coolwarm
-        self.disp1.add_colorbar()
-        self.disp1.axes.text(2.0, 0, 'Charge (DC)', rotation=90)
-        plt.title("Camera average %s gain (ALL)" %gain_c)
-        
-        self.MeanCameraDisplay_Figures_Dict["CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" %gain_c] = fig1
-        full_name = name + '_Camera_Mean_%sGain.png' %gain_c 
-        FullPath = FigPath +full_name
-        self.MeanCameraDisplay_Figures_Names_Dict["CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" %gain_c] = FullPath
-        plt.close()
+        if self.counter_evt > 0:
+            fig1, self.disp1 = plt.subplots()
+            self.disp1 = CameraDisplay(geometry=self.camera, image=self.CameraAverage_overEvents_overSamp, cmap=self.cmap)
+            self.disp1.cmap = self.cmap
+            self.disp1.cmap = plt.cm.coolwarm
+            self.disp1.add_colorbar()
+            self.disp1.axes.text(2.0, 0, 'Charge (DC)', rotation=90)
+            plt.title("Camera average %s gain (ALL)" %gain_c)
+            
+            self.MeanCameraDisplay_Figures_Dict["CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" %gain_c] = fig1
+            full_name = name + '_Camera_Mean_%sGain.png' %gain_c 
+            FullPath = FigPath +full_name
+            self.MeanCameraDisplay_Figures_Names_Dict["CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" %gain_c] = FullPath
+            plt.close()
 
 
         if self.counter_ped > 0:

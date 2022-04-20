@@ -49,7 +49,7 @@ class CameraMonitoring(dqm_summary):
         cursor.close()
 
     def ProcessEvent(self, evt):
-        trigger_time = evt.trigger.time
+        trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
 
         self.event_times.append(trigger_time)
@@ -107,7 +107,7 @@ class CameraMonitoring(dqm_summary):
         self.ChargeInt_Figures_Names_Dict = {}
 
         fig, disp = plt.subplots()
-        disp = CameraDisplay(self.subarray.tels[0].camera)
+        disp = CameraDisplay(self.camera)
         disp.image = self.DrawerTemp_mean
         disp.cmap = plt.cm.coolwarm
         disp.axes.text(1.8, -0.3, 'Temperature', fontsize=12,rotation=90)
@@ -123,7 +123,7 @@ class CameraMonitoring(dqm_summary):
 
 
         fig1, disp = plt.subplots()
-        disp = CameraDisplay(self.subarray.tels[0].camera)
+        disp = CameraDisplay(self.camera)
         disp.image = self.DrawerTemp1_mean
         disp.cmap = plt.cm.coolwarm
         disp.axes.text(1.8, -0.3, 'Temperature 1', fontsize=12,rotation=90)
@@ -139,7 +139,7 @@ class CameraMonitoring(dqm_summary):
 
 
         fig2, disp = plt.subplots()
-        disp = CameraDisplay(self.subarray.tels[0].camera)
+        disp = CameraDisplay(self.camera)
         disp.image = self.DrawerTemp2_mean
         disp.cmap = plt.cm.coolwarm
         disp.axes.text(1.8, -0.3, 'Temperature 2', fontsize=12,rotation=90)
