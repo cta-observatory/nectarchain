@@ -1,0 +1,56 @@
+# nectarchain.sif - A singularity image for nectarchain
+#
+# Built from miniconda, with special conda environment containing nectarchain
+#
+# Jean-Philippe Lenain <jlenain@in2p3.fr>
+# Time-stamp: "2022-04-22 22:46:49 jlenain"
+#
+# Typically, build this image with:
+# `sudo singularity build nectarchain.sif nectarchain.def`
+#
+# Then, typically run an instance of this image with:
+# `singularity shell nectarchain.sif`
+
+Bootstrap: docker
+From: continuumio/miniconda3
+
+# From https://github.com/hpcng/singularity/issues/5075#issuecomment-594391772
+%environment
+    action="${0##*/}"
+    if [ "$action" = "shell" ]; then
+        if [ "${SINGULARITY_SHELL:-}" = "/bin/bash" ]; then
+            set -- --noprofile --init-file /.singularity_bash
+        elif test -z "${SINGULARITY_SHELL:-}"; then
+            export SINGULARITY_SHELL=/bin/bash
+            set -- --noprofile --init-file /.singularity_bash
+        fi
+    fi
+
+%post
+    ORIG=$PWD
+    . /opt/conda/etc/profile.d/conda.sh
+    conda update --name base -c defaults conda
+    conda install --name base -c conda-forge mamba
+    mkdir -p /opt/cta
+    cd /opt/cta
+    git clone https://github.com/cta-observatory/nectarchain.git
+    mamba env create --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
+    conda activate nectarchain
+    git clone https://github.com/cta-observatory/ctapipe_io_nectarcam.git
+    cd ctapipe_io_nectarcam
+    pip install -e .
+    cd ../nectarchain
+    pip install -e .
+    mamba clean -y --all
+    rm -f $ORIG/environment.yml
+    echo "## Activate nectarchain environment" >> /.singularity_bash
+    echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
+    echo "conda activate nectarchain" >> /.singularity_bash
+
+%runscript
+    echo "This is a miniconda container with a nectarchain environment"
+    exec /bin/bash --noprofile --init-file /.singularity_bash "$@"
+
+%startscript
+    echo "This is a miniconda container with a nectarchain environment"
+    exec /bin/bash --noprofile --init-file /.singularity_bash "$@"
