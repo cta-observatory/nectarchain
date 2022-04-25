@@ -33,14 +33,13 @@ class dqm_summary:
     def __init__(self):
         print('Processor 0')
 
-    def DefineForRun(self, path):
-        reader1 = EventSource(input_url=path, max_events=1)
+    def DefineForRun(self, reader1):
         for i, evt1 in enumerate(reader1):
             self.FirstReader = reader1
             self.Samp= len(evt1.r0.tel[0].waveform[0][0])
             self.Chan = len(evt1.r0.tel[0].waveform[0])
 
-        return self.Chan, self.Samp, self.FirstReader
+        return self.Chan, self.Samp
 
     def ConfigureForRun(self):
         print('Processor 1')

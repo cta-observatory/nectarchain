@@ -14,7 +14,7 @@ from mean_waveforms import MeanWaveForms_HighLowGain
 from mean_camera_display import MeanCameraDisplay_HighLowGain
 from charge_integration import ChargeIntegration_HighLowGain
 from trigger_statistics import TriggerStatistics
-#from camera_monitoring import CameraMonitoring
+from camera_monitoring import CameraMonitoring
 
 
 print(sys.argv)
@@ -52,7 +52,9 @@ cmap = 'gnuplot2'
 #Read and seek
 reader=EventSource(input_url=path)
 seeker = EventSeeker(reader)
+reader1 = EventSource(input_url=path, max_events=1)
 #print(reader.file_list)
+
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
 ResPath = NectarPath + 'output/%s/%s' %(ChildrenFolderName, name)
@@ -78,7 +80,7 @@ d = MeanCameraDisplay_HighLowGain(0)
 e = MeanCameraDisplay_HighLowGain(1)
 f = ChargeIntegration_HighLowGain(0)
 g = ChargeIntegration_HighLowGain(1)
-#h = CameraMonitoring(0)
+h = CameraMonitoring(0)
 
 processors = list()
 
@@ -89,7 +91,7 @@ processors.append(d)
 processors.append(e)
 processors.append(f)
 processors.append(g)
-#processors.append(h)
+processors.append(h)
 #######################################################################################################################
 
 
@@ -109,11 +111,11 @@ Results_MeanCameraDisplay_HighGain = {}
 Results_MeanCameraDisplay_LowGain = {}
 Results_ChargeIntegration_HighGain = {}
 Results_ChargeIntegration_LowGain = {}
-Results_TriggerStatistics_HighGain = {}
-Results_TriggerStatistics_LowGain = {}
+Results_TriggerStatistics = {}
+Results_CameraMonitoring = {}
 
 NESTED_DICT = {} #The final results dictionary
-NESTED_DICT_KEYS = ["Results_TriggerStatistics", "Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_LowGain", "Results_MeanCameraDisplay_HighGain", "Results_MeanCameraDisplay_LowGain", "Results_ChargeIntegration_HighGain", "Results_ChargeIntegration_LowGain"]
+NESTED_DICT_KEYS = ["Results_TriggerStatistics", "Results_MeanWaveForms_HighGain", "Results_MeanWaveForms_LowGain", "Results_MeanCameraDisplay_HighGain", "Results_MeanCameraDisplay_LowGain", "Results_ChargeIntegration_HighGain", "Results_ChargeIntegration_LowGain", "Results_CameraMonitoring"]
 #NESTED_DICT_KEYS = ["Results_CameraMonitoring"]
 
 
@@ -129,11 +131,11 @@ NESTED_DICT_KEYS = ["Results_TriggerStatistics", "Results_MeanWaveForms_HighGain
 #START
 #######################################################################################################################
 for p in processors:
-    Chan, Samp, Reader1 = p.DefineForRun(path)
+    Chan, Samp = p.DefineForRun(reader1)
     break
     
 for p in processors:  
-    p.ConfigureForRun(path, Chan, Samp, Reader1)
+    p.ConfigureForRun(path, Chan, Samp, reader1)
 
 for i, evt in enumerate(reader):
 	for p in processors:
