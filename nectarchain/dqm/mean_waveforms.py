@@ -34,13 +34,13 @@ class MeanWaveForms_HighLowGain(dqm_summary):
 
 
     def ProcessEvent(self, evt):
-        if evt.trigger.event_type == 32: #count peds 
+        if evt.trigger.event_type.value == 32: #count peds 
             self.counter_ped += 1
         else:
             self.counter_evt += 1
             
         for ichan in range(self.Chan): #loop over channels # 1855 should be redefined as a variable
-            if evt.trigger.event_type == 32: #only peds now
+            if evt.trigger.event_type.value == 32: #only peds now
                 self.Mwf_ped[ichan,:] += evt.r0.tel[0].waveform[self.k][ichan] # fill channels one by one and sum them for peds only
             else:
                 self.Mwf[ichan,:] += evt.r0.tel[0].waveform[self.k][ichan] # fill channels one by one and sum them
