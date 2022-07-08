@@ -3,7 +3,7 @@
 # Built from miniconda, with special conda environment containing nectarchain
 #
 # Jean-Philippe Lenain <jlenain@in2p3.fr>
-# Time-stamp: "2022-04-22 22:46:49 jlenain"
+# Time-stamp: "2022-07-08 08:59:21 jlenain"
 #
 # Typically, build this image with:
 # `sudo singularity build nectarchain.sif nectarchain.def`
@@ -34,14 +34,14 @@ From: continuumio/miniconda3
     mkdir -p /opt/cta
     cd /opt/cta
     git clone https://github.com/cta-observatory/nectarchain.git
-    mamba env create --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create -q --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     conda activate nectarchain
     git clone https://github.com/cta-observatory/ctapipe_io_nectarcam.git
     cd ctapipe_io_nectarcam
     pip install -e .
     cd ../nectarchain
     pip install -e .
-    mamba clean -y --all
+    mamba clean -q -y --all
     rm -f $ORIG/environment.yml
     echo "## Activate nectarchain environment" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
