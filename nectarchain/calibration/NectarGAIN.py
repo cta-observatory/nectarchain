@@ -7,30 +7,35 @@ from scipy.special import gammainc
 from iminuit import Minuit
 import random
 
-def _make_parname(idx, par):
-    return "par_{:03d}_{}".format(idx, par)
-
-def _make_parnames(parameters):
-    return [_make_parname(idx, par) for idx, par in enumerate(parameters)]
-
 def make_minuit_par_kwargs(parameters,parnames,LimitLow,LimitUp):
     """Create *Parameter Keyword Arguments* for the `Minuit` constructor.
 
-    See: http://iminuit.readthedocs.io/en/latest/api.html#iminuit.Minuit
+    updated for Minuit >2.0
     """
-    names = _make_parnames(parnames)
-    kwargs = {"forced_parameters": names}
+    names = parnames
+    kwargs = {"names": names,"values" : {}}
 
     for i in range(len(parameters)):
-        kwargs[names[i]] = parameters[i]
-
+        kwargs["values"][parnames[i]] = parameters[i]
         min_ = None if np.isnan(LimitLow[i]) else LimitLow[i]
         max_ = None if np.isnan(LimitUp[i]) else LimitUp[i]
-        kwargs["limit_{}".format(names[i])] = (min_, max_)
-
-        kwargs["error_{}".format(names[i])] = 0.1
+        kwargs[f"limit_{names[i]}"] = (min_, max_)
+        kwargs[f"error_{names[i]}"] = 0.1
 
     return kwargs
+
+def set_minuit_parameters_limits_and_errors(m : Minuit,parameters : dict) :
+    """function to set minuit parameter limits and errors with Minuit >2.0
+
+    Args:
+        m (Minuit): a Minuit instance
+        parameters (dict): dict containing parameters names, limits errors and values
+    """
+    for name in parameters["names"] :
+        m.limits[name] = parameters[f"limit_{name}"]
+        m.errors[name] = parameters[f"error_{name}"]
+
+
 
 class NectarSPEGain():
     
@@ -327,10 +332,11 @@ class NectarSPEGain():
         LimitLow = [self.resolutionLow,self.meanUpLow,self.pedestalMeanLow,self.pedestalWidthLow,self.LuminosityLow]
         LimitUp = [self.resolutionUp,self.meanUpUp,self.pedestalMeanUp,self.pedestalWidthUp,self.LuminosityUp]
         
-        test = make_minuit_par_kwargs(parValues,parName,LimitLow,LimitUp)
-        m = Minuit(self.Chi2SignalFixedModel,**test, print_level=2)
-        m.get_initial_param_states()
-        m.set_strategy(2)
+        parameters = make_minuit_par_kwargs(parValues,parName,LimitLow,LimitUp)
+        m = Minuit(self.Chi2SignalFixedModel,**parameters['values'])
+        m.print_level = 2
+        set_minuit_parameters_limits_and_errors(m,parameters)
+        m.strategy = 2
         print(m.values)
         results = m.migrad(ncall=4000000)
         m.hesse()
