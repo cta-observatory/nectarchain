@@ -7,31 +7,37 @@ from scipy.special import gammainc
 from iminuit import Minuit
 import random
 
-def _make_parname(idx, par):
-    return "par_{:03d}_{}".format(idx, par)
-
-def _make_parnames(parameters):
-    return [_make_parname(idx, par) for idx, par in enumerate(parameters)]
-
 def make_minuit_par_kwargs(parameters,parnames,LimitLow,LimitUp):
     """Create *Parameter Keyword Arguments* for the `Minuit` constructor.
 
-    See: http://iminuit.readthedocs.io/en/latest/api.html#iminuit.Minuit
+    updated for Minuit >2.0
     """
-    names = _make_parnames(parnames)
-    kwargs = {"forced_parameters": names}
+    names = parnames
+    kwargs = {"names": names,"values" : {}}
 
     for i in range(len(parameters)):
-        kwargs[names[i]] = parameters[i]
-
+        kwargs["values"][parnames[i]] = parameters[i]
         min_ = None if np.isnan(LimitLow[i]) else LimitLow[i]
         max_ = None if np.isnan(LimitUp[i]) else LimitUp[i]
-        kwargs["limit_{}".format(names[i])] = (min_, max_)
-
-        kwargs["error_{}".format(names[i])] = 0.1
+        kwargs[f"limit_{names[i]}"] = (min_, max_)
+        kwargs[f"error_{names[i]}"] = 0.1
 
     return kwargs
 
+def set_minuit_parameters_limits_and_errors(m : Minuit,parameters : dict) :
+    """function to set minuit parameter limits and errors with Minuit >2.0
+
+    Args:
+        m (Minuit): a Minuit instance
+        parameters (dict): dict containing parameters names, limits errors and values
+    """
+    for name in parameters["names"] :
+        m.limits[name] = parameters[f"limit_{name}"]
+        m.errors[name] = parameters[f"error_{name}"]
+
+
+
+# Gain's class
 class NectarSPEGain():
     
     def  __init__(self):
@@ -107,6 +113,7 @@ class NectarSPEGain():
         
     ####### data #######
     
+# Fill histos as given by the user
     def FillDataHisto(self,chargeSPE,dataSPE,chargePed = 0,dataPed = 0,chargePedHHV=0,dataPedHHV=0,chargeSPEHHV=0,dataSPEHHV=0):
         self.histoPed = dataPed
         self.chargePed = chargePed
@@ -120,6 +127,7 @@ class NectarSPEGain():
 
     ####### functions model #######
 
+# Usefull fucntions for the fit
     def gaussian(self,x, mu, sig):
         return (1./(sig*np.sqrt(2*math.pi)))*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     
@@ -165,12 +173,14 @@ class NectarSPEGain():
         else:
             return n*self.SigMax(p,res,mu2)
         
+# Final model shape/function (for one SPE)
     def doubleGaussConstrained(self,x,pp,res,mu2,n):
         p = pp*self.PMax(res)
         sig2 = self.sigma2(n,p,res,mu2)
         sig1 = self.sigma1(p,res,sig2,mu2)
         return self.doubleGauss(x,sig1,mu2,sig2,p)
         
+# Get the gain from the parameters model
     def Gain(self,pp,res,mu2,n):
         p = pp*self.PMax(res)
         sig2 = self.sigma2(n,p,res,mu2)
@@ -183,6 +193,7 @@ class NectarSPEGain():
     #    for i in range(nph):
     #        npe = np.convolve(spe,ppp,"same")
     
+# The PDF model for one/N SPE convoluted with the pedestal (0 SPE --> pedestal, 1 SPE --> 1 SPExPed, etc)
     def nPEPDF(self,x,pp,res,mu2,n,muped,sigped,nph,size_charge):
         allrange = np.linspace(-1 * size_charge,size_charge,size_charge*2)
         spe = []
@@ -204,7 +215,8 @@ class NectarSPEGain():
         fff = interpolate.UnivariateSpline(allrange,npe,ext=1,k=3,s=0)
         norm = np.trapz(fff(allrange),allrange)
         return fff(x-muped)/norm
-        
+    
+# The real final model callign all the above for luminosity (lum) + PED, wil return probability of number of Spe
     def MPE2(self,x,pp,res,mu2,n,muped,sigped,lum):
         f = 0
         ntotalPE = 0
@@ -219,6 +231,7 @@ class NectarSPEGain():
         
     ####### Likelihood ########
     
+# Not tested
     def NG_LikelihoodPedestal_Unbinned(self,mean,sigma,charge):
         Lik = 0
         for i in range(len(events)):
@@ -226,6 +239,7 @@ class NectarSPEGain():
         return Lik
         
     
+# Not tested
     def NG_LikelihoodSignal_Unbinned(self,pp,res,mu2,n,muped,sigped,lum,charge,nPrecision):
         MaxCharge = np.maximum(charge)+1
         MinCharge = np.minimum(charge)-1
@@ -237,6 +251,7 @@ class NectarSPEGain():
             Lik = Lik-2*math.log(pdf_interpolated(charge[i]))
         return Lik
         
+# Chi2 (used now) for the pedestal (for pure pedestal data)
     def NG_LikelihoodPedestal_Chi2(self,mean,sigma,charge,nEvents):
         Lik = 0
         Ntot = np.sum(nEvents)
@@ -246,6 +261,7 @@ class NectarSPEGain():
         return Lik
         
     
+# Chi2 (used now) for signal ie luminosity (SPE)
     def NG_LikelihoodSignal_Chi2(self,pp,res,mu2,n,muped,sigped,lum,charge,nEvents):
         pdf = self.MPE2(charge,pp,res,mu2,n,muped,sigped,lum)
         Ntot = np.sum(nEvents)
@@ -255,41 +271,66 @@ class NectarSPEGain():
                 Lik = Lik + (pdf[i]*Ntot-nEvents[i])**2/nEvents[i]
         return Lik
     
+# To call NG_LikelihoodSignal_Chi2 wit hthe data loaded, will all free paramters of the model (work only at 1000V) but not recommened (very complex to converg) better to use the fix mdoel (below)
+# Ideal/final for 1000V
     def Chi2Signal(self,pp,res,mu2,n,muped,sigped,lum):
         return self.NG_LikelihoodSignal_Chi2(pp,res,mu2,n,muped,sigped,lum,self.chargeSignal,self.histoSignal)
     
+# To call NG_LikelihoodSignal_Chi2 wit hthe data loaded, not all free parameters (pp and n are fixed (as they are independent from the gain, should be the same for all pixels althogh unchecked), will be usefull for the combined fit with the 1000V
+# Paramters fixed after Sami did a avergae on 50 pixels just have an idea and gain time
     def Chi2SignalFixedModel(self,res,mu2,muped,sigped,lum):
         return self.NG_LikelihoodSignal_Chi2(self.pp,res,mu2,self.n,muped,sigped,lum,self.chargeSignal,self.histoSignal)
     
+# Chi2 (used now) for the ped at 1000V (alwasy work)
     def Chi2Ped(self,muped,sigped):
         return self.NG_LikelihoodPedestal_Chi2(muped,sigped,self.chargePed,self.histoPed)
     
+# Chi2 (used now) for the signal (HHV: high high voltage ie 1400V) at 1400V
+# Ideal/final for 1400V
     def Chi2SignalHHV(self,pp,res,mu2,n,muped,sigped,lum):
         return self.NG_LikelihoodSignal_Chi2(pp,res,mu2,n,muped,sigped,lum,self.chargeSignalHHV,self.histoSignalHHV)
     
+# Chi2 (used now) for the ped at 1400V (always work)
+# Ideal for file with only pedestal/noise (not for us now))
     def Chi2PedHHV(self,muped,sigped):
         return self.NG_LikelihoodPedestal_Chi2(muped,sigped,self.chargePedHHV,self.histoPedHHV)
         
+# Chi2 (not tested yet) for the combined pedestal + signal (at 1000V)
+# If pp and n are free it will not converge, requires a pedestal run like above, ideal for 1000V file + noise/pedestal file
+# Not for now
     def Chi2CombiSignalAndPed(self,pp,res,mu2,n,muped,sigped,lum):
-        return self.Chi2Signal(pp,res,mu2,n,muped,sigped,lum)+self.Chi2Ped(muped,sigped)
+        return self.Chi2Signal(self.pp,res,mu2,self.n,muped,sigped,lum)+self.Chi2Ped(muped,sigped)
+        #return self.Chi2Signal(pp,res,mu2,n,muped,sigped,lum)+self.Chi2Ped(muped,sigped)
         
+# Chi2 (not tested yet) for the combined pedestal + signal (at 1400V)
+# Requires a pedestal file so not for now
     def Chi2CombiSignalAndPedHHV(self,pp,res,mu2,n,muped,sigped,lum):
         return self.Chi2SignalHHV(pp,res,mu2,n,muped,sigped,lum)+self.Chi2PedHHV(muped,sigped)
         
+# Chi2 (not tested yet) for the combined pedestal + signal (1000V) + signal (1400V)
+# Requires a pedestal file so not for now
+# Ideal/final for ped + 1000V + 1400V
     def Chi2AllCombined(self,pp,res,mu2,mu2HHV,n,muped,mupedHHV,sigped,lum,lumHHV):
         return self.Chi2CombiSignalAndPed(pp,res,mu2,n,muped,sigped,lum)+self.Chi2CombiSignalAndPedHHV(pp,res,mu2HHV,n,mupedHHV,sigped,lum)
         
+# Chi2 (not tested yet) for the combined signal (1000V) + signal (1400V)
+# Ideal/final for 1000V + 1400V
+    def Chi2AllNoPedCombined(self,pp,res,mu2,mu2HHV,n,muped,mupedHHV,sigped,lum,lumHHV):
+        return self.Chi2Signal(pp,res,mu2,n,muped,sigped,lum)+self.Chi2SignalHHV(pp,res,mu2HHV,n,mupedHHV,sigped,lum)
+        
     ####### Compute Start Parameters ######
-    
+   
+# "Smart" values to start the fit 
     def StartParameters(self):
         self.pedestalMean = (np.min(self.chargePed) + np.sum(self.chargePed*self.histoPed)/np.sum(self.histoPed))/2.
         self.pedestalMeanLow = np.min(self.chargePed)
         self.pedestalMeanUp = np.sum(self.chargePed*self.histoPed)/np.sum(self.histoPed)
         #self.pedestalWidth = np.sqrt(np.sum(self.chargePed**2 * self.histoPed)/np.sum(self.histoPed)-self.pedestalMean**2)
-        self.pedestalWidth = 16
+        #self.pedestalWidth = 16
+        self.pedestalWidth = 50
         #self.pedestalWidthLow = self.pedestalWidth-3
         self.pedestalWidthLow = 1
-        self.pedestalWidthUp = self.pedestalWidth+50
+        self.pedestalWidthUp = self.pedestalWidth+100
         print("pedestal mean ",self.pedestalMean," width ", self.pedestalWidth)
         self.pedestalMeanSPE = self.pedestalMean
         self.pedestalMeanSPELow = self.pedestalMeanSPE-60
@@ -299,14 +340,18 @@ class NectarSPEGain():
         self.pedestalWidthSPEUp = self.pedestalWidthSPE+10
         self.Luminosity = 1.
         self.LuminosityLow = 0.01
-        self.LuminosityUp = 2.
+        #self.LuminosityUp = 2.
+        self.LuminosityUp = 5.
         self.pp = 0.3735
         self.resolution = 0.5
         self.resolutionLow = 0.3
         self.resolutionUp = 0.7 
-        self.meanUp = 50.
-        self.meanUpLow = 20.
-        self.meanUpUp = 100.
+        #self.meanUp = 50.
+        self.meanUp = 500.
+        #self.meanUpLow = 20.
+        self.meanUpLow = 400.
+        #self.meanUpUp = 100.
+        self.meanUpUp = 600.
         self.n = 0.708
         self.pedestalMeanHHV = self.pedestalMean
         self.pedestalWidthHHV = self.pedestalWidth
@@ -319,7 +364,9 @@ class NectarSPEGain():
         self.nHHV = 0.708
         
     ####### Fit minuit #######
-    
+   
+# To fit with iminuit for Signal only, create functions for all the cases above 
+ 
     def fitSignalOnly(self,ID = 0):
         self.StartParameters()
         parName = ["res","mu2","muped","sigped","lum"]
@@ -327,10 +374,11 @@ class NectarSPEGain():
         LimitLow = [self.resolutionLow,self.meanUpLow,self.pedestalMeanLow,self.pedestalWidthLow,self.LuminosityLow]
         LimitUp = [self.resolutionUp,self.meanUpUp,self.pedestalMeanUp,self.pedestalWidthUp,self.LuminosityUp]
         
-        test = make_minuit_par_kwargs(parValues,parName,LimitLow,LimitUp)
-        m = Minuit(self.Chi2SignalFixedModel,**test, print_level=2)
-        m.get_initial_param_states()
-        m.set_strategy(2)
+        parameters = make_minuit_par_kwargs(parValues,parName,LimitLow,LimitUp)
+        m = Minuit(self.Chi2SignalFixedModel,**parameters['values'])
+        m.print_level = 2
+        set_minuit_parameters_limits_and_errors(m,parameters)
+        m.strategy = 2
         print(m.values)
         results = m.migrad(ncall=4000000)
         m.hesse()
@@ -353,5 +401,45 @@ class NectarSPEGain():
         plt.legend(fontsize=15)
         #plt.show()
         return self.Gain(self.pp,m.values[0],m.values[1],self.n),np.std(gainGenerated),m.values,m.errors
+        
+
+# To fit with iminuit for Signal 1400V only with pp and n free paramters, create functions for all the cases above 
+    def fitSignalOnly1400V(self):
+        self.StartParameters()
+	# need to adapt free parameters
+        parName = ["pp","res","mu2","n", "muped","sigped","lum"]
+        parValues = [self.pp,self.resolution,self.meanUp,self.n,self.pedestalMean,self.pedestalWidth,self.Luminosity]
+        LimitLow = [0.2,self.resolutionLow,self.meanUpLow,0.5,self.pedestalMeanLow,self.pedestalWidthLow,self.LuminosityLow]
+        LimitUp = [0.8,self.resolutionUp,self.meanUpUp,0.9,self.pedestalMeanUp,self.pedestalWidthUp,self.LuminosityUp]
+        
+        test = make_minuit_par_kwargs(parValues,parName,LimitLow,LimitUp)
+	# the critical lign (here using fixed model)
+        m = Minuit(self.Chi2Signal,**test, print_level=2)
+        m.get_initial_param_states()
+        m.set_strategy(2)
+        print(m.values)
+        results = m.migrad(ncall=4000000)
+        m.hesse()
+        print(m.values)
+        print(m.errors)
+        gain = self.Gain(m.values[0],m.values[1],m.values[2],m.values[3])
+        print(f"Reconstructed gain is  {gain}")
+        gainGenerated = []
+        for i in range(1000): 
+            gainGenerated.append(self.Gain(random.gauss(m.values[0],m.errors[0]),random.gauss(m.values[1],m.errors[1]),random.gauss(m.values[2],m.errors[2]),random.gauss(m.values[3],m.errors[3])))
+        print(gainGenerated)
+        print("Uncertainty is ", np.std(gainGenerated))
+        plt.figure(figsize=(8, 6))
+        plt.errorbar(self.chargeSignal,self.histoSignal,np.sqrt(self.histoSignal),zorder=0,fmt=".",label = "data")
+        plt.plot(self.chargeSignal,np.trapz(self.histoSignal,self.chargeSignal)*self.MPE2(self.chargeSignal,m.values[0],m.values[1],m.values[2],m.values[3],m.values[4],m.values[5],m.values[6]),zorder=1,linewidth=2,label = "MPE model fit \n gain = "+str(round(gain,2))+" +/- " + str(round(np.std(gainGenerated),2)) + " ADC/pe")
+        plt.xticks(size = 15)
+        plt.yticks(size = 15)
+        plt.xlabel("Charge (ADC)", size=15)
+        plt.ylabel("Events", size=15)
+        #plt.plot(self.chargeSignal,self.MPE2(self.chargeSignal,self.pp,m.values[0],m.values[1],self.n,m.values[2],m.values[3],m.values[4]),linewidth=2)
+        #print(np.trapz(self.MPE2(self.chargeSignal,self.pp,m.values[0],m.values[1],self.n,m.values[2],m.values[3],m.values[4]),self.chargeSignal))
+        plt.legend(fontsize=15)
+        #plt.show()
+        return gain,np.std(gainGenerated),m.values,m.errors
         
 
