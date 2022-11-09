@@ -5,8 +5,9 @@ import copy
 from pathlib import Path
 import sys
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
+log.handlers = logging.getLogger('__main__').handlers
 
 from ctapipe.visualization import CameraDisplay
 from ctapipe.coordinates import CameraFrame,EngineeringCameraFrame
