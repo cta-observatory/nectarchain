@@ -18,8 +18,9 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     install_requires=[
-        'astropy',
-        'ctapipe',
+        'astropy~=4.2',
+        'ctapipe~=0.12',
+        'numpy~=1.22.4',
     ],
     tests_require=['pytest'],
     setup_requires=['pytest_runner'],
