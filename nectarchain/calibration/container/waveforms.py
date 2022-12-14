@@ -113,8 +113,8 @@ class WaveformsContainer() :
             self.wfs_triggertype[i]=event.trigger.event_type
 
             trig_in= np.zeros((self.npixels))
-            for slice in range(4):
-                trig_in=np.int16(np.logical_or(trig_in, event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern[slice]))
+            #for slice in range(4):
+            #    trig_in=np.int16(np.logical_or(trig_in, event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern[slice]))
             self.trig_pattern[i] = trig_in
 
             for pix in self.pixels_ids:#range(self.npixels):
