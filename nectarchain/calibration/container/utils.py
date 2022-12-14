@@ -46,6 +46,79 @@ class DataManagment() :
             if not(os.path.exists(f'{os.environ["NECTARCAMDATA"]}/{os.path.basename(lfn)}')):
                 dirac.getFile(lfn=lfn,destDir=os.environ["NECTARCAMDATA"],printOutput=True)
 
+
+    @staticmethod
+    def get_GRID_location(run_number : int,output_lfns = True, username = None,password = None) : 
+
+        url = "http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?cmd=Find"
+
+        url_run = f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?mode=full&reverse=0&reverse=1&npp=20&subtext=%23{run_number}"
+
+        #try to acces data by getting cookies from firefox and Chrome
+        log.debug('try to get data with cookies from Firefox abnd Chrome')
+        cookies = browser_cookie3.load()
+        req = requests.get(f'http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=&ModuleCount=&subtext=%23{run_number}',cookies = cookies)
+        
+        if "<title>ELOG Login</title>" in req.text : 
+            log.debug('log to Elog with cookies impossible, try again with password')
+            #log to Elog
+            br = mechanize.Browser()
+            br.open(url)
+
+            form = br.select_form('form1')
+
+            for i in range(4) : 
+                log.debug(br.form.find_control(nr=i).name)
+
+            br.form['uname'] = username
+            br.form['upassword'] = password
+            br.method = "POST"
+
+            req = br.submit()
+            #html_page = req.get_data()
+            cookies = br._ua_handlers['_cookies'].cookiejar
+
+            #get data
+            req = requests.get(f'http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=&ModuleCount=&subtext=%23{run_number}',cookies = cookies)
+
+
+        lines = req.text.split('\r\n')
+
+        url_data = None
+        for line in lines : 
+            if '<p>' in line : 
+                url_data = line.split("</p>")[0].split('FC:')[1]
+                break
+
+        if output_lfns : 
+            try : 
+                #Dirac
+                dirac = Dirac()
+                loc = f"/vo.cta.in2p3.fr/nectarcam/{url_data.split('/')[-2]}/{url_data.split('/')[-1]}"
+                res = dirac.listCatalogDirectory(loc, printOutput=True)
+
+                lfns = []
+                for key in res['Value']['Successful'][loc]['Files'].keys():
+                    if str(run_number) in key and "fits.fz" in key : 
+                        lfns.append(key)
+            except Exception as e : 
+                log.error(e,exc_info = True)
+            return lfns
+        else : 
+            return url_data
+
+
+    
+
+
+
+
+
+        
+
+
+
+
 class ChainGenerator():
     @staticmethod
     def chain(a : Generator ,b : Generator) :
