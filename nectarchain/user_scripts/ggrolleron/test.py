@@ -27,7 +27,7 @@ run_number = [3784]
 ped_run_number = [2630]
 FF_run_number = [2609]
 
-spe_run_1000V = WaveformsContainer(run_number[0])
+spe_run_1000V = WaveformsContainer(run_number[0],nevents = 78248)
 
 spe_run_1000V.load_wfs()
 charge = ChargeContainer.from_waveform(spe_run_1000V)
