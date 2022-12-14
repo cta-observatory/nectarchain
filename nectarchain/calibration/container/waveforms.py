@@ -117,7 +117,7 @@ class WaveformsContainer() :
             #    trig_in=np.int16(np.logical_or(trig_in, event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern[slice]))
             self.trig_pattern[i] = trig_in
 
-            for pix in self.pixels_ids:#range(self.npixels):
+            for pix in range(self.npixels):
                 wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,pix]
                 wfs_hg_tmp[pix]=event.r0.tel[0].waveform[0,pix]
 
