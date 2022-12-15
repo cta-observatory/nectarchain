@@ -91,7 +91,7 @@ class NectarGainSPESingle(ABC):
     def run(self,pixel : int = None,**kwargs):
         if pixel is None : 
             for i in tqdm(range(self.npixels)) :
-                log.info(f"running SPE fit for pixel {pixel} (pixel_id = {self.__pixels_id[pixel]})")
+                log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
                 self._run_obs(i,**kwargs)
         else : 
             if not(isinstance(pixel,np.ndarray)) :
