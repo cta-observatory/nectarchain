@@ -1,6 +1,11 @@
 from email.generator import Generator
 import os
 import glob
+import re
+import mechanize
+import requests
+import browser_cookie3
+
 from DIRAC.Interfaces.API.Dirac import Dirac
 from pathlib import Path
 from typing import List,Tuple
@@ -15,7 +20,7 @@ __all__ = ['DataManagment','ChainGenerator']
 
 class DataManagment() :
     @staticmethod
-    def findrun(run_number : int) -> Tuple[Path,List[Path]]: 
+    def findrun(run_number : int,search_on_GRID = True) -> Tuple[Path,List[Path]]: 
         """method to find in NECTARCAMDATA the list of *.fits.fz files associated to run_number
 
         Args:
@@ -27,6 +32,21 @@ class DataManagment() :
         basepath=os.environ['NECTARCAMDATA']
         list = glob.glob(basepath+'**/*'+str(run_number)+'*.fits.fz',recursive=True)
         list_path = [Path(chemin) for chemin in list]
+        if len(list_path) == 0 : 
+            e = FileNotFoundError(f"run {run_number} is not present in {basepath}")
+            if search_on_GRID : 
+                log.warning(e,exc_info=True)
+                log.info('will search files on GRID and fetch them')
+                lfns = DataManagment.get_GRID_location(run_number)
+                DataManagment.getRunFromDIRAC(lfns)
+                list = glob.glob(basepath+'**/*'+str(run_number)+'*.fits.fz',recursive=True)
+                list_path = [Path(chemin) for chemin in list]
+            else : 
+                log.error(e,exc_info=True)
+                raise e
+
+            
+
         name = list_path[0].name.split(".")
         name[2] = "*"
         name = Path(str(list_path[0].parent))/(f"{name[0]}.{name[1]}.{name[2]}.{name[3]}.{name[4]}")

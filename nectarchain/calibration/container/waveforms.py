@@ -27,7 +27,7 @@ class WaveformsContainer() :
     TEL_ID = 0
     CAMERA = CameraGeometry.from_name("NectarCam-003")
 
-    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1):
+    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1,merge_file = True):
         """construtor
 
         Args:
@@ -37,7 +37,8 @@ class WaveformsContainer() :
         """
 
         self.__run_number = run_number
-        self.__reader = WaveformsContainer.load_run(run_number,max_events)
+        #gerer ici le fait de traiter plusieurs fichiers ou simplement 1 par 1
+        self.__reader = WaveformsContainer.load_run(run_number,max_events,merge_file = merge_file)
 
         #set camera properties
         log.info(f"N pixels : {self.npixels}")
@@ -57,10 +58,15 @@ class WaveformsContainer() :
         #define empty members which will be filled therafter
         self.wfs_hg = np.empty((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
         self.wfs_lg = np.empty((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
-        self.wfs_evttime = np.empty((self.nevents),dtype = np.uint16)
+        self.ucts_timestamp = np.empty((self.nevents),dtype = np.uint64)
+        self.ucts_busy_counter = np.empty((self.nevents),dtype = np.uint16)
+        self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint16)
         self.wfs_triggertype = np.empty((self.nevents),dtype = object)
         self.wfs_evtid = np.empty((self.nevents),dtype = np.uint16)
-        self.trig_pattern = np.empty((self.nevents,self.npixels),dtype = np.uint16)
+        self.trig_pattern_all = np.empty((self.nevents,self.npixels,4),dtype = bool)
+        self.trig_pattern = np.empty((self.nevents,self.npixels),dtype = bool)
+        self.multiplicity = np.empty((self.nevents,self.npixels),dtype = np.uint16)
+
 
     @staticmethod
     def load_run(run_number : int,max_events : int = None) : 
@@ -109,13 +115,14 @@ class WaveformsContainer() :
                 log.info(f"reading event number {i}")
 
             self.wfs_evtid[i] = np.uint16(event.index.event_id)
-            self.wfs_evttime[i]=event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_timestamp
+            self.ucts_timestamp[i]=event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_timestamp
             self.wfs_triggertype[i]=event.trigger.event_type
+            self.ucts_busy_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_busy_counter
+            self.ucts_event_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_event_counter
 
-            trig_in= np.zeros((self.npixels))
-            #for slice in range(4):
-            #    trig_in=np.int16(np.logical_or(trig_in, event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern[slice]))
-            self.trig_pattern[i] = trig_in
+
+            self.trig_pattern_all[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern
+            self.trig_pattern[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.any(axis = 0)
 
             for pix in range(self.npixels):
                 wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,pix]
@@ -124,9 +131,25 @@ class WaveformsContainer() :
             self.wfs_hg[i] = wfs_hg_tmp
             self.wfs_lg[i] = wfs_lg_tmp
 
+        self.multiplicity = np.count_nonzero(self.trig_pattern,axis = 1)
+
 
         if compute_trigger_patern and np.max(self.trig_pattern) == 0:
             self.compute_trigger_patern()
+
+
+    def create_output_table(self) : 
+        #TODO
+        pass
+
+    def write(self,path : str) : 
+        #TODO
+        pass
+
+    @staticmethod
+    def load(path : str) : 
+        #TODO
+        pass
 
     
 
