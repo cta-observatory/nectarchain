@@ -31,6 +31,8 @@ from astropy.io import fits
 
 from .waveforms import WaveformsContainer
 
+from .charge_extractor import *
+
 __all__ = ['ChargeContainer']
 
 list_ctapipe_charge_extractor = ["FullWaveformSum",
@@ -41,6 +43,8 @@ list_ctapipe_charge_extractor = ["FullWaveformSum",
                         "NeighborPeakWindowSum",
                         "BaselineSubtractedNeighborPeakWindowSum",
                         "TwoPassWindowSum"]
+
+list_nectarchain_charge_extractor = ['gradient_extractor']
 
 
 
@@ -137,7 +141,7 @@ class ChargeContainer() :
         
     @staticmethod 
     def compute_charge(waveformContainer : WaveformsContainer,channel : int,method : str = "FullWaveformSum" ,**kwargs) : 
-        if not(method in list_ctapipe_charge_extractor) :
+        if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
             raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
         ImageExtractor = eval(method)(waveformContainer.reader.subarray)
         if channel == 0:
