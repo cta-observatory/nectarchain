@@ -6,6 +6,7 @@ from scipy import signal
 from iminuit import Minuit
 import random
 import astropy.units as u
+from astropy.visualization import quantity_support, time_support
 from astropy.table import QTable,Column
 import astropy.units as u
 import yaml
@@ -95,18 +96,15 @@ class PhotoStatGain(ABC):
     def _readSPE(self,SPEresults) : 
         log.info(f'reading SPE resolution from {SPEresults}')
         table = QTable.read(SPEresults)
-        self.SPEResolution = table['resolution'].quantity
-        if len(self.SPEResolution) != self.npixels : 
-            e = Exception("FF run must have the same pixel number as SPE run")
-            log.error(e,exc_info = True)
-            raise e
-        self.SPEGain = table['gain'].quantity
-        self.SPEGain_error = table['gain_error'].quantity
-        self.__SPE_pixels_id = table['pixels_id'].value
+        self.SPEResolution = table['resolution']
+        self.SPEGain = table['gain']
+        self.SPEGain_error = table['gain_error']
+        self._SPE_pixels_id = table['pixel'].value
 
     
 
     def create_output_table(self) :
+        self._output_table = QTable()
         self._output_table.meta['npixel'] = self.npixels
         self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
 
@@ -125,13 +123,14 @@ class PhotoStatGain(ABC):
         self._output_table["low gain"] = self.gainLG
 
     def plot_correlation(self) : 
-        fig,ax = plt.subplots(1,1,figsize=(8, 6))
-        ax.scatter(self._output_table["high gain"],self.SPEGain,fmt=".")
+        with quantity_support() : 
+            fig,ax = plt.subplots(1,1,figsize=(8, 6))
+            ax.scatter(self._output_table["high gain"],self.SPEGain,marker =".")
 
-        ax.set_xlabel("Gain Photo stat", size=15)
-        ax.set_ylabel("Gain SPE fit", size=15)
-        ax.legend(fontsize=15)
-        return fig
+            ax.set_xlabel("Gain Photo stat", size=15)
+            ax.set_ylabel("Gain SPE fit", size=15)
+            ax.legend(fontsize=15)
+            return fig
 
 
 
@@ -146,21 +145,22 @@ class PhotoStatGain(ABC):
 
 
     @property
-    def sigmaPedHG(self) : return np.std(self.Pedcharge.charge_hg,axis = 1)
+    def sigmaPedHG(self) : return np.std(self.Pedcharge.charge_hg,axis = 0)
 
     @property
-    def sigmaChargeHG(self) : return np.std(self.FFcharge.charge_hg - self.meanPedHG,axis = 1)
+    def sigmaChargeHG(self) : return np.std(self.FFcharge.charge_hg - self.meanPedHG,axis = 0)
 
     @property
-    def meanPedHG(self) : return np.mean(self.Pedcharge.charge_hg,axis = 1)
+    def meanPedHG(self) : return np.mean(self.Pedcharge.charge_hg,axis = 0)
 
     @property
-    def meanChargeHG(self) : return np.mean(self.FFcharge.charge_hg - self.meanPedHG,axis = 1)
+    def meanChargeHG(self) : return np.mean(self.FFcharge.charge_hg - self.meanPedHG,axis = 0)
 
     @property
     def BHG(self) : 
-        upper = (np.power(self.FFcharge.charge_hg.mean(axis = 0) - self.meanPedHG.mean(axis = 0) - self.meanChargeHG.mean(axis = 0),2)).mean(axis = 0)
-        lower =  np.power(self.meanChargeHG.mean(axis = 0),2)
+        min_events = np.min((self.FFcharge.charge_hg.shape[0],self.Pedcharge.charge_hg.shape[0]))
+        upper = (np.power(self.FFcharge.charge_hg.mean(axis = 1)[:min_events] - self.Pedcharge.charge_hg.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
+        lower =  np.power(self.meanChargeHG,2)
         return np.sqrt(upper/lower)
 
     @property
@@ -169,21 +169,22 @@ class PhotoStatGain(ABC):
     
 
     @property
-    def sigmaPedLG(self) : return np.std(self.Pedcharge.charge_lg,axis = 1)
+    def sigmaPedLG(self) : return np.std(self.Pedcharge.charge_lg,axis = 0)
 
     @property
-    def sigmaChargeLG(self) : return np.std(self.FFcharge.charge_lg - self.meanPedLG,axis = 1)
+    def sigmaChargeLG(self) : return np.std(self.FFcharge.charge_lg - self.meanPedLG,axis = 0)
 
     @property
-    def meanPedLG(self) : return np.mean(self.Pedcharge.charge_lg,axis = 1)
+    def meanPedLG(self) : return np.mean(self.Pedcharge.charge_lg,axis = 0)
 
     @property
-    def meanChargeLG(self) : return np.mean(self.FFcharge.charge_lg - self.meanPedLG,axis = 1)
+    def meanChargeLG(self) : return np.mean(self.FFcharge.charge_lg - self.meanPedLG,axis = 0)
 
     @property
     def BLG(self) : 
-        upper = (np.power(self.FFcharge.charge_lg.mean(axis = 0) - self.meanPedLG.mean(axis = 0) - self.meanChargeLG.mean(axis = 0),2)).mean(axis = 0)
-        lower =  np.power(self.meanChargeLG.mean(axis = 0),2)
+        min_events = np.min((self.FFcharge.charge_lg.shape[0],self.Pedcharge.charge_lg.shape[0]))
+        upper = (np.power(self.FFcharge.charge_lg.mean(axis = 1)[:min_events] - self.Pedcharge.charge_lg.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
+        lower =  np.power(self.meanChargeLG,2)
         return np.sqrt(upper/lower)
 
     @property
@@ -200,14 +201,14 @@ class PhotoStatGainFFandPed(PhotoStatGain):
         self._readFF(FFRun,maxevents,**kwargs)
         self._readPed(PedRun,maxevents,**kwargs)
 
-        if self.FFcharge.shape[0] != self.Pedcharge.shape[0] : 
+        if self.FFcharge.charge_hg.shape[1] != self.Pedcharge.charge_hg.shape[1] : 
             e = Exception("Ped run and FF run must have the same number of pixels")
             log.error(e,exc_info = True)
             raise e
 
         self._readSPE(SPEresults)
 
-        if self.FFcharge.pixels_id != self.Pedcharge.pixels_id or self.FFcharge.pixels_id != self.__SPE_pixels_id or self.Pedcharge.pixels_id != self.__SPE_pixels_id : 
+        if (self.FFcharge.pixels_id != self.Pedcharge.pixels_id).any() or (self.FFcharge.pixels_id != self._SPE_pixels_id).any() or (self.Pedcharge.pixels_id != self._SPE_pixels_id).any() : 
             e = DifferentPixelsID("Ped run, FF run and SPE run need to have same pixels id")
             log.error(e,exc_info = True)
             raise e
@@ -233,7 +234,7 @@ class PhotoStatGainFF(PhotoStatGain):
 
         self._readSPE(SPEresults)
 
-        if self.FFcharge.pixels_id != self.__SPE_pixels_id : 
+        if self.FFcharge.pixels_id != self._SPE_pixels_id : 
             e = DifferentPixelsID("Ped run, FF run and SPE run need to have same pixels id")
             log.error(e,exc_info = True)
             raise e
