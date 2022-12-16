@@ -30,18 +30,9 @@ from abc import ABC, abstractclassmethod, abstractmethod
 
 __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGainSPESinglePed"]
 
-class NectarGainSPESingle(ABC):
+class NectarGainSPE(ABC) :
     _Ncall = 4000000
-    @abstractmethod
-    def __init__(self,signal : ChargeContainer,**kwargs) : 
-        log.info("initialisation of the SPE fit instance")
-        histo = signal.histo_hg(autoscale = True)
-        #access data
-        self.__charge = histo[1]
-        self.__histo = histo[0]
-        self.__mask_fitted_pixel = np.zeros((self.__charge.shape[0]),dtype = bool)
-        self.__pixels_id = signal.pixels_id
-        
+    def __init__(self) :
         #set parameters value for fit
         self.__parameters = Parameters()
         self.__pedestal = Parameter(name = "pedestal",
@@ -58,6 +49,20 @@ class NectarGainSPESingle(ABC):
         self._output_table = QTable()
         #self.create_output_table() #need to be done in the child class __init__
 
+class NectarGainSPESingle(NectarGainSPE):
+    _Ncall = 4000000
+
+    def __init__(self,signal : ChargeContainer,**kwargs) : 
+        log.info("initialisation of the SPE fit instance")
+        histo = signal.histo_hg(autoscale = True)
+        #access data
+        self.__charge = histo[1]
+        self.__histo = histo[0]
+        self.__mask_fitted_pixel = np.zeros((self.__charge.shape[0]),dtype = bool)
+        self.__pixels_id = signal.pixels_id
+        super().__init__(**kwargs)
+        
+        
 
     def create_output_table(self) :
         self._output_table.meta['npixel'] = self.npixels
