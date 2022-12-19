@@ -31,7 +31,7 @@ from astropy.io import fits
 
 from .waveforms import WaveformsContainer
 
-from .charge_extractor import *
+#from .charge_extractor import *
 
 __all__ = ['ChargeContainer']
 
@@ -67,7 +67,7 @@ class ChargeContainer() :
         charge_lg,peak_lg = ChargeContainer.compute_charge(waveformContainer,1,method,**kwargs)
         charge_lg = np.array(charge_lg,dtype = np.uint16)
 
-        return cls(charge_hg,charge_lg,peak_hg,peak_lg,waveformContainer.run_number,waveformContainer.pixels_ids,method)
+        return cls(charge_hg,charge_lg,peak_hg,peak_lg,waveformContainer.run_number,waveformContainer.pixels_id,method)
 
     def write(self,path : Path,**kwargs) : 
         log.info(f"saving in {path}")
