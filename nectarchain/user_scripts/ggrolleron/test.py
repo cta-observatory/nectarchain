@@ -23,14 +23,25 @@ from nectarchain.calibration.container.utils import DataManagment
 
 
 
-run_number = [3784]
+run_number = [2633]
 ped_run_number = [2630]
 FF_run_number = [2609]
 
-spe_run_1000V = WaveformsContainer(run_number[0],nevents = 78248)
+spe_run_1000V = WaveformsContainer(run_number[0],max_events = 1000)
 
 spe_run_1000V.load_wfs()
+
+spe_run_1000V.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
+
+spe_run_1000V.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}.fits")
+
+charge = ChargeContainer.compute_charge(spe_run_1000V,1,method = "gradient_extractor")
+
+
+
 charge = ChargeContainer.from_waveform(spe_run_1000V)
+
+
 charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = True)
 
 

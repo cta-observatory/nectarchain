@@ -30,29 +30,35 @@ ped_run_number = [2630]
 overwrite = True
 
 
-#spe_run_1000V = WaveformsContainer(run_number[0], nevents = n_events[0])
-spe_run_1000V = WaveformsContainer(run_number[0], max_events=5000)
+spe_run_1000V = WaveformsContainer(run_number[0], nevents = n_events[0])
+#spe_run_1000V = WaveformsContainer(run_number[0], max_events=5000)
 
 spe_run_1000V.load_wfs()
+spe_run_1000V.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
+
 charge = ChargeContainer.from_waveform(spe_run_1000V)
-charge.write(f"{os.environ['NECTARCAMDATA']}/charges-reduced/std/",overwrite = overwrite)
+charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
 del spe_run_1000V,charge
 
-#spe_run_1400V  =  WaveformsContainer(run_number[1],nevents = n_events[1])
-spe_run_1400V = WaveformsContainer(run_number[1], max_events=5000)
+spe_run_1400V  =  WaveformsContainer(run_number[1],nevents = n_events[1])
+#spe_run_1400V = WaveformsContainer(run_number[1], max_events=5000)
 
 spe_run_1400V.load_wfs()
+spe_run_1400V.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
+
 charge = ChargeContainer.from_waveform(spe_run_1400V)
-charge.write(f"{os.environ['NECTARCAMDATA']}/charges-reduced/std/",overwrite = overwrite)
+charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
 del spe_run_1400V,charge
 
 
-#ped_run = WaveformsContainer(ped_run_number[0],max_events = 40000)
-ped_run = WaveformsContainer(ped_run_number[0], max_events=5000)
+ped_run = WaveformsContainer(ped_run_number[0],max_events = 40000)
+#ped_run = WaveformsContainer(ped_run_number[0], max_events=5000)
 
 ped_run.load_wfs()
+ped_run.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
+
 charge = ChargeContainer.from_waveform(ped_run)
-charge.write(f"{os.environ['NECTARCAMDATA']}/charges-reduced/std/",overwrite = overwrite)
+charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
 
 
 #spe_run_1000V = WaveformsContainer(run_number[0],nevents = n_events[0])
