@@ -1,2 +1,2 @@
-from .waveforms import WaveformsContainer
+from .waveforms import *
 from .charge import *

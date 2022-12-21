@@ -13,7 +13,7 @@ import astropy.units as u
 
 from ctapipe.visualization import CameraDisplay
 from ctapipe.coordinates import CameraFrame,EngineeringCameraFrame
-from ctapipe.instrument import CameraGeometry
+from ctapipe.instrument import CameraGeometry,SubarrayDescription,TelescopeDescription
 
 from ctapipe_io_nectarcam import NectarCAMEventSource
 from ctapipe.containers import EventType
@@ -27,16 +27,19 @@ logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
-__all__ = ["WaveformsContainer"]
-
+__all__ = ["WaveformsContainer","WaveformsContainers"]
+        
 
 class WaveformsContainer() :
     """class used to load run and load waveforms from r0 data
     """
     TEL_ID = 0
     CAMERA = CameraGeometry.from_name("NectarCam-003")
+    def __new__(cls,*args,**kwargs) : 
+        obj = object.__new__(cls)
+        return obj
 
-    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1,merge_file = True):
+    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1,run_file = None):
         """construtor
 
         Args:
@@ -49,12 +52,13 @@ class WaveformsContainer() :
 
         self.__run_number = run_number
         #gerer ici le fait de traiter plusieurs fichiers ou simplement 1 par 1
-        self.__reader = WaveformsContainer.load_run(run_number,max_events,merge_file = merge_file)
+        self.__reader = WaveformsContainer.load_run(run_number,max_events,run_file = run_file)
 
         #from reader members
         self.__npixels = self.__reader.camera_config.num_pixels
         self.__nsamples =  self.__reader.camera_config.num_samples
         self.__geometry = self.__reader.subarray.tel[WaveformsContainer.TEL_ID].camera
+        self.__subarray =  self.__reader.subarray
         self.__pixels_id = self.__reader.camera_config.expected_pixels_id
         
         #set camera properties
@@ -66,7 +70,7 @@ class WaveformsContainer() :
         else :
             self.__nevents = self.check_events()
             #reload file (bc check_events has drained reader generator)
-            self.__reader = WaveformsContainer.load_run(run_number,max_events,merge_file = merge_file)
+            self.__reader = WaveformsContainer.load_run(run_number,max_events,run_file = run_file)
         log.info(f"N_events : {self.nevents}")
 
         
@@ -79,17 +83,17 @@ class WaveformsContainer() :
         self.wfs_hg = np.empty((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
         self.wfs_lg = np.empty((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
         self.ucts_timestamp = np.empty((self.nevents),dtype = np.uint64)
-        self.ucts_busy_counter = np.empty((self.nevents),dtype = np.uint16)
-        self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint16)
+        self.ucts_busy_counter = np.empty((self.nevents),dtype = np.uint32)
+        self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint32)
         self.event_type = np.empty((self.nevents),dtype = np.uint8)
-        self.event_id = np.empty((self.nevents),dtype = np.uint16)
+        self.event_id = np.empty((self.nevents),dtype = np.uint32)
         self.trig_pattern_all = np.empty((self.nevents,self.npixels,4),dtype = bool)
         #self.trig_pattern = np.empty((self.nevents,self.npixels),dtype = bool)
         #self.multiplicity = np.empty((self.nevents,self.npixels),dtype = np.uint16)
 
 
     @staticmethod
-    def load_run(run_number : int,max_events : int = None, merge_file = True) : 
+    def load_run(run_number : int,max_events : int = None, run_file = None) : 
         """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
 
         Args:
@@ -100,12 +104,12 @@ class WaveformsContainer() :
             List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for each run files
         """
         generic_filename,filenames = DataManagment.findrun(run_number)
-        if merge_file : 
+        if run_file is None : 
             log.info(f"{str(generic_filename)} will be loaded")
             eventsource = NectarCAMEventSource(input_url=generic_filename,max_events=max_events)
-        else : 
-            if isinstance(merge_file,int) : 
-                eventsource = NectarCAMEventSource(input_url=filenames[merge_file],max_events=max_events)
+        else :  
+            log.info(f"{run_file} will be loaded")
+            eventsource = NectarCAMEventSource(input_url=run_file,max_events=max_events)
         return eventsource
         
     def check_events(self):
@@ -164,6 +168,9 @@ class WaveformsContainer() :
 
 
     def write(self,path : str, **kwargs) : 
+        suffix = kwargs.get("suffix","")
+        if suffix != "" : suffix = f"_{suffix}"
+
         log.info(f"saving in {path}")
         os.makedirs(path,exist_ok = True)
 
@@ -172,6 +179,9 @@ class WaveformsContainer() :
         hdr['NEVENTS'] = self.nevents
         hdr['NPIXELS'] = self.npixels
         hdr['NSAMPLES'] = self.nsamples
+        hdr['SUBARRAY'] = self.subarray.name
+
+        self.subarray.to_hdf(f"{Path(path)}/subarray_run{self.run_number}.hdf5",overwrite=kwargs.get('overwrite',False))
 
 
 
@@ -183,11 +193,11 @@ class WaveformsContainer() :
         wfs_lg_hdu = fits.ImageHDU(self.wfs_lg)
 
 
-        col1 = fits.Column(array = self.event_id, name = "event_id", format = '1I')
+        col1 = fits.Column(array = self.event_id, name = "event_id", format = '1J')
         col2 = fits.Column(array = self.event_type, name = "event_type", format = '1I')
         col3 = fits.Column(array = self.ucts_timestamp, name = "ucts_timestamp", format = '1K')
-        col4 = fits.Column(array = self.ucts_busy_counter, name = "ucts_busy_counter", format = '1I')
-        col5 = fits.Column(array = self.ucts_event_counter, name = "ucts_event_counter", format = '1I')
+        col4 = fits.Column(array = self.ucts_busy_counter, name = "ucts_busy_counter", format = '1J')
+        col5 = fits.Column(array = self.ucts_event_counter, name = "ucts_event_counter", format = '1J')
         col6 = fits.Column(array = self.multiplicity, name = "multiplicity", format = '1I')
 
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
@@ -200,8 +210,8 @@ class WaveformsContainer() :
 
         hdul = fits.HDUList([primary_hdu, wfs_hg_hdu, wfs_lg_hdu,event_properties,trigger_patern])
         try : 
-            hdul.writeto(Path(path)/f"waveforms_run{self.run_number}.fits",overwrite=kwargs.get('overwrite',False))
-            log.info(f"runs saved in {Path(path)}/waveforms_run{self.run_number}.fits")
+            hdul.writeto(Path(path)/f"waveforms_run{self.run_number}{suffix}.fits",overwrite=kwargs.get('overwrite',False))
+            log.info(f"run saved in {Path(path)}/waveforms_run{self.run_number}{suffix}.fits")
         except OSError as e : 
             log.warning(e)
         except Exception as e :
@@ -210,18 +220,22 @@ class WaveformsContainer() :
 
 
 
-    @classmethod
-    def load(cls,path : str) : 
+    @staticmethod
+    def load(path : str) : 
         log.info(f"loading from {path}")
         hdul = fits.open(Path(path))
 
+        cls = WaveformsContainer.__new__(WaveformsContainer)
+
         cls.__run_number = hdul[0].header['RUN'] 
-        cls.nevents = hdul[0].header['NEVENTS'] 
-        cls.npixels = hdul[0].header['NPIXELS'] 
-        cls.nsamples = hdul[0].header['NSAMPLES'] 
+        cls.__nevents = hdul[0].header['NEVENTS'] 
+        cls.__npixels = hdul[0].header['NPIXELS'] 
+        cls.__nsamples = hdul[0].header['NSAMPLES'] 
+
+        cls.__subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
 
 
-        cls.pixels_id = hdul[0].data
+        cls.__pixels_id = hdul[0].data
         cls.wfs_hg = hdul[1].data
         cls.wfs_lg = hdul[2].data
 
@@ -276,6 +290,9 @@ class WaveformsContainer() :
     def geometry(self) : return self.__geometry
 
     @property
+    def subarray(self) : return self.__subarray
+
+    @property
     def pixels_id(self) : return self.__pixels_id
 
     @property
@@ -291,3 +308,45 @@ class WaveformsContainer() :
 
     @property
     def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 2)
+
+
+
+
+
+
+
+class WaveformsContainers() : 
+    """This class is to be used for computing waveforms of a run treating run files one by one
+    """
+
+    def __init__(self,run_number : int,max_events : int = None) :
+        log.info('Initialization of WaveformsContainers') 
+        _,filenames = DataManagment.findrun(run_number)
+        self.waveformsContainer = []
+        self.__nWaveformsContainer = 0
+        for i,file in enumerate(filenames) : 
+            self.waveformsContainer.append(WaveformsContainer(run_number,max_events=max_events,run_file=file))
+            self.__nWaveformsContainer += 1
+            if not(max_events is None) : max_events -= self.waveformsContainer[i].nevents
+            log.info(f'WaveformsContainer number {i} is created')
+            if max_events <= 0 : break
+
+    def load_wfs(self,compute_trigger_patern = False) : 
+        for i in range(self.__nWaveformsContainer) : 
+            self.waveformsContainer[i].load_wfs(compute_trigger_patern = compute_trigger_patern)
+
+    def write(self,path : str, **kwargs) : 
+        for i in range(self.__nWaveformsContainer) : 
+            self.waveformsContainer[i].write(path,suffix = f"{i:04d}" ,**kwargs)
+
+        
+    @property
+    def nWaveformsContainer(self) : return self.__nWaveformsContainer
+
+    @property
+    def nevents(self) : 
+        return np.sum([self.waveformsContainer[i].nevents for i in range(self.__nWaveformsContainer)])
+
+    def append(self,waveformsContainer : WaveformsContainer) : 
+        self.waveforms.append(waveformsContainer)
+        self.__nWaveformsContainer += 1

@@ -51,6 +51,11 @@ class DataManagment() :
         name[2] = "*"
         name = Path(str(list_path[0].parent))/(f"{name[0]}.{name[1]}.{name[2]}.{name[3]}.{name[4]}")
         log.info(f"Found {len(list_path)} files matching {name}")
+
+        #to sort list path
+        _sorted = sorted([[file,int(file.suffixes[1][1:])] for file in list_path])
+        list_path = [_sorted[i][0] for i in range(len(_sorted))]
+
         return name,list_path
 
     @staticmethod
