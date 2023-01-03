@@ -10,7 +10,7 @@ dependencies:
   - pytest-runner
   - pip
   - dirac-grid  # required by DIRAC
-  - diracgrid::fts3  # required by DIRAC
+  - diracgrid/label/old::fts3  # required by DIRAC
   - voms  # required by DIRAC
   - gfal2  # required by DIRAC
   - pip:
