@@ -50,6 +50,9 @@ class UtilsMinuit() :
 def gaussian(x, mu, sig):
     return (1./(sig*np.sqrt(2*math.pi)))*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
+def weight_gaussian(x,N, mu, sig) : 
+    return N * gaussian(x, mu, sig)
+
 def doubleGauss(x,sig1,mu2,sig2,p):
     return p *2 *gaussian(x, 0, sig1) + (1-p) * gaussian(x, mu2, sig2)
 
