@@ -1,3 +1,4 @@
 #from . import NectarGAIN
 from .NectarGainSPE_singlerun import *
-from .parameters import *
+from .NectarGainSPE_combined import *
+#from .parameters import *
