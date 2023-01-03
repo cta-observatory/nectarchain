@@ -40,7 +40,7 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
     """class to perform fit of the 1400V and 1000V signal"""
     __parameters_file = 'parameters_signal_combined.yaml'
     
-    def __init__(self,signalHHV : ChargeContainer, signal : ChargeContainer, parameters_file = None, parameters_file_HHV = None,**kwargs) :
+    def __init__(self,signalHHV : ChargeContainer, signal : ChargeContainer, same_luminosity : bool = True, parameters_file = None, parameters_file_HHV = None,**kwargs) :
         super().__init__(**kwargs)
         
         self.nectarGainHHV = NectarGainSPESingleSignalStd(signalHHV, parameters_file = parameters_file_HHV)
@@ -69,15 +69,25 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         self.__pp = self.nectarGainHHV.pp
         self.__resolution = self.nectarGainHHV.resolution
         self.__n = self.nectarGainHHV.n
-        self.__luminosity = self.nectarGainHHV.luminosity
         self.__pedestalWidth = self.nectarGainHHV.pedestalWidth
         self._parameters.append(self.__pp)
         self._parameters.append(self.__resolution)
         self._parameters.append(self.__n)
-        self._parameters.append(self.__luminosity)
         self._parameters.append(self.__pedestalWidth)
+        if same_luminosity :
+            self.__luminosity = self.nectarGainHHV.luminosity
+            self._parameters.append(self.__luminosity)
+
+        
 
         #others
+        if not(same_luminosity) :
+            self.__luminosity = self.nectarGain.luminosity
+            self.__luminosityHHV = self.nectarGain.luminosity
+            self.__luminosityHHV.name = "luminosityHHV"
+            self._parameters.append(self.__luminosity)
+            self._parameters.append(self.__luminosityHHV)
+
         self.__meanHHV = self.nectarGainHHV.mean
         self.__meanHHV.name = "meanHHV"
         self.__mean = self.nectarGain.mean
@@ -122,10 +132,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
             return self.nectarGainHHV.Chi2(pixel)(resolution,meanHHV,pedestalHHV,pedestalWidth,luminosity) + self.nectarGain.Chi2(pixel)(resolution,mean,pedestal,pedestalWidth,luminosity)
         return _Chi2
 
-
-    @staticmethod
-    def from_prefitted_HHV(SPEfitHHV, signalHV : ChargeContainer, parameters_file_HV = None) :
-        pass
 
 
     def save(self,path,**kwargs) :
@@ -253,14 +259,14 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
 
     def _update_parameters_prefit(self,pixel) : 
 
-        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.nectarGain,pixel)
+        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.nectarGain.charge, self.nectarGain.histo, pixel)
         self.__pedestal.value = coeff[1]
         self.__pedestal.min = coeff[1] - coeff[2]
         self.__pedestal.max = coeff[1] + coeff[2]
         self._minuitParameters['values']['pedestal'] = self.__pedestal.value
         self._minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
 
-        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.nectarGainHHV,pixel,"_HHV")
+        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.nectarGain.charge, self.nectarGain.histo, pixel,"_HHV")
         self.__pedestalHHV.value = coeff[1]
         self.__pedestalHHV.min = coeff[1] - coeff[2]
         self.__pedestalHHV.max = coeff[1] + coeff[2]
