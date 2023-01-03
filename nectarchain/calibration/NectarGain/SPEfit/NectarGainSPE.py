@@ -70,11 +70,11 @@ class NectarGainSPE(ABC) :
                     self._parameters.parameters[i].max = dico.get("max",np.nan)
 
     @staticmethod
-    def _get_parameters_gaussian_fit(nectargain,pixel : int,extension = "") :
+    def _get_parameters_gaussian_fit(charge_in, histo_in ,pixel : int,extension = "") :
         #x = np.linspace(nectargain.charge[pixel].min(),nectargain.charge[pixel].max(),int(nectargain.charge[pixel].max()-nectargain.charge[pixel].min()))
         #interp = interp1d(nectargain.charge[pixel],nectargain.histo[pixel])
-        charge = nectargain.charge[pixel].data[~nectargain.histo[pixel].mask]
-        histo = nectargain.histo[pixel].data[~nectargain.histo[pixel].mask]
+        charge = charge_in[pixel].data[~histo_in[pixel].mask]
+        histo = histo_in[pixel].data[~histo_in[pixel].mask]
 
         windows_lenght = 80
         order = 2
