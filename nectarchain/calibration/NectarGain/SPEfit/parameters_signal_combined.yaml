@@ -9,6 +9,11 @@
     min : 0.01,
     max : 5.0
   },
+  luminosityHHV : { 
+    value : 1, 
+    min : 0.01,
+    max : 5.0
+  },
   pp : { 
     value : 0.3735,
     min : .NAN,
