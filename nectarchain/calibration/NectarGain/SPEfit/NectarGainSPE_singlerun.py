@@ -25,72 +25,55 @@ import copy
 from .parameters import Parameters,Parameter
 from ...container import ChargeContainer
 from .utils import UtilsMinuit,MPE2,Gain,gaussian
+from .NectarGainSPE import NectarGainSPE
 
 from abc import ABC, abstractclassmethod, abstractmethod
 
 __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGainSPESinglePed"]
 
-class NectarGainSPE(ABC) :
-    _Ncall = 4000000
-    def __init__(self) :
-        #set parameters value for fit
-        self.__parameters = Parameters()
-        self.__pedestal = Parameter(name = "pedestal",
-                                value = (np.min(self.__charge,axis = 0) + np.sum(self.__charge * self.__histo)/(np.sum(self.__histo)))/2,
-                                min = np.min(self.__charge),
-                                max = np.sum(self.__charge*self.__histo)/np.sum(self.__histo),
-                                unit = u.dimensionless_unscaled)
-        
 
-        self.__parameters.append(self.__pedestal)
-        self.__minuitParameters = UtilsMinuit.make_minuit_par_kwargs(self.__parameters.unfrozen)
-        
-        #output
-        self._output_table = QTable()
-        #self.create_output_table() #need to be done in the child class __init__
 
 class NectarGainSPESingle(NectarGainSPE):
     _Ncall = 4000000
 
     def __init__(self,signal : ChargeContainer,**kwargs) : 
         log.info("initialisation of the SPE fit instance")
+        super().__init__(**kwargs)
+
         histo = signal.histo_hg(autoscale = True)
         #access data
         self.__charge = histo[1]
         self.__histo = histo[0]
         self.__mask_fitted_pixel = np.zeros((self.__charge.shape[0]),dtype = bool)
         self.__pixels_id = signal.pixels_id
-        super().__init__(**kwargs)
-        
+
+        self.__pedestal = Parameter(name = "pedestal",
+                                value = (np.min(self.__charge) + np.sum(self.__charge * self.__histo)/(np.sum(self.__histo)))/2,
+                                min = np.min(self.__charge),
+                                max = np.sum(self.__charge*self.__histo)/np.sum(self.__histo),
+                                unit = u.dimensionless_unscaled)
         
 
+        self._parameters.append(self.__pedestal)
+        
+    
     def create_output_table(self) :
         self._output_table.meta['npixel'] = self.npixels
         self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
 
-        self._output_table.add_column(Column(np.empty((self.npixels),dtype = bool),"is_valid",unit = u.dimensionless_unscaled))
+        self._output_table.add_column(Column(np.zeros((self.npixels),dtype = bool),"is_valid",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(self.__pixels_id,"pixel",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),"gain",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels,2),dtype = np.float64),"gain_error",unit = u.dimensionless_unscaled))
 
-        for parameter in self.__parameters.parameters : 
+        for parameter in self._parameters.parameters : 
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),parameter.name,unit = parameter.unit))
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),f'{parameter.name}_error',unit = parameter.unit))
 
 
-    def fill_table(self,pixel : int, valid : bool) : 
-        self._output_table['is_valid'][pixel] = valid
-        for parameter in self.__parameters.parameters : 
-            self._output_table[parameter.name][pixel] = parameter.value
-            self._output_table[f'{parameter.name}_error'][pixel] = parameter.error
         
 
-    def _make_minuit__parameters(self) : 
-        if log.getEffectiveLevel() == logging.DEBUG:
-            for parameter in self.__parameters.parameters : 
-                log.debug(parameter)
-        #create minuit parameters
-        self.__minuitParameters = UtilsMinuit.make_minuit_par_kwargs(self.__parameters.unfrozen)
+
 
         
     def run(self,pixel : int = None,**kwargs):
@@ -121,7 +104,7 @@ class NectarGainSPESingle(NectarGainSPE):
 
     def _update_parameters_postfit(self,m : Minuit) : 
         for i,name in enumerate(m.parameters) : 
-            tmp = self.__parameters[name]
+            tmp = self._parameters[name]
             if tmp != [] : 
                 tmp.value = m.values[i]
                 tmp.error = m.errors[i]
@@ -130,25 +113,19 @@ class NectarGainSPESingle(NectarGainSPE):
         self.__pedestal.value = (np.min(self.__charge[pixel]) + np.sum(self.__charge[pixel] * self.__histo[pixel])/(np.sum(self.__histo[pixel])))/2
         self.__pedestal.min = np.min(self.__charge[pixel])
         self.__pedestal.max = np.sum(self.__charge[pixel]*self.__histo[pixel])/np.sum(self.__histo[pixel])
-        self.__minuitParameters['values']['pedestal'] = self.__pedestal.value
-        self.__minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
+        self._minuitParameters['values']['pedestal'] = self.__pedestal.value
+        self._minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
 
-        
+
     @abstractclassmethod
     def NG_Likelihood_Chi2(cls,**kwargs) : pass
-    @abstractmethod
-    def Chi2(self,**kwargs) : pass
-    @abstractmethod
-    def _run_obs(self,pixel,**kwargs) : pass
+
 
     @property
     def charge(self) : return self.__charge
     @property
     def histo(self) : return self.__histo
-    @property
-    def parameters(self) : return copy.deepcopy(self.__parameters)
-    @property
-    def _parameters(self) : return self.__parameters
+
     @property
     def pedestal(self) : return self.__pedestal
 
@@ -220,7 +197,8 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                                 max = param["pedestalWidth"].get("max",np.nan),
                                 unit = param["pedestalWidth"].get("unit",u.dimensionless_unscaled))
             self._parameters.append(self.__pedestalWidth)
-        self._make_minuit__parameters()
+        
+        self._make_minuit_parameters()
 
         self.create_output_table()
 
@@ -380,11 +358,11 @@ class NectarGainSPESingleSignalStd(NectarGainSPESingleSignal):
             parameters_file = NectarGainSPESingleSignalStd.__parameters_file
         super().__init__(signal,parameters_file,**kwargs)
 
-        self.__fix__parameters()
+        self.__fix_parameters()
 
-        self._make_minuit__parameters()
+        self._make_minuit_parameters()
 
-    def __fix__parameters(self) : 
+    def __fix_parameters(self) : 
         """this method should be used to fix n and pp if this hypothesis is valid
         """
         log.info("updating parameters by fixing pp and n")
@@ -434,7 +412,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
         self._output_table.remove_column('gain_error')
 
 
-        self._make_minuit__parameters()
+        self._make_minuit_parameters()
 
 
     def _run_obs(self,pixel,prescan = False,**kwargs) : 
