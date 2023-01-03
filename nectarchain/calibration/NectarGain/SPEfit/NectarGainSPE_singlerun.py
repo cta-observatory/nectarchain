@@ -29,7 +29,7 @@ from .NectarGainSPE import NectarGainSPE
 
 from abc import ABC, abstractclassmethod, abstractmethod
 
-__all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGainSPESinglePed"]
+__all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGainSPESinglePed","NectarGainSPESingleSignalfromHHVFit"]
 
 
 
@@ -128,9 +128,6 @@ class NectarGainSPESingle(NectarGainSPE):
 
     @property
     def pedestal(self) : return self.__pedestal
-
-    @property
-    def _minuitParameters(self) : return self.__minuitParameters
 
 
     #run properties
@@ -381,7 +378,89 @@ class NectarGainSPESingleSignalStd(NectarGainSPESingleSignal):
 
             return self.NG_Likelihood_Chi2(self.pp.value,resolution,mean,self.n.value,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
         return _Chi2
+
+
+class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
+    """class to perform fit of the SPE signal at nominal voltage from fitted data obtained with 1400V run
+    Thus, n, pp and res are fixed"""
+    __parameters_file = 'parameters_signal_fromHHVFit.yaml'
+
+    def __init__(self,signal : ChargeContainer, nectarGainSPEresult, same_luminosity : bool = True, parameters_file = None,**kwargs):
+        if parameters_file is None : 
+            parameters_file = NectarGainSPESingleSignalfromHHVFit.__parameters_file
+        super().__init__(signal,parameters_file,**kwargs)
+
+        self.__fix_parameters(same_luminosity)
+
+        self.__same_luminosity = same_luminosity
+
+        self.__nectarGainSPEresult = QTable.read(nectarGainSPEresult,format = "ascii.ecsv")
+
+        self._make_minuit_parameters()
+
+    def __fix_parameters(self, same_luminosity : bool) : 
+        """this method should be used to fix n, pp and res
+        """
+        log.info("updating parameters by fixing pp, n and res")
+        self.pp.frozen = True
+        self.n.frozen = True
+        self.resolution.frozen = True
+        if same_luminosity : 
+            self.luminosity.frozen = True
+        
+
+    def Chi2(self,pixel : int):
+        if self.__same_luminosity : 
+            def _Chi2(mean,pedestal,pedestalWidth) :
+                if self._old_lum != self.__nectarGainSPEresult[pixel]['luminosity'].value :
+                    for i in range(1000):
+                        if (gammainc(i+1,self.__nectarGainSPEresult[pixel]['luminosity'].value) < 1e-5):
+                            self._old_ntotalPE = i
+                            break
+                    self._old_lum = self.__nectarGainSPEresult[pixel]['luminosity'].value
+                kwargs = {"ntotalPE" : self._old_ntotalPE}
+
+                return self.NG_Likelihood_Chi2(self.__nectarGainSPEresult[pixel]['pp'].value,self.__nectarGainSPEresult[pixel]['resolution'].value,mean,self.__nectarGainSPEresult[pixel]['n'].value,pedestal,pedestalWidth,self.__nectarGainSPEresult[pixel]['luminosity'],self.charge[pixel],self.histo[pixel],**kwargs)
+            return _Chi2
+        else : 
+            def _Chi2(mean,pedestal,pedestalWidth,luminosity) :
+                if self._old_lum != luminosity :
+                    for i in range(1000):
+                        if (gammainc(i+1,luminosity) < 1e-5):
+                            self._old_ntotalPE = i
+                            break
+                    self._old_lum = luminosity
+                kwargs = {"ntotalPE" : self._old_ntotalPE}
+                return self.NG_Likelihood_Chi2(self.__nectarGainSPEresult[pixel]['pp'].value,self.__nectarGainSPEresult[pixel]['resolution'].value,mean,self.__nectarGainSPEresult[pixel]['n'].value,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
+            return _Chi2
+
+    def _run_obs(self,pixel,prescan = False,**kwargs) : 
+        if self.__nectarGainSPEresult[pixel]['is_valid'].value : 
+            super()._run_obs(pixel,prescan,**kwargs)
+        else :
+            log.warning(f"fit {pixel} is not valid")
+            self.fill_table(pixel,False)
     
+    
+    def _update_parameters_prefit(self,pixel) : 
+        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.charge,self.histo,pixel,'_nominal')
+        self.pedestal.value = coeff[1]
+        self.pedestal.min = coeff[1] - coeff[2]
+        self.pedestal.max = coeff[1] + coeff[2]
+        self._minuitParameters['values']['pedestal'] = self.pedestal.value
+        self._minuitParameters['limit_pedestal'] = (self.pedestal.min,self.pedestal.max)
+
+        self.resolution.error = self.__nectarGainSPEresult[pixel]['resolution_error'].value
+        self.pp.error = self.__nectarGainSPEresult[pixel]['pp_error'].value
+        self.n.error = self.__nectarGainSPEresult[pixel]['n_error'].value
+        if self.__same_luminosity : 
+            self.luminosity.error = self.__nectarGainSPEresult[pixel]['luminosity_error'].value
+
+
+
+
+
+        
 
 
 class NectarGainSPESinglePed(NectarGainSPESingle):
