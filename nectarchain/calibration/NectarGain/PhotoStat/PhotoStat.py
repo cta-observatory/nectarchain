@@ -122,6 +122,12 @@ class PhotoStatGain(ABC):
         self._output_table["high gain"] = self.gainHG
         self._output_table["low gain"] = self.gainLG
 
+    def save(self,path,**kwargs) : 
+        path = Path(path)
+        os.makedirs(path,exist_ok = True)
+        log.info(f'data saved in {path}')
+        self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
+
     def plot_correlation(self) : 
         with quantity_support() : 
             fig,ax = plt.subplots(1,1,figsize=(8, 6))
