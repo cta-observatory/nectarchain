@@ -50,6 +50,10 @@ list_nectarchain_charge_extractor = ['gradient_extractor']
 
 
 class ChargeContainer() : 
+    """class used to compute charge from waveforms container"""
+    TEL_ID = 0
+    CAMERA = CameraGeometry.from_name("NectarCam-003")
+
     def __init__(self,charge_hg,charge_lg,peak_hg,peak_lg,run_number,pixels_id,nevents,npixels, method = "FullWaveformSum") : 
         self.charge_hg = charge_hg
         self.charge_lg = charge_lg
@@ -67,7 +71,7 @@ class ChargeContainer() :
         self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint16)
         self.event_type = np.empty((self.nevents),dtype = np.uint8)
         self.event_id = np.empty((self.nevents),dtype = np.uint16)
-        self.trig_pattern_all = np.empty((self.nevents,self.npixels,4),dtype = bool)
+        self.trig_pattern_all = np.empty((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
 
     @classmethod
     def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
@@ -135,8 +139,8 @@ class ChargeContainer() :
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
         event_properties = fits.BinTableHDU.from_columns(coldefs)
 
-        col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = '7420L',dim = f'({self.npixels},4)')
-        col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = '1855L')
+        col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * self.CAMERA.n_pixels}L',dim = f'({self.CAMERA.n_pixels},4)')
+        col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
         coldefs = fits.ColDefs([col1, col2])
         trigger_patern = fits.BinTableHDU.from_columns(coldefs)
 

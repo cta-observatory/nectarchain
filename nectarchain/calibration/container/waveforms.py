@@ -151,7 +151,6 @@ class WaveformsContainer() :
 
 
             self.trig_pattern_all[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.T
-            #self.trig_pattern[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.any(axis = 0)
 
             for pix in range(self.npixels):
                 wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,pix]
@@ -160,7 +159,6 @@ class WaveformsContainer() :
             self.wfs_hg[i] = wfs_hg_tmp
             self.wfs_lg[i] = wfs_lg_tmp
 
-        #self.multiplicity = np.count_nonzero(self.trig_pattern,axis = 1)
 
 
         #if compute_trigger_patern and np.max(self.trig_pattern) == 0:
@@ -203,8 +201,8 @@ class WaveformsContainer() :
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
         event_properties = fits.BinTableHDU.from_columns(coldefs)
 
-        col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = '7420L',dim = f'({self.npixels},4)')
-        col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = '1855L')
+        col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * self.CAMERA.n_pixels}L',dim = f'({self.CAMERA.n_pixels},4)')
+        col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
         coldefs = fits.ColDefs([col1, col2])
         trigger_patern = fits.BinTableHDU.from_columns(coldefs)
 
