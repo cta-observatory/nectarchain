@@ -87,7 +87,7 @@ class WaveformsContainer() :
         self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint32)
         self.event_type = np.empty((self.nevents),dtype = np.uint8)
         self.event_id = np.empty((self.nevents),dtype = np.uint32)
-        self.trig_pattern_all = np.empty((self.nevents,self.npixels,4),dtype = bool)
+        self.trig_pattern_all = np.empty((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
         #self.trig_pattern = np.empty((self.nevents,self.npixels),dtype = bool)
         #self.multiplicity = np.empty((self.nevents,self.npixels),dtype = np.uint16)
 
