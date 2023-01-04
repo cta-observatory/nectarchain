@@ -25,7 +25,13 @@ from nectarchain.calibration.container import ChargeContainer, ChargeContainers
 
 run_number = [2633,2634]
 n_events = [49227,49148]
-ped_run_number = [2630]
+
+SPE_run_number = [3784]
+FF_run_number = [2608]
+ped_run_number = [2630,2609]
+FF_run_number = [3784]
+
+
 
 overwrite = True
 
@@ -38,7 +44,7 @@ charge = ChargeContainers.from_waveforms(spe_run_1000V)
 charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
 del spe_run_1000V,charge
 """
-
+"""
 
 spe_run_1000V = WaveformsContainer(run_number[0], nevents = n_events[0])
 #spe_run_1000V = WaveformsContainer(run_number[0], max_events=1000)
@@ -69,7 +75,7 @@ ped_run.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
 
 charge = ChargeContainer.from_waveforms(ped_run)
 charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
-
+"""
 
 #spe_run_1000V = WaveformsContainer(run_number[0],nevents = n_events[0])
 #spe_run_1000V.load_wfs()
@@ -83,9 +89,27 @@ charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite
 #charge.write(f"/sps/hess/lpnhe/ggroller/projects/NECTARCAM/test/")
 #del spe_run_1400V,charge
 #
-#
-#ped_run = WaveformsContainer(ped_run_number[0],max_events = 51500)
-#ped_run.load_wfs()
-#charge = ChargeContainer.from_waveforms(ped_run)
-#charge.write(f"/sps/hess/lpnhe/ggroller/projects/NECTARCAM/test/")
+
+
+for i in range(len(SPE_run_number)) : 
+    SPE_run = WaveformsContainer(SPE_run_number[i], nevents = 78248)
+    SPE_run.load_wfs()
+    SPE_run.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
+    charge = ChargeContainer.from_waveforms(SPE_run)
+    charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
+
+
+for i in range(len(FF_run_number)) : 
+    FF_run = WaveformsContainer(FF_run_number[i], nevents = 78248)
+    FF_run.load_wfs()
+    FF_run.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
+    charge = ChargeContainer.from_waveforms(FF_run)
+    charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
+
+for i in range(len(ped_run_number)) : 
+    ped_run = WaveformsContainer(ped_run_number[i])
+    ped_run.load_wfs()
+    ped_run.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
+    charge = ChargeContainer.from_waveforms(ped_run)
+    charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = overwrite)
 
