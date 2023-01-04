@@ -47,10 +47,10 @@ class PhotoStatGain(ABC):
 
                 if method != 'std' : 
                     log.info(f'computing charge for FF run {FFRun} with following method : {method}')
-                    self.FFcharge = ChargeContainer.from_waveform(FFwaveforms,method = method)
+                    self.FFcharge = ChargeContainer.from_waveforms(FFwaveforms,method = method)
                 else :
                     log.info(f'computing charge for FF run {FFRun} with std method')
-                    self.FFcharge = ChargeContainer.from_waveform(FFwaveforms)
+                    self.FFcharge = ChargeContainer.from_waveforms(FFwaveforms)
 
                 log.debug('writting on disk charge for further works')
                 os.makedirs(f"{os.environ['NECTARCAMDATA']}/charges/{method}",exist_ok = True)
@@ -77,10 +77,10 @@ class PhotoStatGain(ABC):
 
                 if method != 'std' : 
                     log.info(f'computing charge for Ped run {PedRun} with following method : {method}')
-                    self.Pedcharge = ChargeContainer.from_waveform(Pedwaveforms,method = method)
+                    self.Pedcharge = ChargeContainer.from_waveforms(Pedwaveforms,method = method)
                 else :
                     log.info(f'computing charge for Ped run {PedRun} with std method')
-                    self.Pedcharge = ChargeContainer.from_waveform(Pedwaveforms)
+                    self.Pedcharge = ChargeContainer.from_waveforms(Pedwaveforms)
 
                 log.debug('writting on disk charge for further works')
                 os.makedirs(f"{os.environ['NECTARCAMDATA']}/charges/{method}",exist_ok = True)
