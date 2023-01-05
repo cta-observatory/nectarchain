@@ -79,17 +79,17 @@ class WaveformsContainer() :
         
 
 
-        #define empty members which will be filled therafter
-        self.wfs_hg = np.empty((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
-        self.wfs_lg = np.empty((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
-        self.ucts_timestamp = np.empty((self.nevents),dtype = np.uint64)
-        self.ucts_busy_counter = np.empty((self.nevents),dtype = np.uint32)
-        self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint32)
-        self.event_type = np.empty((self.nevents),dtype = np.uint8)
-        self.event_id = np.empty((self.nevents),dtype = np.uint32)
-        self.trig_pattern_all = np.empty((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
-        #self.trig_pattern = np.empty((self.nevents,self.npixels),dtype = bool)
-        #self.multiplicity = np.empty((self.nevents,self.npixels),dtype = np.uint16)
+        #define zeros members which will be filled therafter
+        self.wfs_hg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
+        self.wfs_lg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
+        self.ucts_timestamp = np.zeros((self.nevents),dtype = np.uint64)
+        self.ucts_busy_counter = np.zeros((self.nevents),dtype = np.uint32)
+        self.ucts_event_counter = np.zeros((self.nevents),dtype = np.uint32)
+        self.event_type = np.zeros((self.nevents),dtype = np.uint8)
+        self.event_id = np.zeros((self.nevents),dtype = np.uint32)
+        self.trig_pattern_all = np.zeros((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
+        #self.trig_pattern = np.zeros((self.nevents,self.npixels),dtype = bool)
+        #self.multiplicity = np.zeros((self.nevents,self.npixels),dtype = np.uint16)
 
 
     @staticmethod

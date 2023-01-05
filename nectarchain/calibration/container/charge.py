@@ -66,12 +66,12 @@ class ChargeContainer() :
         self.__npixels = npixels
 
 
-        self.ucts_timestamp = np.empty((self.nevents),dtype = np.uint64)
-        self.ucts_busy_counter = np.empty((self.nevents),dtype = np.uint16)
-        self.ucts_event_counter = np.empty((self.nevents),dtype = np.uint16)
-        self.event_type = np.empty((self.nevents),dtype = np.uint8)
-        self.event_id = np.empty((self.nevents),dtype = np.uint16)
-        self.trig_pattern_all = np.empty((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
+        self.ucts_timestamp = np.zeros((self.nevents),dtype = np.uint64)
+        self.ucts_busy_counter = np.zeros((self.nevents),dtype = np.uint16)
+        self.ucts_event_counter = np.zeros((self.nevents),dtype = np.uint16)
+        self.event_type = np.zeros((self.nevents),dtype = np.uint8)
+        self.event_id = np.zeros((self.nevents),dtype = np.uint16)
+        self.trig_pattern_all = np.zeros((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
 
     @classmethod
     def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
@@ -213,8 +213,8 @@ class ChargeContainer() :
     def histo_hg(self,n_bins : int = 1000,autoscale : bool = False) -> np.ndarray:
         if autoscale : 
             all_range = np.arange(np.int16(np.min(self.charge_hg)) + 0.5,np.int16(np.max(self.charge_hg)) + 0.5,1)
-            hist_ma = ma.masked_array(np.empty((self.charge_hg.shape[1],all_range.shape[0]),dtype = np.int16), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
-            charge_ma = ma.masked_array(np.empty((self.charge_hg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
+            hist_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = np.int16), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
+            charge_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
             
             for i in range(self.charge_hg.shape[1]) :
                 hist,charge = np.histogram(self.charge_hg.T[i],bins=np.arange(np.int16(np.min(self.charge_hg.T[i])),np.int16(np.max(self.charge_hg.T[i])) + 1,1))
@@ -242,8 +242,8 @@ class ChargeContainer() :
     def histo_lg(self,n_bins: int = 1000,autoscale : bool = False) -> np.ndarray:
         if autoscale : 
             all_range = np.arange(np.int16(np.min(self.charge_lg)) + 0.5,np.int16(np.max(self.charge_lg)) + 0.5,1)
-            hist_ma = ma.masked_array(np.empty((self.charge_lg.shape[1],all_range.shape[0]),dtype = np.int16), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
-            charge_ma = ma.masked_array(np.empty((self.charge_lg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
+            hist_ma = ma.masked_array(np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = np.int16), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
+            charge_ma = ma.masked_array(np.zeros((self.charge_lg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
             
             for i in range(self.charge_lg.shape[1]) :
                 hist,charge = np.histogram(self.charge_lg.T[i],bins=np.arange(np.int16(np.min(self.charge_lg.T[i])),np.int16(np.max(self.charge_lg.T[i])) + 1,1))
