@@ -97,7 +97,7 @@ class NectarGainSPE(ABC) :
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=15)
             os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/",exist_ok=True)
-            fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/initialization_pixel{pixel}{extension}.pdf")
+            fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/initialization_pixel{pixel}{extension}_{os.getpid()}.pdf")
             fig.clf()
             plt.close(fig)
             del fig,ax
