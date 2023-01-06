@@ -210,24 +210,39 @@ class ChargeContainer() :
         else :
             raise ArgumentError("channel must be 0 or 1")
 
-    def histo_hg(self,n_bins : int = 1000,autoscale : bool = False) -> np.ndarray:
+    def histo_hg(self,n_bins : int = 1000,autoscale : bool = True) -> np.ndarray:
+        mask_broken_pix = np.array((self.charge_hg == self.charge_hg.mean(axis = 0)).mean(axis=0),dtype = bool)
+        log.debug(f"there are {mask_broken_pix.sum()} broken pixels (charge stays at same level for each events)")
+        
         if autoscale : 
-            all_range = np.arange(np.uint16(np.min(self.charge_hg)) + 0.5,np.uint16(np.max(self.charge_hg)) + 0.5,1)
+            all_range = np.arange(np.uint16(np.min(self.charge_hg.T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(self.charge_hg.T[~mask_broken_pix].T)) + 1.5,1)
             hist_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
             charge_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
+
+            new_data_mask = np.array([np.logical_or(charge_ma.mask.T[i],mask_broken_pix) for i in range(charge_ma.shape[1])])
+            charge_ma.mask = new_data_mask
+            hist_ma.mask = new_data_mask
+
             
             for i in range(self.charge_hg.shape[1]) :
-                hist,charge = np.histogram(self.charge_hg.T[i],bins=np.arange(np.uint16(np.min(self.charge_hg.T[i])),np.uint16(np.max(self.charge_hg.T[i])) + 1,1))
-                charge_edges = np.array([np.mean(charge[i:i+2],axis = 0) for i in range(charge.shape[0]-1)]) 
-                mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
+                log.debug(f'computing charge histogram for pixel {i}')
+                if mask_broken_pix[i] :
+                    log.debug('This pixel is broken, I mask this one')
+                    hist_ma.mask[i] = np.ones(hist_ma.mask[i].shape)
+                    charge_ma.mask[i] = np.ones(charge_ma.mask[i].shape)
+                else : 
+                    log.debug("this pixel is not broken, let's continue computation")
+                    hist,charge = np.histogram(self.charge_hg.T[i],bins=np.arange(np.uint16(np.min(self.charge_hg.T[i])) - 1, np.uint16(np.max(self.charge_hg.T[i])) + 2,1))
+                    charge_edges = np.array([np.mean(charge[i:i+2],axis = 0) for i in range(charge.shape[0]-1)]) 
+                    mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
 
-                #MASK THE DATA
-                hist_ma.mask[i] = ~mask
-                charge_ma.mask[i] = ~mask
+                    #MASK THE DATA
+                    hist_ma.mask[i] = np.logical_or(~mask, hist_ma.mask[i])
+                    charge_ma.mask[i] = np.logical_or(~mask, charge_ma.mask[i])
 
-                #FILL THE DATA
-                hist_ma.data[i][mask] = hist
-                charge_ma.data[i] = all_range
+                    #FILL THE DATA
+                    hist_ma.data[i][mask] = hist
+                    charge_ma.data[i] = all_range
             
             return ma.masked_array((hist_ma,charge_ma))
             
@@ -239,26 +254,39 @@ class ChargeContainer() :
             
             return np.array((hist,charge_edges))
 
-    def histo_lg(self,n_bins: int = 1000,autoscale : bool = False) -> np.ndarray:
+    def histo_lg(self,n_bins: int = 1000,autoscale : bool = True) -> np.ndarray:
+        mask_broken_pix = np.array((self.charge_lg == self.charge_lg.mean(axis = 0)).mean(axis=0),dtype = bool)
+        log.debug(f"there are {mask_broken_pix.sum()} broken pixels (charge stays at same level for each events)")
+        
         if autoscale : 
-            all_range = np.arange(np.uint16(np.min(self.charge_lg)) + 0.5,np.uint16(np.max(self.charge_lg)) + 0.5,1)
+            all_range = np.arange(np.uint16(np.min(self.charge_lg.T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(self.charge_lg.T[~mask_broken_pix].T)) + 1.5,1)
             hist_ma = ma.masked_array(np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
             charge_ma = ma.masked_array(np.zeros((self.charge_lg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
+
+            new_data_mask = np.array([np.logical_or(charge_ma.mask.T[i],mask_broken_pix) for i in range(charge_ma.shape[1])])
+            charge_ma.mask = new_data_mask
+            hist_ma.mask = new_data_mask
+
             
             for i in range(self.charge_lg.shape[1]) :
-                hist,charge = np.histogram(self.charge_lg.T[i],bins=np.arange(np.uint16(np.min(self.charge_lg.T[i])),np.uint16(np.max(self.charge_lg.T[i])) + 1,1))
-                charge_edges = np.array([np.mean(charge[i:i+2],axis = 0) for i in range(charge.shape[0]-1)]) 
-                mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
+                log.debug(f'computing charge histogram for pixel {i}')
+                if mask_broken_pix[i] :
+                    log.debug('This pixel is broken, I mask this one')
+                    hist_ma.mask[i] = np.ones(hist_ma.mask[i].shape)
+                    charge_ma.mask[i] = np.ones(charge_ma.mask[i].shape)
+                else : 
+                    log.debug("this pixel is not broken, let's continue computation")
+                    hist,charge = np.histogram(self.charge_lg.T[i],bins=np.arange(np.uint16(np.min(self.charge_lg.T[i])) - 1, np.uint16(np.max(self.charge_lg.T[i])) + 2,1))
+                    charge_edges = np.array([np.mean(charge[i:i+2],axis = 0) for i in range(charge.shape[0]-1)]) 
+                    mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
 
-                #MASK THE DATA
-                hist_ma.mask[i] = ~mask
-                charge_ma.mask[i] = ~mask
+                    #MASK THE DATA
+                    hist_ma.mask[i] = np.logical_or(~mask, hist_ma.mask[i])
+                    charge_ma.mask[i] = np.logical_or(~mask, charge_ma.mask[i])
 
-                #FILL THE DATA
-                hist_ma.data[i][mask] = hist
-                charge_ma.data[i] = all_range
-            
-            return ma.masked_array((hist_ma,charge_ma)) 
+                    #FILL THE DATA
+                    hist_ma.data[i][mask] = hist
+                    charge_ma.data[i] = all_range
 
         else : 
             hist = np.array([np.histogram(self.charge_lg.T[i],bins=n_bins)[0] for i in range(self.charge_lg.shape[1])])

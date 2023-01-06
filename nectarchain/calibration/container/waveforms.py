@@ -153,8 +153,8 @@ class WaveformsContainer() :
             self.trig_pattern_all[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.T
 
             for pix in range(self.npixels):
-                wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,pix]
-                wfs_hg_tmp[pix]=event.r0.tel[0].waveform[0,pix]
+                wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,self.pixels_id[pix]]
+                wfs_hg_tmp[pix]=event.r0.tel[0].waveform[0,self.pixels_id[pix]]
 
             self.wfs_hg[i] = wfs_hg_tmp
             self.wfs_lg[i] = wfs_lg_tmp
