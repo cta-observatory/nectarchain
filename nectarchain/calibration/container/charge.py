@@ -285,7 +285,7 @@ class ChargeContainer() :
     def multiplicity(self) :  return np.uint16(np.count_nonzero(self.trig_pattern,axis = 1))
 
     @property
-    def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 2)
+    def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 1)
 
 
 
