@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from scipy import optimize, interpolate
+from scipy.stats import linregress
 from matplotlib import pyplot as plt
 from scipy import signal
 from iminuit import Minuit
@@ -129,12 +130,19 @@ class PhotoStatGain(ABC):
         self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
 
     def plot_correlation(self) : 
+        mask = (self._output_table["high gain"]>0) * (self.SPEGain>0)
+        a, b, r, p_value, std_err = linregress(self._output_table["high gain"][mask], self.SPEGain[mask],'greater')
+        x = np.linspace(self._output_table["high gain"][mask].min(),self._output_table["high gain"][mask].max(),1000)
+        y = lambda x: a * x + b 
         with quantity_support() : 
             fig,ax = plt.subplots(1,1,figsize=(8, 6))
             ax.scatter(self._output_table["high gain"],self.SPEGain,marker =".")
-
+            ax.plot(x,y(x),color = 'red', label = f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}")
             ax.set_xlabel("Gain Photo stat", size=15)
             ax.set_ylabel("Gain SPE fit", size=15)
+            ax.set_xlim(xmin = 0)
+            ax.set_ylim(ymin = 0)
+
             ax.legend(fontsize=15)
             return fig
 
