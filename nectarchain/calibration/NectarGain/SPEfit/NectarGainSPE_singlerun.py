@@ -79,8 +79,11 @@ class NectarGainSPESingle(NectarGainSPE):
     def run(self,pixel : int = None,**kwargs):
         if pixel is None : 
             for i in tqdm(range(self.npixels)) :
-                log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
-                self._run_obs(i,**kwargs)
+                if self.charge.mask[i].all() : 
+                    log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
+                else  :
+                    log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
+                    self._run_obs(i,**kwargs)
         else : 
             if not(isinstance(pixel,np.ndarray)) :
                 pixels = np.asarray([pixel],dtype = np.int16)
@@ -92,8 +95,11 @@ class NectarGainSPESingle(NectarGainSPE):
                     log.error(e,exc_info=True)
                     raise e
                 else :
-                    log.info(f"running SPE fit for pixel {pixel} (pixel_id = {self.__pixels_id[pixel]})")
-                    self._run_obs(pixel,**kwargs)
+                    if self.charge.mask[pixel].all() : 
+                        log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
+                    else : 
+                        log.info(f"running SPE fit for pixel {pixel} (pixel_id = {self.__pixels_id[pixel]})")
+                        self._run_obs(pixel,**kwargs)
         return 0
 
     def save(self,path,**kwargs) : 
