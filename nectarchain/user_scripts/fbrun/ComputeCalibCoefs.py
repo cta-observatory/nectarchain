@@ -55,13 +55,14 @@ class ncam_wfs:
         self.npixels = 0
         self.geometry =0
 
-    def load_wfs(self,nevents,file_name,ped_only=0,ff_only=0):
+    #ff_ttypes = trigger type of the FF events
+    def load_wfs(self,nevents,file_name,ped_only=0,ff_only=0,ff_ttypes=0):
         if nevents == 0:
             inputfile_reader = NectarCAMEventSource(input_url=file_name)
             for counter in enumerate(inputfile_reader):
                 nevents+=1
 #        else:
-        inputfile_reader = NectarCAMEventSource(input_url=file_name,max_events=nevents)
+        inputfile_reader = NectarCAMEventSource(input_url=file_name,max_events=nevents*10)
 
         print("N events request = ",nevents)
 
@@ -88,24 +89,29 @@ class ncam_wfs:
         wfs_lg_tmp=np.zeros((1855,60))
 
         for i,event in enumerate(inputfile_reader):
+
+            if self.size >= nevents:
+                break;
             if i%100 == 0:
-                print(i)
-            #print(i,ped_only, event.trigger.event_type)
+                print(i,self.size)
+            #print(i,ff_only, event.trigger.event_type.value)
 
             #Only keep pedestal events
-            if ped_only and event.trigger.event_type != 32: continue
+            if ped_only and event.trigger.event_type.value != 2: continue
 
             #Only keep flasher events
-            if ff_only and event.trigger.event_type != 4: continue
+            if ff_only and int(event.trigger.event_type.value) != ff_ttypes: continue
 
             self.wfs_evtid.append(event.index.event_id)
-            self.wfs_evttime[i]=event.nectarcam.tel[0].evt.ucts_timestamp
-            self.wfs_triggertype[i]=event.trigger.event_type
+            self.wfs_evttime[self.size]=event.nectarcam.tel[0].evt.ucts_timestamp
+            self.wfs_triggertype[self.size]=event.trigger.event_type.value
 
             trig_in= np.zeros((1855))
             for slice in range(4):
                 trig_in=np.logical_or(trig_in, event.nectarcam.tel[0].evt.trigger_pattern[slice])
-            self.trig_pattern[i]+=trig_in
+            self.trig_pattern[self.size]+=trig_in
+
+            #if ff_only and len(np.where(self.trig_pattern[self.size]>0)[0]) < 200: continue
 
             wfs_hg_tmp=np.zeros((1855,60))
             wfs_lg_tmp=np.zeros((1855,60))
@@ -123,7 +129,7 @@ class ncam_wfs:
 
 ########################
 
-def average_wfs(nevents,filename,ped_only,ff_only):
+def average_wfs(nevents,filename,ped_only,ff_only,ff_ttypes=0):
     wfs_ped = ncam_wfs()
     wfs_ped.load_wfs(nevents,filename,ped_only,ff_only)
     print(wfs_ped.wfs_triggertype)
@@ -165,8 +171,8 @@ def compute_charges(wfs_sub_hg, wfs_sub_lg,n_premax,n_postmax):
     for ev in range(1,len(wfs_sub_hg)):
         if ev%100==0:print(ev)
         tmaxs = wfs_sub_hg[ev].argmax(axis=1)
-        charges_hg.append( np.array([ wfs_sub_hg[ev,ii, pmax-ws:pmax+we ].sum(axis=0) for ii, pmax in enumerate(tmaxs) ]) )
-        charges_lg.append( np.array([ wfs_sub_lg[ev,ii, pmax-ws:pmax+we ].sum(axis=0) for ii, pmax in enumerate(tmaxs) ]) )
+        charges_hg.append( np.array([ wfs_sub_hg[ev,ii, max(0,pmax-ws):pmax+we ].sum(axis=0) for ii, pmax in enumerate(tmaxs) ]) )
+        charges_lg.append( np.array([ wfs_sub_lg[ev,ii, max(0,pmax-ws):pmax+we ].sum(axis=0) for ii, pmax in enumerate(tmaxs) ]) )
 
     return np.array(charges_hg),np.array(charges_lg)
 
@@ -191,12 +197,13 @@ if __name__ == "__main__":
     run_number = sys.argv[2]
     ped_run_number = sys.argv[3]
     gain_run_number = sys.argv[4]
+    ff_ttypes = int(sys.argv[5])
 
     filename=findrun(run_number)#3105)
 
     #Load ncam_waveforms
     wfs = ncam_wfs()
-    wfs.load_wfs(max_events,filename,0,1)
+    wfs.load_wfs(max_events,filename,0,1,ff_ttypes)
 
     #Compute Average Ped to subtract
     filename_ped=findrun(ped_run_number)#filename/#3107
@@ -209,7 +216,7 @@ if __name__ == "__main__":
 
     #Compute charges
     charges_hg,charges_lg=compute_charges(wfs_sub_hg,wfs_sub_lg,NPREMAX,NPOSTMAX)
-
+    print("Shapes: ",charges_hg.shape, charges_lg.shape)
     #HG/LG ratio
     hglg=charges_hg/charges_lg
     hglgm=hglg.mean(0)#np.ma.where(bpx_tot>0,hglg.mean(0),0)
@@ -217,6 +224,8 @@ if __name__ == "__main__":
     #Compute charges in pe
     charges_hg_pe = np.array([charges_hg[:,ii] / gains[ii] for ii in range(1855) ])
     charges_lg_pe = np.array([charges_lg[:,ii] / gains[ii] * hglgm[ii] for ii in range(1855) ])
+    mean_q_hg_pe = charges_hg_pe.mean(1)
+    mean_q_lg_pe = charges_lg_pe.mean(1)
     charges_hg_pe=charges_hg_pe.T
     charges_lg_pe=charges_lg_pe.T
 
@@ -265,15 +274,21 @@ if __name__ == "__main__":
 
     ############################################################################
     ### Compute FF coefs, taking bpx into account
-    masked_charges_hg_pe=np.ma.where(bpx_tot>0,charges_hg_pe,0)
-    masked_charges_lg_pe=np.ma.where(bpx_tot>0,charges_lg_pe,0)
+    masked_charges_hg_pe=np.ma.array([np.ma.masked_where(bpx_tot==0,charges_hg_pe[ii]) for ii in range(charges_hg_pe.shape[0])])#np.ma.where(bpx_tot>0,charges_hg_pe,0)
+    masked_charges_lg_pe=np.ma.array([np.ma.masked_where(bpx_tot==0,charges_lg_pe[ii]) for ii in range(charges_lg_pe.shape[0])])#np.ma.where(bpx_tot>0,charges_lg_pe,0)
 
     masked_mean_hg_pe=np.ma.mean(masked_charges_hg_pe,axis=1)
     masked_mean_lg_pe=np.ma.mean(masked_charges_lg_pe,axis=1)
 
-    ff_coef=np.array([ masked_charges_hg_pe[ii]/masked_mean_hg_pe[ii] for ii in range(len(masked_charges_hg_pe))]).mean(0)
-    ff_coef_lg=np.array([ masked_charges_lg_pe[ii]/masked_mean_lg_pe[ii] for ii in range(len(masked_charges_lg_pe))]).mean(0)
-    ff_calib_coef=np.ma.where(bpx_tot>0,1./ff_coef,1)
+    q_over_mean_hg=np.array([ masked_charges_hg_pe[ii]/masked_mean_hg_pe[ii] for ii in range(len(masked_charges_hg_pe))])
+    masked_q_over_mean_hg=np.ma.array([np.ma.masked_where(bpx_tot==0,q_over_mean_hg[ii]) for ii in range(q_over_mean_hg.shape[0])])
+
+    ff_coef=np.ma.mean(masked_q_over_mean_hg,axis=0)
+    ff_calib_coef=np.ma.divide(1.,ff_coef)
+
+    #ff_coef=np.array([ masked_charges_hg_pe[ii]/masked_mean_hg_pe[ii] for ii in range(len(masked_charges_hg_pe))]).mean(0)
+    #ff_coef_lg=np.array([ masked_charges_lg_pe[ii]/masked_mean_lg_pe[ii] for ii in range(len(masked_charges_lg_pe))]).mean(0)
+    #ff_calib_coef=np.ma.where(bpx_tot>0,1./ff_coef,1)
 
     #Write file
     h5calibparams=h5py.File('calibparams_run{}_pedrun{}_gainrun{}.h5'.format(run_number,ped_run_number,gain_run_number), 'w')
@@ -284,4 +299,6 @@ if __name__ == "__main__":
     h5calibparams.create_dataset('bpx_flag', data=bpx_flag)
     h5calibparams.create_dataset('ff_calib_coefs', data=ff_calib_coef)
     h5calibparams.create_dataset('gains', data=gains)
+    h5calibparams.create_dataset('mean_q_hg', data=mean_q_hg_pe)
+    h5calibparams.create_dataset('mean_q_lg', data=mean_q_lg_pe)
     h5calibparams.close()
