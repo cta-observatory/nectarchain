@@ -10,10 +10,8 @@ dependencies:
   - protozfits=2.0
   - pytest-runner
   - pip
-  - dirac-grid  # required by DIRAC
-  - fts3  # required by DIRAC
-  - voms  # required by DIRAC
-  - gfal2  # required by DIRAC
   - pip:
+      - git+https://github.com/cta-observatory/ctapipe_io_nectarcam.git
       - CTADIRAC
       - COMDIRAC
+  - dirac-grid<8  # required by DIRAC

@@ -1,28 +1,21 @@
 # nectarchain
 
 Repository for the high level analysis of the NectarCAM data.
-The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe), adding custom code for mono reconstruction.
+The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe), adding custom code for NectarCAM calibration.
 
 master branch status: [![Build Status](https://travis-ci.org/cta-observatory/nectarchain.svg?branch=master)](https://travis-ci.org/cta-observatory/nectarchain)
 
+## Installation
 
-Current `nectarchain` build uses `ctapipe` master version.
-
-Here is how you should install:
 ```
 git clone https://github.com/cta-observatory/nectarchain.git
 cd nectarchain
 conda env create --name nectarchain --file environment.yml
 conda activate nectarchain
-cd ..
-git clone https://github.com/cta-observatory/ctapipe_io_nectarcam.git
-cd ctapipe_io_nectarcam
-pip install -e .
-cd ../nectarchain
 pip install -e .
 ```
-If you are a developer, better you install ctapipe as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html
-and periodically perform a "git pull upstream master" in order to be updated with the master
+If you are a developer, better you follow the same conventions as `ctapipe`, as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change.
+ `nectarchain` is currently pinned to `ctapipe` version 0.12.
 
 ## Contributing
 
@@ -34,4 +27,4 @@ See [here](https://cta-observatory.github.io/ctapipe/development/pullrequests.ht
 
 ## Report issue / Ask a question
 
-Use GitHub Issues.
+Please use GitHub Issues.

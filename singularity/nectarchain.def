@@ -34,14 +34,11 @@ From: condaforge/mambaforge
     mkdir -p /opt/cta
     cd /opt/cta
     git clone https://github.com/cta-observatory/nectarchain.git
-    mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet --file /environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
-    git clone https://github.com/cta-observatory/ctapipe_io_nectarcam.git
-    cd ctapipe_io_nectarcam
+    cd nectarchain
     pip install -e .
-    cd ../nectarchain
-    pip install -e .
-    mamba clean -q -y --all
+    mamba clean --quiet -y --all
     echo "## Activate nectarchain environment" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/mamba.sh" >> /.singularity_bash
