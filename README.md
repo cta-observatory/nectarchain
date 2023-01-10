@@ -15,7 +15,7 @@ mamba env create --name nectarchain --file environment.yml
 mamba activate nectarchain
 pip install .
 ```
-If you are a developer, better you follow the same conventions as `ctapipe`, as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change, and `pip`-install `nectarchain` in development (_aka_ editbale mode):
+If you are a developer, better you follow the same conventions as `ctapipe`, as described in https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change, and `pip`-install `nectarchain` in development (_aka_ editable mode):
 
 ```shell
 pip install -e .
