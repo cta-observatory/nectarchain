@@ -34,7 +34,7 @@ From: condaforge/mambaforge
     mkdir -p /opt/cta
     cd /opt/cta
     git clone https://github.com/cta-observatory/nectarchain.git
-    mamba env create --quiet --file /environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
     cd nectarchain
     pip install -e .
