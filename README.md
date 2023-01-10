@@ -21,13 +21,15 @@ If you are a developer, better you follow the same conventions as `ctapipe`, as 
 pip install -e .
 ```
 
-To enable support of DIRAC within the same environment, do the following after the installation of `nectarchain` described above:
+To enable support for DIRAC within the same environment, do the following after the installation of `nectarchain` described above:
 ```shell
 # or conda
 mamba activate nectarchain 
 mamba install -c conda-forge dirac-grid
 conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
 # the following is needed for the environment variables, used for DIRAC configuration, to be available:
+mamba deactivate
+mamba activate nectarchain
 pip install CTADIRAC
 # optional:
 pip install COMDIRAC
