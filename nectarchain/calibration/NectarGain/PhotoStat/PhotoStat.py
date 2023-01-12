@@ -100,7 +100,7 @@ class PhotoStatGain(ABC):
         self.SPEResolution = table['resolution']
         self.SPEGain = table['gain']
         self.SPEGain_error = table['gain_error']
-        self._SPE_pixels_id = table['pixel'].value
+        self._SPE_pixels_id = np.array(table['pixel'].value,dtype = np.uint16)
 
     
 
@@ -130,7 +130,7 @@ class PhotoStatGain(ABC):
         self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
 
     def plot_correlation(self) : 
-        mask = (self._output_table["high gain"]>0) * (self.SPEGain>0)
+        mask = (self._output_table["high gain"]>20) * (self.SPEGain>0) * (self._output_table["high gain"]<80)
         a, b, r, p_value, std_err = linregress(self._output_table["high gain"][mask], self.SPEGain[mask],'greater')
         x = np.linspace(self._output_table["high gain"][mask].min(),self._output_table["high gain"][mask].max(),1000)
         y = lambda x: a * x + b 
@@ -221,6 +221,12 @@ class PhotoStatGainFFandPed(PhotoStatGain):
             raise e
 
         self._readSPE(SPEresults)
+        ##need to implement reshape of SPE results with FF and Ped pixels ids 
+
+        if (self.FFcharge.pixels_id.shape[0] != self._SPE_pixels_id.shape[0]) : 
+            e = Exception("Ped run and FF run must have the same number of pixels as SPE fit results")
+            log.error(e,exc_info = True)
+            raise e
 
         if (self.FFcharge.pixels_id != self.Pedcharge.pixels_id).any() or (self.FFcharge.pixels_id != self._SPE_pixels_id).any() or (self.Pedcharge.pixels_id != self._SPE_pixels_id).any() : 
             e = DifferentPixelsID("Ped run, FF run and SPE run need to have same pixels id")
