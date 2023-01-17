@@ -8,12 +8,13 @@ import numpy as np
 
 
 from ctapipe_io_nectarcam import NectarCAMEventSource
-
+from ctapipe_io_nectarcam import constants
 
 plt.rcParams['figure.figsize'] = [13, 9]
 
 ################################################################################
 
+FF_LIST_VALS = (0,2,32)
 
 NPREMAX = 4
 NPOSTMAX = 10
@@ -66,7 +67,7 @@ class ncam_wfs:
         self.wfs_evttime = np.zeros(nevents)
         self.wfs_triggertype = np.zeros(nevents)
         # self.wfs_evtid = np.zeros(nevents)
-        self.trig_pattern = np.zeros((nevents, 1855))
+        self.trig_pattern = np.zeros((nevents, constants.N_PIXELS))
         self.pixels_ids = inputfile_reader.camera_config.expected_pixels_id
         self.geometry = inputfile_reader.subarray.tel[0].camera
 
@@ -93,15 +94,15 @@ class ncam_wfs:
             self.wfs_evttime[self.size] = event.nectarcam.tel[0].evt.ucts_timestamp
             self.wfs_triggertype[self.size] = event.trigger.event_type.value
 
-            trig_in = np.zeros((1855))
+            trig_in = np.zeros((constants.N_PIXELS))
             for slice in range(4):
                 trig_in = np.logical_or(trig_in, event.nectarcam.tel[0].evt.trigger_pattern[slice])
             self.trig_pattern[self.size] += trig_in
 
             # if ff_only and len(np.where(self.trig_pattern[self.size]>0)[0]) < 200: continue
 
-            wfs_hg_tmp = np.zeros((1855, 60))
-            wfs_lg_tmp = np.zeros((1855, 60))
+            wfs_hg_tmp = np.zeros((constants.N_PIXELS, constants.N_SAMPLES))
+            wfs_lg_tmp = np.zeros((constants.N_PIXELS, constants.N_SAMPLES))
             for pix in self.pixels_ids:  # range(self.npixels):
                 wfs_lg_tmp[pix] = event.r0.tel[0].waveform[1, pix]
                 wfs_hg_tmp[pix] = event.r0.tel[0].waveform[0, pix]
@@ -122,8 +123,8 @@ def average_wfs(nevents, filename, ped_only, ff_only):
     wfs_ped.load_wfs(nevents, filename, ped_only, ff_only)
     print(wfs_ped.wfs_triggertype)
 
-    average_lg = np.zeros((1855, 60))
-    average_hg = np.zeros((1855, 60))
+    average_lg = np.zeros((constants.N_PIXELS, constants.N_SAMPLES))
+    average_hg = np.zeros((constants.N_PIXELS, constants.N_SAMPLES))
 
     for pix in wfs_ped.pixels_ids:
         average_lg[pix] = sum(wfs_ped.wfs_lg[:, pix]*1./wfs_ped.size)
@@ -192,6 +193,9 @@ if __name__ == "__main__":
     gain_run_number = sys.argv[4]
     ff_ttypes = int(sys.argv[5])
 
+    if not ff_ttypes in FF_LIST_VALS:
+        raise ValueError("Possible FF trigger types are: "+str(FF_LIST_VALS))
+
     filename = findrun(run_number)  # 3105)
 
     # Load ncam_waveforms
@@ -215,8 +219,8 @@ if __name__ == "__main__":
     hglgm = hglg.mean(0)  # np.ma.where(bpx_tot>0,hglg.mean(0),0)
 
     # Compute charges in pe
-    charges_hg_pe = np.array([charges_hg[:, ii] / gains[ii] for ii in range(1855)])
-    charges_lg_pe = np.array([charges_lg[:, ii] / gains[ii] * hglgm[ii] for ii in range(1855)])
+    charges_hg_pe = np.array([charges_hg[:, ii] / gains[ii] for ii in range(constants.N_PIXELS)])
+    charges_lg_pe = np.array([charges_lg[:, ii] / gains[ii] * hglgm[ii] for ii in range(constants.N_PIXELS)])
     mean_q_hg_pe = charges_hg_pe.mean(1)
     mean_q_lg_pe = charges_lg_pe.mean(1)
     charges_hg_pe = charges_hg_pe.T
@@ -224,11 +228,11 @@ if __name__ == "__main__":
 
     ########
     # Compute broken/malfunctioning pixels from various estimates
-    bpx_tot = np.ones((1855))
-    bpx_flag = np.zeros((1855), dtype=int)
+    bpx_tot = np.ones((constants.N_PIXELS))
+    bpx_flag = np.zeros((constants.N_PIXELS), dtype=int)
 
     # Bpx because not in the run
-    participating_pix = np.zeros((1855))
+    participating_pix = np.zeros((constants.N_PIXELS))
     for pix in wfs.pixels_ids:
         participating_pix[pix] = 1
 
