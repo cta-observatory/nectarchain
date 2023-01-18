@@ -202,7 +202,7 @@ class ChargeContainer() :
     def compute_charge(waveformContainer : WaveformsContainer,channel : int,method : str = "FullWaveformSum" ,**kwargs) : 
         if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
             raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
-        ImageExtractor = eval(method)(waveformContainer.subarray)
+        ImageExtractor = eval(method)(waveformContainer.subarray,**kwargs)
         if channel == 0:
             return ImageExtractor(waveformContainer.wfs_hg,waveformContainer.TEL_ID,channel)
         elif channel == 1:
