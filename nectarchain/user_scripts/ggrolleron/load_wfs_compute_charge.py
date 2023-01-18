@@ -17,8 +17,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 log.addHandler(handler)
 
-#import seaborn as sns
-from nectarchain.calibration import NectarGain
+
 
 from nectarchain.calibration.container import WaveformsContainer, WaveformsContainers
 from nectarchain.calibration.container import ChargeContainer, ChargeContainers
