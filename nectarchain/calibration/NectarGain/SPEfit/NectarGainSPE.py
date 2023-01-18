@@ -78,9 +78,9 @@ class NectarGainSPE(ABC) :
 
         windows_lenght = 80
         order = 2
-        histo_lissed = savgol_filter(histo, windows_lenght, order)
+        histo_smoothed = savgol_filter(histo, windows_lenght, order)
 
-        peaks = find_peaks(histo_lissed,10)
+        peaks = find_peaks(histo_smoothed,10)
         peak_max = np.argmax(histo[peaks[0]])
         peak_pos,peak_value = charge[peaks[0][peak_max]], histo[peaks[0][peak_max]]
 
@@ -90,7 +90,7 @@ class NectarGainSPE(ABC) :
             log.debug('plotting figures with prefit parameters computation') 
             fig,ax = plt.subplots(1,1,figsize = (8,8))
             ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
-            ax.plot(charge,histo_lissed,label = f'lissed data with savgol filter (windows lenght : {windows_lenght}, order : {order})')
+            ax.plot(charge,histo_smoothed,label = f'smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})')
             ax.plot(charge,weight_gaussian(charge,coeff[0],coeff[1],coeff[2]),label = 'gaussian fit of the pedestal, left tail only')
             ax.vlines(peak_pos,0,peak_value,label = 'pedestal initial value')
             ax.set_xlabel("Charge (ADC)", size=15)
