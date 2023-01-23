@@ -6,9 +6,11 @@ import matplotlib.cm as cm
 from pathlib import Path
 import sys
 import os
+import argparse
+import json
 
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.INFO,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}_load_wfs_charge.log")
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.INFO,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
 log = logging.getLogger(__name__)
 ##tips to add message to stdout
 handler = logging.StreamHandler(sys.stdout)
@@ -19,6 +21,103 @@ log.addHandler(handler)
 
 from nectarchain.calibration.container import WaveformsContainer, WaveformsContainers
 from nectarchain.calibration.container import ChargeContainer, ChargeContainers
+
+parser = argparse.ArgumentParser(
+                    prog = 'load_wfs_compute_charge',
+                    description = 'This program load waveforms from fits.fz run files and compute charge')
+
+#run numbers
+parser.add_argument('-s', '--spe_run_number',
+                    nargs="+",
+                    default=[],
+                    help='spe run list',
+                    type=int)
+parser.add_argument('-p', '--ped_run_number',
+                    nargs="+",
+                    default=[],
+                    help='ped run list',
+                    type=int)
+parser.add_argument('-f', '--ff_run_number',
+                    nargs="+",
+                    default=[],
+                    help='FF run list',
+                    type=int)
+
+#max events to be loaded
+parser.add_argument('--spe_max_events',
+                    nargs="+",
+                    #default=[],
+                    help='spe max events to be load',
+                    type=int)
+parser.add_argument('--ped_max_events',
+                    nargs="+",
+                    #default=[],
+                    help='ped max events to be load',
+                    type=int)
+parser.add_argument('--ff_max_events',
+                    nargs="+",
+                    #default=[],
+                    help='FF max events to be load',
+                    type=list)
+
+#n_events in runs
+parser.add_argument('--spe_nevents',
+                    nargs="+",
+                    #default=[],
+                    help='spe n events to be load',
+                    type=int)
+parser.add_argument('--ped_nevents',
+                    nargs="+",
+                    #default=[],
+                    help='ped n events to be load',
+                    type=int)
+parser.add_argument('--ff_nevents',
+                    nargs="+",
+                    #default=[],
+                    help='FF n events to be load',
+                    type=list)
+
+#boolean arguments
+parser.add_argument('--reload_wfs',
+                    action='store_true',
+                    default=False,
+                    help='to force re-computation of waveforms from fits.fz files'
+                    )
+parser.add_argument('--overwrite',
+                    action='store_true',
+                    default=False,
+                    help='to force overwrite files on disk'
+                    )
+
+#extractor arguments
+parser.add_argument('--extractorMethod',
+                    choices=["FullWaveformSum","LocalPeakWindowSum"],
+                    default="LocalPeakWindowSum",
+                    help='charge extractor method',
+                    type=str
+                    )
+parser.add_argument('--extractor_kwargs',
+                    default={'window_width' : 16, 'window_shift' : 4},
+                    help='charge extractor kwargs',
+                    type=json.loads
+                    )
+
+args = parser.parse_args()
+
+#control shape of arguments lists
+for arg in ['spe','ff','ped'] :
+    run_number = eval(f"args.{arg}_run_number")
+    max_events = eval(f"args.{arg}_max_events")
+    nevents = eval(f"args.{arg}_nevents")
+
+    if not(max_events is None) and len(max_events) != len(run_number) :
+        e = Exception(f'{arg}_run_number and {arg}_max_events must have same length')
+        log.error(e,exc_info=True)
+        raise e
+    if not(nevents is None) and len(nevents) != len(run_number) :
+        e = Exception(f'{arg}_run_number and {arg}_nevents must have same length')
+        log.error(e,exc_info=True)
+        raise e
 
 
 def load_wfs_compute_charge(runs_list : list,
@@ -37,6 +136,13 @@ def load_wfs_compute_charge(runs_list : list,
     Raises:
         e : an error occurred during zfits loading from ctapipe EventSource
     """
+
+    #print(runs_list)
+    #print(charge_extraction_method)
+    #print(overwrite)
+    #print(reload_wfs)
+    #print(kwargs)
+    
     
     max_events = kwargs.get("max_events",[None for i in range(len(runs_list))])
     nevents = kwargs.get("nevents",[-1 for i in range(len(runs_list))])
@@ -53,43 +159,46 @@ def load_wfs_compute_charge(runs_list : list,
             try : 
                 wfs = WaveformsContainer.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
             except FileNotFoundError as e : 
-                log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at sps/hess/lpnhe/ggroller/projects/NECTARCAM/runs/waveforms/waveforms_run{ped_run_number[i]}.fits")
+                log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at sps/hess/lpnhe/ggroller/projects/NECTARCAM/runs/waveforms/waveforms_run{runs_list[i]}.fits")
                 log.warning(f"reloading from zfits files")
-                wfs = WaveformsContainer(runs_list[i])
+                wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
                 wfs.load_wfs()
                 wfs.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
             except Exception as e :
                 log.error(e,exc_info = True)
                 raise e
         else : 
-            wfs = WaveformsContainer(runs_list[i])
+            wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
             wfs.load_wfs()
             wfs.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
 
-        log.info(f"computation of charge with {charge_extraction_method}")
-        charge = ChargeContainer.from_waveforms(wfs,method = charge_extraction_method,**extractor_kwargs)
+        log.info(f"computation of charge with {charge_childpath}")
+        charge = ChargeContainer.from_waveforms(wfs,method = charge_childpath,**extractor_kwargs)
         charge.write(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",overwrite = overwrite)
         del wfs,charge
+    
 
 
-def main(SPE_run_number : list = [],
-        FF_run_number : list = [], 
+def main(spe_run_number : list = [],
+        ff_run_number : list = [], 
         ped_run_number: list = [],
         **kwargs):
-    
-    SPE_nevents = kwargs.pop('SPE_nevents',[-1 for i in range(len(SPE_run_number))])
-    FF_nevents = kwargs.pop('SPE_nevents',[-1 for i in range(len(FF_run_number))])
-    ped_nevents = kwargs.pop('SPE_nevents',[-1 for i in range(len(ped_run_number))])
 
-    SPE_max_events = kwargs.pop('SPE_max_events',[None for i in range(len(SPE_run_number))])
-    FF_max_events = kwargs.pop('SPE_max_events',[None for i in range(len(FF_run_number))])
-    ped_max_events = kwargs.pop('SPE_max_events',[None for i in range(len(ped_run_number))])
+    #print(kwargs)
 
-    runs_list = SPE_run_number + FF_run_number + ped_run_number
-    nevents = SPE_nevents + FF_nevents + ped_nevents
-    max_events = SPE_max_events + FF_max_events + ped_max_events
+    spe_nevents = kwargs.pop('spe_nevents',[-1 for i in range(len(spe_run_number))])
+    ff_nevents = kwargs.pop('spe_nevents',[-1 for i in range(len(ff_run_number))])
+    ped_nevents = kwargs.pop('spe_nevents',[-1 for i in range(len(ped_run_number))])
 
-    charge_extraction_method = kwargs.get('method',"FullWaveformSum")
+    spe_max_events = kwargs.pop('spe_max_events',[None for i in range(len(spe_run_number))])
+    ff_max_events = kwargs.pop('spe_max_events',[None for i in range(len(ff_run_number))])
+    ped_max_events = kwargs.pop('spe_max_events',[None for i in range(len(ped_run_number))])
+
+    runs_list = spe_run_number + ff_run_number + ped_run_number
+    nevents = spe_nevents + ff_nevents + ped_nevents
+    max_events = spe_max_events + ff_max_events + ped_max_events
+
+    charge_extraction_method = kwargs.get('extractorMethod',"FullWaveformSum")
 
 
 
@@ -102,27 +211,31 @@ def main(SPE_run_number : list = [],
 
 
 if __name__ == '__main__':
-    SPE_run_number = [2633,2634,3784]
-    FF_run_number = [2608]
-    ped_run_number = [2609]
 
-    SPE_nevents = [49227,49148,-1]
 
-    overwrite = True
-    reload_wfs = False
-
-    method = "LocalPeakWindowSum"
-    extractor_kwargs = {'window_width' : 16, 'window_shift' : 4}
-    path= method+'_4-12'
+    #run of interest
+    #spe_run_number = [2633,2634,3784]
+    #ff_run_number = [2608]
+    #ped_run_number = [2609]
+    #spe_nevents = [49227,49148,-1]
     
-    main(SPE_run_number, 
-        FF_run_number, 
-        ped_run_number, 
-        SPE_nevents = SPE_nevents, 
-        overwrite = overwrite, 
-        reload_wfs = reload_wfs,
-        method = "LocalPeakWindowSum",
-        extractor_kwargs = {'window_width' : 16, 'window_shift' : 4},
-        path= method+'_4-12')
+
+    arg = vars(args)
+    log.info(f"arguments are : {arg}")
+
+    key_to_pop = []
+    for key in arg.keys() :
+        if arg[key] is None : 
+            key_to_pop.append(key)
+
+    for key in key_to_pop : 
+        arg.pop(key)
+
+    log.info(f"arguments passed to main are : {arg}")
+ 
+    path= args.extractorMethod+'_4-12'
+    arg['path'] = path
+    
+    main(**arg)
 
 
