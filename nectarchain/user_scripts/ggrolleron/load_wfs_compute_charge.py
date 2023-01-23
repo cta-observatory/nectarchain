@@ -159,7 +159,7 @@ def load_wfs_compute_charge(runs_list : list,
             try : 
                 wfs = WaveformsContainer.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
             except FileNotFoundError as e : 
-                log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at sps/hess/lpnhe/ggroller/projects/NECTARCAM/runs/waveforms/waveforms_run{runs_list[i]}.fits")
+                log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at {os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
                 log.warning(f"reloading from zfits files")
                 wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
                 wfs.load_wfs()
