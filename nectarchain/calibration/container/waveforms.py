@@ -73,12 +73,6 @@ class WaveformsContainer() :
             self.__reader = WaveformsContainer.load_run(run_number,max_events,run_file = run_file)
         log.info(f"N_events : {self.nevents}")
 
-        
-        
-
-        
-
-
         #define zeros members which will be filled therafter
         self.wfs_hg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
         self.wfs_lg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
@@ -166,6 +160,12 @@ class WaveformsContainer() :
 
 
     def write(self,path : str, **kwargs) : 
+        """method to write in an output FITS file the WaveformsContainer. Two files are created, one FITS representing the data
+        and one HDF5 file representing the subarray configuration
+
+        Args:
+            path (str): the directory where you want to save data
+        """
         suffix = kwargs.get("suffix","")
         if suffix != "" : suffix = f"_{suffix}"
 
@@ -205,7 +205,7 @@ class WaveformsContainer() :
         col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
         coldefs = fits.ColDefs([col1, col2])
         trigger_patern = fits.BinTableHDU.from_columns(coldefs)
-
+        
         hdul = fits.HDUList([primary_hdu, wfs_hg_hdu, wfs_lg_hdu,event_properties,trigger_patern])
         try : 
             hdul.writeto(Path(path)/f"waveforms_run{self.run_number}{suffix}.fits",overwrite=kwargs.get('overwrite',False))
@@ -220,6 +220,16 @@ class WaveformsContainer() :
 
     @staticmethod
     def load(path : str) : 
+        """load WaveformsContainer from FITS file previously written with WaveformsContainer.write() method
+        Note : 2 files are loaded, the FITS one representing the waveforms data and a HDF5 file representing the subarray configuration. 
+        This second file has to be next to the FITS file.  
+        
+        Args:
+            path (str): path of the FITS file
+
+        Returns:
+            WaveformsContainer: WaveformsContainer instance
+        """
         log.info(f"loading from {path}")
         hdul = fits.open(Path(path))
 
