@@ -74,6 +74,17 @@ class DataManagment() :
 
     @staticmethod
     def get_GRID_location(run_number : int,output_lfns = True, username = None,password = None) : 
+        """method to get run location on GRID from Elog (work in progress!)
+
+        Args:
+            run_number (int): run number
+            output_lfns (bool, optional): if True, return lfns path of fits.gz files, else return parent directory of run location. Defaults to True.
+            username (_type_, optional): username for Elog login. Defaults to None.
+            password (_type_, optional): password for Elog login. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
 
         url = "http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?cmd=Find"
 
@@ -131,17 +142,6 @@ class DataManagment() :
             return lfns
         else : 
             return url_data
-
-
-    
-
-
-
-
-
-        
-
-
 
 
 class ChainGenerator():
