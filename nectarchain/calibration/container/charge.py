@@ -23,13 +23,15 @@ from ctapipe.image.extractor import (FullWaveformSum,
     BaselineSubtractedNeighborPeakWindowSum,
     TwoPassWindowSum)
 
-from ctapipe_io_nectarcam import NectarCAMEventSource
+from ctapipe_io_nectarcam import NectarCAMEventSource,constants
 from ctapipe.io import EventSource, EventSeeker
 
 from astropy.table import Table
 from astropy.io import fits
 
 from .waveforms import WaveformsContainer,WaveformsContainers
+
+
 
 #from .charge_extractor import *
 
@@ -76,10 +78,10 @@ class ChargeContainer() :
     @classmethod
     def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
         log.info(f"computing hg charge with {method} method")
-        charge_hg,peak_hg = ChargeContainer.compute_charge(waveformContainer,0,method,**kwargs)
+        charge_hg,peak_hg = ChargeContainer.compute_charge(waveformContainer,constants.HIGH_GAIN,method,**kwargs)
         charge_hg = np.array(charge_hg,dtype = np.uint16)
         log.info(f"computing lg charge with {method} method")
-        charge_lg,peak_lg = ChargeContainer.compute_charge(waveformContainer,1,method,**kwargs)
+        charge_lg,peak_lg = ChargeContainer.compute_charge(waveformContainer,constants.LOW_GAIN,method,**kwargs)
         charge_lg = np.array(charge_lg,dtype = np.uint16)
 
         chargeContainer = cls(charge_hg,charge_lg,peak_hg,peak_lg,waveformContainer.run_number,waveformContainer.pixels_id,waveformContainer.nevents,waveformContainer.npixels ,method)
@@ -203,9 +205,9 @@ class ChargeContainer() :
         if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
             raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
         ImageExtractor = eval(method)(waveformContainer.subarray,**kwargs)
-        if channel == 0:
+        if channel == constants.HIGH_GAIN:
             return ImageExtractor(waveformContainer.wfs_hg,waveformContainer.TEL_ID,channel)
-        elif channel == 1:
+        elif channel == constants.LOW_GAIN:
             return ImageExtractor(waveformContainer.wfs_lg,waveformContainer.TEL_ID,channel)
         else :
             raise ArgumentError("channel must be 0 or 1")
