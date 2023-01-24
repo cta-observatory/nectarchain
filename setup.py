@@ -21,6 +21,7 @@ setup(
         'astropy~=4.2',
         'ctapipe~=0.12',
         'numpy~=1.22.4',
+        'pytables>=3.7',
     ],
     tests_require=['pytest'],
     setup_requires=['pytest_runner'],
