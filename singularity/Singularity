@@ -3,10 +3,10 @@
 # Built from mambaforge, with special conda environment containing nectarchain
 #
 # Jean-Philippe Lenain <jlenain@in2p3.fr>
-# Time-stamp: "2022-12-15 21:33:29 jlenain"
+# Time-stamp: "2023-01-13 16:42:06 jlenain"
 #
 # Typically, build this image with:
-# `sudo singularity build nectarchain.sif nectarchain.def`
+# `sudo singularity build nectarchain.sif Singularity`
 #
 # Then, typically run an instance of this image with:
 # `singularity shell nectarchain.sif`
@@ -36,12 +36,9 @@ From: condaforge/mambaforge
     git clone https://github.com/cta-observatory/nectarchain.git
     mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
-    git clone https://github.com/cta-observatory/ctapipe_io_nectarcam.git
-    cd ctapipe_io_nectarcam
+    cd nectarchain
     pip install -e .
-    cd ../nectarchain
-    pip install -e .
-    mamba clean -q -y --all
+    mamba clean --quiet -y --all
     echo "## Activate nectarchain environment" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/mamba.sh" >> /.singularity_bash
