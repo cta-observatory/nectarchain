@@ -100,6 +100,7 @@ class PhotoStatGain(ABC):
         self.SPEResolution = table['resolution']
         self.SPEGain = table['gain']
         self.SPEGain_error = table['gain_error']
+        self._SPEvalid = table['is_valid']
         self._SPE_pixels_id = np.array(table['pixel'].value,dtype = np.uint16)
 
     
@@ -109,6 +110,7 @@ class PhotoStatGain(ABC):
         self._output_table.meta['npixel'] = self.npixels
         self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
 
+        self._output_table.add_column(Column(np.zeros((self.npixels),dtype = bool),"is_valid",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(self.pixels_id,"pixel",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),"high gain",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels,2),dtype = np.float64),"high gain error",unit = u.dimensionless_unscaled))
@@ -122,6 +124,7 @@ class PhotoStatGain(ABC):
 
         self._output_table["high gain"] = self.gainHG
         self._output_table["low gain"] = self.gainLG
+        self._output_table["is_valid"] = self._SPEvalid
 
     def save(self,path,**kwargs) : 
         path = Path(path)
@@ -130,18 +133,19 @@ class PhotoStatGain(ABC):
         self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
 
     def plot_correlation(self) : 
-        mask = (self._output_table["high gain"]>20) * (self.SPEGain>0) * (self._output_table["high gain"]<80)
+        mask = (self._output_table["high gain"]>20) * (self.SPEGain>0) * (self._output_table["high gain"]<80) * self._output_table['is_valid']
         a, b, r, p_value, std_err = linregress(self._output_table["high gain"][mask], self.SPEGain[mask],'greater')
         x = np.linspace(self._output_table["high gain"][mask].min(),self._output_table["high gain"][mask].max(),1000)
         y = lambda x: a * x + b 
         with quantity_support() : 
             fig,ax = plt.subplots(1,1,figsize=(8, 6))
-            ax.scatter(self._output_table["high gain"],self.SPEGain,marker =".")
+            ax.scatter(self._output_table["high gain"][mask],self.SPEGain[mask],marker =".")
             ax.plot(x,y(x),color = 'red', label = f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}")
-            ax.set_xlabel("Gain Photo stat", size=15)
-            ax.set_ylabel("Gain SPE fit", size=15)
-            ax.set_xlim(xmin = 0)
-            ax.set_ylim(ymin = 0)
+            ax.plot(x,x,color = 'black',label = "y = x")
+            ax.set_xlabel("Gain Photo stat (ADC)", size=15)
+            ax.set_ylabel("Gain SPE fit (ADC)", size=15)
+            #ax.set_xlim(xmin = 0)
+            #ax.set_ylim(ymin = 0)
 
             ax.legend(fontsize=15)
             return fig

@@ -76,14 +76,15 @@ class NectarGainSPESingle(NectarGainSPE):
 
 
         
-    def run(self,pixel : int = None,**kwargs):
+    def run(self,pixel : int = None,multiproc = False, **kwargs):
+        
         if pixel is None : 
-            for i in tqdm(range(self.npixels)) :
-                if self.charge.mask[i].all() : 
-                    log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
-                else  :
-                    log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
-                    self._run_obs(i,**kwargs)
+                for i in tqdm(range(self.npixels)) :
+                    if self.charge.mask[i].all() : 
+                        log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
+                    else  :
+                        log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
+                        self._run_obs(i,**kwargs)
         else : 
             if not(isinstance(pixel,np.ndarray)) :
                 pixels = np.asarray([pixel],dtype = np.int16)
@@ -418,15 +419,15 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
     def Chi2(self,pixel : int):
         if self.__same_luminosity : 
             def _Chi2(mean,pedestal,pedestalWidth) :
-                if self._old_lum != self.__nectarGainSPEresult[pixel]['luminosity'].value :
+                if self._old_lum != self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value :
                     for i in range(1000):
-                        if (gammainc(i+1,self.__nectarGainSPEresult[pixel]['luminosity'].value) < 1e-5):
+                        if (gammainc(i+1,self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value) < 1e-5):
                             self._old_ntotalPE = i
                             break
-                    self._old_lum = self.__nectarGainSPEresult[pixel]['luminosity'].value
+                    self._old_lum = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value
                 kwargs = {"ntotalPE" : self._old_ntotalPE}
 
-                return self.NG_Likelihood_Chi2(self.__nectarGainSPEresult[pixel]['pp'].value,self.__nectarGainSPEresult[pixel]['resolution'].value,mean,self.__nectarGainSPEresult[pixel]['n'].value,pedestal,pedestalWidth,self.__nectarGainSPEresult[pixel]['luminosity'],self.charge[pixel],self.histo[pixel],**kwargs)
+                return self.NG_Likelihood_Chi2(self.__nectarGainSPEresult[self.__pixel_index(pixel)]['pp'].value,self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution'].value,mean,self.__nectarGainSPEresult[self.__pixel_index(pixel)]['n'].value,pedestal,pedestalWidth,self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'],self.charge[pixel],self.histo[pixel],**kwargs)
             return _Chi2
         else : 
             def _Chi2(mean,pedestal,pedestalWidth,luminosity) :
@@ -456,13 +457,25 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
         self._minuitParameters['values']['pedestal'] = self.pedestal.value
         self._minuitParameters['limit_pedestal'] = (self.pedestal.min,self.pedestal.max)
 
-        self.resolution.error = self.__nectarGainSPEresult[pixel]['resolution_error'].value
-        self.pp.error = self.__nectarGainSPEresult[pixel]['pp_error'].value
-        self.n.error = self.__nectarGainSPEresult[pixel]['n_error'].value
+        self.resolution.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution'].value
+        self.resolution.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution_error'].value
+
+        self.pp.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['pp'].value
+        self.pp.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['pp_error'].value
+
+        self.n.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['n'].value
+        self.n.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['n_error'].value
+
         if self.__same_luminosity : 
-            self.luminosity.error = self.__nectarGainSPEresult[pixel]['luminosity_error'].value
+            self.luminosity.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value
+            self.luminosity.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity_error'].value
 
 
+    def __pixel_index(self,pixel) : 
+        return np.argmax(self._nectarGainSPEresult['pixel'] == self.pixels_id[pixel])
+
+    @property
+    def _nectarGainSPEresult(self) : return self.__nectarGainSPEresult
 
 
 
