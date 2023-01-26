@@ -16,6 +16,8 @@ from pathlib import Path
 from tqdm import tqdm
 import time
 
+from functools import partial
+
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
@@ -23,7 +25,8 @@ log.handlers = logging.getLogger('__main__').handlers
 
 import copy
 
-from multiprocessing import Process,Lock,Pool
+from multiprocessing import Process,Lock
+from multiprocessing.pool import ThreadPool as Pool
 
 from .parameters import Parameters,Parameter
 from ...container import ChargeContainer
@@ -38,7 +41,7 @@ __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGai
 
 class NectarGainSPESingle(NectarGainSPE):
     _Ncall = 4000000
-    _Nproc_Multiprocess = 4
+    _Nproc_Multiprocess = 6
 
     def __init__(self,signal : ChargeContainer,**kwargs) : 
         log.info("initialisation of the SPE fit instance")
@@ -81,7 +84,10 @@ class NectarGainSPESingle(NectarGainSPE):
 
         
     def run(self,pixel : int = None,multiproc = False, **kwargs):
-        def task(i,kwargs) : 
+        def task(i,**kwargs) : 
+            log.info(f"i = {i}")
+            log.info(f"{kwargs}")
+
             if self.charge.mask[i].all() : 
                 log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
             else  :
@@ -107,7 +113,7 @@ class NectarGainSPESingle(NectarGainSPE):
                     
             else  :
                 for i in tqdm(range(self.npixels)) :
-                    task(i,kwargs)
+                    task(i,**kwargs)
         else : 
             if not(isinstance(pixel,np.ndarray)) :
                 if isinstance(pixel,list) :
@@ -120,15 +126,18 @@ class NectarGainSPESingle(NectarGainSPE):
 
             if multiproc : 
                 nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
-                
-                #with Pool(4) as pool:
-                #    pool.map(task(i,kwargs),[i for i in range(self.npixels)])
-                process = [Process(target = task, args=(pixel, kwargs)) for pixel in pixels]
-                for proc in process : 
-                    proc.start()
-                    #time.sleep(1)
+                log.info(f"pixels : {pixels}")
+                with Pool(nproc) as pool: 
+                    pool.map_async(partial(task,**kwargs),[pixel for pixel in tqdm(pixels)])#,chunksize = 1) 
+                    #pool.apply_async(partial(task,**kwargs),[pixel for pixel in tqdm(pixels)])#,chunksize = 1) 
+                    pool.close()
+                    pool.join()
+                #process = [Process(target = task, args=(pixel, kwargs)) for pixel in pixels]
+                #for proc in process : 
+                #    proc.start()
+                #    #time.sleep(1)
 
-                for proc in process : proc.join()
+                #for proc in process : proc.join()
             
             else : 
                 for pixel in tqdm(pixels) : 
@@ -137,7 +146,7 @@ class NectarGainSPESingle(NectarGainSPE):
                         log.error(e,exc_info=True)
                         raise e
                     else :
-                        task(pixel,kwargs)
+                        task(pixel,**kwargs)
         return 0
 
     def save(self,path,**kwargs) : 
@@ -328,8 +337,8 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
                 fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{pixel}.pdf")
                 fig.clf()
+                plt.close(fig)
                 del fig,ax
-                plt.close('all')
         else : 
             log.warning(f"fit {pixel} is not valid")
             self.fill_table(pixel,valid)
@@ -633,8 +642,8 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
                 fig.savefig(f"{kwargs.get('figpath')}/fit_Ped_pixel{pixel}.pdf")
                 fig.clf()
+                plt.close(fig)
                 del fig,ax
-                plt.close('all')
         else : 
             log.warning(f"fit {pixel} is not valid")
             self.fill_table(pixel,valid)

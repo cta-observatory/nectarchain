@@ -264,8 +264,8 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
                 fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{pixel}.pdf")
                 fig.clf()
+                plt.close(fig)
                 del fig,ax
-                plt.close('all')
         else : 
             log.warning(f"fit {pixel} is not valid")
             self.fill_table(pixel,valid)
