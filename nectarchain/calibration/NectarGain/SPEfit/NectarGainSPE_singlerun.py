@@ -14,6 +14,7 @@ import os
 from datetime import date
 from pathlib import Path
 from tqdm import tqdm
+import time
 
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
@@ -21,6 +22,8 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
 import copy
+
+from multiprocessing import Process,Lock,Pool
 
 from .parameters import Parameters,Parameter
 from ...container import ChargeContainer
@@ -35,6 +38,7 @@ __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGai
 
 class NectarGainSPESingle(NectarGainSPE):
     _Ncall = 4000000
+    _Nproc_Multiprocess = 4
 
     def __init__(self,signal : ChargeContainer,**kwargs) : 
         log.info("initialisation of the SPE fit instance")
@@ -77,30 +81,63 @@ class NectarGainSPESingle(NectarGainSPE):
 
         
     def run(self,pixel : int = None,multiproc = False, **kwargs):
+        def task(i,kwargs) : 
+            if self.charge.mask[i].all() : 
+                log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
+            else  :
+                log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
+                self._run_obs(i,**kwargs)
         
         if pixel is None : 
+            if multiproc : 
+                nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
+                i=0
+                
+                #with Pool(4) as pool:
+                #    pool.map(task(i,kwargs),[i for i in range(self.npixels)])
+                while i<self.npixels : 
+                    process = [Process(target = task, args=(i+j, kwargs)) for j in range(nproc)]
+                    for proc in process : 
+                        proc.start()
+                        #time.sleep(1)
+                    for proc in process : proc.join()
+                    i += nproc
+
+                    
+                    
+            else  :
                 for i in tqdm(range(self.npixels)) :
-                    if self.charge.mask[i].all() : 
-                        log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
-                    else  :
-                        log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
-                        self._run_obs(i,**kwargs)
+                    task(i,kwargs)
         else : 
             if not(isinstance(pixel,np.ndarray)) :
-                pixels = np.asarray([pixel],dtype = np.int16)
+                if isinstance(pixel,list) :
+                    pixels = np.asarray(pixel,dtype = np.int16)
+                else : 
+                    pixels = np.asarray([pixel],dtype = np.int16)
+
             else : 
                 pixels = pixel
-            for pixel in tqdm(pixels) : 
-                if pixel >= self.npixels : 
-                    e = Exception(f"pixel must be < {self.npixels}")
-                    log.error(e,exc_info=True)
-                    raise e
-                else :
-                    if self.charge.mask[pixel].all() : 
-                        log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
-                    else : 
-                        log.info(f"running SPE fit for pixel {pixel} (pixel_id = {self.__pixels_id[pixel]})")
-                        self._run_obs(pixel,**kwargs)
+
+            if multiproc : 
+                nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
+                
+                #with Pool(4) as pool:
+                #    pool.map(task(i,kwargs),[i for i in range(self.npixels)])
+                process = [Process(target = task, args=(pixel, kwargs)) for pixel in pixels]
+                for proc in process : 
+                    proc.start()
+                    #time.sleep(1)
+
+                for proc in process : proc.join()
+            
+            else : 
+                for pixel in tqdm(pixels) : 
+                    if pixel >= self.npixels : 
+                        e = Exception(f"pixel must be < {self.npixels}")
+                        log.error(e,exc_info=True)
+                        raise e
+                    else :
+                        task(pixel,kwargs)
         return 0
 
     def save(self,path,**kwargs) : 
@@ -218,7 +255,15 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         log.info(f"Initial parameters value : {fit.values}")
         #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
 
-        fit.print_level = 3
+        if log.getEffectiveLevel() == logging.ERROR :
+            fit.print_level = 0
+        if log.getEffectiveLevel() == logging.WARNING :
+            fit.print_level = 1
+        if log.getEffectiveLevel() == logging.INFO :
+            fit.print_level = 2
+        if log.getEffectiveLevel() == logging.DEBUG :
+            fit.print_level = 3
+        
         fit.strategy = 2
         fit.throw_nan = True
         if prescan : 
@@ -470,9 +515,9 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
             self.luminosity.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value
             self.luminosity.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity_error'].value
 
-
     def __pixel_index(self,pixel) : 
         return np.argmax(self._nectarGainSPEresult['pixel'] == self.pixels_id[pixel])
+
 
     @property
     def _nectarGainSPEresult(self) : return self.__nectarGainSPEresult
@@ -521,8 +566,16 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
         log.info(f"Initial value of Likelihood = {self.Chi2(pixel)(**self._minuitParameters['values'])}")
         log.info(f"Initial parameters value : {fit.values}")
         #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
-
-        fit.print_level = 2
+        
+        if log.getEffectiveLevel() == logging.ERROR :
+            fit.print_level = 0
+        if log.getEffectiveLevel() == logging.WARNING :
+            fit.print_level = 1
+        if log.getEffectiveLevel() == logging.INFO :
+            fit.print_level = 2
+        if log.getEffectiveLevel() == logging.DEBUG :
+            fit.print_level = 3
+        
         fit.strategy = 2
         fit.throw_nan = True
         if prescan : 

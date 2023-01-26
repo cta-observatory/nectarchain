@@ -175,7 +175,15 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         log.info(f"Initial parameters value : {fit.values}")
         #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
 
-        fit.print_level = 3
+        if log.getEffectiveLevel() == logging.ERROR :
+            fit.print_level = 0
+        if log.getEffectiveLevel() == logging.WARNING :
+            fit.print_level = 1
+        if log.getEffectiveLevel() == logging.INFO :
+            fit.print_level = 2
+        if log.getEffectiveLevel() == logging.DEBUG :
+            fit.print_level = 3
+            
         fit.strategy = 2
         fit.throw_nan = True
         try : 
