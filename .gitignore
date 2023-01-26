@@ -86,4 +86,11 @@ target
 notebooks/*.html
 notebooks/*.png
 
+nectarchain/calibration/test
+**.log
+**.pdf
+**.csv
+
+#VScode
+.vscode/
 
