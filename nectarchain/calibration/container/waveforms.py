@@ -19,7 +19,7 @@ from ctapipe_io_nectarcam import NectarCAMEventSource
 from ctapipe.containers import EventType
 from ctapipe.io import EventSource, EventSeeker
 
-from .utils import DataManagment,ChainGenerator
+from .utils import DataManagement,ChainGenerator
 
 import sys
 import logging
@@ -97,7 +97,7 @@ class WaveformsContainer() :
         Returns:
             List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for each run files
         """
-        generic_filename,filenames = DataManagment.findrun(run_number)
+        generic_filename,filenames = DataManagement.findrun(run_number)
         if run_file is None : 
             log.info(f"{str(generic_filename)} will be loaded")
             eventsource = NectarCAMEventSource(input_url=generic_filename,max_events=max_events)
@@ -329,7 +329,7 @@ class WaveformsContainers() :
 
     def __init__(self,run_number : int,max_events : int = None) :
         log.info('Initialization of WaveformsContainers') 
-        _,filenames = DataManagment.findrun(run_number)
+        _,filenames = DataManagement.findrun(run_number)
         self.waveformsContainer = []
         self.__nWaveformsContainer = 0
         for i,file in enumerate(filenames) : 

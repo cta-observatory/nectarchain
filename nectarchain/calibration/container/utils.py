@@ -16,9 +16,9 @@ logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
-__all__ = ['DataManagment','ChainGenerator']
+__all__ = ['DataManagement','ChainGenerator']
 
-class DataManagment() :
+class DataManagement() :
     @staticmethod
     def findrun(run_number : int,search_on_GRID = True) -> Tuple[Path,List[Path]]: 
         """method to find in NECTARCAMDATA the list of *.fits.fz files associated to run_number
@@ -37,8 +37,8 @@ class DataManagment() :
             if search_on_GRID : 
                 log.warning(e,exc_info=True)
                 log.info('will search files on GRID and fetch them')
-                lfns = DataManagment.get_GRID_location(run_number)
-                DataManagment.getRunFromDIRAC(lfns)
+                lfns = DataManagement.get_GRID_location(run_number)
+                DataManagement.getRunFromDIRAC(lfns)
                 list = glob.glob(basepath+'**/*'+str(run_number)+'*.fits.fz',recursive=True)
                 list_path = [Path(chemin) for chemin in list]
             else : 

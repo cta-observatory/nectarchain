@@ -18,7 +18,7 @@ log.addHandler(handler)
 
 
 from nectarchain.calibration.container import ChargeContainer,WaveformsContainer
-from nectarchain.calibration.container.utils import DataManagment
+from nectarchain.calibration.container.utils import DataManagement
 
 
 
