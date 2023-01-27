@@ -13,3 +13,5 @@ dependencies:
   - pip
   - pip:
       - git+https://github.com/cta-observatory/ctapipe_io_nectarcam.git
+      - mechanize
+      - browser-cookie3
