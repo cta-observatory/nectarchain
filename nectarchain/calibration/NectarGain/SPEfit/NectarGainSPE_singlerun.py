@@ -84,7 +84,7 @@ class NectarGainSPESingle(NectarGainSPE):
 
         
     def run(self,pixel : int = None,multiproc = False, **kwargs):
-        def task(i,**kwargs) : 
+        def task_simple(i,**kwargs) : 
             log.info(f"i = {i}")
             log.info(f"{kwargs}")
 
@@ -99,21 +99,21 @@ class NectarGainSPESingle(NectarGainSPE):
                 nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
                 i=0
                 
-                #with Pool(4) as pool:
-                #    pool.map(task(i,kwargs),[i for i in range(self.npixels)])
-                while i<self.npixels : 
-                    process = [Process(target = task, args=(i+j, kwargs)) for j in range(nproc)]
-                    for proc in process : 
-                        proc.start()
-                        #time.sleep(1)
-                    for proc in process : proc.join()
-                    i += nproc
+                with Pool(4) as pool:
+                    pool.map(task(i,kwargs),[i for i in range(self.npixels)])
+                #while i<self.npixels : 
+                #    process = [Process(target = task, args=(i+j, kwargs)) for j in range(nproc)]
+                #    for proc in process : 
+                #        proc.start()
+                #        #time.sleep(1)
+                #    for proc in process : proc.join()
+                #    i += nproc
 
                     
                     
             else  :
                 for i in tqdm(range(self.npixels)) :
-                    task(i,**kwargs)
+                    task_simple(i,**kwargs)
         else : 
             if not(isinstance(pixel,np.ndarray)) :
                 if isinstance(pixel,list) :
@@ -128,10 +128,11 @@ class NectarGainSPESingle(NectarGainSPE):
                 nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
                 log.info(f"pixels : {pixels}")
                 with Pool(nproc) as pool: 
-                    pool.map_async(partial(task,**kwargs),[pixel for pixel in tqdm(pixels)])#,chunksize = 1) 
-                    #pool.apply_async(partial(task,**kwargs),[pixel for pixel in tqdm(pixels)])#,chunksize = 1) 
-                    pool.close()
-                    pool.join()
+                    pool.map(partial(task,**kwargs),[pixel for pixel in tqdm(pixels)])#,chunksize = 1) 
+                    #for pixel in tqdm(pixels) :
+                    #    pool.apply_async(task,[pixel],kwargs)#,chunksize = 1) 
+                    #pool.close()
+                    #pool.join()
                 #process = [Process(target = task, args=(pixel, kwargs)) for pixel in pixels]
                 #for proc in process : 
                 #    proc.start()
@@ -146,7 +147,7 @@ class NectarGainSPESingle(NectarGainSPE):
                         log.error(e,exc_info=True)
                         raise e
                     else :
-                        task(pixel,**kwargs)
+                        task_simple(pixel,**kwargs)
         return 0
 
     def save(self,path,**kwargs) : 
@@ -168,6 +169,13 @@ class NectarGainSPESingle(NectarGainSPE):
         self.__pedestal.max = np.sum(self.__charge[pixel]*self.__histo[pixel])/np.sum(self.__histo[pixel])
         self._minuitParameters['values']['pedestal'] = self.__pedestal.value
         self._minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
+
+    @staticmethod
+    def _update_parameters_prefit_static(parameters : Parameters, charge : np.ndarray, histo : np.ndarray) : 
+        pedestal = parameters['pedestal']
+        pedestal.value = (np.min(charge) + np.sum(charge * histo)/(np.sum(histo)))/2
+        pedestal.min = np.min(charge)
+        pedestal.max = np.sum(charge*histo)/np.sum(histo)
 
 
     @abstractclassmethod
@@ -253,14 +261,12 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         self.create_output_table()
 
 
-        
-
-
-    def _run_obs(self,pixel,prescan = False,**kwargs) : 
-        self._update_parameters_prefit(pixel)
-        fit = Minuit(self.Chi2(pixel),**self._minuitParameters['values'])
-        UtilsMinuit.set_minuit_parameters_limits_and_errors(fit,self._minuitParameters)
-        log.info(f"Initial value of Likelihood = {self.Chi2(pixel)(**self._minuitParameters['values'])}")
+    @staticmethod
+    def _run_fit(funct,parameters,pixels_id,prescan = False) :
+        minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
+        fit = Minuit(funct,**minuitParameters)
+        UtilsMinuit.set_minuit_parameters_limits_and_errors(fit,minuitParameters)
+        log.info(f"Initial value of Likelihood = {funct(**minuitParameters['values'])}")
         log.info(f"Initial parameters value : {fit.values}")
         #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
 
@@ -280,7 +286,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
             fit.scan()
         try : 
             log.info('migrad execution')
-            fit.migrad(ncall=super(NectarGainSPESingleSignal,self)._Ncall)
+            fit.migrad(ncall=super(NectarGainSPESingleSignal)._Ncall)
             fit.hesse()
             valid = fit.valid
         except RuntimeError as e : 
@@ -293,17 +299,70 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 fit.scan()
             try :
                 log.info('simplex execution')
-                fit.simplex(ncall=super(NectarGainSPESingleSignal,self)._Ncall)
+                fit.simplex(ncall=super(NectarGainSPESingleSignal)._Ncall)
                 fit.hesse()
                 valid = fit.valid
             except Exception as e :
                 log.error(e,exc_info = True)
-                log.warning(f"skip pixel {pixel} (pixel_id : {self.pixels_id})")
+                log.warning(f"skip pixel_id : {pixels_id})")
                 valid = False
 
         except Exception as e :
             log.error(e,exc_info = True)
             raise e
+
+        return fit,valid
+
+    def _run_obs_static(pixel : int,funct,parameters: Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
+        parameters = NectarGainSPESingleSignal._update_parameters_prefit_static(parameters,charge,histo)
+        fit,valid = NectarGainSPESingleSignal._run_fit(funct,parameters,pixels_id = pixels_id,prescan = prescan,**kwargs)
+
+        if valid : 
+            log.info(f"fitted value : {fit.values}")
+            log.info(f"fitted errors : {fit.errors}")
+            output = super(NectarGainSPESingleSignal)._make_output_dict_obs(fit)
+            output_parameters = super(NectarGainSPESingleSignal)._get_parameters_postfit(fit,valid)
+            gain = np.empty(3)
+
+            gain[0] = Gain(output_parameters['pp'].value, output_parameters['resolution'].value, output_parameters['mean'].value, output_parameters['n'].value)
+            stat_gain = np.array([Gain(output_parameters['pp'].value, random.gauss(output_parameters['resolution'].value, output_parameters['resolution'].error), random.gauss(output_parameters['mean'].value, output_parameters['mean'].error), output_parameters['n'].value) for i in range(1000)])
+            gain[1] = gain[0] - np.quantile(stat_gain,0.16)
+            gain[2] = np.quantile(stat_gain,0.84) - gain[0]
+
+            log.info(f"Reconstructed gain is {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f}")
+            output['gain'][pixel] = gain[0] 
+            output['gain_error'] = np.empty(2)
+            output['gain_error'][0] = gain[1] 
+            output['gain_error'][1] = gain[2] 
+
+
+
+            if kwargs.get('figpath',0) != 0 :
+                fig,ax = plt.subplots(1,1,figsize=(8, 6))
+                ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
+                ax.plot(charge,
+                    np.trapz(histo,charge)*MPE2(charge,output_parameters['pp'].value, output_parameters['resolution'].value, output_parameters['mean'].value, output_parameters['n'].value, output_parameters['pedestal'].value, output_parameters['pedestalWidth'].value, output_parameters['luminosity'].value),
+                    zorder=1,
+                    linewidth=2,
+                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe")
+                ax.set_xlabel("Charge (ADC)", size=15)
+                ax.set_ylabel("Events", size=15)
+                ax.set_title(f"SPE fit pixel id : {pixels_id})")
+                ax.legend(fontsize=15)
+                os.makedirs(kwargs.get('figpath'),exist_ok = True)
+                fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{pixels_id}.pdf")
+                fig.clf()
+                plt.close(fig)
+                del fig,ax
+        else : 
+            log.warning(f"fit {pixels_id} is not valid")
+            output_parameters = super(NectarGainSPESingleSignal)._get_parameters_postfit(fit,valid)
+
+        return output_parameters
+
+    def _run_obs(self,pixel,prescan = False,**kwargs) : 
+        self._update_parameters_prefit(pixel)
+        fit,valid = NectarGainSPESingleSignal._run_fit(self.Chi2(pixel),self._minuitParameters['values'],pixels_id = self.pixels_id[pixel],prescan = prescan,**kwargs)
 
         if valid : 
             log.info(f"fitted value : {fit.values}")
@@ -335,12 +394,12 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 ax.set_title(f"SPE fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
                 ax.legend(fontsize=15)
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
-                fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{pixel}.pdf")
+                fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{self.pixels_id[pixel]}.pdf")
                 fig.clf()
                 plt.close(fig)
                 del fig,ax
         else : 
-            log.warning(f"fit {pixel} is not valid")
+            log.warning(f"fit {self.pixels_id[pixel]} is not valid")
             self.fill_table(pixel,valid)
 
     @classmethod

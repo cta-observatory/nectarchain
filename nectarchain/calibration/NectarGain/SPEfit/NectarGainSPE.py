@@ -22,8 +22,10 @@ from iminuit import Minuit
 from astropy.table import QTable,Column
 import astropy.units as u
 
+import pandas as pd
 
-from .parameters import Parameters
+
+from .parameters import Parameters, Parameter
 from .utils import UtilsMinuit,weight_gaussian
 
 __all__ = ['NectarGainSPE']
@@ -43,7 +45,9 @@ class NectarGainSPE(ABC) :
         for parameter in self._parameters.parameters : 
             self._output_table[parameter.name][pixel] = parameter.value
             self._output_table[f'{parameter.name}_error'][pixel] = parameter.error
-    
+
+    def make_table(self,dictionary):
+        self._output_table = QTable.from_pandas(pd.DataFrame.from_dict(dictionary))
 
     def _make_minuit_parameters(self) : 
         if log.getEffectiveLevel() == logging.DEBUG:
@@ -58,6 +62,23 @@ class NectarGainSPE(ABC) :
             if tmp != [] : 
                 tmp.value = m.values[i]
                 tmp.error = m.errors[i]
+
+    @staticmethod
+    def _get_parameters_postfit(m : Minuit) : 
+        for i,name in enumerate(m.parameters) : 
+            tmp = Parameters() 
+            tmp.append(Parameter(name = name,value = m.values[i]))
+        return tmp
+
+    @staticmethod
+    def _make_output_dict_obs(m : Minuit,valid) :
+        parameters = NectarGainSPE._get_parameters_postfit(m)
+        output = {"is_valid" : valid}
+        for parameter in parameters.parameters : 
+            output[parameter.name] = parameter.value 
+            output[f"{parameter.name}_error"] = parameter.error 
+        return output
+
 
     def read_param_from_yaml(self,parameters_file) :
         with open(f"{os.path.dirname(os.path.abspath(__file__))}/{parameters_file}") as parameters :
@@ -116,9 +137,13 @@ class NectarGainSPE(ABC) :
     def run(self,pixel : int = None,**kwargs): pass
     @abstractmethod
     def _run_obs(self,pixel,**kwargs) : pass
+    @abstractmethod
+    def _run_obs_static(pixel,**kwargs) : pass
     
     @abstractmethod
     def _update_parameters_prefit(self,pixel) : pass
+    @abstractmethod
+    def _update_parameters_prefit_static(pixel) : pass
 
     
     @abstractmethod
