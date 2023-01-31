@@ -1,6 +1,6 @@
 #!/bin/env bash
 #
-# Time-stamp: "2022-12-15 22:13:21 jlenain"
+# Time-stamp: "2023-01-30 16:21:22 jlenain"
 
 
 function usage ()
@@ -41,7 +41,7 @@ if [ -z $runnb ]; then
     exit 1
 fi
 
-CONTAINER=nectarchain_w_2022_50.sif
+CONTAINER=nectarchain_w_2023_02.sif
 OUTDIR=NectarCAM_DQM_Run${runnb}
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm
 

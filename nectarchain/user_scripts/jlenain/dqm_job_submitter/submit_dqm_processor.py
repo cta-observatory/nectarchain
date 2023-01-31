@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2022-12-15 22:46:58 jlenain"
+# Time-stamp: "2023-01-30 16:21:41 jlenain"
 
 import argparse
 import sys
@@ -47,7 +47,7 @@ if args.date is None:
     logger.critical('A date should be provided, in a format astropy.time.Time compliant. E.g. "2022-04-01".')
     sys.exit(1)
 
-container="nectarchain_w_2022_50.sif"
+container="nectarchain_w_2023_02.sif"
 executable_wrapper="dqm_processor.sh"
 
 ## Possible massive job processing via loop on run numbers:
