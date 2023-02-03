@@ -174,8 +174,9 @@ def load_wfs_compute_charge(runs_list : list,
 
         log.info(f"computation of charge with {charge_childpath}")
         charge = ChargeContainer.from_waveforms(wfs,method = charge_childpath,**extractor_kwargs)
+        del wfs
         charge.write(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",overwrite = overwrite)
-        del wfs,charge
+        del charge
     
 
 
