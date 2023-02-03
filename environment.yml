@@ -11,6 +11,7 @@ dependencies:
   - pytables>=3.7
   - pytest-runner
   - pip
+  - numba
   - pip:
       - git+https://github.com/cta-observatory/ctapipe_io_nectarcam.git
       - mechanize
