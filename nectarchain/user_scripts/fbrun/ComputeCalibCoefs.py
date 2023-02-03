@@ -158,7 +158,7 @@ def compute_charges(wfs_sub_hg, wfs_sub_lg, n_premax, n_postmax):
     ws = n_premax
     we = n_postmax
     print(f"Compute charges, from max in HG, params : n_premax = {ws}, n_postmax = {we}")
-    for ev in range(1, len(wfs_sub_hg)):
+    for ev in range(len(wfs_sub_hg)):
         if ev % 100 == 0:
             print(ev)
         tmaxs = wfs_sub_hg[ev].argmax(axis=1)
