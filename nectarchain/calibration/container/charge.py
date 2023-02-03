@@ -364,7 +364,7 @@ class ChargeContainer() :
             broxen_pixels_mask = np.array([mask_broken_pix for i in range(charge_ma.shape[1])]).T
             #hist_ma.mask = new_data_mask.T
             start = time.time()
-            _mask, hist_ma_data = make_histo(self.charge_hg.T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
+            _mask, hist_ma_data = make_histo(self.charge_lg.T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
             charge_ma.mask = np.logical_or(_mask,broxen_pixels_mask)
             hist_ma =  ma.masked_array(hist_ma_data,mask = charge_ma.mask)
             log.debug(f"histogram lg computation time : {time.time() - start} sec")  
