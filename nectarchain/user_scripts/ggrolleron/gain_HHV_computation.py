@@ -36,7 +36,7 @@ from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,Nect
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_HHV_computation.py',
-                    description = 'compute high gain with SPE fit for one run')
+                    description = 'compute high gain with SPE fit for one run at very very high voltage (~1400V)')
 
 #run numbers
 parser.add_argument('-r', '--run_number',
@@ -93,9 +93,12 @@ def main(args) :
 
     gain_Std = NectarGainSPESingleSignalStd(signal = charge_run_1400V)
     t = time.time()
-    gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}1400V-Std-{args.chargeExtractorPath}")
-    log.info(f"fit time =  {time.time() - t }")
-    gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}1400V-Std-{args.chargeExtractorPath}/",overwrite = args.overwrite)
+    gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}1400V-SPEStd-{args.run_number}-{args.chargeExtractorPath}")
+    log.info(f"fit time =  {time.time() - t } sec")
+    gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}1400V-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
+    conv_rate = len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._output_table[gain_Std._output_table['is_valid']])/len(args.pixels)
+    log.info(f"convergence rate : {conv_rate}")
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
