@@ -10,9 +10,14 @@ logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
-__all__ = ['UtilsMinuit']
+__all__ = ['UtilsMinuit','Multiprocessing']
 from .parameters import Parameters
 
+class Multiprocessing() : 
+    @staticmethod
+    def custom_error_callback(error):
+        log.error(f'Got an error: {error}')
+        log.error(error,exc_info=True)
 
 class UtilsMinuit() :
     @staticmethod

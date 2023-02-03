@@ -15,6 +15,10 @@ from datetime import date
 from pathlib import Path
 from tqdm import tqdm
 import time
+import matplotlib
+matplotlib.use('AGG',force = True)
+
+import pandas as pd
 
 from functools import partial
 
@@ -25,12 +29,13 @@ log.handlers = logging.getLogger('__main__').handlers
 
 import copy
 
+import multiprocessing as mlp
 from multiprocessing import Process,Lock
 from multiprocessing.pool import ThreadPool as Pool
 
 from .parameters import Parameters,Parameter
 from ...container import ChargeContainer
-from .utils import UtilsMinuit,MPE2,Gain,gaussian
+from .utils import UtilsMinuit,MPE2,Gain,gaussian,Multiprocessing
 from .NectarGainSPE import NectarGainSPE
 
 from abc import ABC, abstractclassmethod, abstractmethod
@@ -41,7 +46,7 @@ __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGai
 
 class NectarGainSPESingle(NectarGainSPE):
     _Ncall = 4000000
-    _Nproc_Multiprocess = 6
+    _Nproc_Multiprocess = mlp.cpu_count() // 2
 
     def __init__(self,signal : ChargeContainer,**kwargs) : 
         log.info("initialisation of the SPE fit instance")
@@ -77,37 +82,161 @@ class NectarGainSPESingle(NectarGainSPE):
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),parameter.name,unit = parameter.unit))
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),f'{parameter.name}_error',unit = parameter.unit))
 
+    def make_table_from_output_multi(self,list_dict : list) :
+        self._output_table = QTable.from_pandas(pd.DataFrame.from_dict(list_dict))
+        for param in self._parameters.parameters :
+            self._output_table[param.name] = Column(self._output_table[param.name].value, param.name, unit=param.unit)
+        self._output_table.meta['npixel'] = self.npixels
+        self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
 
+    @staticmethod
+    def _run_fit(funct,parameters,pixels_id,prescan = False,**kwargs) :
+        minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters.unfrozen)
+        fit = Minuit(funct,**minuitParameters['values'])
+        UtilsMinuit.set_minuit_parameters_limits_and_errors(fit,minuitParameters)
+        log.info(f"Initial value of Likelihood = {funct(**minuitParameters['values'])}")
+        log.info(f"Initial parameters value : {fit.values}")
+        #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
+
+        if log.getEffectiveLevel() == logging.ERROR :
+            fit.print_level = 0
+        if log.getEffectiveLevel() == logging.WARNING :
+            fit.print_level = 1
+        if log.getEffectiveLevel() == logging.INFO :
+            fit.print_level = 0
+        if log.getEffectiveLevel() == logging.DEBUG :
+            fit.print_level = 3
         
+        fit.strategy = 2
+        fit.throw_nan = True
+        if prescan : 
+            log.info("let's do a fisrt brut force scan") 
+            fit.scan()
+        try : 
+            log.info('migrad execution')
+            fit.migrad(ncall=super(__class__,__class__)._Ncall)
+            fit.hesse()
+            valid = fit.valid
+        except RuntimeError as e : 
+            log.warning(e,exc_info = True)
+            log.info("change method : re-try with simplex")
+            fit.reset()
+            fit.throw_nan = True
+            if prescan : 
+                log.info("let's do a fisrt brut force scan") 
+                fit.scan()
+            try :
+                log.info('simplex execution')
+                fit.simplex(ncall=super(__class__,__class__)._Ncall)
+                fit.hesse()
+                valid = fit.valid
+            except Exception as e :
+                log.error(e,exc_info = True)
+                log.warning(f"skip pixel_id : {pixels_id})")
+                valid = False
 
+        except Exception as e :
+            log.error(e,exc_info = True)
+            raise e
 
-
+        return fit,valid
         
     def run(self,pixel : int = None,multiproc = False, **kwargs):
         def task_simple(i,**kwargs) : 
             log.info(f"i = {i}")
-            log.info(f"{kwargs}")
+            log.debug(f"{kwargs}")
 
             if self.charge.mask[i].all() : 
                 log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
             else  :
                 log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
                 self._run_obs(i,**kwargs)
+
+        def task_multiple(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray) : 
+            _funct = funct
+            _parameters = parameters
+            _pixels_id = pixels_id
+            _charge = charge
+            _histo = histo
+            def task(i,**kwargs) : 
+                log.info(f"i = {i}")
+                log.debug(f"{kwargs}")
+
+                if charge.mask.all() : 
+                    log.info(f'do not run fit on pixel {i} (pixel_id = {pixels_id}), it seems to be a broken pixel from charge computation')
+                    output = {"is_valid" : False, "pixel" : pixels_id}
+                    for parameter in _parameters.parameters : 
+                        output[parameter.name] = parameter.value 
+                        output[f"{parameter.name}_error"] = parameter.error 
+                    return output
+                else  :
+                    log.info(f"running SPE fit for pixel {i} (pixel_id = {pixels_id})")
+                    return self.__class__._run_obs_static(i,_funct, _parameters, _pixels_id, _charge, _histo, **kwargs)
+            return task
         
+        def task_multiple_bis(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,pix) : 
+            _funct = {i : funct(i) for i in pix}
+            _parameters = copy.deepcopy(parameters)
+            _pixels_id = copy.deepcopy(pixels_id)
+            _charge = copy.deepcopy(charge)
+            _histo = copy.deepcopy(histo)
+            _class = copy.deepcopy(self.__class__)
+            def task(i,kwargs) : 
+                log.info(f"i = {i}")
+                log.debug(f"{kwargs}")
+
+                if charge.mask.all() : 
+                    log.info(f'do not run fit on pixel {i} (pixel_id = {pixels_id[i]}), it seems to be a broken pixel from charge computation')
+                    output = {"is_valid" : False, "pixel" : pixels_id}
+                    for parameter in _parameters.parameters : 
+                        output[parameter.name] = parameter.value 
+                        output[f"{parameter.name}_error"] = parameter.error 
+                    return output
+                else  :
+                    log.info(f"running SPE fit for pixel {i} (pixel_id = {pixels_id[i]})")
+                    return _class._run_obs_static(i,_funct[i], copy.deepcopy(_parameters), _pixels_id[i], _charge[i], _histo[i], **kwargs)
+            return task
+
         if pixel is None : 
             if multiproc : 
                 nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
                 i=0
+                log.info(f"pixels : {self.npixels}")
+                with Pool(nproc) as pool: 
+                    chunksize = kwargs.get("chunksize",max(1,self.npixels//(nproc*10)))
+                    log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
+
+                    #handlerlevel = []
+                    #for handler in log.handlers : 
+                    #    handlerlevel.append(handler.level)
+                    #    handler.setLevel(logging.FATAL)
+                    #loglevel = log.getEffectiveLevel()
+                    #log.setLevel(logging.FATAL)
+
+                    result = pool.starmap_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,[i for i in range(self.npixels)]), [(i,kwargs) for i in tqdm(range(self.npixels))],chunksize = chunksize)
+                    result.wait()
+
+                    #for i,handler in enumerate(log.handlers) : 
+                    #    handler.setLevel(handlerlevel[i])
+                    #log.setLevel(loglevel)
+                    
+                    ###WITH APPLY_ASYNC ###
+                    #result = [pool.apply_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels),args = (i,),kwds = kwargs) for i in tqdm(pixels)]
+                    #output = []
+                    #for i,pix in tqdm(enumerate(pixels)) : 
+                    #    log.info(f"watting for result pixel_id {self.__pixels_id[pix]}")
+                    #    #result[i].wait()
+                    #    output.append(result[i].get())
+                #self.make_table_from_output_multi(output)
+
+                try : 
+                    self.make_table_from_output_multi(result._value)
+                except Exception as e : 
+                    log.error(e,exc_info=True)
+                    log.error(f"results : {result._value}")
+                    raise e
                 
-                with Pool(4) as pool:
-                    pool.map(task(i,kwargs),[i for i in range(self.npixels)])
-                #while i<self.npixels : 
-                #    process = [Process(target = task, args=(i+j, kwargs)) for j in range(nproc)]
-                #    for proc in process : 
-                #        proc.start()
-                #        #time.sleep(1)
-                #    for proc in process : proc.join()
-                #    i += nproc
+                
 
                     
                     
@@ -125,20 +254,44 @@ class NectarGainSPESingle(NectarGainSPE):
                 pixels = pixel
 
             if multiproc : 
-                nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
+                nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),len(pixels))
                 log.info(f"pixels : {pixels}")
                 with Pool(nproc) as pool: 
-                    pool.map(partial(task,**kwargs),[pixel for pixel in tqdm(pixels)])#,chunksize = 1) 
-                    #for pixel in tqdm(pixels) :
-                    #    pool.apply_async(task,[pixel],kwargs)#,chunksize = 1) 
-                    #pool.close()
-                    #pool.join()
-                #process = [Process(target = task, args=(pixel, kwargs)) for pixel in pixels]
-                #for proc in process : 
-                #    proc.start()
-                #    #time.sleep(1)
+                    chunksize = kwargs.get("chunksize",max(1,len(pixels)//(nproc*10)))
+                    log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
 
-                #for proc in process : proc.join()
+                    #handlerlevel = []
+                    #for handler in log.handlers : 
+                    #    handlerlevel.append(handler.level)
+                    #    handler.setLevel(logging.FATAL)
+                    #loglevel = log.getEffectiveLevel()
+                    #log.setLevel(logging.FATAL)
+
+                    result = pool.starmap_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
+                                        [(i,kwargs) for i in tqdm(pixels)],
+                                        chunksize = chunksize,
+                                        error_callback=Multiprocessing.custom_error_callback
+                                        )
+                    result.wait()
+
+                    #for i,handler in enumerate(log.handlers) : 
+                    #    handler.setLevel(handlerlevel[i])
+                    #log.setLevel(loglevel)
+                    
+                    ###WITH APPLY_ASYNC ###
+                    #result = [pool.apply_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels),args = (i,),kwds = kwargs) for i in tqdm(pixels)]
+                    #output = []
+                    #for i,pix in tqdm(enumerate(pixels)) : 
+                    #    log.info(f"watting for result pixel_id {self.__pixels_id[pix]}")
+                    #    #result[i].wait()
+                    #    output.append(result[i].get())
+                #self.make_table_from_output_multi(output)
+                try : 
+                    self.make_table_from_output_multi(result._value)
+                except Exception as e : 
+                    log.error(e,exc_info=True)
+                    log.error(f"results : {result._value}")
+                    raise e
             
             else : 
                 for pixel in tqdm(pixels) : 
@@ -156,26 +309,24 @@ class NectarGainSPESingle(NectarGainSPE):
         log.info(f'data saved in {path}')
         self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
 
-    def _update_parameters_postfit(self,m : Minuit) : 
-        for i,name in enumerate(m.parameters) : 
-            tmp = self._parameters[name]
-            if tmp != [] : 
-                tmp.value = m.values[i]
-                tmp.error = m.errors[i]
+    #ONLY KEEP STATIC ONE NOW
+    #def _update_parameters_prefit(self,pixel) : 
+    #    self.__pedestal.value = (np.min(self.__charge[pixel]) + np.sum(self.__charge[pixel] * self.__histo[pixel])/(np.sum(self.__histo[pixel])))/2
+    #    self.__pedestal.min = np.min(self.__charge[pixel])
+    #    self.__pedestal.max = np.sum(self.__charge[pixel]*self.__histo[pixel])/np.sum(self.__histo[pixel])
+    #    self._minuitParameters['values']['pedestal'] = self.__pedestal.value
+    #    self._minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
 
-    def _update_parameters_prefit(self,pixel) : 
-        self.__pedestal.value = (np.min(self.__charge[pixel]) + np.sum(self.__charge[pixel] * self.__histo[pixel])/(np.sum(self.__histo[pixel])))/2
-        self.__pedestal.min = np.min(self.__charge[pixel])
-        self.__pedestal.max = np.sum(self.__charge[pixel]*self.__histo[pixel])/np.sum(self.__histo[pixel])
-        self._minuitParameters['values']['pedestal'] = self.__pedestal.value
-        self._minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
-
-    @staticmethod
-    def _update_parameters_prefit_static(parameters : Parameters, charge : np.ndarray, histo : np.ndarray) : 
+    @classmethod
+    def _update_parameters_prefit_static(cls,it : int, parameters : Parameters, charge : np.ndarray, histo : np.ndarray,**kwargs) : 
+        coeff,var_matrix =  NectarGainSPE._get_pedestal_gaussian_fit(charge,histo,f'{it}_nominal')
         pedestal = parameters['pedestal']
-        pedestal.value = (np.min(charge) + np.sum(charge * histo)/(np.sum(histo)))/2
-        pedestal.min = np.min(charge)
-        pedestal.max = np.sum(charge*histo)/np.sum(histo)
+        pedestal.value = coeff[1]
+        pedestal.min = coeff[1] - coeff[2]
+        pedestal.max = coeff[1] + coeff[2]
+        log.debug(f"pedestal updated : {pedestal}")
+        
+        
 
 
     @abstractclassmethod
@@ -261,76 +412,26 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         self.create_output_table()
 
 
-    @staticmethod
-    def _run_fit(funct,parameters,pixels_id,prescan = False) :
-        minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
-        fit = Minuit(funct,**minuitParameters)
-        UtilsMinuit.set_minuit_parameters_limits_and_errors(fit,minuitParameters)
-        log.info(f"Initial value of Likelihood = {funct(**minuitParameters['values'])}")
-        log.info(f"Initial parameters value : {fit.values}")
-        #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
-
-        if log.getEffectiveLevel() == logging.ERROR :
-            fit.print_level = 0
-        if log.getEffectiveLevel() == logging.WARNING :
-            fit.print_level = 1
-        if log.getEffectiveLevel() == logging.INFO :
-            fit.print_level = 2
-        if log.getEffectiveLevel() == logging.DEBUG :
-            fit.print_level = 3
-        
-        fit.strategy = 2
-        fit.throw_nan = True
-        if prescan : 
-            log.info("let's do a fisrt brut force scan") 
-            fit.scan()
-        try : 
-            log.info('migrad execution')
-            fit.migrad(ncall=super(NectarGainSPESingleSignal)._Ncall)
-            fit.hesse()
-            valid = fit.valid
-        except RuntimeError as e : 
-            log.warning(e,exc_info = True)
-            log.info("change method : re-try with simplex")
-            fit.reset()
-            fit.throw_nan = True
-            if prescan : 
-                log.info("let's do a fisrt brut force scan") 
-                fit.scan()
-            try :
-                log.info('simplex execution')
-                fit.simplex(ncall=super(NectarGainSPESingleSignal)._Ncall)
-                fit.hesse()
-                valid = fit.valid
-            except Exception as e :
-                log.error(e,exc_info = True)
-                log.warning(f"skip pixel_id : {pixels_id})")
-                valid = False
-
-        except Exception as e :
-            log.error(e,exc_info = True)
-            raise e
-
-        return fit,valid
-
-    def _run_obs_static(pixel : int,funct,parameters: Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
-        parameters = NectarGainSPESingleSignal._update_parameters_prefit_static(parameters,charge,histo)
-        fit,valid = NectarGainSPESingleSignal._run_fit(funct,parameters,pixels_id = pixels_id,prescan = prescan,**kwargs)
+    @classmethod
+    def _run_obs_static(cls,it : int, funct,parameters : Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
+        cls._update_parameters_prefit_static(it,parameters,charge,histo,**kwargs)
+        fit,valid = cls._run_fit(funct,parameters,pixels_id = pixels_id,prescan = prescan,**kwargs)
 
         if valid : 
             log.info(f"fitted value : {fit.values}")
             log.info(f"fitted errors : {fit.errors}")
-            output = super(NectarGainSPESingleSignal)._make_output_dict_obs(fit)
-            output_parameters = super(NectarGainSPESingleSignal)._get_parameters_postfit(fit,valid)
+            cls._update_parameters_postfit(fit,parameters)
+            output = cls._make_output_dict_obs(fit,valid,pixels_id,parameters)
+            
             gain = np.empty(3)
 
-            gain[0] = Gain(output_parameters['pp'].value, output_parameters['resolution'].value, output_parameters['mean'].value, output_parameters['n'].value)
-            stat_gain = np.array([Gain(output_parameters['pp'].value, random.gauss(output_parameters['resolution'].value, output_parameters['resolution'].error), random.gauss(output_parameters['mean'].value, output_parameters['mean'].error), output_parameters['n'].value) for i in range(1000)])
+            gain[0] = Gain(parameters['pp'].value, parameters['resolution'].value, parameters['mean'].value, parameters['n'].value)
+            stat_gain = np.array([Gain(parameters['pp'].value, random.gauss(parameters['resolution'].value, parameters['resolution'].error), random.gauss(parameters['mean'].value, parameters['mean'].error), parameters['n'].value) for i in range(1000)])
             gain[1] = gain[0] - np.quantile(stat_gain,0.16)
             gain[2] = np.quantile(stat_gain,0.84) - gain[0]
 
             log.info(f"Reconstructed gain is {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f}")
-            output['gain'][pixel] = gain[0] 
+            output['gain'] = gain[0] 
             output['gain_error'] = np.empty(2)
             output['gain_error'][0] = gain[1] 
             output['gain_error'][1] = gain[2] 
@@ -341,13 +442,13 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 fig,ax = plt.subplots(1,1,figsize=(8, 6))
                 ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
                 ax.plot(charge,
-                    np.trapz(histo,charge)*MPE2(charge,output_parameters['pp'].value, output_parameters['resolution'].value, output_parameters['mean'].value, output_parameters['n'].value, output_parameters['pedestal'].value, output_parameters['pedestalWidth'].value, output_parameters['luminosity'].value),
+                    np.trapz(histo,charge)*MPE2(charge,parameters['pp'].value, parameters['resolution'].value, parameters['mean'].value, parameters['n'].value, parameters['pedestal'].value, parameters['pedestalWidth'].value, parameters['luminosity'].value),
                     zorder=1,
                     linewidth=2,
                     label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
-                ax.set_title(f"SPE fit pixel id : {pixels_id})")
+                ax.set_title(f"SPE fit pixel {it} with pixel_id : {pixels_id}")
                 ax.legend(fontsize=15)
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
                 fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{pixels_id}.pdf")
@@ -355,19 +456,19 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 plt.close(fig)
                 del fig,ax
         else : 
-            log.warning(f"fit {pixels_id} is not valid")
-            output_parameters = super(NectarGainSPESingleSignal)._get_parameters_postfit(fit,valid)
+            log.warning(f"fit pixel {it} with pixel_id = {pixels_id} is not valid")
+            output = cls._make_output_dict_obs(fit,valid,pixels_id,parameters)
 
-        return output_parameters
+        return output
 
     def _run_obs(self,pixel,prescan = False,**kwargs) : 
-        self._update_parameters_prefit(pixel)
-        fit,valid = NectarGainSPESingleSignal._run_fit(self.Chi2(pixel),self._minuitParameters['values'],pixels_id = self.pixels_id[pixel],prescan = prescan,**kwargs)
+        self._update_parameters_prefit_static(pixel,self._parameters,self.charge[pixel],self.histo[pixel],**kwargs)
+        fit,valid = self._run_fit(self.Chi2(pixel),self._parameters,pixels_id = self.pixels_id[pixel],prescan = prescan,**kwargs)
 
         if valid : 
             log.info(f"fitted value : {fit.values}")
             log.info(f"fitted errors : {fit.errors}")
-            self._update_parameters_postfit(fit)
+            self._update_parameters_postfit(fit,self._parameters)
             self.__gain[pixel,0] = Gain(self.__pp.value,self.__resolution.value,self.__mean.value,self.__n.value)
             stat_gain = np.array([Gain(self.__pp.value,random.gauss(self.__resolution.value, self.__resolution.error),random.gauss(self.__mean.value, self.__mean.error),self.__n.value) for i in range(1000)])
             self.__gain[pixel,1] = self.__gain[pixel,0] - np.quantile(stat_gain,0.16)
@@ -399,7 +500,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 plt.close(fig)
                 del fig,ax
         else : 
-            log.warning(f"fit {self.pixels_id[pixel]} is not valid")
+            log.warning(f"fit pixel_id = {self.pixels_id[pixel]} is not valid")
             self.fill_table(pixel,valid)
 
     @classmethod
@@ -425,6 +526,39 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
 
             return self.NG_Likelihood_Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
         return _Chi2
+
+    def Chi2_static(self,pixel : int) : 
+        charge = copy.deepcopy(self.charge[pixel])
+        histo = copy.deepcopy(self.histo[pixel])
+        def _Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity) :
+            #assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or np.isnan(luminosity))
+            ntotalPE = 0
+            for i in range(1000):
+                if (gammainc(i+1,luminosity) < 1e-5):
+                    ntotalPE = i
+                    break
+            kwargs = {"ntotalPE" : ntotalPE}
+            return __class__.NG_Likelihood_Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity,charge,histo,**kwargs)
+        return _Chi2
+
+    @classmethod
+    def _update_parameters_prefit_static(cls,it : int, parameters : Parameters, charge : np.ndarray, histo : np.ndarray,**kwargs) : 
+        super(__class__, cls)._update_parameters_prefit_static(it,parameters,charge,histo,**kwargs)
+        pedestal = parameters['pedestal']
+        pedestalWidth = parameters["pedestalWidth"]
+        pedestalWidth.value = pedestal.max - pedestal.value
+        pedestalWidth.max = 3 * pedestalWidth.value
+        log.debug(f"pedestalWidth updated : {pedestalWidth}")
+        try : 
+            coeff,var_matrix =  NectarGainSPE._get_mean_gaussian_fit(charge,histo,f'{it}_nominal')
+            mean = parameters['mean']
+            mean.value = coeff[1] - pedestal.value
+            mean.min = (coeff[1] - coeff[2]) - pedestal.max
+            mean.max = (coeff[1] + coeff[2]) - pedestal.min
+            log.debug(f"mean updated : {mean}")
+        except Exception as e :
+            log.warning(e,exc_info=True)
+            log.warning("mean parameters limits and starting value not changed")
     
     #fit parameters
     @property
@@ -472,7 +606,7 @@ class NectarGainSPESingleSignalStd(NectarGainSPESingleSignal):
 
     def __init__(self,signal : ChargeContainer,parameters_file = None,**kwargs):
         if parameters_file is None : 
-            parameters_file = NectarGainSPESingleSignalStd.__parameters_file
+            parameters_file = __class__.__parameters_file
         super().__init__(signal,parameters_file,**kwargs)
 
         self.__fix_parameters()
@@ -499,6 +633,22 @@ class NectarGainSPESingleSignalStd(NectarGainSPESingleSignal):
             return self.NG_Likelihood_Chi2(self.pp.value,resolution,mean,self.n.value,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
         return _Chi2
 
+    
+    def Chi2_static(self, pixel : int) :
+        pp = copy.deepcopy(self.pp)
+        n = copy.deepcopy(self.n)
+        charge = copy.deepcopy(self.charge[pixel])
+        histo = copy.deepcopy(self.histo[pixel])
+        def _Chi2(resolution,mean,pedestal,pedestalWidth,luminosity) :
+            ntotalPE = 0
+            for i in range(1000):
+                if (gammainc(i+1,luminosity) < 1e-5):
+                    ntotalPE = i
+                    break
+            kwargs = {"ntotalPE" : ntotalPE}
+            return __class__.NG_Likelihood_Chi2(pp.value,resolution,mean,n.value,pedestal,pedestalWidth,luminosity,charge,histo,**kwargs)
+        return _Chi2
+
 
 class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
     """class to perform fit of the SPE signal at nominal voltage from fitted data obtained with 1400V run
@@ -507,7 +657,7 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
 
     def __init__(self,signal : ChargeContainer, nectarGainSPEresult, same_luminosity : bool = True, parameters_file = None,**kwargs):
         if parameters_file is None : 
-            parameters_file = NectarGainSPESingleSignalfromHHVFit.__parameters_file
+            parameters_file = __class__.__parameters_file
         super().__init__(signal,parameters_file,**kwargs)
 
         self.__fix_parameters(same_luminosity)
@@ -554,21 +704,97 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
                 return self.NG_Likelihood_Chi2(self.__nectarGainSPEresult[pixel]['pp'].value,self.__nectarGainSPEresult[pixel]['resolution'].value,mean,self.__nectarGainSPEresult[pixel]['n'].value,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
             return _Chi2
 
+    def Chi2_static(self,pixel : int):
+        pp_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['pp'].value)
+        resolution_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['resolution'].value)
+        n_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['n'].value)
+        charge = copy.deepcopy(self.charge[pixel])
+        histo = copy.deepcopy(self.histo[pixel])
+        if self.__same_luminosity :
+            luminosity_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['luminosity'].value)
+            def _Chi2(mean,pedestal,pedestalWidth) :
+                ntotalPE = 0
+                for i in range(1000):
+                    if (gammainc(i+1,luminosity_value) < 1e-5):
+                        ntotalPE = i
+                        break
+                kwargs = {"ntotalPE" : ntotalPE}
+                return self.NG_Likelihood_Chi2(pp_value,resolution_value,mean,n_value,pedestal,pedestalWidth,luminosity_value,charge,histo,**kwargs)
+        else : 
+            def _Chi2(mean,pedestal,pedestalWidth,luminosity) :
+                ntotalPE = 0
+                for i in range(1000):
+                    if (gammainc(i+1,luminosity) < 1e-5):
+                        ntotalPE = i
+                        break
+                kwargs = {"ntotalPE" : ntotalPE}
+                return self.NG_Likelihood_Chi2(pp_value,resolution_value,mean,n_value,pedestal,pedestalWidth,luminosity,charge,histo,**kwargs)
+        return _Chi2
+
+    @classmethod
+    def _update_parameters_prefit_static(cls,it : int, parameters : Parameters, charge : np.ndarray, histo : np.ndarray,**kwargs) : 
+        super(__class__,cls)._update_parameters_prefit_static(it,parameters, charge, histo,**kwargs)
+        
+        nectarGainSPEresult = kwargs.get('nectarGainSPEresult')
+        pixel_id = kwargs.get('pixel_id')
+
+        resolution = parameters["resolution"]
+        resolution.value = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['resolution'].value
+        resolution.error = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['resolution_error'].value
+
+        pp = parameters["pp"]
+        pp.value = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['pp'].value
+        pp.error = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['pp_error'].value
+
+        n = parameters["n"]
+        n.value = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['n'].value
+        n.error = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['n_error'].value
+
+        if kwargs.get('same_luminosity', False): 
+            luminosity = parameters["luminosity"]
+            luminosity.value = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['luminosity'].value
+            luminosity.error = nectarGainSPEresult[nectarGainSPEresult['pixel'] == pixel_id]['luminosity_error'].value
+
+    def __pixel_index(self,pixel) : 
+        return np.argmax(self._nectarGainSPEresult['pixel'] == self.pixels_id[pixel])
+
+
+    def run(self,pixel : int = None,multiproc = False, **kwargs):
+        kwargs['nectarGainSPEresult'] = copy.deepcopy(self.__nectarGainSPEresult)
+        if multiproc :
+            kwargs['same_luminosity'] = self.__same_luminosity
+        super().run(pixel,multiproc,**kwargs)
+
     def _run_obs(self,pixel,prescan = False,**kwargs) : 
         if self.__nectarGainSPEresult[pixel]['is_valid'].value : 
+            kwargs['pixel_id'] = self.pixels_id[pixel]
             super()._run_obs(pixel,prescan,**kwargs)
         else :
-            log.warning(f"fit {pixel} is not valid")
+            log.warning(f"fit pixel {pixel} with pixel_id = {self.pixels_id[pixel]} is not valid")
             self.fill_table(pixel,False)
+
+    @classmethod
+    def _run_obs_static(cls,it : int, funct,parameters: Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) -> dict : 
+        if 'nectarGainSPEresult' in kwargs.keys() and kwargs['nectarGainSPEresult'][kwargs["nectarGainSPEresult"]["pixel"] == pixels_id]['is_valid'].value : 
+            kwargs['pixel_id'] = pixels_id
+            #__class__._update_parameters_prefit_static(it,parameters, charge, histo,**kwargs)
+            return super(__class__,cls)._run_obs_static(it, funct,parameters, pixels_id, charge, histo, prescan = prescan, **kwargs)
+        else :
+            log.warning(f"fit pixel {it} with pixel_id = {pixels_id} is not valid")
+            output = {"is_valid" : False, "pixel" : pixels_id}
+            for parameter in parameters.parameters : 
+                output[parameter.name] = parameter.value 
+                output[f"{parameter.name}_error"] = parameter.error 
+            return output
     
-    
+    """
     def _update_parameters_prefit(self,pixel) : 
         coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.charge,self.histo,pixel,'_nominal')
         self.pedestal.value = coeff[1]
         self.pedestal.min = coeff[1] - coeff[2]
         self.pedestal.max = coeff[1] + coeff[2]
-        self._minuitParameters['values']['pedestal'] = self.pedestal.value
-        self._minuitParameters['limit_pedestal'] = (self.pedestal.min,self.pedestal.max)
+        #self._minuitParameters['values']['pedestal'] = self.pedestal.value
+        #self._minuitParameters['limit_pedestal'] = (self.pedestal.min,self.pedestal.max)
 
         self.resolution.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution'].value
         self.resolution.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution_error'].value
@@ -582,6 +808,8 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
         if self.__same_luminosity : 
             self.luminosity.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value
             self.luminosity.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity_error'].value
+
+    """
 
     def __pixel_index(self,pixel) : 
         return np.argmax(self._nectarGainSPEresult['pixel'] == self.pixels_id[pixel])
@@ -607,7 +835,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
         self.__pedestalFitted = np.empty((self.npixels,2))
         #if parameters file is provided
         if parameters_file is None :
-            parameters_file = NectarGainSPESinglePed.__parameters_file
+            parameters_file = __class__.__parameters_file
         with open(f"{os.path.dirname(os.path.abspath(__file__))}/{parameters_file}") as parameters :
             param = yaml.safe_load(parameters) 
             self.__pedestalWidth = Parameter(name = "pedestalWidth",
@@ -626,59 +854,15 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
         self._make_minuit_parameters()
 
 
-    def _run_obs(self,pixel,prescan = False,**kwargs) : 
-        valid = False
-        self._update_parameters_prefit(pixel)
-        fit = Minuit(self.Chi2(pixel),**self._minuitParameters['values'])
-        UtilsMinuit.set_minuit_parameters_limits_and_errors(fit,self._minuitParameters)
-        log.info(f"Initial value of Likelihood = {self.Chi2(pixel)(**self._minuitParameters['values'])}")
-        log.info(f"Initial parameters value : {fit.values}")
-        #log.debug(self.Chi2(pixel)(0.5,500,14600,50,1))
-        
-        if log.getEffectiveLevel() == logging.ERROR :
-            fit.print_level = 0
-        if log.getEffectiveLevel() == logging.WARNING :
-            fit.print_level = 1
-        if log.getEffectiveLevel() == logging.INFO :
-            fit.print_level = 2
-        if log.getEffectiveLevel() == logging.DEBUG :
-            fit.print_level = 3
-        
-        fit.strategy = 2
-        fit.throw_nan = True
-        if prescan : 
-            log.info("let's do a fisrt brut force scan") 
-            fit.scan()
-        try : 
-            log.info('migrad execution')
-            fit.migrad(ncall=super(NectarGainSPESinglePed,self)._Ncall)
-            fit.hesse()
-            valid = fit.valid
-        except RuntimeError as e : 
-            log.warning(e,exc_info = True)
-            log.info("change method : re-try with simplex")
-            fit.reset()
-            fit.throw_nan = True
-            if prescan : 
-                log.info("let's do a fisrt brut force scan") 
-                fit.scan()
-            try :
-                log.info('simplex execution')
-                fit.simplex(ncall=super(NectarGainSPESinglePed,self)._Ncall)
-                fit.hesse()
-                valid = fit.valid
-            except Exception as e :
-                log.error(e,exc_info = True)
-                log.warning(f"skip pixel {pixel} (pixel_id : {self.pixels_id})")
-                valid = False
 
-        except Exception as e :
-            log.error(e,exc_info = True)
-            raise e
+    def _run_obs(self,pixel,prescan = False,**kwargs) : 
+        self._update_parameters_prefit_static(pixel, self._parameters,self.charge[pixel],self.histo[pixel])
+        fit,valid = self._run_fit(self.Chi2(pixel),self._parameters,pixels_id = self.pixels_id[pixel],prescan = prescan,**kwargs)
+    
         if valid : 
             log.info(f"fitted value : {fit.values}")
             log.info(f"fitted errors : {fit.errors}")
-            self._update_parameters_postfit(fit)
+            self._update_parameters_postfit(fit,self._parameters)
             self.__pedestalFitted[pixel,0] = self.pedestal.value
             self.__pedestalFitted[pixel,1] = self.pedestal.error
 
@@ -704,8 +888,52 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                 plt.close(fig)
                 del fig,ax
         else : 
-            log.warning(f"fit {pixel} is not valid")
+            log.warning(f"fit pixel_id = {self.pixels_id[pixel]} is not valid")
             self.fill_table(pixel,valid)
+
+
+    @classmethod
+    def _run_obs_static(cls,it : int, funct,parameters : Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
+        cls._update_parameters_prefit_static(it,parameters,charge,histo)
+        fit,valid = __class__._run_fit(funct,parameters,pixels_id = pixels_id,prescan = prescan,**kwargs)
+
+        if valid : 
+            log.info(f"fitted value : {fit.values}")
+            log.info(f"fitted errors : {fit.errors}")
+            __class__._update_parameters_postfit(fit,parameters)
+            output = __class__._make_output_dict_obs(fit,valid,pixels_id,parameters)
+            
+            pedestalFitted = np.empty(2)
+            pedestalFitted[0] = parameters["pedestal"].value
+            pedestalFitted[1] = parameters["pedestal"].error
+
+            log.info(f"pedestal is {pedestalFitted[0]:.2f} +/- {pedestalFitted[1]:.2}")
+
+            output['pedestalFitted'] = pedestalFitted[0] 
+            output['pedestalFitted_error'] = pedestalFitted[1]
+
+            if kwargs.get('figpath',0) != 0 :
+                fig,ax = plt.subplots(1,1,figsize=(8, 6))
+                ax.errorbar(charge, histo, np.sqrt(histo),zorder=0,fmt=".",label = "data")
+                ax.plot(charge,
+                    np.trapz(histo, charge)*gaussian(charge, parameters["pedestal"].value,parameters["pedestalWidth"].value),
+                    zorder=1,
+                    linewidth=2,
+                    label = f"MPE model fit \n Pedestal = {round(parameters['pedestal'].value):.2f} +/-  {round(parameters['pedestal'].error,2):.2e} ADC/pe")
+                ax.set_xlabel("Charge (ADC)", size=15)
+                ax.set_ylabel("Events", size=15)
+                ax.set_title(f"Pedestal fit pixel_id = {pixels_id})")
+                ax.legend(fontsize=15)
+                os.makedirs(kwargs.get('figpath'),exist_ok = True)
+                fig.savefig(f"{kwargs.get('figpath')}/fit_Ped_pixel{pixels_id}.pdf")
+                fig.clf()
+                plt.close(fig)
+                del fig,ax
+        else : 
+            log.warning(f"fit pixel_id = {pixels_id} is not valid")
+            output = __class__._make_output_dict_obs(fit,valid,pixels_id,parameters)
+
+        return output
 
     @classmethod
     def NG_Likelihood_Chi2(cls,muped,sigped,charge,histo,**kwargs):
@@ -718,6 +946,13 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
     def Chi2(self,pixel : int):
         def _Chi2(pedestal,pedestalWidth) :
             return self.NG_Likelihood_Chi2(pedestal,pedestalWidth,self.charge[pixel],self.histo[pixel])
+        return _Chi2
+
+    def Chi2_static(self,pixel : int):
+        charge = copy.deepcopy(self.charge[pixel])
+        histo = copy.deepcopy(self.histo[pixel])
+        def _Chi2(pedestal,pedestalWidth) :
+            return self.NG_Likelihood_Chi2(pedestal,pedestalWidth,charge,histo)
         return _Chi2
     
 
