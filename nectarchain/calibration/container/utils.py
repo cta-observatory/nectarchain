@@ -121,10 +121,17 @@ class DataManagement() :
         lines = req.text.split('\r\n')
 
         url_data = None
-        for line in lines : 
+        for i,line in enumerate(lines) : 
             if '<p>' in line : 
                 url_data = line.split("</p>")[0].split('FC:')[1]
+                log.debug(f"url_data found {url_data}")
                 break
+        
+        if i == len(lines)-1 :
+            e=Exception("lfns not found on GRID")
+            log.error(e,exc_info=True)
+            log.debug(lines)
+            raise e
 
         if output_lfns : 
             try : 
