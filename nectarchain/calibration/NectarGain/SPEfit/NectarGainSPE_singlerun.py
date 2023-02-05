@@ -551,6 +551,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         log.debug(f"pedestalWidth updated : {pedestalWidth}")
         try : 
             coeff,var_matrix =  NectarGainSPE._get_mean_gaussian_fit(charge,histo,f'{it}_nominal')
+            if coeff[1] - pedestal.value < 0 : raise Exception("mean gaussian fit not good")
             mean = parameters['mean']
             mean.value = coeff[1] - pedestal.value
             mean.min = (coeff[1] - coeff[2]) - pedestal.max
@@ -778,14 +779,15 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
         if 'nectarGainSPEresult' in kwargs.keys() and kwargs['nectarGainSPEresult'][kwargs["nectarGainSPEresult"]["pixel"] == pixels_id]['is_valid'].value : 
             kwargs['pixel_id'] = pixels_id
             #__class__._update_parameters_prefit_static(it,parameters, charge, histo,**kwargs)
-            return super(__class__,cls)._run_obs_static(it, funct,parameters, pixels_id, charge, histo, prescan = prescan, **kwargs)
+            output = super(__class__,cls)._run_obs_static(it, funct,parameters, pixels_id, charge, histo, prescan = prescan, **kwargs)
+            
         else :
             log.warning(f"fit pixel {it} with pixel_id = {pixels_id} is not valid")
             output = {"is_valid" : False, "pixel" : pixels_id}
             for parameter in parameters.parameters : 
                 output[parameter.name] = parameter.value 
                 output[f"{parameter.name}_error"] = parameter.error 
-            return output
+        return output
     
     """
     def _update_parameters_prefit(self,pixel) : 

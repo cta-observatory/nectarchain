@@ -103,18 +103,18 @@ class NectarGainSPE(ABC) :
         order = 2
         histo_smoothed = savgol_filter(histo, windows_lenght, order)
 
-        peaks = find_peaks(histo_smoothed,20)
+        peaks = find_peaks(histo_smoothed,10)
         peak_max = np.argmax(histo_smoothed[peaks[0]])
         peak_pos,peak_value = charge[peaks[0][peak_max]], histo[peaks[0][peak_max]]
 
         coeff, var_matrix = curve_fit(weight_gaussian, charge[:peaks[0][peak_max]], histo_smoothed[:peaks[0][peak_max]],p0 = [peak_value,peak_pos,1])
 
         #nosw find SPE peak excluding pedestal data
-        mask = charge > coeff[1]+5*coeff[2]
-        peaks_mean = find_peaks(histo_smoothed[mask],20)
+        mask = charge > coeff[1]+3*coeff[2]
+        peaks_mean = find_peaks(histo_smoothed[mask])
         
         peak_max_mean = np.argmax(histo_smoothed[mask][peaks_mean[0]])
-        peak_pos_mean,peak_value_mean = charge[mask][peaks_mean[0][peak_max_mean]], histo[mask][peaks_mean[0][peak_max_mean]]
+        peak_pos_mean,peak_value_mean = charge[mask][peaks_mean[0][peak_max_mean]], histo_smoothed[mask][peaks_mean[0][peak_max_mean]]
 
         mask = (charge > ((coeff[1]+peak_pos_mean)/2)) * (charge < (peak_pos_mean + (peak_pos_mean-coeff[1])/2))
         coeff_mean, var_matrix = curve_fit(weight_gaussian, charge[mask], histo_smoothed[mask],p0 = [peak_value_mean,peak_pos_mean,1])
