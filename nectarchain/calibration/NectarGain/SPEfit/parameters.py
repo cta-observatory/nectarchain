@@ -7,10 +7,8 @@ import os
 import copy
 import numpy as np
 
-
 import astropy.units as u
 from astropy.units import UnitsError
-
 
 __all__ = ["Parameter","Parameters"]
 

@@ -26,7 +26,6 @@ import astropy.units as u
 
 import pandas as pd
 
-
 from .parameters import Parameters, Parameter
 from .utils import UtilsMinuit,weight_gaussian
 
@@ -82,7 +81,6 @@ class NectarGainSPE(ABC) :
             output[parameter.name] = parameter.value 
             output[f"{parameter.name}_error"] = parameter.error 
         return output
-
 
     def read_param_from_yaml(self,parameters_file) :
         with open(f"{os.path.dirname(os.path.abspath(__file__))}/{parameters_file}") as parameters :
@@ -171,9 +169,6 @@ class NectarGainSPE(ABC) :
             plt.close(fig)
             del fig,ax
         return coeff,var_matrix
-            
-
-
 
     @abstractmethod
     def create_output_table(self) : pass

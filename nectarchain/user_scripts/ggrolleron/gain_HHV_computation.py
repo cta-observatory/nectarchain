@@ -32,8 +32,6 @@ import json
 from nectarchain.calibration.container import ChargeContainer
 from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal,NectarGainSPESinglePed,NectarGainSPECombinedNoPed
 
-
-
 parser = argparse.ArgumentParser(
                     prog = 'gain_HHV_computation.py',
                     description = 'compute high gain with SPE fit for one run at very very high voltage (~1400V)')
@@ -61,7 +59,6 @@ parser.add_argument('-p','--pixels',
                     help='pixels selected',
                     type=int)
 
-
 #multiprocessing args
 parser.add_argument('--multiproc',
                     action='store_true',
@@ -74,7 +71,6 @@ parser.add_argument('--nproc',
 parser.add_argument('--chunksize',
                     help='chunksize used for multiprocessing',
                     type=int)
-
 
 #extractor arguments
 parser.add_argument('--chargeExtractorPath',
@@ -98,7 +94,6 @@ def main(args) :
     gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}1400V-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     conv_rate = len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._output_table[gain_Std._output_table['is_valid']])/len(args.pixels)
     log.info(f"convergence rate : {conv_rate}")
-
 
 if __name__ == "__main__":
     args = parser.parse_args()

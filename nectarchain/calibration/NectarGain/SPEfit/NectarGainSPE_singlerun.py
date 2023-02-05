@@ -43,7 +43,6 @@ from abc import ABC, abstractclassmethod, abstractmethod
 __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGainSPESinglePed","NectarGainSPESingleSignalfromHHVFit"]
 
 
-
 class NectarGainSPESingle(NectarGainSPE):
     _Ncall = 4000000
     _Nproc_Multiprocess = mlp.cpu_count() // 2
@@ -67,7 +66,6 @@ class NectarGainSPESingle(NectarGainSPE):
         
 
         self._parameters.append(self.__pedestal)
-        
     
     def create_output_table(self) :
         self._output_table.meta['npixel'] = self.npixels
@@ -103,7 +101,7 @@ class NectarGainSPESingle(NectarGainSPE):
         if log.getEffectiveLevel() == logging.WARNING :
             fit.print_level = 1
         if log.getEffectiveLevel() == logging.INFO :
-            fit.print_level = 0
+            fit.print_level = 2
         if log.getEffectiveLevel() == logging.DEBUG :
             fit.print_level = 3
         
@@ -206,19 +204,19 @@ class NectarGainSPESingle(NectarGainSPE):
                     chunksize = kwargs.get("chunksize",max(1,self.npixels//(nproc*10)))
                     log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
 
-                    #handlerlevel = []
-                    #for handler in log.handlers : 
-                    #    handlerlevel.append(handler.level)
-                    #    handler.setLevel(logging.FATAL)
-                    #loglevel = log.getEffectiveLevel()
-                    #log.setLevel(logging.FATAL)
+                    handlerlevel = []
+                    for handler in log.handlers : 
+                        handlerlevel.append(handler.level)
+                        handler.setLevel(logging.FATAL)
+                    loglevel = log.getEffectiveLevel()
+                    log.setLevel(logging.FATAL)
 
                     result = pool.starmap_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,[i for i in range(self.npixels)]), [(i,kwargs) for i in tqdm(range(self.npixels))],chunksize = chunksize)
                     result.wait()
 
-                    #for i,handler in enumerate(log.handlers) : 
-                    #    handler.setLevel(handlerlevel[i])
-                    #log.setLevel(loglevel)
+                    for i,handler in enumerate(log.handlers) : 
+                        handler.setLevel(handlerlevel[i])
+                    log.setLevel(loglevel)
                     
                     ###WITH APPLY_ASYNC ###
                     #result = [pool.apply_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels),args = (i,),kwds = kwargs) for i in tqdm(pixels)]
@@ -235,11 +233,7 @@ class NectarGainSPESingle(NectarGainSPE):
                     log.error(e,exc_info=True)
                     log.error(f"results : {result._value}")
                     raise e
-                
-                
-
-                    
-                    
+    
             else  :
                 for i in tqdm(range(self.npixels)) :
                     task_simple(i,**kwargs)
@@ -260,12 +254,12 @@ class NectarGainSPESingle(NectarGainSPE):
                     chunksize = kwargs.get("chunksize",max(1,len(pixels)//(nproc*10)))
                     log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
 
-                    #handlerlevel = []
-                    #for handler in log.handlers : 
-                    #    handlerlevel.append(handler.level)
-                    #    handler.setLevel(logging.FATAL)
-                    #loglevel = log.getEffectiveLevel()
-                    #log.setLevel(logging.FATAL)
+                    handlerlevel = []
+                    for handler in log.handlers : 
+                        handlerlevel.append(handler.level)
+                        handler.setLevel(logging.FATAL)
+                    loglevel = log.getEffectiveLevel()
+                    log.setLevel(logging.FATAL)
 
                     result = pool.starmap_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
                                         [(i,kwargs) for i in tqdm(pixels)],
@@ -274,9 +268,9 @@ class NectarGainSPESingle(NectarGainSPE):
                                         )
                     result.wait()
 
-                    #for i,handler in enumerate(log.handlers) : 
-                    #    handler.setLevel(handlerlevel[i])
-                    #log.setLevel(loglevel)
+                    for i,handler in enumerate(log.handlers) : 
+                        handler.setLevel(handlerlevel[i])
+                    log.setLevel(loglevel)
                     
                     ###WITH APPLY_ASYNC ###
                     #result = [pool.apply_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels),args = (i,),kwds = kwargs) for i in tqdm(pixels)]
@@ -326,12 +320,8 @@ class NectarGainSPESingle(NectarGainSPE):
         pedestal.max = coeff[1] + coeff[2]
         log.debug(f"pedestal updated : {pedestal}")
         
-        
-
-
     @abstractclassmethod
     def NG_Likelihood_Chi2(cls,**kwargs) : pass
-
 
     @property
     def charge(self) : return self.__charge
@@ -340,7 +330,6 @@ class NectarGainSPESingle(NectarGainSPE):
 
     @property
     def pedestal(self) : return self.__pedestal
-
 
     #run properties
     @property
@@ -410,7 +399,6 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         self._make_minuit_parameters()
 
         self.create_output_table()
-
 
     @classmethod
     def _run_obs_static(cls,it : int, funct,parameters : Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
@@ -576,7 +564,6 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
     def pedestalWidth(self) : return self.__pedestalWidth
     @property
     def gain(self) : return self.__gain
-    
 
 
     #intern parameters
@@ -633,7 +620,6 @@ class NectarGainSPESingleSignalStd(NectarGainSPESingleSignal):
 
             return self.NG_Likelihood_Chi2(self.pp.value,resolution,mean,self.n.value,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
         return _Chi2
-
     
     def Chi2_static(self, pixel : int) :
         pp = copy.deepcopy(self.pp)
@@ -789,40 +775,12 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
                 output[f"{parameter.name}_error"] = parameter.error 
         return output
     
-    """
-    def _update_parameters_prefit(self,pixel) : 
-        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.charge,self.histo,pixel,'_nominal')
-        self.pedestal.value = coeff[1]
-        self.pedestal.min = coeff[1] - coeff[2]
-        self.pedestal.max = coeff[1] + coeff[2]
-        #self._minuitParameters['values']['pedestal'] = self.pedestal.value
-        #self._minuitParameters['limit_pedestal'] = (self.pedestal.min,self.pedestal.max)
-
-        self.resolution.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution'].value
-        self.resolution.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['resolution_error'].value
-
-        self.pp.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['pp'].value
-        self.pp.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['pp_error'].value
-
-        self.n.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['n'].value
-        self.n.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['n_error'].value
-
-        if self.__same_luminosity : 
-            self.luminosity.value = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity'].value
-            self.luminosity.error = self.__nectarGainSPEresult[self.__pixel_index(pixel)]['luminosity_error'].value
-
-    """
-
     def __pixel_index(self,pixel) : 
         return np.argmax(self._nectarGainSPEresult['pixel'] == self.pixels_id[pixel])
 
 
     @property
     def _nectarGainSPEresult(self) : return self.__nectarGainSPEresult
-
-
-
-        
 
 
 class NectarGainSPESinglePed(NectarGainSPESingle):
@@ -854,8 +812,6 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
 
 
         self._make_minuit_parameters()
-
-
 
     def _run_obs(self,pixel,prescan = False,**kwargs) : 
         self._update_parameters_prefit_static(pixel, self._parameters,self.charge[pixel],self.histo[pixel])
@@ -892,7 +848,6 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
         else : 
             log.warning(f"fit pixel_id = {self.pixels_id[pixel]} is not valid")
             self.fill_table(pixel,valid)
-
 
     @classmethod
     def _run_obs_static(cls,it : int, funct,parameters : Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
@@ -960,27 +915,3 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
 
     @property
     def pedestalWidth(self) : return self.__pedestalWidth
-
-    
-
-
-
-
-    #useless now (with __fix__parameters)
-    #def Chi2Fixed(self) :
-    #    return self.NG_LikelihoodSignal_Chi2(pp,res,mu2,n,muped,sigped,lum,self.chargeSignal,self.histoSignal)
-
-
-
-
-        
-#class NectarGainSPESingleStd(NectarGainSPESingle):
-#    """class to perform fit of the 1000V signal and pedestal"""
-
-#class NectarGainSPESingleSignalHHV(NectarGainSPESingle):
-#    """class to perform fit of the 1400V signal"""
-
-#class NectarGainSPESinglePedestalHHV(NectarGainSPESingle):
-#    """class to perform fit of the 1400V pedestal"""
-
-

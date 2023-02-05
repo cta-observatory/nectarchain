@@ -32,7 +32,6 @@ import json
 from nectarchain.calibration.container import ChargeContainer
 from nectarchain.calibration.NectarGain import PhotoStatGainFFandPed
 
-
 parser = argparse.ArgumentParser(
                     prog = 'gain_PhotoStat_computation.py',
                     description = 'compute high gain and low gain with Photo-statistic method, it need a pedestal run and a FF run with a SPE fit restuls (for resolution value needed in this method)')
@@ -90,7 +89,6 @@ def main(args) :
         fig = photoStat_FFandPed.plot_correlation()
         os.makedirs(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}{reduced}/",exist_ok=True)
         fig.savefig(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}{reduced}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf")
-
 
 if __name__ == "__main__":
     args = parser.parse_args()

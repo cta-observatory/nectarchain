@@ -13,9 +13,7 @@ import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 
-
 from iminuit import Minuit
-
 
 from ..utils.error import DifferentPixelsID
 
@@ -24,14 +22,10 @@ from nectarchain.calibration.container import ChargeContainer
 from .NectarGainSPE import NectarGainSPE
 from .utils import UtilsMinuit,Gain,MPE2,weight_gaussian
 
-
 __all__ = ["NectarGainSPECombinedNoPed"]
-
-
 
 class NectarGainSPESingleHHV(NectarGainSPESingle):
     """class to perform fit of the 1400V signal and pedestal"""
-
 
 class NectarGainSPESingleCombined(NectarGainSPESingle):
     """class to perform fit of the 1400V and 1000V signal and pedestal"""
@@ -63,8 +57,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         self.__gain = np.empty((self.__npixels,3))
         self.__gainHHV = np.empty((self.__npixels,3))
 
-
-
         #shared parameters
         self.__pp = self.nectarGainHHV.pp
         self.__resolution = self.nectarGainHHV.resolution
@@ -77,8 +69,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         if same_luminosity :
             self.__luminosity = self.nectarGainHHV.luminosity
             self._parameters.append(self.__luminosity)
-
-        
 
         #others
         if not(same_luminosity) :
@@ -107,8 +97,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
 
         self.create_output_table()
 
-
-
     def create_output_table(self) :
         self._output_table.meta['npixel'] = self.npixels
         self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
@@ -124,15 +112,10 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),parameter.name,unit = parameter.unit))
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),f'{parameter.name}_error',unit = parameter.unit))
 
-
-
-
     def Chi2(self,pixel : int):
         def _Chi2(resolution,mean,meanHHV,pedestal,pedestalHHV,pedestalWidth,luminosity) :            
             return self.nectarGainHHV.Chi2(pixel)(resolution,meanHHV,pedestalHHV,pedestalWidth,luminosity) + self.nectarGain.Chi2(pixel)(resolution,mean,pedestal,pedestalWidth,luminosity)
         return _Chi2
-
-
 
     def save(self,path,**kwargs) :
         path = Path(path)
@@ -140,7 +123,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         log.info(f'data saved in {path}')
         self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
     
-
     def run(self,pixel : int = None,**kwargs):
         if pixel is None : 
             for i in tqdm(range(self.npixels)) :
@@ -235,8 +217,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
             self._output_table['gainHHV_error'][pixel][0] = self.__gainHHV[pixel,1] 
             self._output_table['gainHHV_error'][pixel][1] = self.__gainHHV[pixel,2] 
 
-
-
             if kwargs.get('figpath',0) != 0 :
                 fig,ax = plt.subplots(1,2,figsize=(16, 6))
                 ax[0].errorbar(self.nectarGain.charge[pixel],self.nectarGain.histo[pixel],np.sqrt(self.nectarGain.histo[pixel]),zorder=0,fmt=".",label = "data")
@@ -269,7 +249,6 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         else : 
             log.warning(f"fit {pixel} is not valid")
             self.fill_table(pixel,valid)
-    
 
     def _update_parameters_prefit(self,pixel) : 
 
@@ -287,13 +266,7 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
         self._minuitParameters['values']['pedestalHHV'] = self.__pedestalHHV.value
         self._minuitParameters['limit_pedestalHHV'] = (self.__pedestalHHV.min,self.__pedestalHHV.max)
 
-
-    
-
-
-
     def NG_Likelihood_Chi2(cls,**kwargs) : pass
-
 
     #run properties
     @property

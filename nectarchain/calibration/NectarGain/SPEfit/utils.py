@@ -131,7 +131,6 @@ def Gain(pp,res,mu2,n):
     p = pp*PMax(res)
     sig2 = sigma2(n,p,res,mu2)
     return (1-p)*mu2 + 2*p*sigma1(p,res,sig2,mu2)/np.sqrt(2*np.pi)
-    
 
 def nPEPDF(x,pp,res,mu2,n,muped,sigped,nph,size_charge):
     allrange = np.linspace(-1 * size_charge,size_charge,size_charge*2)

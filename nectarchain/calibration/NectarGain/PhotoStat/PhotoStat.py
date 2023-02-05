@@ -15,8 +15,6 @@ import os
 from datetime import date
 from pathlib import Path
 
-
-
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
@@ -117,8 +115,6 @@ class PhotoStatGain(ABC):
         self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),"low gain",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels,2),dtype = np.float64),"low gain error",unit = u.dimensionless_unscaled))
 
-
-
     def run(self,**kwargs):
         log.info('running photo statistic method')
 
@@ -150,17 +146,11 @@ class PhotoStatGain(ABC):
             ax.legend(fontsize=15)
             return fig
 
-
-
-
     @property
     def npixels(self) : return self._pixels_id.shape[0]
 
     @property
     def pixels_id(self) : return self._pixels_id
-
-
-
 
     @property
     def sigmaPedHG(self) : return np.std(self.Pedcharge.charge_hg,axis = 0)
@@ -211,9 +201,6 @@ class PhotoStatGain(ABC):
 
 
 
-
-
-
 class PhotoStatGainFFandPed(PhotoStatGain):
     def __init__(self, FFRun, PedRun, SPEresults : str, maxevents : int = None, **kwargs) : 
         self._readFF(FFRun,maxevents,**kwargs)
@@ -241,15 +228,6 @@ class PhotoStatGainFFandPed(PhotoStatGain):
 
         self.create_output_table()
 
-
-
-
-
-
-
-
-
-    
 
 
 class PhotoStatGainFF(PhotoStatGain):

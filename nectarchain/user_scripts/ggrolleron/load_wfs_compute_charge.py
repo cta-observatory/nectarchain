@@ -119,7 +119,6 @@ for arg in ['spe','ff','ped'] :
         log.error(e,exc_info=True)
         raise e
 
-
 def load_wfs_compute_charge(runs_list : list,
                             reload_wfs : bool = False,
                             overwrite : bool= False,
@@ -179,7 +178,6 @@ def load_wfs_compute_charge(runs_list : list,
         del charge
     
 
-
 def main(spe_run_number : list = [],
         ff_run_number : list = [], 
         ped_run_number: list = [],
@@ -209,8 +207,6 @@ def main(spe_run_number : list = [],
                             max_events = max_events,
                             **kwargs)
 
-
-
 if __name__ == '__main__':
 
 
@@ -238,5 +234,3 @@ if __name__ == '__main__':
     arg['path'] = path
     
     main(**arg)
-
-

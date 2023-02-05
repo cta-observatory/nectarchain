@@ -32,8 +32,6 @@ import json
 from nectarchain.calibration.container import ChargeContainer
 from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal,NectarGainSPESinglePed,NectarGainSPECombinedNoPed,NectarGainSPESingleSignalfromHHVFit
 
-
-
 parser = argparse.ArgumentParser(
                     prog = 'gain_nominal_computation.py',
                     description = 'compute high gain with SPE fit for one run at nominal voltage')
@@ -119,7 +117,6 @@ def main(args) :
         log.info(f"fit time =  {time.time() - t } sec")
         gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}nominal-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
         log.info(f"convergence rate : {len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels}")
-
 
 if __name__ == "__main__":
     args = parser.parse_args()
