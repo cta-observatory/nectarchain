@@ -115,7 +115,7 @@ def main(args) :
                                     same_luminosity=args.same_luminosity
                                     )
         t = time.time()
-        gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}nominal-Std-{args.run_number}-{args.chargeExtractorPath}")
+        gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}nominal-SPEStd-{args.run_number}-{args.chargeExtractorPath}")
         log.info(f"fit time =  {time.time() - t } sec")
         gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}nominal-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
         log.info(f"convergence rate : {len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels}")
