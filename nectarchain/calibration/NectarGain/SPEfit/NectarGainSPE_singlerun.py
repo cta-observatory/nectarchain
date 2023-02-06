@@ -149,30 +149,8 @@ class NectarGainSPESingle(NectarGainSPE):
             else  :
                 log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
                 self._run_obs(i,**kwargs)
-
-        def task_multiple(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray) : 
-            _funct = funct
-            _parameters = parameters
-            _pixels_id = pixels_id
-            _charge = charge
-            _histo = histo
-            def task(i,**kwargs) : 
-                log.info(f"i = {i}")
-                log.debug(f"{kwargs}")
-
-                if charge.mask.all() : 
-                    log.info(f'do not run fit on pixel {i} (pixel_id = {pixels_id}), it seems to be a broken pixel from charge computation')
-                    output = {"is_valid" : False, "pixel" : pixels_id}
-                    for parameter in _parameters.parameters : 
-                        output[parameter.name] = parameter.value 
-                        output[f"{parameter.name}_error"] = parameter.error 
-                    return output
-                else  :
-                    log.info(f"running SPE fit for pixel {i} (pixel_id = {pixels_id})")
-                    return self.__class__._run_obs_static(i,_funct, _parameters, _pixels_id, _charge, _histo, **kwargs)
-            return task
         
-        def task_multiple_bis(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,pix) : 
+        def task_multiple(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,pix) : 
             _funct = {i : funct(i) for i in pix}
             _parameters = copy.deepcopy(parameters)
             _pixels_id = copy.deepcopy(pixels_id)
@@ -189,10 +167,17 @@ class NectarGainSPESingle(NectarGainSPE):
                     for parameter in _parameters.parameters : 
                         output[parameter.name] = parameter.value 
                         output[f"{parameter.name}_error"] = parameter.error 
-                    return output
                 else  :
                     log.info(f"running SPE fit for pixel {i} (pixel_id = {pixels_id[i]})")
-                    return _class._run_obs_static(i,_funct[i], copy.deepcopy(_parameters), _pixels_id[i], _charge[i], _histo[i], **kwargs)
+                    try :
+                        output = _class._run_obs_static(i,_funct[i], copy.deepcopy(_parameters), _pixels_id[i], _charge[i], _histo[i], **kwargs)
+                    except Exception as e : 
+                        log.error(e,exc_info=True)
+                        output = {"is_valid" : False, "pixel" : pixels_id}
+                        for parameter in _parameters.parameters : 
+                            output[parameter.name] = parameter.value 
+                            output[f"{parameter.name}_error"] = parameter.error 
+                return output
             return task
 
         if pixel is None : 
@@ -211,7 +196,7 @@ class NectarGainSPESingle(NectarGainSPE):
                     loglevel = log.getEffectiveLevel()
                     log.setLevel(logging.FATAL)
 
-                    result = pool.starmap_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,[i for i in range(self.npixels)]), [(i,kwargs) for i in tqdm(range(self.npixels))],chunksize = chunksize)
+                    result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,[i for i in range(self.npixels)]), [(i,kwargs) for i in tqdm(range(self.npixels))],chunksize = chunksize)
                     result.wait()
 
                     for i,handler in enumerate(log.handlers) : 
@@ -261,7 +246,7 @@ class NectarGainSPESingle(NectarGainSPE):
                     loglevel = log.getEffectiveLevel()
                     log.setLevel(logging.FATAL)
 
-                    result = pool.starmap_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
+                    result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
                                         [(i,kwargs) for i in tqdm(pixels)],
                                         chunksize = chunksize,
                                         error_callback=Multiprocessing.custom_error_callback
