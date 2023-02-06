@@ -54,7 +54,8 @@ parser.add_argument('--SPE_fit_results',
 #tag for SPE fit results propagation
 parser.add_argument('--SPE_fit_results_tag',
                     help='SPE fit results tag for propagate the SPE result to output',
-                    type=str
+                    type=str,
+                    default=''
                     )
 
 parser.add_argument('--overwrite',
@@ -75,6 +76,12 @@ parser.add_argument('--correlation',
                     help='to plot correlation between SPE gain computation and Photo-statistic gain resluts'
                     )
 
+#extractor arguments
+parser.add_argument('--chargeExtractorPath',
+                    help='charge extractor path where charges are saved',
+                    type=str
+                    )
+
 
 def main(args) : 
     figpath = os.environ.get('NECTARCHAIN_FIGURES')
@@ -83,12 +90,12 @@ def main(args) :
 
     photoStat_FFandPed = PhotoStatGainFFandPed(args.FF_run_number, args.ped_run_number, SPEresults = args.SPE_fit_results)    
     photoStat_FFandPed.run()
-    photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../data{reduced}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}/",overwrite = args.overwrite)
+    photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data{reduced}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
 
     if args.correlation : 
         fig = photoStat_FFandPed.plot_correlation()
-        os.makedirs(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}{reduced}/",exist_ok=True)
-        fig.savefig(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}{reduced}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf")
+        os.makedirs(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}{reduced}/",exist_ok=True)
+        fig.savefig(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}{reduced}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf")
 
 if __name__ == "__main__":
     args = parser.parse_args()

@@ -30,11 +30,11 @@ import json
 
 #import seaborn as sns
 from nectarchain.calibration.container import ChargeContainer
-from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal,NectarGainSPESinglePed,NectarGainSPECombinedNoPed
+from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal,NectarGainSPESinglePed,NectarGainSPECombinedNoPed,NectarGainSPESingleSignalfromHHVFit
 
 parser = argparse.ArgumentParser(
-                    prog = 'gain_HHV_computation.py',
-                    description = 'compute high gain with SPE fit for one run at very very high voltage (~1400V)')
+                    prog = 'gain_SPEfit_combined_computation.py',
+                    description = 'compute high gain with SPE combined fit for one run at nominal voltage')
 
 #run numbers
 parser.add_argument('-r', '--run_number',
@@ -59,6 +59,7 @@ parser.add_argument('-p','--pixels',
                     help='pixels selected',
                     type=int)
 
+
 #multiprocessing args
 parser.add_argument('--multiproc',
                     action='store_true',
@@ -72,10 +73,33 @@ parser.add_argument('--chunksize',
                     help='chunksize used for multiprocessing',
                     type=int)
 
+
 #extractor arguments
 parser.add_argument('--chargeExtractorPath',
                     help='charge extractor path where charges are saved',
                     type=str
+                    )
+
+#for VVH combined fit
+parser.add_argument('--combined',
+                    action='store_true',
+                    default=False,
+                    help='to perform a combined fit of VVH and nominal data'
+                    )
+parser.add_argument('--VVH_fitted_results',
+                    help='previoulsy fitted VVH data path for nominal SPE fit by fixing some shared parameters',
+                    type=str
+                    )
+#tag for SPE fit results propagation
+parser.add_argument('--SPE_fit_results_tag',
+                    help='SPE fit results tag for propagate the SPE result to output',
+                    type=str,
+                    default=''
+                    )
+parser.add_argument('--same_luminosity',
+                    action='store_true',
+                    default=False,
+                    help='if luminosity for VVH and nominal data is the same'
                     )
 
 
@@ -85,15 +109,20 @@ def main(args) :
     reduced = "_reduced" if args.reduced else ""
     multipath = "MULTI-" if args.multiproc else ""
 
-    charge_run_1400V = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges{reduced}/{args.chargeExtractorPath}/",args.run_number)
+    charge_run = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges{reduced}/{args.chargeExtractorPath}/",args.run_number)
 
-    gain_Std = NectarGainSPESingleSignalStd(signal = charge_run_1400V)
-    t = time.time()
-    gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}1400V-SPEStd-{args.run_number}-{args.chargeExtractorPath}")
-    log.info(f"fit time =  {time.time() - t } sec")
-    gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}1400V-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
-    conv_rate = len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._output_table[gain_Std._output_table['is_valid']])/len(args.pixels)
-    log.info(f"convergence rate : {conv_rate}")
+    if args.combined : 
+        raise NotImplementedError("combined fit not implemented yet")
+    else : 
+        gain_Std = NectarGainSPESingleSignalfromHHVFit(signal = charge_run,
+                                    nectarGainSPEresult=args.VVH_fitted_results,
+                                    same_luminosity=args.same_luminosity
+                                    )
+        t = time.time()
+        gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}")
+        log.info(f"fit time =  {time.time() - t } sec")
+        gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
+        log.info(f"convergence rate : {len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels}")
 
 if __name__ == "__main__":
     args = parser.parse_args()
