@@ -16,15 +16,6 @@ os.makedirs(os.environ.get('NECTARCHAIN_LOG'),exist_ok = True)
 #to quiet numba
 logging.getLogger("numba").setLevel(logging.WARNING)
 
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.INFO,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
-log = logging.getLogger(__name__)
-##tips to add message to stdout
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-log.addHandler(handler)
-
 import argparse
 import json
 
@@ -82,6 +73,32 @@ parser.add_argument('--chargeExtractorPath',
                     type=str
                     )
 
+#verbosity argument
+parser.add_argument('-v',"--verbosity",
+                    help='0 for FATAL, 1 for WARNING, 2 for INFO and 3 for DEBUG',
+                    default=0,
+                    type=int)
+
+logging.getLogger("numba").setLevel(logging.WARNING)
+args = parser.parse_args()
+logginglevel = logging.DEBUG
+if args.verbosity == 1 : 
+    logginglevel = logging.WARNING
+elif args.verbosity == 2 : 
+    logginglevel = logging.INFO
+elif args.verbosity == 3 : 
+    logginglevel = logging.DEBUG
+
+os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}")
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logginglevel,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log")
+log = logging.getLogger(__name__)
+##tips to add message to stdout
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logginglevel)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
 
 def main(args) : 
     figpath = os.environ.get('NECTARCHAIN_FIGURES')
@@ -99,4 +116,24 @@ def main(args) :
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    logginglevel = logging.FATAL
+    if args.verbosity == 1 : 
+        logginglevel = logging.WARNING
+    elif args.verbosity == 2 : 
+        logginglevel = logging.INFO
+    elif args.verbosity == 3 : 
+        logginglevel = logging.DEBUG
+
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',force = True, level=logginglevel,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log")
+
+    log = logging.getLogger(__name__)
+    log.setLevel(logginglevel)
+    ##tips to add message to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logginglevel)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+
     main(args)

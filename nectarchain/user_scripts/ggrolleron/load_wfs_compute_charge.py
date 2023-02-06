@@ -10,14 +10,8 @@ import argparse
 import json
 
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.DEBUG,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
+logging.getLogger("numba").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
-##tips to add message to stdout
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-log.addHandler(handler)
 
 from nectarchain.calibration.container import WaveformsContainer, WaveformsContainers
 from nectarchain.calibration.container import ChargeContainer, ChargeContainers
@@ -101,6 +95,12 @@ parser.add_argument('--extractor_kwargs',
                     help='charge extractor kwargs',
                     type=json.loads
                     )
+
+#verbosity argument
+parser.add_argument('-v',"--verbosity",
+                    help='0 for FATAL, 1 for WARNING, 2 for INFO and 3 for DEBUG',
+                    default=0,
+                    type=int)
 
 args = parser.parse_args()
 
@@ -215,7 +215,28 @@ if __name__ == '__main__':
     #ff_run_number = [2608]
     #ped_run_number = [2609]
     #spe_nevents = [49227,49148,-1]
-    
+
+    args = parser.parse_args()
+    logginglevel = logging.FATAL
+    if args.verbosity == 1 : 
+        logginglevel = logging.WARNING
+    elif args.verbosity == 2 : 
+        print(args)
+        logginglevel = logging.INFO
+    elif args.verbosity == 3 : 
+        logginglevel = logging.DEBUG
+
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',force = True, level=logginglevel,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log")
+
+    log = logging.getLogger(__name__)
+    log.setLevel(logginglevel)
+    ##tips to add message to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logginglevel)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
 
     arg = vars(args)
     log.info(f"arguments are : {arg}")

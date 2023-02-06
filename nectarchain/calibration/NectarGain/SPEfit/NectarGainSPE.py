@@ -128,8 +128,8 @@ class NectarGainSPE(ABC) :
             ax.set_xlabel("Charge (ADC)", size=15)
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=15)
-            os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/",exist_ok=True)
-            fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf")
+            os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/",exist_ok=True)
+            fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf")
             fig.clf()
             plt.close(fig)
             del fig,ax
@@ -163,8 +163,8 @@ class NectarGainSPE(ABC) :
             ax.set_xlabel("Charge (ADC)", size=15)
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=15)
-            os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/",exist_ok=True)
-            fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/figures/initialization_pedestal_pixel{extension}_{os.getpid()}.pdf")
+            os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/",exist_ok=True)
+            fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_pedestal_pixel{extension}_{os.getpid()}.pdf")
             fig.clf()
             plt.close(fig)
             del fig,ax
