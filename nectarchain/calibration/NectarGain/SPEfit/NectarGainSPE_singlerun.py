@@ -7,7 +7,7 @@ from scipy.special import gammainc
 from iminuit import Minuit
 import random
 import astropy.units as u
-from astropy.table import QTable,Column
+from astropy.table import QTable,Column,MaskedColumn
 import astropy.units as u
 import yaml
 import os
@@ -84,6 +84,10 @@ class NectarGainSPESingle(NectarGainSPE):
         self._output_table = QTable.from_pandas(pd.DataFrame.from_dict(list_dict))
         for param in self._parameters.parameters :
             self._output_table[param.name] = Column(self._output_table[param.name].value, param.name, unit=param.unit)
+        if 'gain' in self._output_table.colnames :
+            if isinstance(self._output_table['gain'],MaskedColumn) :
+                self._output_table['gain'] = self._output_table['gain']._data
+                self._output_table['gain_error'] = self._output_table['gain_error']._data
         self._output_table.meta['npixel'] = self.npixels
         self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
 
@@ -193,15 +197,16 @@ class NectarGainSPESingle(NectarGainSPE):
                     for handler in log.handlers : 
                         handlerlevel.append(handler.level)
                         handler.setLevel(logging.FATAL)
-                    loglevel = log.getEffectiveLevel()
-                    log.setLevel(logging.FATAL)
+                    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+                    loglevel = [logger.getEffectiveLevel() for logger in loggers]
+                    for logger in loggers : logger.setLevel(logging.FATAL)
 
                     result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,[i for i in range(self.npixels)]), [(i,kwargs) for i in tqdm(range(self.npixels))],chunksize = chunksize)
                     result.wait()
 
                     for i,handler in enumerate(log.handlers) : 
                         handler.setLevel(handlerlevel[i])
-                    log.setLevel(loglevel)
+                    for i,logger in enumerate(loggers) : logger.setLevel(loglevel[i])
                     
                     ###WITH APPLY_ASYNC ###
                     #result = [pool.apply_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels),args = (i,),kwds = kwargs) for i in tqdm(pixels)]
@@ -243,8 +248,10 @@ class NectarGainSPESingle(NectarGainSPE):
                     for handler in log.handlers : 
                         handlerlevel.append(handler.level)
                         handler.setLevel(logging.FATAL)
-                    loglevel = log.getEffectiveLevel()
-                    log.setLevel(logging.FATAL)
+                    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+                    loglevel = [logger.getEffectiveLevel() for logger in loggers]
+                    for logger in loggers : logger.setLevel(logging.FATAL)
+
 
                     result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
                                         [(i,kwargs) for i in tqdm(pixels)],
@@ -255,7 +262,9 @@ class NectarGainSPESingle(NectarGainSPE):
 
                     for i,handler in enumerate(log.handlers) : 
                         handler.setLevel(handlerlevel[i])
-                    log.setLevel(loglevel)
+                    for i,logger in enumerate(loggers) : logger.setLevel(loglevel[i])
+
+
                     
                     ###WITH APPLY_ASYNC ###
                     #result = [pool.apply_async(task_multiple_bis(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels),args = (i,),kwds = kwargs) for i in tqdm(pixels)]
