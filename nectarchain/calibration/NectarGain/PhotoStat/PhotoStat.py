@@ -101,6 +101,14 @@ class PhotoStatGain(ABC):
         self._SPEvalid = table['is_valid']
         self._SPE_pixels_id = np.array(table['pixel'].value,dtype = np.uint16)
 
+    def _reshape_all(self) : 
+        FFped_intersection =  np.intersect1d(self.Pedcharge.pixels_id,self.FFcharge.pixels_id)
+        SPEFFPed_intersection = np.intersect1d(FFped_intersection,self._SPE_pixels_id[self._SPEvalid])
+        self._pixels_id = SPEFFPed_intersection
+        self._mask_FF = np.array([self.FFcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.FFcharge.npixels)],dtype = bool)
+        self._mask_Ped = np.array([self.Pedcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.Pedcharge.npixels)],dtype = bool)
+        self._mask_SPE = np.array([self._SPE_pixels_id[i] in SPEFFPed_intersection for i in range(len(self._SPE_pixels_id))],dtype = bool)
+
     
 
     def create_output_table(self) :
@@ -108,7 +116,7 @@ class PhotoStatGain(ABC):
         self._output_table.meta['npixel'] = self.npixels
         self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
 
-        self._output_table.add_column(Column(np.zeros((self.npixels),dtype = bool),"is_valid",unit = u.dimensionless_unscaled))
+        self._output_table.add_column(Column(np.ones((self.npixels),dtype = bool),"is_valid",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(self.pixels_id,"pixel",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),"high gain",unit = u.dimensionless_unscaled))
         self._output_table.add_column(Column(np.empty((self.npixels,2),dtype = np.float64),"high gain error",unit = u.dimensionless_unscaled))
@@ -120,7 +128,7 @@ class PhotoStatGain(ABC):
 
         self._output_table["high gain"] = self.gainHG
         self._output_table["low gain"] = self.gainLG
-        self._output_table["is_valid"] = self._SPEvalid
+        #self._output_table["is_valid"] = self._SPEvalid
 
     def save(self,path,**kwargs) : 
         path = Path(path)
@@ -129,13 +137,13 @@ class PhotoStatGain(ABC):
         self._output_table.write(f"{path}/output_table.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
 
     def plot_correlation(self) : 
-        mask = (self._output_table["high gain"]>20) * (self.SPEGain>0) * (self._output_table["high gain"]<80) * self._output_table['is_valid']
-        a, b, r, p_value, std_err = linregress(self._output_table["high gain"][mask], self.SPEGain[mask],'greater')
+        mask = (self._output_table["high gain"]>20) * (self.SPEGain[self._mask_SPE]>0) * (self._output_table["high gain"]<80) * self._output_table['is_valid']
+        a, b, r, p_value, std_err = linregress(self._output_table["high gain"][mask], self.SPEGain[self._mask_SPE][mask],'greater')
         x = np.linspace(self._output_table["high gain"][mask].min(),self._output_table["high gain"][mask].max(),1000)
         y = lambda x: a * x + b 
         with quantity_support() : 
             fig,ax = plt.subplots(1,1,figsize=(8, 6))
-            ax.scatter(self._output_table["high gain"][mask],self.SPEGain[mask],marker =".")
+            ax.scatter(self._output_table["high gain"][mask],self.SPEGain[self._mask_SPE][mask],marker =".")
             ax.plot(x,y(x),color = 'red', label = f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}")
             ax.plot(x,x,color = 'black',label = "y = x")
             ax.set_xlabel("Gain Photo stat (ADC)", size=15)
@@ -153,51 +161,51 @@ class PhotoStatGain(ABC):
     def pixels_id(self) : return self._pixels_id
 
     @property
-    def sigmaPedHG(self) : return np.std(self.Pedcharge.charge_hg,axis = 0)
+    def sigmaPedHG(self) : return np.std(self.Pedcharge.charge_hg.T[self._mask_Ped].T,axis = 0)
 
     @property
-    def sigmaChargeHG(self) : return np.std(self.FFcharge.charge_hg - self.meanPedHG,axis = 0)
+    def sigmaChargeHG(self) : return np.std(self.FFcharge.charge_hg.T[self._mask_FF].T - self.meanPedHG,axis = 0)
 
     @property
-    def meanPedHG(self) : return np.mean(self.Pedcharge.charge_hg,axis = 0)
+    def meanPedHG(self) : return np.mean(self.Pedcharge.charge_hg.T[self._mask_Ped].T,axis = 0)
 
     @property
-    def meanChargeHG(self) : return np.mean(self.FFcharge.charge_hg - self.meanPedHG,axis = 0)
+    def meanChargeHG(self) : return np.mean(self.FFcharge.charge_hg.T[self._mask_FF].T - self.meanPedHG,axis = 0)
 
     @property
     def BHG(self) : 
         min_events = np.min((self.FFcharge.charge_hg.shape[0],self.Pedcharge.charge_hg.shape[0]))
-        upper = (np.power(self.FFcharge.charge_hg.mean(axis = 1)[:min_events] - self.Pedcharge.charge_hg.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
+        upper = (np.power(self.FFcharge.charge_hg.T[self._mask_FF].T.mean(axis = 1)[:min_events] - self.Pedcharge.charge_hg.T[self._mask_Ped].T.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
         lower =  np.power(self.meanChargeHG,2)
         return np.sqrt(upper/lower)
 
     @property
     def gainHG(self) : return ((np.power(self.sigmaChargeHG,2) - np.power(self.sigmaPedHG,2) - np.power(self.BHG * self.meanChargeHG,2))
-                                /(self.meanChargeHG * (1 + np.power(self.SPEResolution,2))))
+                                /(self.meanChargeHG * (1 + np.power(self.SPEResolution[self._mask_SPE],2))))
     
 
     @property
-    def sigmaPedLG(self) : return np.std(self.Pedcharge.charge_lg,axis = 0)
+    def sigmaPedLG(self) : return np.std(self.Pedcharge.charge_lg.T[self._mask_Ped].T,axis = 0)
 
     @property
-    def sigmaChargeLG(self) : return np.std(self.FFcharge.charge_lg - self.meanPedLG,axis = 0)
+    def sigmaChargeLG(self) : return np.std(self.FFcharge.charge_lg.T[self._mask_FF].T - self.meanPedLG,axis = 0)
 
     @property
-    def meanPedLG(self) : return np.mean(self.Pedcharge.charge_lg,axis = 0)
+    def meanPedLG(self) : return np.mean(self.Pedcharge.charge_lg.T[self._mask_Ped].T,axis = 0)
 
     @property
-    def meanChargeLG(self) : return np.mean(self.FFcharge.charge_lg - self.meanPedLG,axis = 0)
+    def meanChargeLG(self) : return np.mean(self.FFcharge.charge_lg.T[self._mask_FF].T - self.meanPedLG,axis = 0)
 
     @property
     def BLG(self) : 
         min_events = np.min((self.FFcharge.charge_lg.shape[0],self.Pedcharge.charge_lg.shape[0]))
-        upper = (np.power(self.FFcharge.charge_lg.mean(axis = 1)[:min_events] - self.Pedcharge.charge_lg.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
+        upper = (np.power(self.FFcharge.charge_lg.T[self._mask_FF].T.mean(axis = 1)[:min_events] - self.Pedcharge.charge_lg.T[self._mask_Ped].T.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
         lower =  np.power(self.meanChargeLG,2)
         return np.sqrt(upper/lower)
 
     @property
     def gainLG(self) : return ((np.power(self.sigmaChargeLG,2) - np.power(self.sigmaPedLG,2) - np.power(self.BLG * self.meanChargeLG,2))
-                                /(self.meanChargeLG * (1 + np.power(self.SPEResolution,2))))
+                                /(self.meanChargeLG * (1 + np.power(self.SPEResolution[self._mask_SPE],2))))
 
 
 
@@ -206,14 +214,18 @@ class PhotoStatGainFFandPed(PhotoStatGain):
         self._readFF(FFRun,maxevents,**kwargs)
         self._readPed(PedRun,maxevents,**kwargs)
 
+        """
         if self.FFcharge.charge_hg.shape[1] != self.Pedcharge.charge_hg.shape[1] : 
             e = Exception("Ped run and FF run must have the same number of pixels")
             log.error(e,exc_info = True)
             raise e
+        """
 
         self._readSPE(SPEresults)
         ##need to implement reshape of SPE results with FF and Ped pixels ids 
+        self._reshape_all()
 
+        """
         if (self.FFcharge.pixels_id.shape[0] != self._SPE_pixels_id.shape[0]) : 
             e = Exception("Ped run and FF run must have the same number of pixels as SPE fit results")
             log.error(e,exc_info = True)
@@ -225,22 +237,31 @@ class PhotoStatGainFFandPed(PhotoStatGain):
             raise e
         else : 
             self._pixels_id = self.FFcharge.pixels_id
-
+        """
         self.create_output_table()
 
 
 
 class PhotoStatGainFF(PhotoStatGain):
     def __init__(self, FFRun, PedRun, SPEresults : str, maxevents : int = None, **kwargs) : 
+        e = NotImplementedError("PhotoStatGainFF is not yet implemented")
+        log.error(e, exc_info = True)
+        raise e
+
+
         self._readFF(FFRun,maxevents,**kwargs)
 
         self._readSPE(SPEresults)
-
+        
+        """
         if self.FFcharge.pixels_id != self._SPE_pixels_id : 
             e = DifferentPixelsID("Ped run, FF run and SPE run need to have same pixels id")
             log.error(e,exc_info = True)
             raise e
         else : 
             self._pixels_id = self.FFcharge.pixels_id
+        """
+
+        self._reshape_all()
 
         self.create_output_table()
