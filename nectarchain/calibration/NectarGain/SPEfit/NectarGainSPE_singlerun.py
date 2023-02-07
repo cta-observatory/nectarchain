@@ -167,7 +167,7 @@ class NectarGainSPESingle(NectarGainSPE):
 
                 if charge.mask.all() : 
                     log.info(f'do not run fit on pixel {i} (pixel_id = {pixels_id[i]}), it seems to be a broken pixel from charge computation')
-                    output = {"is_valid" : False, "pixel" : pixels_id}
+                    output = {"is_valid" : False, "pixel" : pixels_id[i]}
                     for parameter in _parameters.parameters : 
                         output[parameter.name] = parameter.value 
                         output[f"{parameter.name}_error"] = parameter.error 
@@ -177,7 +177,7 @@ class NectarGainSPESingle(NectarGainSPE):
                         output = _class._run_obs_static(i,_funct[i], copy.deepcopy(_parameters), _pixels_id[i], _charge[i], _histo[i], **kwargs)
                     except Exception as e : 
                         log.error(e,exc_info=True)
-                        output = {"is_valid" : False, "pixel" : pixels_id}
+                        output = {"is_valid" : False, "pixel" : pixels_id[i]}
                         for parameter in _parameters.parameters : 
                             output[parameter.name] = parameter.value 
                             output[f"{parameter.name}_error"] = parameter.error 
