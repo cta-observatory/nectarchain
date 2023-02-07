@@ -93,7 +93,7 @@ for f in meta['Files']:
         sqlfile = f
 if args.run is not None:
     if args.run not in runlist:
-        logger.critical(f'Your specified run {run} was not found in {dfcDir}, aborting...')
+        logger.critical(f'Your specified run {args.run} was not found in {dfcDir}, aborting...')
         sys.exit(1)
     runlist = [args.run]
     
