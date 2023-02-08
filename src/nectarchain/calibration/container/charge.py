@@ -4,6 +4,7 @@ import numpy.ma as ma
 from matplotlib import pyplot as plt
 import copy
 from pathlib import Path
+import time
 import sys
 import os
 import logging
@@ -29,6 +30,8 @@ from ctapipe.io import EventSource, EventSeeker
 from astropy.table import Table
 from astropy.io import fits
 
+from numba import guvectorize, float64, int64, bool_
+
 from .waveforms import WaveformsContainer,WaveformsContainers
 
 
@@ -46,11 +49,63 @@ list_ctapipe_charge_extractor = ["FullWaveformSum",
                         "BaselineSubtractedNeighborPeakWindowSum",
                         "TwoPassWindowSum"]
 
+
+
 list_nectarchain_charge_extractor = ['gradient_extractor']
 
 
+    
+@guvectorize(
+[
+    (int64[:], float64[:], bool_, bool_[:], int64[:]),
+],
 
+"(s),(n),()->(n),(n)",
+nopython=True,
+cache=True,
+)
+def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
+    """compute histogram of charge with numba
 
+    Args:
+        charge (np.ndarray(pixels,nevents)): charge
+        all_range (np.ndarray(nbins)): charge range
+        mask_broken_pix (np.ndarray(pixels)): mask on broxen pixels
+        _mask (np.ndarray(pixels,nbins)): mask
+        hist_ma_data (np.ndarray(pixels,nbins)): histogram
+    """
+    #print(f"charge.shape = {charge.shape[0]}")
+    #print(f"_mask.shape = {_mask.shape[0]}")
+    #print(f"_mask[0] = {_mask[0]}")
+    #print(f"hist_ma_data[0] = {hist_ma_data[0]}")
+    #print(f"mask_broken_pix = {mask_broken_pix}")
+
+    if not(mask_broken_pix) :
+        #print("this pixel is not broken, let's continue computation")
+        hist,_charge = np.histogram(charge,bins=np.arange(np.uint16(np.min(charge)) - 1, np.uint16(np.max(charge)) + 2,1))
+        #print(f"hist.shape[0] = {hist.shape[0]}")
+        #print(f"charge.shape[0] = {_charge.shape[0]}")
+        charge_edges = np.array([np.mean(_charge[i:i+2]) for i in range(_charge.shape[0]-1)])
+        #print(f"charge_edges.shape[0] = {charge_edges.shape[0]}")
+        mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
+        #print(f"all_range = {int(all_range[0])}-{int(all_range[-1])}")
+        #print(f"charge_edges[0] = {int(charge_edges[0])}")
+        #print(f"charge_edges[-1] = {int(charge_edges[-1])}")
+        #print(f"mask[0] = {mask[0]}")
+        #print(f"mask[-1] = {mask[-1]}")
+
+        #MASK THE DATA
+        #print(f"mask.shape = {mask.shape[0]}")
+        _mask[:] = ~mask
+        #print(f"_mask[0] = {_mask[0]}")
+        #print(f"_mask[-1] = {_mask[-1]}")
+        #FILL THE DATA
+        hist_ma_data[mask] = hist
+        #print("work done")
+    else : 
+        #print("this pixel is broken, skipped")
+        pass
+        
 class ChargeContainer() : 
     """class used to compute charge from waveforms container"""
     TEL_ID = 0
@@ -77,6 +132,14 @@ class ChargeContainer() :
 
     @classmethod
     def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
+        """ create a new ChargeContainer from a WaveformsContainer
+        Args:
+            waveformContainer (WaveformsContainer): the waveforms
+            method (str, optional): Ctapipe ImageExtractor method. Defaults to "FullWaveformSum".
+
+        Returns:
+            chargeContainer : the ChargeContainer instance
+        """
         log.info(f"computing hg charge with {method} method")
         charge_hg,peak_hg = ChargeContainer.compute_charge(waveformContainer,constants.HIGH_GAIN,method,**kwargs)
         charge_hg = np.array(charge_hg,dtype = np.uint16)
@@ -97,6 +160,11 @@ class ChargeContainer() :
 
 
     def write(self,path : Path,**kwargs) : 
+        """method to write in an output FITS file the ChargeContainer.
+
+        Args:
+            path (str): the directory where you want to save data
+        """
         suffix = kwargs.get("suffix","")
         if suffix != "" : suffix = f"_{suffix}"
 
@@ -161,6 +229,14 @@ class ChargeContainer() :
 
     @staticmethod
     def from_file(path : Path,run_number : int,**kwargs) : 
+        """load ChargeContainer from FITS file previously written with ChargeContainer.write() method  
+        
+        Args:
+            path (str): path of the FITS file
+
+        Returns:
+            ChargeContainer: ChargeContainer instance
+        """
         log.info(f"loading in {path} run number {run_number}")
         
         #table = Table.read(Path(path)/f"charge_hg_run{run_number}.ecsv")
@@ -202,53 +278,64 @@ class ChargeContainer() :
         
     @staticmethod 
     def compute_charge(waveformContainer : WaveformsContainer,channel : int,method : str = "FullWaveformSum" ,**kwargs) : 
+        """compute charge from waveforms 
+
+        Args:
+            waveformContainer (WaveformsContainer): the waveforms
+            channel (int): channel you want to compute charges
+            method (str, optional): ctapipe Image Extractor method method. Defaults to "FullWaveformSum".
+
+        Raises:
+            ArgumentError: extraction method unknown
+            ArgumentError: channel unknown
+
+        Returns:
+            output of the extractor called on waveforms
+        """
+        
         if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
             raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
+
+        if "apply_integration_correction" in eval(method).class_traits() :
+            kwargs["apply_integration_correction"] = False
+
         ImageExtractor = eval(method)(waveformContainer.subarray,**kwargs)
         if channel == constants.HIGH_GAIN:
             return ImageExtractor(waveformContainer.wfs_hg,waveformContainer.TEL_ID,channel)
         elif channel == constants.LOW_GAIN:
             return ImageExtractor(waveformContainer.wfs_lg,waveformContainer.TEL_ID,channel)
         else :
-            raise ArgumentError("channel must be 0 or 1")
+            raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
 
     def histo_hg(self,n_bins : int = 1000,autoscale : bool = True) -> np.ndarray:
+        """method to compute histogram of HG channel
+        Numba is used to compute histograms in vectorized way
+
+        Args:
+            n_bins (int, optional): number of bins in charge (ADC counts). Defaults to 1000.
+            autoscale (bool, optional): auto detect number of bins by pixels (bin witdh = 1 ADC). Defaults to True.
+
+        Returns:
+            np.ndarray: masked array of charge histograms (histo,charge)
+        """
         mask_broken_pix = np.array((self.charge_hg == self.charge_hg.mean(axis = 0)).mean(axis=0),dtype = bool)
         log.debug(f"there are {mask_broken_pix.sum()} broken pixels (charge stays at same level for each events)")
         
         if autoscale : 
             all_range = np.arange(np.uint16(np.min(self.charge_hg.T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(self.charge_hg.T[~mask_broken_pix].T)) + 1.5,1)
-            hist_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
-            charge_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
+            #hist_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
+            charge_ma = ma.masked_array((all_range.reshape(all_range.shape[0],1) @ np.ones((1,self.charge_hg.shape[1]))).T, mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
 
-            new_data_mask = np.array([np.logical_or(charge_ma.mask.T[i],mask_broken_pix) for i in range(charge_ma.shape[1])])
-            charge_ma.mask = new_data_mask
-            hist_ma.mask = new_data_mask
-
-            
-            for i in range(self.charge_hg.shape[1]) :
-                log.debug(f'computing charge histogram for pixel {i}')
-                if mask_broken_pix[i] :
-                    log.debug('This pixel is broken, I mask this one')
-                    hist_ma.mask[i] = np.ones(hist_ma.mask[i].shape)
-                    charge_ma.mask[i] = np.ones(charge_ma.mask[i].shape)
-                else : 
-                    log.debug("this pixel is not broken, let's continue computation")
-                    hist,charge = np.histogram(self.charge_hg.T[i],bins=np.arange(np.uint16(np.min(self.charge_hg.T[i])) - 1, np.uint16(np.max(self.charge_hg.T[i])) + 2,1))
-                    charge_edges = np.array([np.mean(charge[i:i+2],axis = 0) for i in range(charge.shape[0]-1)]) 
-                    mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
-
-                    #MASK THE DATA
-                    hist_ma.mask[i] = np.logical_or(~mask, hist_ma.mask[i])
-                    charge_ma.mask[i] = np.logical_or(~mask, charge_ma.mask[i])
-
-                    #FILL THE DATA
-                    hist_ma.data[i][mask] = hist
-                    charge_ma.data[i] = all_range
+            broxen_pixels_mask = np.array([mask_broken_pix for i in range(charge_ma.shape[1])]).T
+            #hist_ma.mask = new_data_mask.T
+            start = time.time()
+            _mask, hist_ma_data = make_histo(self.charge_hg.T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
+            charge_ma.mask = np.logical_or(_mask,broxen_pixels_mask)
+            hist_ma =  ma.masked_array(hist_ma_data,mask = charge_ma.mask)
+            log.debug(f"histogram hg computation time : {time.time() - start} sec")          
             
             return ma.masked_array((hist_ma,charge_ma))
             
-
         else : 
             hist = np.array([np.histogram(self.charge_hg.T[i],bins=n_bins)[0] for i in range(self.charge_hg.shape[1])])
             charge = np.array([np.histogram(self.charge_hg.T[i],bins=n_bins)[1] for i in range(self.charge_hg.shape[1])])
@@ -257,45 +344,69 @@ class ChargeContainer() :
             return np.array((hist,charge_edges))
 
     def histo_lg(self,n_bins: int = 1000,autoscale : bool = True) -> np.ndarray:
+        """method to compute histogram of LG channel
+        Numba is used to compute histograms in vectorized way
+
+        Args:
+            n_bins (int, optional): number of bins in charge (ADC counts). Defaults to 1000.
+            autoscale (bool, optional): auto detect number of bins by pixels (bin witdh = 1 ADC). Defaults to True.
+
+        Returns:
+            np.ndarray: masked array of charge histograms (histo,charge)
+        """
         mask_broken_pix = np.array((self.charge_lg == self.charge_lg.mean(axis = 0)).mean(axis=0),dtype = bool)
         log.debug(f"there are {mask_broken_pix.sum()} broken pixels (charge stays at same level for each events)")
         
         if autoscale : 
             all_range = np.arange(np.uint16(np.min(self.charge_lg.T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(self.charge_lg.T[~mask_broken_pix].T)) + 1.5,1)
-            hist_ma = ma.masked_array(np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
-            charge_ma = ma.masked_array(np.zeros((self.charge_lg.shape[1],all_range.shape[0])), mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
+            charge_ma = ma.masked_array((all_range.reshape(all_range.shape[0],1) @ np.ones((1,self.charge_lg.shape[1]))).T, mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
 
-            new_data_mask = np.array([np.logical_or(charge_ma.mask.T[i],mask_broken_pix) for i in range(charge_ma.shape[1])])
-            charge_ma.mask = new_data_mask
-            hist_ma.mask = new_data_mask
+            broxen_pixels_mask = np.array([mask_broken_pix for i in range(charge_ma.shape[1])]).T
+            #hist_ma.mask = new_data_mask.T
+            start = time.time()
+            _mask, hist_ma_data = make_histo(self.charge_lg.T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
+            charge_ma.mask = np.logical_or(_mask,broxen_pixels_mask)
+            hist_ma =  ma.masked_array(hist_ma_data,mask = charge_ma.mask)
+            log.debug(f"histogram lg computation time : {time.time() - start} sec")  
 
-            
-            for i in range(self.charge_lg.shape[1]) :
-                log.debug(f'computing charge histogram for pixel {i}')
-                if mask_broken_pix[i] :
-                    log.debug('This pixel is broken, I mask this one')
-                    hist_ma.mask[i] = np.ones(hist_ma.mask[i].shape)
-                    charge_ma.mask[i] = np.ones(charge_ma.mask[i].shape)
-                else : 
-                    log.debug("this pixel is not broken, let's continue computation")
-                    hist,charge = np.histogram(self.charge_lg.T[i],bins=np.arange(np.uint16(np.min(self.charge_lg.T[i])) - 1, np.uint16(np.max(self.charge_lg.T[i])) + 2,1))
-                    charge_edges = np.array([np.mean(charge[i:i+2],axis = 0) for i in range(charge.shape[0]-1)]) 
-                    mask = (all_range >= charge_edges[0]) * (all_range <= charge_edges[-1])
-
-                    #MASK THE DATA
-                    hist_ma.mask[i] = np.logical_or(~mask, hist_ma.mask[i])
-                    charge_ma.mask[i] = np.logical_or(~mask, charge_ma.mask[i])
-
-                    #FILL THE DATA
-                    hist_ma.data[i][mask] = hist
-                    charge_ma.data[i] = all_range
+            return ma.masked_array((hist_ma,charge_ma))
 
         else : 
             hist = np.array([np.histogram(self.charge_lg.T[i],bins=n_bins)[0] for i in range(self.charge_lg.shape[1])])
             charge = np.array([np.histogram(self.charge_lg.T[i],bins=n_bins)[1] for i in range(self.charge_lg.shape[1])])
             charge_edges = np.array([np.mean(charge.T[i:i+2],axis = 0) for i in range(charge.shape[1]-1)]).T
 
-        return np.array((hist,charge_edges))
+            return np.array((hist,charge_edges))
+
+    def select_charge_hg(self,pixel_id : np.ndarray) : 
+        """method to extract charge HG from a list of pixel ids 
+        The output is the charge HG with a shape following the size of the input pixel_id argument
+        Pixel in pixel_id which are not present in the ChargeContaineur pixels_id are skipped 
+
+        Args:
+            pixel_id (np.ndarray): array of pixel ids you want to extract the charge 
+
+        Returns:
+            (np.ndarray): charge array in the order of specified pixel_id
+        """
+        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        return np.array([self.charge_hg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
+
+    def select_charge_lg(self,pixel_id : np.ndarray) : 
+        """method to extract charge LG from a list of pixel ids 
+        The output is the charge LG with a shape following the size of the input pixel_id argument
+        Pixel in pixel_id which are not present in the ChargeContaineur pixels_id are skipped 
+
+        Args:
+            pixel_id (np.ndarray): array of pixel ids you want to extract the charge 
+
+        Returns:
+            (np.ndarray): charge array in the order of specified pixel_id
+        """
+        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        return np.array([self.charge_lg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
 
     @property
     def run_number(self) : return self.__run_number
@@ -327,12 +438,25 @@ class ChargeContainers() :
 
     @classmethod
     def from_waveforms(cls,waveformContainers : WaveformsContainers,**kwargs) : 
+        """create ChargeContainers from waveformContainers
+
+        Args:
+            waveformContainers (WaveformsContainers)
+
+        Returns:
+            chargeContainers (ChargeContainers)
+        """
         chargeContainers = cls()
         for i in range(waveformContainers.nWaveformsContainer) : 
             chargeContainers.append(ChargeContainer.from_waveforms(waveformContainers.waveformsContainer[i]))
         return chargeContainers
 
     def write(self,path : str, **kwargs) : 
+        """write each ChargeContainer in ChargeContainers on disk 
+
+        Args:
+            path (str): path where data are saved
+        """
         for i in range(self.__nChargeContainer) : 
             self.chargeContainers[i].write(path,suffix = f"{i:04d}" ,**kwargs)
 
