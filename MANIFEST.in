@@ -1,0 +1,5 @@
+prune src/nectarchain/_dev_version
+prune .github
+exclude .gitignore
+
+global-exclude *.pyc *.o
