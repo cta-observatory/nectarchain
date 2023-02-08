@@ -294,7 +294,7 @@ class WaveformsContainer() :
             (np.ndarray): waveforms array in the order of specified pixel_id
         """
         mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
-        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
         res = np.array([self.wfs_hg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
         res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
         return res
@@ -312,7 +312,7 @@ class WaveformsContainer() :
             (np.ndarray): waveforms array in the order of specified pixel_id
         """
         mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
-        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
         res =  np.array([self.wfs_lg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
         res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
         return res
