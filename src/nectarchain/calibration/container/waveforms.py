@@ -284,6 +284,38 @@ class WaveformsContainer() :
         return fig,ax
 
 
+    def select_waveforms_hg(self,pixel_id : np.ndarray) : 
+        """method to extract waveforms HG from a list of pixel ids 
+        The output is the waveforms HG with a shape following the size of the input pixel_id argument
+        Pixel in pixel_id which are not present in the WaveformsContaineur pixels_id are skipped 
+        Args:
+            pixel_id (np.ndarray): array of pixel ids you want to extract the waveforms
+        Returns:
+            (np.ndarray): waveforms array in the order of specified pixel_id
+        """
+        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        res = np.array([self.wfs_hg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
+        res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
+        return res
+
+
+    def select_waveforms_lg(self,pixel_id : np.ndarray) : 
+        """method to extract waveforms LG from a list of pixel ids 
+        The output is the waveforms LG with a shape following the size of the input pixel_id argument
+        Pixel in pixel_id which are not present in the WaveformsContaineur pixels_id are skipped 
+
+        Args:
+            pixel_id (np.ndarray): array of pixel ids you want to extract the waveforms
+
+        Returns:
+            (np.ndarray): waveforms array in the order of specified pixel_id
+        """
+        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        res =  np.array([self.wfs_lg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
+        res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
+        return res
 
     @property
     def reader(self) : return self.__reader

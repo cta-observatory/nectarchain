@@ -378,6 +378,36 @@ class ChargeContainer() :
 
             return np.array((hist,charge_edges))
 
+    def select_charge_hg(self,pixel_id : np.ndarray) : 
+        """method to extract charge HG from a list of pixel ids 
+        The output is the charge HG with a shape following the size of the input pixel_id argument
+        Pixel in pixel_id which are not present in the ChargeContaineur pixels_id are skipped 
+
+        Args:
+            pixel_id (np.ndarray): array of pixel ids you want to extract the charge 
+
+        Returns:
+            (np.ndarray): charge array in the order of specified pixel_id
+        """
+        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        return np.array([self.charge_hg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
+
+    def select_charge_lg(self,pixel_id : np.ndarray) : 
+        """method to extract charge LG from a list of pixel ids 
+        The output is the charge LG with a shape following the size of the input pixel_id argument
+        Pixel in pixel_id which are not present in the ChargeContaineur pixels_id are skipped 
+
+        Args:
+            pixel_id (np.ndarray): array of pixel ids you want to extract the charge 
+
+        Returns:
+            (np.ndarray): charge array in the order of specified pixel_id
+        """
+        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
+        return np.array([self.charge_lg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
+
     @property
     def run_number(self) : return self.__run_number
 
@@ -397,6 +427,7 @@ class ChargeContainer() :
 
     @property
     def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 1)
+
 
 
 
