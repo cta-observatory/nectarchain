@@ -87,11 +87,14 @@ target
 notebooks/*.html
 notebooks/*.png
 
-nectarchain/calibration/test
+src/nectarchain/user_scripts/ggrolleron/test
 **.log
 **.pdf
 **.csv
 
 #VScode
 .vscode/
+
+#old_nectargain code
+src/nectarchain/calibration/NectarGain/old
 

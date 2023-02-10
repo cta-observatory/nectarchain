@@ -2,15 +2,8 @@ import logging
 import sys
 import os
 from pathlib import Path
-import pandas as pd
 import time
 
-#import pandas as pd
-import matplotlib as mpl
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-import numpy as np
-import getopt
 os.makedirs(os.environ.get('NECTARCHAIN_LOG'),exist_ok = True)
 
 #to quiet numba
@@ -18,11 +11,10 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 
 
 import argparse
-import json
 
 #import seaborn as sns
 from nectarchain.calibration.container import ChargeContainer
-from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal,NectarGainSPESinglePed,NectarGainSPECombinedNoPed
+from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_SPEfit_computation.py',

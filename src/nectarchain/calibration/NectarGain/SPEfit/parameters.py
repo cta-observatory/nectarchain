@@ -2,13 +2,10 @@ import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 
-import yaml
-import os
 import copy
 import numpy as np
 
 import astropy.units as u
-from astropy.units import UnitsError
 
 __all__ = ["Parameter","Parameters"]
 

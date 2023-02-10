@@ -5,14 +5,12 @@ log.handlers = logging.getLogger('__main__').handlers
 
 import copy
 import numpy as np
-from datetime import date
 import os
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import to_rgba
 
-from scipy.interpolate import interp1d
 from scipy.signal import find_peaks
 from scipy.signal import savgol_filter
 from scipy.optimize import curve_fit
@@ -21,12 +19,11 @@ from abc import ABC, abstractclassmethod, abstractmethod
 
 
 from iminuit import Minuit
-from astropy.table import QTable,Column
-import astropy.units as u
+from astropy.table import QTable
 
 import pandas as pd
 
-from .parameters import Parameters, Parameter
+from .parameters import Parameters
 from .utils import UtilsMinuit,weight_gaussian
 
 __all__ = ['NectarGainSPE']

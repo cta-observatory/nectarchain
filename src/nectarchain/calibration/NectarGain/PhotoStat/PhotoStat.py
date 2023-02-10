@@ -1,16 +1,10 @@
-import math
 import numpy as np
-from scipy import optimize, interpolate
 from scipy.stats import linregress
 from matplotlib import pyplot as plt
-from scipy import signal
-from iminuit import Minuit
-import random
 import astropy.units as u
 from astropy.visualization import quantity_support, time_support
 from astropy.table import QTable,Column
 import astropy.units as u
-import yaml
 import os
 from datetime import date
 from pathlib import Path
@@ -20,13 +14,11 @@ logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
-import copy
-
 from ...container import ChargeContainer,WaveformsContainer
 
 from ..utils.error import DifferentPixelsID
 
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC
 
 __all__ = ["PhotoStatGainFFandPed"]
 
@@ -256,8 +248,6 @@ class PhotoStatGainFF(PhotoStatGain):
         e = NotImplementedError("PhotoStatGainFF is not yet implemented")
         log.error(e, exc_info = True)
         raise e
-
-
         self._readFF(FFRun,maxevents,**kwargs)
 
         self._readSPE(SPEresults)
