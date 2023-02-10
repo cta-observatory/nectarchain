@@ -89,6 +89,8 @@ def main(args) :
     photoStat_FFandPed = PhotoStatGainFFandPed(args.FF_run_number, args.ped_run_number, SPEresults = args.SPE_fit_results)    
     photoStat_FFandPed.run()
     photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data{reduced}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
+    log.info(f"BF^2 HG : {np.power(np.mean(photoStat_FFandPed.BHG),2)}")
+    log.info(f"BF^2 LG : {np.power(np.mean(photoStat_FFandPed.BLG),2)}")
 
     if args.correlation : 
         fig = photoStat_FFandPed.plot_correlation()

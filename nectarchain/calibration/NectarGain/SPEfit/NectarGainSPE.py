@@ -122,7 +122,7 @@ class NectarGainSPE(ABC) :
             fig,ax = plt.subplots(1,1,figsize = (8,8))
             ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
             ax.plot(charge,histo_smoothed,label = f'smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})')
-            ax.plot(charge,weight_gaussian(charge,coeff_mean[0],coeff_mean[1],coeff_mean[2]),label = 'gaussian fit of the SPE, left tail only')
+            ax.plot(charge,weight_gaussian(charge,coeff_mean[0],coeff_mean[1],coeff_mean[2]),label = 'gaussian fit of the SPE')
             ax.vlines(coeff_mean[1],0,peak_value,label = f'mean initial value = {coeff_mean[1] - coeff[1]:.0f}',color = "red")
             ax.add_patch(Rectangle((coeff_mean[1]-coeff_mean[2], 0), 2 * coeff_mean[2], peak_value_mean,fc=to_rgba('red', 0.5)))
             ax.set_xlabel("Charge (ADC)", size=15)

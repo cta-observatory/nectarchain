@@ -95,6 +95,7 @@ class PhotoStatGain(ABC):
     def _readSPE(self,SPEresults) : 
         log.info(f'reading SPE resolution from {SPEresults}')
         table = QTable.read(SPEresults)
+        table.sort('pixel')
         self.SPEResolution = table['resolution']
         self.SPEGain = table['gain']
         self.SPEGain_error = table['gain_error']
@@ -105,8 +106,15 @@ class PhotoStatGain(ABC):
         FFped_intersection =  np.intersect1d(self.Pedcharge.pixels_id,self.FFcharge.pixels_id)
         SPEFFPed_intersection = np.intersect1d(FFped_intersection,self._SPE_pixels_id[self._SPEvalid])
         self._pixels_id = SPEFFPed_intersection
-        self._mask_FF = np.array([self.FFcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.FFcharge.npixels)],dtype = bool)
-        self._mask_Ped = np.array([self.Pedcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.Pedcharge.npixels)],dtype = bool)
+
+        self._FFcharge_hg = self.FFcharge.select_charge_hg(SPEFFPed_intersection)
+        self._FFcharge_lg = self.FFcharge.select_charge_hg(SPEFFPed_intersection)
+
+        self._Pedcharge_hg = self.Pedcharge.select_charge_hg(SPEFFPed_intersection)
+        self._Pedcharge_lg = self.Pedcharge.select_charge_hg(SPEFFPed_intersection)
+        
+        #self._mask_FF = np.array([self.FFcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.FFcharge.npixels)],dtype = bool)
+        #self._mask_Ped = np.array([self.Pedcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.Pedcharge.npixels)],dtype = bool)
         self._mask_SPE = np.array([self._SPE_pixels_id[i] in SPEFFPed_intersection for i in range(len(self._SPE_pixels_id))],dtype = bool)
 
     
@@ -161,46 +169,47 @@ class PhotoStatGain(ABC):
     def pixels_id(self) : return self._pixels_id
 
     @property
-    def sigmaPedHG(self) : return np.std(self.Pedcharge.charge_hg.T[self._mask_Ped].T,axis = 0)
+    def sigmaPedHG(self) : return np.std(self._Pedcharge_hg ,axis = 0)
 
     @property
-    def sigmaChargeHG(self) : return np.std(self.FFcharge.charge_hg.T[self._mask_FF].T - self.meanPedHG,axis = 0)
+    def sigmaChargeHG(self) : return np.std(self._FFcharge_hg - self.meanPedHG,axis = 0)
 
     @property
-    def meanPedHG(self) : return np.mean(self.Pedcharge.charge_hg.T[self._mask_Ped].T,axis = 0)
+    def meanPedHG(self) : return np.mean(self._Pedcharge_hg ,axis = 0)
 
     @property
-    def meanChargeHG(self) : return np.mean(self.FFcharge.charge_hg.T[self._mask_FF].T - self.meanPedHG,axis = 0)
+    def meanChargeHG(self) : return np.mean(self._FFcharge_hg  - self.meanPedHG,axis = 0)
 
     @property
     def BHG(self) : 
-        min_events = np.min((self.FFcharge.charge_hg.shape[0],self.Pedcharge.charge_hg.shape[0]))
-        upper = (np.power(self.FFcharge.charge_hg.T[self._mask_FF].T.mean(axis = 1)[:min_events] - self.Pedcharge.charge_hg.T[self._mask_Ped].T.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
-        lower =  np.power(self.meanChargeHG,2)
+        min_events = np.min((self._FFcharge_hg.shape[0],self._Pedcharge_hg.shape[0]))
+        upper = (np.power(self._FFcharge_hg.mean(axis = 1)[:min_events] - self._Pedcharge_hg.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
+        lower =  np.power(self.meanChargeHG,2)#np.power(self.meanChargeHG.mean(),2)
         return np.sqrt(upper/lower)
 
     @property
-    def gainHG(self) : return ((np.power(self.sigmaChargeHG,2) - np.power(self.sigmaPedHG,2) - np.power(self.BHG * self.meanChargeHG,2))
+    def gainHG(self) : 
+        return ((np.power(self.sigmaChargeHG,2) - np.power(self.sigmaPedHG,2) - np.power(self.BHG * self.meanChargeHG,2))
                                 /(self.meanChargeHG * (1 + np.power(self.SPEResolution[self._mask_SPE],2))))
     
 
     @property
-    def sigmaPedLG(self) : return np.std(self.Pedcharge.charge_lg.T[self._mask_Ped].T,axis = 0)
+    def sigmaPedLG(self) : return np.std(self._Pedcharge_lg ,axis = 0)
 
     @property
-    def sigmaChargeLG(self) : return np.std(self.FFcharge.charge_lg.T[self._mask_FF].T - self.meanPedLG,axis = 0)
+    def sigmaChargeLG(self) : return np.std(self._FFcharge_lg  - self.meanPedLG,axis = 0)
 
     @property
-    def meanPedLG(self) : return np.mean(self.Pedcharge.charge_lg.T[self._mask_Ped].T,axis = 0)
+    def meanPedLG(self) : return np.mean(self._Pedcharge_lg,axis = 0)
 
     @property
-    def meanChargeLG(self) : return np.mean(self.FFcharge.charge_lg.T[self._mask_FF].T - self.meanPedLG,axis = 0)
+    def meanChargeLG(self) : return np.mean(self._FFcharge_lg - self.meanPedLG,axis = 0)
 
     @property
     def BLG(self) : 
-        min_events = np.min((self.FFcharge.charge_lg.shape[0],self.Pedcharge.charge_lg.shape[0]))
-        upper = (np.power(self.FFcharge.charge_lg.T[self._mask_FF].T.mean(axis = 1)[:min_events] - self.Pedcharge.charge_lg.T[self._mask_Ped].T.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
-        lower =  np.power(self.meanChargeLG,2)
+        min_events = np.min((self._FFcharge_lg.shape[0],self._Pedcharge_lg.shape[0]))
+        upper = (np.power(self._FFcharge_lg.mean(axis = 1)[:min_events] - self._pedcharge_lg.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
+        lower =  np.power(self.meanChargeLG,2) #np.power(self.meanChargeLG.mean(),2)
         return np.sqrt(upper/lower)
 
     @property
