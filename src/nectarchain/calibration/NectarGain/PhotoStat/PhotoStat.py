@@ -95,15 +95,17 @@ class PhotoStatGain(ABC):
         self._SPE_pixels_id = np.array(table['pixel'].value,dtype = np.uint16)
 
     def _reshape_all(self) : 
+        log.info("reshape of SPE, Ped and FF data with intersection of pixel ids")
         FFped_intersection =  np.intersect1d(self.Pedcharge.pixels_id,self.FFcharge.pixels_id)
         SPEFFPed_intersection = np.intersect1d(FFped_intersection,self._SPE_pixels_id[self._SPEvalid])
         self._pixels_id = SPEFFPed_intersection
+        log.info(f"data have {len(self._pixels_id)} pixels in common")
 
         self._FFcharge_hg = self.FFcharge.select_charge_hg(SPEFFPed_intersection)
-        self._FFcharge_lg = self.FFcharge.select_charge_hg(SPEFFPed_intersection)
+        self._FFcharge_lg = self.FFcharge.select_charge_lg(SPEFFPed_intersection)
 
         self._Pedcharge_hg = self.Pedcharge.select_charge_hg(SPEFFPed_intersection)
-        self._Pedcharge_lg = self.Pedcharge.select_charge_hg(SPEFFPed_intersection)
+        self._Pedcharge_lg = self.Pedcharge.select_charge_lg(SPEFFPed_intersection)
         
         #self._mask_FF = np.array([self.FFcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.FFcharge.npixels)],dtype = bool)
         #self._mask_Ped = np.array([self.Pedcharge.pixels_id[i] in SPEFFPed_intersection for i in range(self.Pedcharge.npixels)],dtype = bool)
@@ -176,7 +178,7 @@ class PhotoStatGain(ABC):
     def BHG(self) : 
         min_events = np.min((self._FFcharge_hg.shape[0],self._Pedcharge_hg.shape[0]))
         upper = (np.power(self._FFcharge_hg.mean(axis = 1)[:min_events] - self._Pedcharge_hg.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
-        lower =  np.power(self.meanChargeHG,2)#np.power(self.meanChargeHG.mean(),2)
+        lower =  np.power(self.meanChargeHG.mean(),2)#np.power(self.meanChargeHG,2)#np.power(self.meanChargeHG.mean(),2)
         return np.sqrt(upper/lower)
 
     @property
@@ -200,8 +202,8 @@ class PhotoStatGain(ABC):
     @property
     def BLG(self) : 
         min_events = np.min((self._FFcharge_lg.shape[0],self._Pedcharge_lg.shape[0]))
-        upper = (np.power(self._FFcharge_lg.mean(axis = 1)[:min_events] - self._pedcharge_lg.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
-        lower =  np.power(self.meanChargeLG,2) #np.power(self.meanChargeLG.mean(),2)
+        upper = (np.power(self._FFcharge_lg.mean(axis = 1)[:min_events] - self._Pedcharge_lg.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
+        lower =  np.power(self.meanChargeLG.mean(),2) #np.power(self.meanChargeLG,2) #np.power(self.meanChargeLG.mean(),2)
         return np.sqrt(upper/lower)
 
     @property
