@@ -1,4 +1,0 @@
-
-"""nectarchain command line tools.
-"""
-

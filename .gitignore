@@ -1,3 +1,4 @@
+_version.py
 .pytest_cache
 
 # Compiled files
@@ -8,7 +9,7 @@
 __pycache__
 
 # ignore version cache file (generated automatically when setup.py is run)
-nectarcam/_version_cache.py
+src/nectarchain/_version_cache.py
 
 # Ignore .c files by default to avoid including generated code. If you want to
 # add a non-generated .c extension, use `git add -f filename.c`.

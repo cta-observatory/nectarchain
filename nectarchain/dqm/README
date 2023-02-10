@@ -1,6 +1,0 @@
-Environment variable needed: 
-export NECTARDIR=path/to/ParentFoderOfNectarchain/ #This is where the nectarchain folder is checked out. The output folder will be created there also. 
-
-To launch the script: 
-source activate nectarchain #this is the  environment required for the nectarchain analysis
-python start_calib.py /path/NectarCAM.Run2720.0000.fits.fz /path/NectarCAM.Run2720.0001.fits.fz 

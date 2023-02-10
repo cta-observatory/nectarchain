@@ -1,9 +1,7 @@
-# nectarchain
+# nectarchain [![Build Status](https://github.com/cta-observatory/nectarchain/workflows/CI/badge.svg?branch=master)](https://github.com/cta-observatory/nectarchain/actions?query=workflow%3ACI+branch%3Amaster)
 
 Repository for the high level analysis of the NectarCAM data.
 The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe), adding custom code for NectarCAM calibration.
-
-master branch status: [![Build Status](https://travis-ci.org/cta-observatory/nectarchain.svg?branch=master)](https://travis-ci.org/cta-observatory/nectarchain)
 
 ## Installation
 
