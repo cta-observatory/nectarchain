@@ -5,7 +5,6 @@ from iminuit import Minuit
 import random
 import astropy.units as u
 from astropy.table import QTable,Column,MaskedColumn
-import astropy.units as u
 import yaml
 import os
 from datetime import date

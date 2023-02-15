@@ -2,9 +2,8 @@ import numpy as np
 from scipy.stats import linregress
 from matplotlib import pyplot as plt
 import astropy.units as u
-from astropy.visualization import quantity_support, time_support
+from astropy.visualization import quantity_support
 from astropy.table import QTable,Column
-import astropy.units as u
 import os
 from datetime import date
 from pathlib import Path

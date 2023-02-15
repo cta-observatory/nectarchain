@@ -252,19 +252,21 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
 
     def _update_parameters_prefit(self,pixel) : 
 
-        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.nectarGain.charge, self.nectarGain.histo, pixel)
+        coeff,var_matrix =  NectarGainSPE._get_pedestal_gaussian_fit(self.nectarGain.charge, self.nectarGain.histo, pixel)
         self.__pedestal.value = coeff[1]
         self.__pedestal.min = coeff[1] - coeff[2]
         self.__pedestal.max = coeff[1] + coeff[2]
         self._minuitParameters['values']['pedestal'] = self.__pedestal.value
         self._minuitParameters['limit_pedestal'] = (self.__pedestal.min,self.__pedestal.max)
+        log.debug(f"pedestal updated : {self.__pedestal.value}")
 
-        coeff,var_matrix =  NectarGainSPE._get_parameters_gaussian_fit(self.nectarGain.charge, self.nectarGain.histo, pixel,"_HHV")
+        coeff,var_matrix =  NectarGainSPE._get_pedestal_gaussian_fit(self.nectarGain.charge, self.nectarGain.histo, pixel,"_HHV")
         self.__pedestalHHV.value = coeff[1]
         self.__pedestalHHV.min = coeff[1] - coeff[2]
         self.__pedestalHHV.max = coeff[1] + coeff[2]
         self._minuitParameters['values']['pedestalHHV'] = self.__pedestalHHV.value
         self._minuitParameters['limit_pedestalHHV'] = (self.__pedestalHHV.min,self.__pedestalHHV.max)
+        log.debug(f"pedestalHHV updated : {self.__pedestalHHV.value}")
 
     def NG_Likelihood_Chi2(cls,**kwargs) : pass
 
