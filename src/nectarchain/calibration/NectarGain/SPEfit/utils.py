@@ -62,39 +62,148 @@ def doubleGauss(x,sig1,mu2,sig2,p):
     return p *2 *gaussian(x, 0, sig1) + (1-p) * gaussian(x, mu2, sig2)
 
 def PMax(r):
-    if (np.pi*r**2/(np.pi*r**2 + np.pi - 2*r**2 - 2) <= 1):
-        return np.pi*r**2/(np.pi*r**2 + np.pi - 2*r**2 - 2)
+    """p_{max} in equation 6 in Caroff et al. (2019)
+
+    Args:
+        res (float): SPE resolution
+
+    Returns:
+        float : p_{max}
+    """
+    pmax = np.pi*r**2/(np.pi*r**2 + np.pi - 2*r**2 - 2)
+    if pmax <= 1:
+        return pmax
     else:
         return 1
 
 def ax(p,res):
+    """a in equation 4 in Caroff et al. (2019)
+
+    Args:
+        p (float): proportion of the low charge component (2 gaussians model)
+        res (float): SPE resolution
+
+    Returns:
+        float : a
+    """
     return ((2/np.pi)*p**2-p/(res**2+1))
 
 def bx(p,mu2):
+    """b in equation 4 in Caroff et al. (2019)
+
+    Args:
+        p (float): proportion of the low charge component (2 gaussians model)
+        mu2 (float): position of the high charge Gaussian
+
+    Returns:
+        float : b
+    """
     return (np.sqrt(2/np.pi)*2*p*(1-p)*mu2)
 
 def cx(sig2,mu2,res,p):
-    return (1-p)**2*mu2**2 - (1-p)*(sig2**2+mu2**2)/(res**2+1)
+    """c in equation 4 in Caroff et al. (2019)
+
+    Args:
+        sig2 (float): width of the high charge Gaussian
+        mu2 (float): position of the high charge Gaussian
+        res (float): SPE resolution
+        p (float): proportion of the low charge component (2 gaussians model)
+
+    Returns:
+        float : c
+    """
+    return (1-p**2)*mu2**2 - (1-p)*(sig2**2+mu2**2)/(res**2+1)
 
 def delta(p,res,sig2,mu2):
+    """well known delta in 2nd order polynom
+
+    Args:
+        p (_type_): _description_
+        res (_type_): _description_
+        sig2 (_type_): _description_
+        mu2 (_type_): _description_
+
+    Returns:
+        float : b**2 - 4*a*c
+    """
     return bx(p,mu2)*bx(p,mu2) - 4*ax(p,res)*cx(sig2,mu2,res,p)
 
 def ParamU(p,r):
+    """d in equation 6 in Caroff et al. (2019)
+
+    Args:
+        p (float): proportion of the low charge component (2 gaussians model)
+        r (float): SPE resolution
+
+    Returns:
+        float : d
+    """
     return ((8*(1-p)**2*p**2)/np.pi - 4*(2*p**2/np.pi - p/(r**2+1))*((1-p)**2-(1-p)/(r**2+1)))
 
 def ParamS(p,r):
+    """e in equation 6 in Caroff et al. (2019)
+
+    Args:
+        p (float): proportion of the low charge component (2 gaussians model)
+        r (float): SPE resolution
+
+    Returns:
+        float : e
+    """
     return (4*(2*p**2/np.pi - p/(r**2+1))*(1-p))/(r**2+1)
 
 def SigMin(p,res,mu2):
+    """sigma_{high,min} in equation 6 in Caroff et al. (2019)
+
+    Args:
+        p (float): proportion of the low charge component (2 gaussians model)
+        res (float): SPE resolution
+        mu2 (float): position of the high charge Gaussian
+
+    Returns:
+        float : sigma_{high,min}
+    """
     return mu2*np.sqrt((-ParamU(p,res)+(bx(p,mu2)**2/mu2**2))/(ParamS(p,res)))
 
 def SigMax(p,res,mu2):
+    """sigma_{high,min} in equation 6 in Caroff et al. (2019)
+
+    Args:
+        p (float): proportion of the low charge component (2 gaussians model)
+        res (float): SPE resolution
+        mu2 (float): position of the high charge Gaussian
+
+    Returns:
+        float : sigma_{high,min}
+    """
     return mu2*np.sqrt((-ParamU(p,res))/(ParamS(p,res)))
 
 def sigma1(p,res,sig2,mu2):
+    """sigma_{low} in equation 5 in Caroff et al. (2019)
+
+    Args:
+        sig2 (float): width of the high charge Gaussian
+        mu2 (float): position of the high charge Gaussian
+        res (float): SPE resolution
+        p (float): proportion of the low charge component (2 gaussians model)
+
+    Returns:
+        float : sigma_{low}
+    """
     return (-bx(p,mu2)+np.sqrt(delta(p,res,sig2,mu2)))/(2*ax(p,res))
 
 def sigma2(n,p,res,mu2):
+    """sigma_{high} in equation 7 in Caroff et al. (2019)
+
+    Args:
+        n (float): parameter n in equation
+        mu2 (float): position of the high charge Gaussian
+        res (float): SPE resolution
+        p (float): proportion of the low charge component (2 gaussians model)
+
+    Returns:
+        float : sigma_{high}
+    """
     if ((-ParamU(p,res)+(bx(p,mu2)**2/mu2**2))/(ParamS(p,res)) > 0):
         return SigMin(p,res,mu2)+n*(SigMax(p,res,mu2)-SigMin(p,res,mu2))
     else:
@@ -128,6 +237,17 @@ def doubleGaussConstrained(x,pp,res,mu2,n):
 
 # Get the gain from the parameters model
 def Gain(pp,res,mu2,n):
+    """analytic gain computatuon
+
+    Args:
+        mu2 (float): position of the high charge Gaussian
+        res (float): SPE resolution
+        pp (float): p' in equation 7 in Caroff et al. (2019)
+        n (float): n in equation 7 in Caroff et al. (2019)
+
+    Returns:
+        float : gain
+    """
     p = pp*PMax(res)
     sig2 = sigma2(n,p,res,mu2)
     return (1-p)*mu2 + 2*p*sigma1(p,res,sig2,mu2)/np.sqrt(2*np.pi)
