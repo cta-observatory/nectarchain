@@ -9,8 +9,7 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.DEBUG,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
 log = logging.getLogger(__name__)
 
-from nectarchain.calibration.container import WaveformsContainer
-from nectarchain.calibration.container import ChargeContainer
+from nectarchain.calibration.container import WaveformsContainer,ChargeContainer
 
 parser = argparse.ArgumentParser(
                     prog = 'load_wfs_compute_charge',
@@ -94,9 +93,10 @@ parser.add_argument('--extractor_kwargs',
 
 #verbosity argument
 parser.add_argument('-v',"--verbosity",
-                    help='0 for FATAL, 1 for WARNING, 2 for INFO and 3 for DEBUG',
-                    default=0,
-                    type=int)
+                    help='set the verbosity level of logger',
+                    default="info",
+                    choices=["fatal","debug","info","warning"],
+                    type=str)
 
 args = parser.parse_args()
 
@@ -214,12 +214,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     logginglevel = logging.FATAL
-    if args.verbosity == 1 : 
+    if args.verbosity == "warning" : 
         logginglevel = logging.WARNING
-    elif args.verbosity == 2 : 
-        print(args)
+    elif args.verbosity == "info" : 
         logginglevel = logging.INFO
-    elif args.verbosity == 3 : 
+    elif args.verbosity == "debug" : 
         logginglevel = logging.DEBUG
 
     os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")

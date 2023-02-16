@@ -146,6 +146,7 @@ class NectarGainSPESingle(NectarGainSPE):
                 log.info(f"running SPE fit for pixel {i} (pixel_id = {self.__pixels_id[i]})")
                 self._run_obs(i,**kwargs)
         
+        
         def task_multiple(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,pix) : 
             _funct = {i : funct(i) for i in pix}
             _parameters = copy.deepcopy(parameters)
@@ -176,6 +177,29 @@ class NectarGainSPESingle(NectarGainSPE):
                 return output
             return task
 
+        def task_bis(i,funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,_class : str,**kwargs) : 
+            log.info(f"i = {i}")
+            log.debug(f"{kwargs}")
+            if charge.mask.all() : 
+                log.info(f'do not run fit on pixel {i} (pixel_id = {pixels_id}), it seems to be a broken pixel from charge computation')
+                output = {"is_valid" : False, "pixel" : pixels_id}
+                for parameter in parameters.parameters : 
+                    output[parameter.name] = parameter.value 
+                    output[f"{parameter.name}_error"] = parameter.error 
+            else  :
+                log.info(f"running SPE fit for pixel {i} (pixel_id = {pixels_id})")
+                try :
+                    output = _class._run_obs_static(i,funct, parameters, pixels_id, charge, histo, **kwargs)
+                except Exception as e : 
+                    log.error(e,exc_info=True)
+                    output = {"is_valid" : False, "pixel" : pixels_id}
+                    for parameter in parameters.parameters : 
+                        output[parameter.name] = parameter.value 
+                        output[f"{parameter.name}_error"] = parameter.error 
+            return output
+
+        
+
         if pixel is None : 
             if multiproc : 
                 nproc = min(kwargs.get("nproc",self._Nproc_Multiprocess),self.npixels)
@@ -193,7 +217,12 @@ class NectarGainSPESingle(NectarGainSPE):
                     loglevel = [logger.getEffectiveLevel() for logger in loggers]
                     for logger in loggers : logger.setLevel(logging.FATAL)
 
-                    result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,[i for i in range(self.npixels)]), [(i,kwargs) for i in tqdm(range(self.npixels))],chunksize = chunksize)
+                    result = pool.starmap_async(task_bis, 
+                    [(i,self.Chi2_static(i),copy.deepcopy(self.parameters),self.__pixels_id[i], self.__charge[i], self.__histo[i], self.__class__) for i in tqdm(range(self.npixels))],
+                    chunksize = chunksize,
+                    error_callback=Multiprocessing.custom_error_callback
+                    )
+
                     result.wait()
 
                     for i,handler in enumerate(log.handlers) : 
@@ -210,10 +239,11 @@ class NectarGainSPESingle(NectarGainSPE):
                 #self.make_table_from_output_multi(output)
 
                 try : 
-                    self.make_table_from_output_multi(result._value)
+                    res = result.get()
+                    self.make_table_from_output_multi(res)
                 except Exception as e : 
                     log.error(e,exc_info=True)
-                    log.error(f"results : {result._value}")
+                    log.error(f"results : {res}")
                     raise e
     
             else  :
@@ -244,12 +274,18 @@ class NectarGainSPESingle(NectarGainSPE):
                     loglevel = [logger.getEffectiveLevel() for logger in loggers]
                     for logger in loggers : logger.setLevel(logging.FATAL)
 
+                    result = pool.starmap_async(task_bis, 
+                    [(i,self.Chi2_static(i),copy.deepcopy(self.parameters),self.__pixels_id[i], self.__charge[i], self.__histo[i], self.__class__) for i in tqdm(pixels)],
+                    chunksize = chunksize,
+                    error_callback=Multiprocessing.custom_error_callback
+                    )
 
-                    result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
-                                        [(i,kwargs) for i in tqdm(pixels)],
-                                        chunksize = chunksize,
-                                        error_callback=Multiprocessing.custom_error_callback
-                                        )
+
+                    #result = pool.starmap_async(task_multiple(self.Chi2_static,self.parameters, self.__pixels_id, self.__charge, self.__histo,pixels), 
+                    #                    [(i,kwargs) for i in tqdm(pixels)],
+                    #                    chunksize = chunksize,
+                    #                    error_callback=Multiprocessing.custom_error_callback
+                    #                    )
                     result.wait()
 
                     for i,handler in enumerate(log.handlers) : 
@@ -267,10 +303,11 @@ class NectarGainSPESingle(NectarGainSPE):
                     #    output.append(result[i].get())
                 #self.make_table_from_output_multi(output)
                 try : 
-                    self.make_table_from_output_multi(result._value)
+                    res = result.get()
+                    self.make_table_from_output_multi(res)
                 except Exception as e : 
                     log.error(e,exc_info=True)
-                    log.error(f"results : {result._value}")
+                    log.error(f"results : {res}")
                     raise e
             
             else : 
@@ -502,8 +539,8 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         return _Chi2
 
     def Chi2_static(self,pixel : int) : 
-        charge = copy.deepcopy(self.charge[pixel])
-        histo = copy.deepcopy(self.histo[pixel])
+        charge = copy.deepcopy(self.charge[pixel].data[~self.charge[pixel].mask])
+        histo = copy.deepcopy(self.histo[pixel].data[~self.histo[pixel].mask])
         def _Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity) :
             #assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or np.isnan(luminosity))
             ntotalPE = 0
@@ -610,8 +647,8 @@ class NectarGainSPESingleSignalStd(NectarGainSPESingleSignal):
     def Chi2_static(self, pixel : int) :
         pp = copy.deepcopy(self.pp)
         n = copy.deepcopy(self.n)
-        charge = copy.deepcopy(self.charge[pixel])
-        histo = copy.deepcopy(self.histo[pixel])
+        charge = copy.deepcopy(self.charge[pixel].data[~self.charge[pixel].mask])
+        histo = copy.deepcopy(self.histo[pixel].data[~self.histo[pixel].mask])
         def _Chi2(resolution,mean,pedestal,pedestalWidth,luminosity) :
             ntotalPE = 0
             for i in range(1000):
@@ -681,8 +718,8 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
         pp_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['pp'].value)
         resolution_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['resolution'].value)
         n_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['n'].value)
-        charge = copy.deepcopy(self.charge[pixel])
-        histo = copy.deepcopy(self.histo[pixel])
+        charge = copy.deepcopy(self.charge[pixel].data[~self.charge[pixel].mask])
+        histo = copy.deepcopy(self.histo[pixel].data[~self.histo[pixel].mask])
         if self.__same_luminosity :
             luminosity_value = copy.deepcopy(self.__nectarGainSPEresult[pixel]['luminosity'].value)
             def _Chi2(mean,pedestal,pedestalWidth) :
@@ -760,10 +797,6 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
                 output[parameter.name] = parameter.value 
                 output[f"{parameter.name}_error"] = parameter.error 
         return output
-    
-    def __pixel_index(self,pixel) : 
-        return np.argmax(self._nectarGainSPEresult['pixel'] == self.pixels_id[pixel])
-
 
     @property
     def _nectarGainSPEresult(self) : return self.__nectarGainSPEresult
@@ -892,8 +925,8 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
         return _Chi2
 
     def Chi2_static(self,pixel : int):
-        charge = copy.deepcopy(self.charge[pixel])
-        histo = copy.deepcopy(self.histo[pixel])
+        charge = copy.deepcopy(self.charge[pixel].data[~self.charge[pixel].mask])
+        histo = copy.deepcopy(self.histo[pixel].data[~self.histo[pixel].mask])
         def _Chi2(pedestal,pedestalWidth) :
             return self.NG_Likelihood_Chi2(pedestal,pedestalWidth,charge,histo)
         return _Chi2

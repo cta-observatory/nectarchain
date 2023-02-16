@@ -18,7 +18,8 @@ from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,Nect
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_SPEfit_computation.py',
-                    description = 'compute high gain with SPE fit for one run at very very high voltage (~1400V) or at nominal voltage (it can often fail)')
+                    description = 'compute high gain with SPE fit for one run at very very high voltage (~1400V) or at nominal voltage (it can often fail). Output data are saved in $NECTARCAMDATA/../SPEfit/data/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}/'
+                    )
 
 #run numbers
 parser.add_argument('-r', '--run_number',
@@ -30,15 +31,11 @@ parser.add_argument('--overwrite',
                     default=False,
                     help='to force overwrite files on disk'
                     )
-parser.add_argument('--reduced',
-                    action='store_true',
-                    default=False,
-                    help='to use reduced run'
-                    )
+
 parser.add_argument('--voltage_tag', 
                     type = str,
                     default='',
-                    help='tag for voltage specifcication (1400V or nominal)'
+                    help='tag for voltage specifcication (1400V or nominal), used to setup the output path. See help for more details'
                     )
 
 #pixels selected
@@ -76,20 +73,19 @@ parser.add_argument('--chargeExtractorPath',
 
 #verbosity argument
 parser.add_argument('-v',"--verbosity",
-                    help='0 for FATAL, 1 for WARNING, 2 for INFO and 3 for DEBUG',
-                    default=0,
-                    choices=[0,1,2,3],
-                    type=int)
+                    help='set the verbosity level of logger',
+                    default="info",
+                    choices=["fatal","debug","info","warning"],
+                    type=str)
 
 
 def main(args) : 
     figpath = f"{os.environ.get('NECTARCHAIN_FIGURES')}/"
 
-    reduced = "_reduced" if args.reduced else ""
     multipath = "MULTI-" if args.multiproc else ""
     SPEpath = "SPE" if args.free_pp_n else "SPEStd"
 
-    charge_run_1400V = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges{reduced}/{args.chargeExtractorPath}/",args.run_number)
+    charge_run_1400V = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges/{args.chargeExtractorPath}/",args.run_number)
 
     if args.free_pp_n :
         gain_Std = NectarGainSPESingleSignal(signal = charge_run_1400V)
@@ -99,18 +95,18 @@ def main(args) :
     t = time.time()
     gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}")
     log.info(f"fit time =  {time.time() - t } sec")
-    gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data{reduced}/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
+    gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     conv_rate = len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._output_table[gain_Std._output_table['is_valid']])/len(args.pixels)
     log.info(f"convergence rate : {conv_rate}")
 
 if __name__ == "__main__":
     args = parser.parse_args()
     logginglevel = logging.FATAL
-    if args.verbosity == 1 : 
+    if args.verbosity == "warning" : 
         logginglevel = logging.WARNING
-    elif args.verbosity == 2 : 
+    elif args.verbosity == "info" : 
         logginglevel = logging.INFO
-    elif args.verbosity == 3 : 
+    elif args.verbosity == "debug" : 
         logginglevel = logging.DEBUG
 
     os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")

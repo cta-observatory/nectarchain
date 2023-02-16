@@ -16,7 +16,8 @@ from nectarchain.calibration.NectarGain import PhotoStatGainFFandPed
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_PhotoStat_computation.py',
-                    description = 'compute high gain and low gain with Photo-statistic method, it need a pedestal run and a FF run with a SPE fit restuls (for resolution value needed in this method)')
+                    description = 'compute high gain and low gain with Photo-statistic method, it need a pedestal run and a FF run with a SPE fit results (for resolution value needed in this method). Output data will be saved in $NECTARCAMDATA/../PhotoStat/data/PhotoStat-FF{FF_run_number}-ped{ped_run_number}-SPEres{SPE_fit_results_tag}-{chargeExtractorPath}/'
+                    )
 
 #run numbers
 parser.add_argument('-p', '--ped_run_number',
@@ -35,7 +36,7 @@ parser.add_argument('--SPE_fit_results',
 
 #tag for SPE fit results propagation
 parser.add_argument('--SPE_fit_results_tag',
-                    help='SPE fit results tag for propagate the SPE result to output',
+                    help='SPE fit results tag for propagate the SPE result to output, this tag will be used to setup the path where output data will be saved, see help for description',
                     type=str,
                     default=''
                     )
@@ -44,11 +45,6 @@ parser.add_argument('--overwrite',
                     action='store_true',
                     default=False,
                     help='to force overwrite files on disk'
-                    )
-parser.add_argument('--reduced',
-                    action='store_true',
-                    default=False,
-                    help='to use reduced run'
                     )
 
 #for plotting correlation
@@ -66,35 +62,35 @@ parser.add_argument('--chargeExtractorPath',
 
 #verbosity argument
 parser.add_argument('-v',"--verbosity",
-                    help='0 for FATAL, 1 for WARNING, 2 for INFO and 3 for DEBUG',
-                    default=0,
-                    type=int)
+                    help='set the verbosity level of logger',
+                    default="info",
+                    choices=["fatal","debug","info","warning"],
+                    type=str)
 
 
 def main(args) : 
     figpath = os.environ.get('NECTARCHAIN_FIGURES')
 
-    reduced = "_reduced" if args.reduced else ""
 
     photoStat_FFandPed = PhotoStatGainFFandPed(args.FF_run_number, args.ped_run_number, SPEresults = args.SPE_fit_results)    
     photoStat_FFandPed.run()
-    photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data{reduced}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
+    photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     log.info(f"BF^2 HG : {np.power(np.mean(photoStat_FFandPed.BHG),2)}")
     log.info(f"BF^2 LG : {np.power(np.mean(photoStat_FFandPed.BLG),2)}")
 
     if args.correlation : 
         fig = photoStat_FFandPed.plot_correlation()
-        os.makedirs(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}{reduced}/",exist_ok=True)
-        fig.savefig(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}{reduced}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf")
+        os.makedirs(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}/",exist_ok=True)
+        fig.savefig(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf")
 
 if __name__ == "__main__":
     args = parser.parse_args()
     logginglevel = logging.FATAL
-    if args.verbosity == 1 : 
+    if args.verbosity == "warning" : 
         logginglevel = logging.WARNING
-    elif args.verbosity == 2 : 
+    elif args.verbosity == "info" : 
         logginglevel = logging.INFO
-    elif args.verbosity == 3 : 
+    elif args.verbosity == "debug" : 
         logginglevel = logging.DEBUG
 
     os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")

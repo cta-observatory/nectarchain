@@ -177,12 +177,14 @@ class NectarGainSPE(ABC) :
     def run(self,pixel : int = None,**kwargs): pass
     @abstractmethod
     def _run_obs(self,pixel : int,**kwargs) : pass
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def _run_obs_static(cls,it : int, funct, parameters : Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, **kwargs) : pass
     
     #@abstractmethod
     #def _update_parameters_prefit(self,pixel : int) : pass
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def _update_parameters_prefit_static(cls, it : int, parameters : Parameters, charge : np.ndarray, histo : np.ndarray,**kwargs) : pass
 
     

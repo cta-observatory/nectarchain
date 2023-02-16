@@ -95,6 +95,3 @@ src/nectarchain/user_scripts/ggrolleron/test
 #VScode
 .vscode/
 
-#old_nectargain code
-src/nectarchain/calibration/NectarGain/old
-

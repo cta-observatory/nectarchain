@@ -5,6 +5,7 @@ import numpy as np
 from iminuit import Minuit
 from scipy import interpolate, signal
 from scipy.special import gammainc
+from scipy.stats import norm
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
@@ -53,7 +54,8 @@ class UtilsMinuit() :
 
 # Usefull fucntions for the fit
 def gaussian(x, mu, sig):
-    return (1./(sig*np.sqrt(2*math.pi)))*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    #return (1./(sig*np.sqrt(2*math.pi)))*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    return norm.pdf(x,loc = mu,scale = sig)
 
 def weight_gaussian(x,N, mu, sig) : 
     return N * gaussian(x, mu, sig)
@@ -112,7 +114,7 @@ def cx(sig2,mu2,res,p):
     Returns:
         float : c
     """
-    return (1-p**2)*mu2**2 - (1-p)*(sig2**2+mu2**2)/(res**2+1)
+    return (1-p)**2*mu2**2 - (1-p)*(sig2**2+mu2**2)/(res**2+1)
 
 def delta(p,res,sig2,mu2):
     """well known delta in 2nd order polynom

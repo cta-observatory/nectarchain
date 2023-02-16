@@ -15,20 +15,22 @@ from pathlib import Path
 
 from iminuit import Minuit
 
-from ..utils.error import DifferentPixelsID
 
 from .NectarGainSPE_singlerun import NectarGainSPESingle, NectarGainSPESingleSignalStd
 from nectarchain.calibration.container import ChargeContainer
 from .NectarGainSPE import NectarGainSPE
-from .utils import UtilsMinuit,Gain,MPE2,weight_gaussian
+from .utils import UtilsMinuit,Gain,MPE2
 
 __all__ = ["NectarGainSPECombinedNoPed"]
 
-class NectarGainSPESingleHHV(NectarGainSPESingle):
-    """class to perform fit of the 1400V signal and pedestal"""
 
-class NectarGainSPESingleCombined(NectarGainSPESingle):
-    """class to perform fit of the 1400V and 1000V signal and pedestal"""
+#class NectarGainSPESingleHHV(NectarGainSPESingle):
+#    """class to perform fit of the 1400V signal and pedestal"""
+
+#class NectarGainSPESingleCombined(NectarGainSPESingle):
+#    """class to perform fit of the 1400V and 1000V signal and pedestal"""
+
+
 
 class NectarGainSPECombinedNoPed(NectarGainSPE):
     """class to perform fit of the 1400V and 1000V signal"""
@@ -142,8 +144,8 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
                     log.error(e,exc_info=True)
                     raise e
                 else :
-                    if self.nectarGain.charge.mask[i].all() or self.nectarGainHHV.charge.mask[i].all() : 
-                        log.info(f'do not run fit on pixel {i} (pixel_id = {self.__pixels_id[i]}), it seems to be a broken pixel from charge computation')
+                    if self.nectarGain.charge.mask[pixel].all() or self.nectarGainHHV.charge.mask[pixel].all() : 
+                        log.info(f'do not run fit on pixel {pixel} (pixel_id = {self.__pixels_id[pixel]}), it seems to be a broken pixel from charge computation')
                     else  :
                         log.info(f"running SPE fit for pixel {pixel} (pixel_id = {self.__pixels_id[pixel]})")
                         self._run_obs(pixel,**kwargs)
