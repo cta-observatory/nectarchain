@@ -25,7 +25,7 @@ class PhotoStatGain(ABC):
 
     def _readFF(self,FFRun,maxevents: int = None,**kwargs) :
         log.info('reading FF data')
-        method = kwargs.get('method','std')
+        method = "std"# kwargs.get('method','std')
         if isinstance(FFRun,int) : 
             try : 
                 self.FFcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",FFRun)
@@ -55,7 +55,7 @@ class PhotoStatGain(ABC):
 
     def _readPed(self,PedRun,maxevents: int = None,**kwargs) :
         log.info('reading Ped data')
-        method = kwargs.get('method','std')
+        method = 'std'#kwargs.get('method','std')
         if isinstance(PedRun,int) : 
             try : 
                 self.Pedcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",PedRun)

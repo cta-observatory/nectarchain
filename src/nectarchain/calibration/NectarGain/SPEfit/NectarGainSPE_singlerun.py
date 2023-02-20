@@ -177,7 +177,7 @@ class NectarGainSPESingle(NectarGainSPE):
                 return output
             return task
 
-        def task_bis(i,funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,_class : str,**kwargs) : 
+        def task_bis(i,funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,_class : str,kwargs) : 
             log.info(f"i = {i}")
             log.debug(f"{kwargs}")
             if charge.mask.all() : 
@@ -218,7 +218,7 @@ class NectarGainSPESingle(NectarGainSPE):
                     for logger in loggers : logger.setLevel(logging.FATAL)
 
                     result = pool.starmap_async(task_bis, 
-                    [(i,self.Chi2_static(i),copy.deepcopy(self.parameters),self.__pixels_id[i], self.__charge[i], self.__histo[i], self.__class__) for i in tqdm(range(self.npixels))],
+                    [(i,self.Chi2_static(i),copy.deepcopy(self.parameters),self.__pixels_id[i], self.__charge[i], self.__histo[i], self.__class__,kwargs) for i in tqdm(range(self.npixels))],
                     chunksize = chunksize,
                     error_callback=Multiprocessing.custom_error_callback
                     )
@@ -275,7 +275,7 @@ class NectarGainSPESingle(NectarGainSPE):
                     for logger in loggers : logger.setLevel(logging.FATAL)
 
                     result = pool.starmap_async(task_bis, 
-                    [(i,self.Chi2_static(i),copy.deepcopy(self.parameters),self.__pixels_id[i], self.__charge[i], self.__histo[i], self.__class__) for i in tqdm(pixels)],
+                    [(i,self.Chi2_static(i),copy.deepcopy(self.parameters),self.__pixels_id[i], self.__charge[i], self.__histo[i], self.__class__,kwargs) for i in tqdm(pixels)],
                     chunksize = chunksize,
                     error_callback=Multiprocessing.custom_error_callback
                     )
