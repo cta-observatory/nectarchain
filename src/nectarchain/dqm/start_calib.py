@@ -18,23 +18,23 @@ from camera_monitoring import CameraMonitoring
 print(sys.argv)
 path = sys.argv[1]  # path of the Run file: ./NectarCAM.Run2720.0000.fits.fz
 
-NectarPath = str(os.environ['NECTARDIR'])
+NectarPath = str(os.environ["NECTARDIR"])
 
 
 def GetName(RunFile):
-    name = RunFile.split('/')[-1]
-    name = name.split('.')[0] + '_' + name.split('.')[1]  # + '_' +name.split('.')[2]
+    name = RunFile.split("/")[-1]
+    name = name.split(".")[0] + "_" + name.split(".")[1]  # + '_' +name.split('.')[2]
     print(name)
     return name
 
 
 def CreateFigFolder(name, type):
-    if (type == 0):
-        folder = 'Plots'
+    if type == 0:
+        folder = "Plots"
 
-    ParentFolderName = name.split('_')[0] + '_' + name.split('_')[1]
-    ChildrenFolderName = './' + ParentFolderName + '/' + name + '_calib'
-    FolderPath = NectarPath + 'output/%s/%s/' % (ChildrenFolderName, folder)
+    ParentFolderName = name.split("_")[0] + "_" + name.split("_")[1]
+    ChildrenFolderName = "./" + ParentFolderName + "/" + name + "_calib"
+    FolderPath = NectarPath + "output/%s/%s/" % (ChildrenFolderName, folder)
 
     if not os.path.exists(FolderPath):
         os.makedirs(FolderPath)
@@ -46,7 +46,7 @@ start = time.time()
 
 # INITIATE
 path = path
-cmap = 'gnuplot2'
+cmap = "gnuplot2"
 
 # Read and seek
 reader = EventSource(input_url=path)
@@ -56,7 +56,7 @@ reader1 = EventSource(input_url=path, max_events=1)
 
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
-ResPath = NectarPath + 'output/%s/%s' % (ChildrenFolderName, name)
+ResPath = NectarPath + "output/%s/%s" % (ChildrenFolderName, name)
 
 
 # LIST OF PROCESSES TO RUN
@@ -92,12 +92,16 @@ Results_TriggerStatistics = {}
 Results_CameraMonitoring = {}
 
 NESTED_DICT = {}  # The final results dictionary
-NESTED_DICT_KEYS = ["Results_TriggerStatistics", "Results_MeanWaveForms_HighGain",
-                    "Results_MeanWaveForms_LowGain",
-                    "Results_MeanCameraDisplay_HighGain",
-                    "Results_MeanCameraDisplay_LowGain",
-                    "Results_ChargeIntegration_HighGain",
-                    "Results_ChargeIntegration_LowGain", "Results_CameraMonitoring"]
+NESTED_DICT_KEYS = [
+    "Results_TriggerStatistics",
+    "Results_MeanWaveForms_HighGain",
+    "Results_MeanWaveForms_LowGain",
+    "Results_MeanCameraDisplay_HighGain",
+    "Results_MeanCameraDisplay_LowGain",
+    "Results_ChargeIntegration_HighGain",
+    "Results_ChargeIntegration_LowGain",
+    "Results_CameraMonitoring",
+]
 # NESTED_DICT_KEYS = ["Results_CameraMonitoring"]
 
 # START
