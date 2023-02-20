@@ -246,7 +246,7 @@ if __name__ == '__main__':
 
     log.info(f"arguments passed to main are : {arg}")
  
-    path= args.extractorMethod+'_4-12'
+    path= args.extractorMethod+f"_{args.extractor_kwargs['window_shift']}-{args.extractor_kwargs['window_width']-args.extractor_kwargs['window_shift']}"
     arg['path'] = path
     
     main(**arg)
