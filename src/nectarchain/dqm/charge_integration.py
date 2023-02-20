@@ -23,7 +23,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.subarray = Reader1.subarray
         subarray = Reader1.subarray
         subarray.tel[0].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name("NectarCam")
-        config = Config({"LocalPeakWindowSum": {"window_shift": 12, "window_width": 12}})
+        config = Config({"LocalPeakWindowSum": {"window_shift": 4, "window_width": 12}})
 
         self.integrator = LocalPeakWindowSum(subarray, config=config)
 
