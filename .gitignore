@@ -87,7 +87,7 @@ target
 notebooks/*.html
 notebooks/*.png
 
-src/nectarchain/user_scripts/ggrolleron/test
+src/nectarchain/user_scripts/**/test
 **.log
 **.pdf
 **.csv
