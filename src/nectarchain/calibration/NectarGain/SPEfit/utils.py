@@ -67,7 +67,7 @@ def PMax(r):
     """p_{max} in equation 6 in Caroff et al. (2019)
 
     Args:
-        res (float): SPE resolution
+        r (float): SPE resolution
 
     Returns:
         float : p_{max}
@@ -104,6 +104,7 @@ def bx(p,mu2):
 
 def cx(sig2,mu2,res,p):
     """c in equation 4 in Caroff et al. (2019)
+    Note : There is a type in the article 1-p**2 -> (1-p)**2 
 
     Args:
         sig2 (float): width of the high charge Gaussian
