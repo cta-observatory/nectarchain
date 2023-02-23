@@ -13,6 +13,8 @@ logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
+from ctapipe_io_nectarcam import constants
+
 from ...container import ChargeContainer,WaveformsContainer
 
 from ..utils.error import DifferentPixelsID
@@ -25,7 +27,17 @@ class PhotoStatGain(ABC):
 
     def _readFF(self,FFRun,maxevents: int = None,**kwargs) :
         log.info('reading FF data')
-        method = "std"# kwargs.get('method','std')
+        method = kwargs.get('method','std')
+        FFchargeExtractorWindowLength = kwargs.get('FFchargeExtractorWindowLength',None)
+        if method != 'std' :
+            if FFchargeExtractorWindowLength is None : 
+                e = Exception(f"we have to specify FFchargeExtractorWindowLength argument if charge extractor method is not FullwaveformSum")
+                log.error(e,exc_info=True)
+                raise e
+            else : 
+                self.__coefCharge_FF_Ped = FFchargeExtractorWindowLength / constants.N_SAMPLES
+        else : 
+            self.__coefCharge_FF_Ped = 1
         if isinstance(FFRun,int) : 
             try : 
                 self.FFcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",FFRun)
@@ -162,21 +174,21 @@ class PhotoStatGain(ABC):
     def pixels_id(self) : return self._pixels_id
 
     @property
-    def sigmaPedHG(self) : return np.std(self._Pedcharge_hg ,axis = 0)
+    def sigmaPedHG(self) : return np.std(self._Pedcharge_hg ,axis = 0) * np.sqrt(self.__coefCharge_FF_Ped)
 
     @property
-    def sigmaChargeHG(self) : return np.std(self._FFcharge_hg - self.meanPedHG,axis = 0)
+    def sigmaChargeHG(self) : return np.std(self._FFcharge_hg - self.meanPedHG, axis = 0)
 
     @property
-    def meanPedHG(self) : return np.mean(self._Pedcharge_hg ,axis = 0)
+    def meanPedHG(self) : return np.mean(self._Pedcharge_hg ,axis = 0) * self.__coefCharge_FF_Ped
 
     @property
-    def meanChargeHG(self) : return np.mean(self._FFcharge_hg  - self.meanPedHG,axis = 0)
+    def meanChargeHG(self) : return np.mean(self._FFcharge_hg  - self.meanPedHG, axis = 0)
 
     @property
     def BHG(self) : 
         min_events = np.min((self._FFcharge_hg.shape[0],self._Pedcharge_hg.shape[0]))
-        upper = (np.power(self._FFcharge_hg.mean(axis = 1)[:min_events] - self._Pedcharge_hg.mean(axis = 1)[:min_events] - self.meanChargeHG.mean(),2)).mean(axis = 0)
+        upper = (np.power(self._FFcharge_hg.mean(axis = 1)[:min_events] - self._Pedcharge_hg.mean(axis = 1)[:min_events] * self.__coefCharge_FF_Ped - self.meanChargeHG.mean(),2)).mean(axis = 0)
         lower =  np.power(self.meanChargeHG.mean(),2)#np.power(self.meanChargeHG,2)#np.power(self.meanChargeHG.mean(),2)
         return np.sqrt(upper/lower)
 
@@ -187,13 +199,13 @@ class PhotoStatGain(ABC):
     
 
     @property
-    def sigmaPedLG(self) : return np.std(self._Pedcharge_lg ,axis = 0)
+    def sigmaPedLG(self) : return np.std(self._Pedcharge_lg ,axis = 0) * np.sqrt(self.__coefCharge_FF_Ped)
 
     @property
     def sigmaChargeLG(self) : return np.std(self._FFcharge_lg  - self.meanPedLG,axis = 0)
 
     @property
-    def meanPedLG(self) : return np.mean(self._Pedcharge_lg,axis = 0)
+    def meanPedLG(self) : return np.mean(self._Pedcharge_lg,axis = 0) * self.__coefCharge_FF_Ped
 
     @property
     def meanChargeLG(self) : return np.mean(self._FFcharge_lg - self.meanPedLG,axis = 0)
@@ -201,7 +213,7 @@ class PhotoStatGain(ABC):
     @property
     def BLG(self) : 
         min_events = np.min((self._FFcharge_lg.shape[0],self._Pedcharge_lg.shape[0]))
-        upper = (np.power(self._FFcharge_lg.mean(axis = 1)[:min_events] - self._Pedcharge_lg.mean(axis = 1)[:min_events] - self.meanChargeLG.mean(),2)).mean(axis = 0)
+        upper = (np.power(self._FFcharge_lg.mean(axis = 1)[:min_events] - self._Pedcharge_lg.mean(axis = 1)[:min_events] * self.__coefCharge_FF_Ped - self.meanChargeLG.mean(),2)).mean(axis = 0)
         lower =  np.power(self.meanChargeLG.mean(),2) #np.power(self.meanChargeLG,2) #np.power(self.meanChargeLG.mean(),2)
         return np.sqrt(upper/lower)
 
