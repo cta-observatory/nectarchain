@@ -60,6 +60,11 @@ parser.add_argument('--chargeExtractorPath',
                     type=str
                     )
 
+parser.add_argument('--FFchargeExtractorWindowLength',
+                    help='charge extractor window length in ns',
+                    type=int
+                    )
+
 #verbosity argument
 parser.add_argument('-v',"--verbosity",
                     help='set the verbosity level of logger',
@@ -72,7 +77,7 @@ def main(args) :
     figpath = os.environ.get('NECTARCHAIN_FIGURES')
 
 
-    photoStat_FFandPed = PhotoStatGainFFandPed(args.FF_run_number, args.ped_run_number, SPEresults = args.SPE_fit_results,method = args.chargeExtractorPath)    
+    photoStat_FFandPed = PhotoStatGainFFandPed(args.FF_run_number, args.ped_run_number, SPEresults = args.SPE_fit_results,method = args.chargeExtractorPath, FFchargeExtractorWindowLength = args.FFchargeExtractorWindowLength)    
     photoStat_FFandPed.run()
     photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     log.info(f"BF^2 HG : {np.power(np.mean(photoStat_FFandPed.BHG),2)}")
