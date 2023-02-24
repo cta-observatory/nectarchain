@@ -31,6 +31,13 @@ parser.add_argument('--overwrite',
                     help='to force overwrite files on disk'
                     )
 
+#output figures path extension
+parser.add_argument('--output_fig_tag', 
+                    type = str,
+                    default='',
+                    help='tag to set output figure path'
+                    )
+
 #pixels selected
 parser.add_argument('-p','--pixels',
                     nargs="+",
@@ -91,6 +98,8 @@ parser.add_argument('-v',"--verbosity",
 
 def main(args) : 
     figpath = f"{os.environ.get('NECTARCHAIN_FIGURES')}/"
+    figpath_ext = "" if args.output_fig_tag == "" else f"-{args.output_fig_tag}"
+
 
     multipath = "MULTI-" if args.multiproc else ""
 
@@ -104,7 +113,7 @@ def main(args) :
                                     same_luminosity=args.same_luminosity
                                     )
         t = time.time()
-        gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}")
+        gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}")
         log.info(f"fit time =  {time.time() - t } sec")
         gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
         log.info(f"convergence rate : {len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels}")
