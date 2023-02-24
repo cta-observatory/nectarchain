@@ -45,9 +45,9 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.peakpos_ped = []
 
     def ProcessEvent(self, evt):
-        # print("test", evt.r0.tel[0].waveform[0])
-        waveform = evt.r0.tel[0].waveform[0]
-        image, peakpos = self.integrator(waveform, 0, np.zeros(self.Chan, dtype=int))
+        #print("test", evt.r0.tel[0].waveform[0])
+        waveform=evt.r0.tel[0].waveform[self.k]
+        image, peakpos = self.integrator(waveform,0,np.zeros(self.Chan, dtype = int))
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1

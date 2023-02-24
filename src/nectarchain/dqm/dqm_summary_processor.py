@@ -84,10 +84,18 @@ class dqm_summary:
                     data[n] = m
                 hdu = fits.BinTableHDU(data)
                 hdu.name = "Camera"
-                  
-        hdulist.append(hdu2)
-        hdulist.append(hdu1) 
-        hdulist.append(hdu)
+        try:          
+            hdulist.append(hdu2)
+        except:
+            print("No trigger statistics requests")
+        try:
+            hdulist.append(hdu1) 
+        except:
+            print("No MWF studies requests")
+        try:
+            hdulist.append(hdu)
+        except:
+            print("No Camera studies requests")
         FileName = path + '_Results.fits'
         hdulist.writeto(FileName, overwrite=True)
         return None
