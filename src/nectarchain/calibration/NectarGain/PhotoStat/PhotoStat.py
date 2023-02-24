@@ -43,20 +43,21 @@ class PhotoStatGain(ABC):
                 self.FFcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",FFRun)
                 log.info(f'charges have ever been computed for FF run {FFRun}')
             except Exception as e : 
-                log.info(f'loading waveforms for FF run {FFRun}')
-                FFwaveforms = WaveformsContainer(FFRun,maxevents)
-                FFwaveforms.load_wfs()
+                log.error("charge have not been yet computed")
+                raise e
 
-                if method != 'std' : 
-                    log.info(f'computing charge for FF run {FFRun} with following method : {method}')
-                    self.FFcharge = ChargeContainer.from_waveforms(FFwaveforms,method = method)
-                else :
-                    log.info(f'computing charge for FF run {FFRun} with std method')
-                    self.FFcharge = ChargeContainer.from_waveforms(FFwaveforms)
-
-                log.debug('writting on disk charge for further works')
-                os.makedirs(f"{os.environ['NECTARCAMDATA']}/charges/{method}",exist_ok = True)
-                self.FFcharge.write(f"{os.environ['NECTARCAMDATA']}/charges/{method}",overwrite = True)
+                #log.info(f'loading waveforms for FF run {FFRun}')
+                #FFwaveforms = WaveformsContainer(FFRun,maxevents)
+                #FFwaveforms.load_wfs()
+                #if method != 'std' : 
+                #    log.info(f'computing charge for FF run {FFRun} with following method : {method}')
+                #    self.FFcharge = ChargeContainer.from_waveforms(FFwaveforms,method = method)
+                #else :
+                #    log.info(f'computing charge for FF run {FFRun} with std method')
+                #    self.FFcharge = ChargeContainer.from_waveforms(FFwaveforms)
+                #log.debug('writting on disk charge for further works')
+                #os.makedirs(f"{os.environ['NECTARCAMDATA']}/charges/{method}",exist_ok = True)
+                #self.FFcharge.write(f"{os.environ['NECTARCAMDATA']}/charges/{method}",overwrite = True)
         
         elif isinstance(FFRun,ChargeContainer):
             self.FFcharge = FFRun
@@ -73,20 +74,21 @@ class PhotoStatGain(ABC):
                 self.Pedcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",PedRun)
                 log.info(f'charges have ever been computed for Ped run {PedRun}')
             except Exception as e : 
-                log.info(f'loading waveforms for Ped run {PedRun}')
-                Pedwaveforms = WaveformsContainer(PedRun,maxevents)
-                Pedwaveforms.load_wfs()
+                log.error("charge have not been yet computed")
+                raise e
 
-                if method != 'std' : 
-                    log.info(f'computing charge for Ped run {PedRun} with following method : {method}')
-                    self.Pedcharge = ChargeContainer.from_waveforms(Pedwaveforms,method = method)
-                else :
-                    log.info(f'computing charge for Ped run {PedRun} with std method')
-                    self.Pedcharge = ChargeContainer.from_waveforms(Pedwaveforms)
-
-                log.debug('writting on disk charge for further works')
-                os.makedirs(f"{os.environ['NECTARCAMDATA']}/charges/{method}",exist_ok = True)
-                self.Pedcharge.write(f"{os.environ['NECTARCAMDATA']}/charges/{method}",overwrite = True)
+                #log.info(f'loading waveforms for Ped run {PedRun}')
+                #Pedwaveforms = WaveformsContainer(PedRun,maxevents)
+                #Pedwaveforms.load_wfs()
+                #if method != 'std' : 
+                #    log.info(f'computing charge for Ped run {PedRun} with following method : {method}')
+                #    self.Pedcharge = ChargeContainer.from_waveforms(Pedwaveforms,method = method)
+                #else :
+                #    log.info(f'computing charge for Ped run {PedRun} with std method')
+                #    self.Pedcharge = ChargeContainer.from_waveforms(Pedwaveforms)
+                #log.debug('writting on disk charge for further works')
+                #os.makedirs(f"{os.environ['NECTARCAMDATA']}/charges/{method}",exist_ok = True)
+                #self.Pedcharge.write(f"{os.environ['NECTARCAMDATA']}/charges/{method}",overwrite = True)
         
         elif isinstance(PedRun,ChargeContainer):
             self.Pedcharge = PedRun
