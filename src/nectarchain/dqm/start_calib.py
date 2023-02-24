@@ -15,10 +15,26 @@ from charge_integration import ChargeIntegration_HighLowGain
 from trigger_statistics import TriggerStatistics
 from camera_monitoring import CameraMonitoring
 
-print(sys.argv)
-path = sys.argv[1]  # path of the Run file: ./NectarCAM.Run2720.0000.fits.fz
+import argparse
 
-NectarPath = str(os.environ["NECTARDIR"])
+# Create an ArgumentParser object
+parser = argparse.ArgumentParser(description='My script')
+parser.add_argument('-plot', action='store_true', help='Whether to plot the data')
+parser.add_argument('input_paths', nargs='+', help='Input paths')
+args = parser.parse_args()
+
+#Reading arguments, paths and plot-boolean
+path = args.input_paths[0]
+print("Input file paths:")
+print(path)
+for arg in args.input_paths[1:]:
+    print(arg)
+PlotFig = args.plot
+print("Plot:", PlotFig)
+
+#NectarPath
+NectarPath = str(os.environ['NECTARDIR'])
+
 
 
 def GetName(RunFile):
@@ -46,7 +62,8 @@ start = time.time()
 
 # INITIATE
 path = path
-cmap = "gnuplot2"
+print(path)
+cmap = 'gnuplot2'
 
 # Read and seek
 reader = EventSource(input_url=path)
@@ -113,11 +130,14 @@ for p in processors:
     p.ConfigureForRun(path, Chan, Samp, reader1)
 
 for i, evt in enumerate(reader):
-    for p in processors:
-        p.ProcessEvent(evt)
+	for p in processors:
+		p.ProcessEvent(evt)
+        
+#for the rest of the event files
+for arg in args.input_paths[1:]:
+    print(arg)
 
-for arg in sys.argv[2:]:
-    reader = EventSource(input_url=arg)
+    reader=EventSource(input_url=arg)
     seeker = EventSeeker(reader)
 
     for i, evt in enumerate(reader):
@@ -136,20 +156,22 @@ for p in processors:
 
 name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 pickle file we do this. 
-'''
-for p in processors:
-    processor_figure_dict, processor_figure_name_dict = p.PlotResults(name, FigPath)
 
-    for fig_plot in processor_figure_dict:
-        fig = processor_figure_dict[fig_plot]
-        SavePath = processor_figure_name_dict[fig_plot]
-        plt.gcf()
-        fig.savefig(SavePath)
+#if -plot in args it will construct the figures and save them
+if PlotFig == True:
+    for p in processors:
+        processor_figure_dict, processor_figure_name_dict  = p.PlotResults(name, FigPath)
+    
+        for fig_plot in processor_figure_dict:
+            fig = processor_figure_dict[fig_plot]
+            SavePath = processor_figure_name_dict[fig_plot]
+            plt.gcf()
+            fig.savefig(SavePath)
+            
+    plt.clf()
+    plt.cla()
+    plt.close()
 
-plt.clf()
-plt.cla()
-plt.close()
-'''
 
 end = time.time()
 print("Processing time:", end - start)
