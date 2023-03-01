@@ -26,8 +26,8 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.cmap = "gnuplot2"
         self.cmap2 = "gnuplot2"
 
-    def ProcessEvent(self, evt):
-        if evt.trigger.event_type.value == 32:  # count peds
+    def ProcessEvent(self, evt, noped):
+        if evt.trigger.event_type.value == 32: #count peds 
             self.counter_ped += 1
         else:
             self.counter_evt += 1

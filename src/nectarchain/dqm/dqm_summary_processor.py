@@ -44,8 +44,8 @@ class dqm_summary:
     def ConfigureForRun(self):
         print("Processor 1")
 
-    def ProcessEvent(self, evt):
-        print("Processor 2")
+    def ProcessEvent(self, evt, noped):
+        print('Processor 2')
 
     def FinishRun(self, M, M_ped, counter_evt, counter_ped):
         print("Processor 3")
