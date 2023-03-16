@@ -5,7 +5,7 @@ import numpy as np
 from iminuit import Minuit
 from scipy import interpolate, signal
 from scipy.special import gammainc
-from scipy.stats import norm
+from scipy.stats import norm,chi2
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
@@ -19,6 +19,11 @@ class Multiprocessing() :
     def custom_error_callback(error):
         log.error(f'Got an error: {error}')
         log.error(error,exc_info=True)
+
+class Statistics() : 
+    @staticmethod
+    def chi2_pvalue(ndof : int, likelihood : float) : 
+        return 1 - chi2(df = ndof).cdf(likelihood)
 
 class UtilsMinuit() :
     @staticmethod
@@ -72,11 +77,11 @@ def PMax(r):
     Returns:
         float : p_{max}
     """
-    pmax = np.pi*r**2/(np.pi*r**2 + np.pi - 2*r**2 - 2)
-    if pmax <= 1:
-        return pmax
-    else:
-        return 1
+    if r > np.sqrt((np.pi -2 )/ 2) :
+        pmax = np.pi/(2 * (r**2 + 1))
+    else : 
+        pmax = np.pi*r**2/(np.pi*r**2 + np.pi - 2*r**2 - 2)
+    return pmax
 
 def ax(p,res):
     """a in equation 4 in Caroff et al. (2019)
@@ -153,7 +158,8 @@ def ParamS(p,r):
     Returns:
         float : e
     """
-    return (4*(2*p**2/np.pi - p/(r**2+1))*(1-p))/(r**2+1)
+    e = (4*(2*p**2/np.pi - p/(r**2+1))*(1-p))/(r**2+1)
+    return e
 
 def SigMin(p,res,mu2):
     """sigma_{high,min} in equation 6 in Caroff et al. (2019)
@@ -179,7 +185,13 @@ def SigMax(p,res,mu2):
     Returns:
         float : sigma_{high,min}
     """
-    return mu2*np.sqrt((-ParamU(p,res))/(ParamS(p,res)))
+    temp = (-ParamU(p,res))/(ParamS(p,res))
+    if temp < 0 : 
+        err = ValueError("-d/e must be < 0")
+        log.error(err,exc_info=True)
+        raise err
+    else : 
+        return mu2*np.sqrt(temp)
 
 def sigma1(p,res,sig2,mu2):
     """sigma_{low} in equation 5 in Caroff et al. (2019)
