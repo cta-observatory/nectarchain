@@ -27,7 +27,7 @@ from multiprocessing.pool import ThreadPool as Pool
 
 from .parameters import Parameters,Parameter
 from ...container import ChargeContainer
-from .utils import UtilsMinuit,MPE2,Gain,gaussian,Multiprocessing
+from .utils import UtilsMinuit,MPE2,Gain,gaussian,Multiprocessing,Statistics
 from .NectarGainSPE import NectarGainSPE
 
 from abc import abstractclassmethod
@@ -71,6 +71,10 @@ class NectarGainSPESingle(NectarGainSPE):
         for parameter in self._parameters.parameters : 
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),parameter.name,unit = parameter.unit))
             self._output_table.add_column(Column(np.empty((self.npixels),dtype = np.float64),f'{parameter.name}_error',unit = parameter.unit))
+
+        self._output_table.add_column(Column(np.zeros((self.npixels),dtype = np.float64),"likelihood",unit = u.dimensionless_unscaled))
+        self._output_table.add_column(Column(np.zeros((self.npixels),dtype = np.float64),"pvalue",unit = u.dimensionless_unscaled))
+
 
     def make_table_from_output_multi(self,list_dict : list) :
         self._output_table = QTable.from_pandas(pd.DataFrame.from_dict(list_dict))
@@ -147,7 +151,7 @@ class NectarGainSPESingle(NectarGainSPE):
                 self._run_obs(i,**kwargs)
         
         
-        def task_multiple(funct,parameters : Parameters,pixels_id : int,charge : np.ndarray, histo : np.ndarray,pix) : 
+        def task_multiple(funct,parameters : Parameters,pixels_id : list,charge : np.ndarray, histo : np.ndarray,pix) : 
             _funct = {i : funct(i) for i in pix}
             _parameters = copy.deepcopy(parameters)
             _pixels_id = copy.deepcopy(pixels_id)
@@ -432,7 +436,9 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
             log.info(f"fitted value : {fit.values}")
             log.info(f"fitted errors : {fit.errors}")
             cls._update_parameters_postfit(fit,parameters)
-            output = cls._make_output_dict_obs(fit,valid,pixels_id,parameters)
+
+            ndof = histo.data[~histo.mask].shape[0] - fit.nfit
+            output = cls._make_output_dict_obs(fit,valid,pixels_id,parameters,ndof)
             
             gain = np.empty(3)
 
@@ -442,6 +448,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
             gain[2] = np.quantile(stat_gain,0.84) - gain[0]
 
             log.info(f"Reconstructed gain is {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f}")
+            log.info(f"Likelihood value = {fit.fval}")
             output['gain'] = gain[0] 
             output['gain_error'] = np.empty(2)
             output['gain_error'][0] = gain[1] 
@@ -456,7 +463,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                     np.trapz(histo,charge)*MPE2(charge,parameters['pp'].value, parameters['resolution'].value, parameters['mean'].value, parameters['n'].value, parameters['pedestal'].value, parameters['pedestalWidth'].value, parameters['luminosity'].value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe")
+                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"SPE fit pixel {it} with pixel_id : {pixels_id}")
@@ -485,8 +492,10 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
             self.__gain[pixel,1] = self.__gain[pixel,0] - np.quantile(stat_gain,0.16)
             self.__gain[pixel,2] = np.quantile(stat_gain,0.84) - self.__gain[pixel,0]
 
-            self.fill_table(pixel,valid)
+            ndof = self.histo[pixel].data[~self.histo[pixel].mask].shape[0] - fit.nfit
+            self.fill_table(pixel,valid,ndof,fit.fval)
             log.info(f"Reconstructed gain is {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f}")
+            log.info(f"Likelihood value = {fit.fval}")
             self._output_table['gain'][pixel] = self.__gain[pixel,0] 
             self._output_table['gain_error'][pixel][0] = self.__gain[pixel,1] 
             self._output_table['gain_error'][pixel][1] = self.__gain[pixel,2] 
@@ -500,7 +509,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                     np.trapz(self.histo[pixel],self.charge[pixel])*MPE2(self.charge[pixel],self.__pp.value,self.__resolution.value,self.__mean.value,self.__n.value,self.pedestal.value,self.__pedestalWidth.value,self.__luminosity.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe")
+                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"SPE fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
@@ -512,7 +521,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                 del fig,ax
         else : 
             log.warning(f"fit pixel_id = {self.pixels_id[pixel]} is not valid")
-            self.fill_table(pixel,valid)
+            self.fill_table(pixel,valid,0,0)
 
     @classmethod
     def NG_Likelihood_Chi2(cls,pp,res,mu2,n,muped,sigped,lum,charge,histo,**kwargs):
@@ -781,7 +790,7 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
             super()._run_obs(pixel,prescan,**kwargs)
         else :
             log.warning(f"fit pixel {pixel} with pixel_id = {self.pixels_id[pixel]} is not valid")
-            self.fill_table(pixel,False)
+            self.fill_table(pixel,False,0,0)
 
     @classmethod
     def _run_obs_static(cls,it : int, funct,parameters: Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) -> dict : 
@@ -844,8 +853,10 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
             self.__pedestalFitted[pixel,1] = self.pedestal.error
 
             log.info(f"pedestal is {self.__pedestalFitted[pixel,0]:.2f} +/- {self.__pedestalFitted[pixel,1]:.2f}")
+            log.info(f"Likelihood value = {fit.fval}")
 
-            self.fill_table(pixel,valid)
+            ndof = self.histo[pixel].data[~self.histo[pixel].mask].shape[0] - fit.nfit
+            self.fill_table(pixel,valid,ndof,fit.fval)
 
             if kwargs.get('figpath',0) != 0 :
                 fig,ax = plt.subplots(1,1,figsize=(8, 6))
@@ -854,7 +865,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                     np.trapz(self.histo[pixel],self.charge[pixel])*gaussian(self.charge[pixel],self.pedestal.value,self.__pedestalWidth.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"MPE model fit \n Pedestal = {round(self.__pedestalFitted[pixel,0]):.2f} +/-  {round(self.__pedestalFitted[pixel,1],2):.2f} ADC/pe")
+                    label = f"MPE model fit \n Pedestal = {round(self.__pedestalFitted[pixel,0]):.2f} +/-  {round(self.__pedestalFitted[pixel,1],2):.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"Pedestal fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
@@ -866,7 +877,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                 del fig,ax
         else : 
             log.warning(f"fit pixel_id = {self.pixels_id[pixel]} is not valid")
-            self.fill_table(pixel,valid)
+            self.fill_table(pixel,valid,0,0)
 
     @classmethod
     def _run_obs_static(cls,it : int, funct,parameters : Parameters, pixels_id : int, charge : np.ndarray, histo : np.ndarray, prescan = False, **kwargs) :
@@ -877,13 +888,17 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
             log.info(f"fitted value : {fit.values}")
             log.info(f"fitted errors : {fit.errors}")
             __class__._update_parameters_postfit(fit,parameters)
-            output = __class__._make_output_dict_obs(fit,valid,pixels_id,parameters)
+
+            ndof = histo.data[~histo.mask].shape[0] - fit.nfit
+            output = __class__._make_output_dict_obs(fit,valid,pixels_id,parameters,ndof)
             
             pedestalFitted = np.empty(2)
             pedestalFitted[0] = parameters["pedestal"].value
             pedestalFitted[1] = parameters["pedestal"].error
 
             log.info(f"pedestal is {pedestalFitted[0]:.2f} +/- {pedestalFitted[1]:.2}")
+            log.info(f"Likelihood value = {fit.fval}")
+
 
             output['pedestalFitted'] = pedestalFitted[0] 
             output['pedestalFitted_error'] = pedestalFitted[1]
@@ -895,7 +910,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                     np.trapz(histo, charge)*gaussian(charge, parameters["pedestal"].value,parameters["pedestalWidth"].value),
                     zorder=1,
                     linewidth=2,
-                    label = f"MPE model fit \n Pedestal = {round(parameters['pedestal'].value):.2f} +/-  {round(parameters['pedestal'].error,2):.2e} ADC/pe")
+                    label = f"MPE model fit \n Pedestal = {round(parameters['pedestal'].value):.2f} +/-  {round(parameters['pedestal'].error,2):.2e} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"Pedestal fit pixel_id = {pixels_id})")

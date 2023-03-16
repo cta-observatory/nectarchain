@@ -24,7 +24,7 @@ from astropy.table import QTable
 import pandas as pd
 
 from .parameters import Parameters
-from .utils import UtilsMinuit,weight_gaussian
+from .utils import UtilsMinuit,weight_gaussian,Statistics
 
 __all__ = ['NectarGainSPE']
 
@@ -38,11 +38,18 @@ class NectarGainSPE(ABC) :
         self._output_table = QTable()
         #self.create_output_table() #need to be done in the child class __init__
 
-    def fill_table(self,pixel : int, valid : bool) : 
+    def fill_table(self,pixel : int, valid : bool,ndof : int,likelihood : float) : 
         self._output_table['is_valid'][pixel] = valid
         for parameter in self._parameters.parameters : 
             self._output_table[parameter.name][pixel] = parameter.value
             self._output_table[f'{parameter.name}_error'][pixel] = parameter.error
+        if valid : 
+            self._output_table['pvalue'][pixel] = Statistics.chi2_pvalue(ndof,likelihood)
+            self._output_table['likelihood'][pixel] = likelihood
+        else : 
+            self._output_table['pvalue'][pixel] = 0
+            self._output_table['likelihood'][pixel] = 0
+
 
     def make_table(self,dictionary):
         self._output_table = QTable.from_pandas(pd.DataFrame.from_dict(dictionary))
@@ -71,12 +78,15 @@ class NectarGainSPE(ABC) :
                 tmp.error = m.errors[i]
 
     @staticmethod
-    def _make_output_dict_obs(m : Minuit,valid,pixels_id,parameters : Parameters) :
+    def _make_output_dict_obs(m : Minuit,valid,pixels_id,parameters : Parameters,ndof : int) :
         __class__._update_parameters_postfit(m,parameters)
         output = {"is_valid" : valid, "pixel" : pixels_id}
         for parameter in parameters.parameters : 
             output[parameter.name] = parameter.value 
             output[f"{parameter.name}_error"] = parameter.error 
+
+        output['likelihood'] = m.fval
+        output['pvalue'] = Statistics.chi2_pvalue(ndof,m.fval)
         return output
 
     def read_param_from_yaml(self,parameters_file) :
