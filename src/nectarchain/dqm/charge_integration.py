@@ -33,7 +33,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
             "NectarCam"
         )
         config = Config(
-            {"LocalPeakWindowSum": {"window_shift": 12, "window_width": 12}}
+            {"LocalPeakWindowSum": {"window_shift": 4, "window_width": 12}}
         )
 
         self.integrator = LocalPeakWindowSum(subarray, config=config)
