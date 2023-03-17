@@ -87,7 +87,7 @@ target
 notebooks/*.html
 notebooks/*.png
 
-nectarchain/calibration/test
+src/nectarchain/user_scripts/**/test
 **.log
 **.pdf
 **.csv

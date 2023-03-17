@@ -1,8 +1,3 @@
-import numpy as np
-#import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from pathlib import Path
 import sys
 import os
@@ -10,17 +5,11 @@ import argparse
 import json
 
 import logging
+logging.getLogger("numba").setLevel(logging.WARNING)
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.DEBUG,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
 log = logging.getLogger(__name__)
-##tips to add message to stdout
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-log.addHandler(handler)
 
-from nectarchain.calibration.container import WaveformsContainer, WaveformsContainers
-from nectarchain.calibration.container import ChargeContainer, ChargeContainers
+from nectarchain.calibration.container import WaveformsContainer,ChargeContainer
 
 parser = argparse.ArgumentParser(
                     prog = 'load_wfs_compute_charge',
@@ -102,6 +91,13 @@ parser.add_argument('--extractor_kwargs',
                     type=json.loads
                     )
 
+#verbosity argument
+parser.add_argument('-v',"--verbosity",
+                    help='set the verbosity level of logger',
+                    default="info",
+                    choices=["fatal","debug","info","warning"],
+                    type=str)
+
 args = parser.parse_args()
 
 #control shape of arguments lists
@@ -118,7 +114,6 @@ for arg in ['spe','ff','ped'] :
         e = Exception(f'{arg}_run_number and {arg}_nevents must have same length')
         log.error(e,exc_info=True)
         raise e
-
 
 def load_wfs_compute_charge(runs_list : list,
                             reload_wfs : bool = False,
@@ -159,7 +154,7 @@ def load_wfs_compute_charge(runs_list : list,
             try : 
                 wfs = WaveformsContainer.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
             except FileNotFoundError as e : 
-                log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at sps/hess/lpnhe/ggroller/projects/NECTARCAM/runs/waveforms/waveforms_run{runs_list[i]}.fits")
+                log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at {os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
                 log.warning(f"reloading from zfits files")
                 wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
                 wfs.load_wfs()
@@ -174,10 +169,10 @@ def load_wfs_compute_charge(runs_list : list,
 
         log.info(f"computation of charge with {charge_childpath}")
         charge = ChargeContainer.from_waveforms(wfs,method = charge_childpath,**extractor_kwargs)
+        del wfs
         charge.write(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",overwrite = overwrite)
-        del wfs,charge
+        del charge
     
-
 
 def main(spe_run_number : list = [],
         ff_run_number : list = [], 
@@ -208,8 +203,6 @@ def main(spe_run_number : list = [],
                             max_events = max_events,
                             **kwargs)
 
-
-
 if __name__ == '__main__':
 
 
@@ -218,7 +211,27 @@ if __name__ == '__main__':
     #ff_run_number = [2608]
     #ped_run_number = [2609]
     #spe_nevents = [49227,49148,-1]
-    
+
+    args = parser.parse_args()
+    logginglevel = logging.FATAL
+    if args.verbosity == "warning" : 
+        logginglevel = logging.WARNING
+    elif args.verbosity == "info" : 
+        logginglevel = logging.INFO
+    elif args.verbosity == "debug" : 
+        logginglevel = logging.DEBUG
+
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',force = True, level=logginglevel,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log")
+
+    log = logging.getLogger(__name__)
+    log.setLevel(logginglevel)
+    ##tips to add message to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logginglevel)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
 
     arg = vars(args)
     log.info(f"arguments are : {arg}")
@@ -233,9 +246,7 @@ if __name__ == '__main__':
 
     log.info(f"arguments passed to main are : {arg}")
  
-    path= args.extractorMethod+'_4-12'
+    path= args.extractorMethod+f"_{args.extractor_kwargs['window_shift']}-{args.extractor_kwargs['window_width']-args.extractor_kwargs['window_shift']}"
     arg['path'] = path
     
     main(**arg)
-
-
