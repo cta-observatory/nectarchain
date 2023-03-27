@@ -21,6 +21,7 @@ from ctapipe.visualization import CameraDisplay
 from ctapipe.image.extractor import *
 from ctapipe.io import EventSeeker 
 from ctapipe.instrument import CameraGeometry
+from ctapipe.coordinates import EngineeringCameraFrame
 
 from ctapipe.io.hdf5tableio import HDF5TableWriter, HDF5TableReader
 
