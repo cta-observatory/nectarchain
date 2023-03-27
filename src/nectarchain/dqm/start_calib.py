@@ -2,12 +2,12 @@ import os
 import sys
 
 from matplotlib import pyplot as plt
-
-# from multiprocessing import Process
-
+import argparse
+#from multiprocessing import Process
 import time
 
 from ctapipe.io import EventSource, EventSeeker
+from ctapipe_io_nectarcam.constants import LOW_GAIN, HIGH_GAIN
 
 from mean_waveforms import MeanWaveForms_HighLowGain
 from mean_camera_display import MeanCameraDisplay_HighLowGain
@@ -15,7 +15,7 @@ from charge_integration import ChargeIntegration_HighLowGain
 from trigger_statistics import TriggerStatistics
 from camera_monitoring import CameraMonitoring
 
-import argparse
+
 
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser(description='My script')
@@ -24,23 +24,51 @@ parser.add_argument('-p', '--plot',
                      help='Enables plots to be generated')
 parser.add_argument('-n', '--noped',
                      action='store_true',
-                     help='Enables plots to be generated')
-parser.add_argument('input_paths', nargs='+', help='Input paths')
+                     help='Enables pedestal subtraction in intergration')
+parser.add_argument('-r', '--runnb',
+                     action='store_true',
+                     help='Emables findung run number automatically')
+
+parser.add_argument('input_paths', help='Input paths')
+parser.add_argument('output_paths', help='Output paths')
+parser.add_argument('input_files', nargs='+', help='Input files')
+
 args = parser.parse_args()
 
 #Reading arguments, paths and plot-boolean
-path = args.input_paths[0]
-print("Input file paths:")
+NectarPath = args.input_paths #str(os.environ['NECTARDIR'])
+print("Input files path:", NectarPath)
+
+#Defining and priting the paths of the output files.
+output_path = args.output_paths
+print("Output path:", output_path)
+
+
+#Defining and priting the paths of the input files.
+
+#Read run automatocally is the -r option is provided...NOT TESTED YET
+AutomaticRun = args.runnb
+if AutomaticRun == True:
+    from nectarchain.calibration.container import utils
+    dm = utils.DataManagement()
+    path1 = dm.findrun(args.input_files)
+else: #OTHERWISE READ THE RUNS FROM ARGS
+    path1 = args.input_files[0]
+    
+#THE PATH OF INPUT FILES 
+path = NectarPath + path1
+print("Input files:")
 print(path)
-for arg in args.input_paths[1:]:
+for arg in args.input_files[1:]:
     print(arg)
+
+#Defining and priting the options
 PlotFig = args.plot
 noped = args.noped
+
 print("Plot:", PlotFig)
 print("Noped:", noped)
 
-#NectarPath
-NectarPath = str(os.environ['NECTARDIR'])
 
 
 
@@ -51,13 +79,9 @@ def GetName(RunFile):
     return name
 
 
-def CreateFigFolder(name, type):
-    if type == 0:
-        folder = "Plots"
-
-    ParentFolderName = name.split("_")[0] + "_" + name.split("_")[1]
-    ChildrenFolderName = "./" + ParentFolderName + "/" + name + "_calib"
-    FolderPath = NectarPath + "output/%s/%s/" % (ChildrenFolderName, folder)
+    ParentFolderName = name.split('_')[0] + '_' + name.split('_')[1]
+    ChildrenFolderName = './' + ParentFolderName +'/' + name + '_calib'
+    FolderPath = output_path + 'output/%s/%s/' %(ChildrenFolderName, folder)
 
     if not os.path.exists(FolderPath):
         os.makedirs(FolderPath)
@@ -80,18 +104,30 @@ reader1 = EventSource(input_url=path, max_events=1)
 
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
-ResPath = NectarPath + "output/%s/%s" % (ChildrenFolderName, name)
+ResPath = output_path + 'output/%s/%s' %(ChildrenFolderName, name)
+#######################################################################################################################
 
 
-# LIST OF PROCESSES TO RUN
-a = TriggerStatistics(0)
-b = MeanWaveForms_HighLowGain(0)  # 0 is for high gain and 1 is for low gain
-c = MeanWaveForms_HighLowGain(1)
-d = MeanCameraDisplay_HighLowGain(0)
-e = MeanCameraDisplay_HighLowGain(1)
-f = ChargeIntegration_HighLowGain(0)
-g = ChargeIntegration_HighLowGain(1)
-h = CameraMonitoring(0)
+
+
+                                                  ########################
+
+
+
+
+
+
+
+#LIST OF PROCESSES TO RUN
+#######################################################################################################################
+a = TriggerStatistics(HIGH_GAIN)
+b = MeanWaveForms_HighLowGain(HIGH_GAIN) #0 is for high gain and 1 is for low gain
+c = MeanWaveForms_HighLowGain(LOW_GAIN)
+d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
+e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
+f = ChargeIntegration_HighLowGain(HIGH_GAIN)
+g = ChargeIntegration_HighLowGain(LOW_GAIN)
+h = CameraMonitoring(HIGH_GAIN)
 
 processors = list()
 
@@ -141,10 +177,11 @@ for i, evt in enumerate(reader):
 		p.ProcessEvent(evt, noped)
         
 #for the rest of the event files
-for arg in args.input_paths[1:]:
-    print(arg)
+for arg in args.input_files[1:]:
+    path2 = NectarPath + arg
+    print(path2)
 
-    reader=EventSource(input_url=arg)
+    reader=EventSource(input_url=path2)
     seeker = EventSeeker(reader)
 
     for i, evt in enumerate(reader):

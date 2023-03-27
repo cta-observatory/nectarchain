@@ -27,6 +27,7 @@ from ctapipe.io.hdf5tableio import HDF5TableWriter, HDF5TableReader
 
 from ctapipe.io import EventSource
 import ctapipe.instrument.camera.readout
+from ctapipe_io_nectarcam.constants import LOW_GAIN, HIGH_GAIN
 
 from astropy import time as astropytime
 
@@ -98,5 +99,6 @@ class dqm_summary:
         except:
             print("No Camera studies requests")
         FileName = path + '_Results.fits'
+        print(FileName)
         hdulist.writeto(FileName, overwrite=True)
         return None

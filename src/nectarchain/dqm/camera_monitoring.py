@@ -168,6 +168,5 @@ class CameraMonitoring(dqm_summary):
 
         except Exception as err:
             print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
 
         return self.ChargeInt_Figures_Dict, self.ChargeInt_Figures_Names_Dict
