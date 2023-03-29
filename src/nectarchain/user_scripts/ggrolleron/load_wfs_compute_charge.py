@@ -80,7 +80,14 @@ parser.add_argument('--overwrite',
 
 #extractor arguments
 parser.add_argument('--extractorMethod',
-                    choices=["FullWaveformSum","LocalPeakWindowSum"],
+                    choices=["FullWaveformSum",
+                             "FixedWindowSum",
+                             "GlobalPeakWindowSum",
+                             "LocalPeakWindowSum",
+                             "SlidingWindowMaxSum",
+                             "NeighborPeakWindowSum",
+                             "BaselineSubtractedNeighborPeakWindowSum",
+                             "TwoPassWindowSum"],
                     default="LocalPeakWindowSum",
                     help='charge extractor method',
                     type=str
