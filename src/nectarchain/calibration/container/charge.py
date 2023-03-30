@@ -296,14 +296,22 @@ class ChargeContainer() :
         if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
             raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
 
-        if "apply_integration_correction" in eval(method).class_traits() :
-            kwargs["apply_integration_correction"] = False
+        extractor_kwargs = {}
+        for key in eval(method).class_own_traits().keys() :
+            if key in kwargs.keys() :
+                extractor_kwargs[key] = kwargs[key]
 
-        ImageExtractor = eval(method)(waveformContainer.subarray,**kwargs)
+        if "apply_integration_correction" in eval(method).class_own_traits().keys() : #to change the default behavior of ctapipe extractor
+            extractor_kwargs["apply_integration_correction"] = kwargs.get("apply_integration_correction",False)
+
+        log.debug(f"Extracting waveforms with method {method} and extractor_kwargs {extractor_kwargs}")
+        ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
         if channel == constants.HIGH_GAIN:
-            return ImageExtractor(waveformContainer.wfs_hg,waveformContainer.TEL_ID,channel)
+            out = np.array([ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_hg))]).reshape(2,waveformContainer.wfs_hg.shape[0], waveformContainer.wfs_hg.shape[1])
+            return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            return ImageExtractor(waveformContainer.wfs_lg,waveformContainer.TEL_ID,channel)
+            out = np.array([ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_lg))]).reshape(2,waveformContainer.wfs_lg.shape[0], waveformContainer.wfs_lg.shape[1])
+            return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
 
