@@ -3,7 +3,7 @@
 # Built from mambaforge, with special conda environment containing nectarchain
 #
 # Jean-Philippe Lenain <jlenain@in2p3.fr>
-# Time-stamp: "2023-01-13 16:42:06 jlenain"
+# Time-stamp: "2023-04-06 14:42:19 jlenain"
 #
 # Typically, build this image with:
 # `sudo singularity build nectarchain.sif Singularity`
@@ -28,16 +28,78 @@ From: condaforge/mambaforge
 
 %post
     ORIG=$PWD
+
+    # CA certificates
+    apt -y update
+    # cf. https://serverfault.com/a/992421
+    DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
+    curl -L https://repository.egi.eu/sw/production/cas/1/current/GPG-KEY-EUGridPMA-RPM-3 | apt-key add -
+    add-apt-repository -y 'deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core'
+    apt -y install ca-policy-egi-core
+
     . /opt/conda/etc/profile.d/conda.sh
     . /opt/conda/etc/profile.d/mamba.sh
     mamba update --quiet --name base conda mamba
     mkdir -p /opt/cta
     cd /opt/cta
+
+    # Install nectarchain
     git clone https://github.com/cta-observatory/nectarchain.git
     mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
     cd nectarchain
     pip install -e .
+
+    # Optionally install and configure DIRAC:
+    mamba install -y -c conda-forge dirac-grid
+    conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
+    mamba deactivate
+    mamba activate nectarchain
+    pip install CTADIRAC
+    pip install COMDIRAC
+    
+    # Since there is no proxy available at build time, manually configure the CTADIRAC client
+    cat <<EOF > ${CONDA_PREFIX}/etc/dirac.cfg
+DIRAC
+{
+  Setup = CTA
+  Configuration
+  {
+    Servers = dips://dcta-servers03.pic.es:9135/Configuration/Server
+    Servers += dips://dcta-agents03.pic.es:9135/Configuration/Server
+    Servers += dips://ccdcta-server04.in2p3.fr:9135/Configuration/Server
+    Servers += dips://ccdcta-server05.in2p3.fr:9135/Configuration/Server
+    Servers += dips://ccdcta-web01.in2p3.fr:9135/Configuration/Server
+    Servers += dips://cta-dirac.zeuthen.desy.de:9135/Configuration/Server
+  }
+  Security
+  {
+    UseServerCertificate = no
+  }
+}
+LocalInstallation
+{
+  Setup = CTA
+  ConfigurationServer = dips://dcta-servers03.pic.es:9135/Configuration/Server
+  ConfigurationServer += dips://dcta-agents03.pic.es:9135/Configuration/Server
+  ConfigurationServer += dips://ccdcta-server04.in2p3.fr:9135/Configuration/Server
+  ConfigurationServer += dips://ccdcta-server05.in2p3.fr:9135/Configuration/Server
+  ConfigurationServer += dips://ccdcta-web01.in2p3.fr:9135/Configuration/Server
+  ConfigurationServer += dips://cta-dirac.zeuthen.desy.de:9135/Configuration/Server
+  SkipCAChecks = True
+}
+EOF
+    mkdir -p ${CONDA_PREFIX}/etc/grid-security/vomses
+    cat <<EOF > ${CONDA_PREFIX}/etc/grid-security/vomses/vo.cta.in2p3.fr
+"vo.cta.in2p3.fr" "cclcgvomsli01.in2p3.fr" "15008" "/O=GRID-FR/C=FR/O=CNRS/OU=CC-IN2P3/CN=cclcgvomsli01.in2p3.fr" "vo.cta.in2p3.fr" "24"
+EOF
+    mkdir -p ${CONDA_PREFIX}/etc/grid-security/vomsdir/vo.cta.in2p3.fr
+    cat <<EOF > ${CONDA_PREFIX}/etc/grid-security/vomsdir/vo.cta.in2p3.fr/cclcgvomsli01.in2p3.fr.lsc
+/O=GRID-FR/C=FR/O=CNRS/OU=CC-IN2P3/CN=cclcgvomsli01.in2p3.fr
+/C=FR/O=MENESR/OU=GRID-FR/CN=AC GRID-FR Services
+EOF
+    ln -s /etc/grid-security/certificates ${CONDA_PREFIX}/etc/grid-security/.
+
     mamba clean --quiet -y --all
     echo "## Activate nectarchain environment" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
