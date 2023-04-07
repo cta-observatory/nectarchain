@@ -3,9 +3,8 @@ name: Build and deploy as Apptainer container image to GitHub Container Registry
 on:
   pull_request: []
   push:
-  # TODO CHANGE EVENT TRIGGERING TYPE !!!
-#    branches:
-#      - master
+    branches:
+      - master
   release:
     types: [ published ]
 
@@ -48,26 +47,22 @@ jobs:
               exit 1
           fi
           apptainer build ${{ env.container }}.sif ${{ matrix.deffiles[0] }}
-          ls
+          ls -lh
           
       - name: Login to GitHub Container Registry
         # Don't log into registry on pull request.
-        # TODO: ultimately only push on non-pull-request events !!!
-        # if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         run: |
           echo ${{ github.token }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.registry }}
 
       - name: Deploy ${{ matrix.deffiles[1] }}
-        # And don't push the container on a pull request.
-        # TODO: Ultimately only push on non-pull-request event
-        # if: github.event_name != 'pull_request'
+        # Don't push the container on a pull request.
+        if: github.event_name != 'pull_request'
         run: |  
           apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}
 
       - name: Post Login to GitHub Container Registry
-        # Don't log into registry on pull request.
-        # TODO: ultimately only push on non-pull-request events !!!
-        # if: github.event_name != 'pull_request'
+        # Don't log out from registry on pull request.
+        if: github.event_name != 'pull_request'
         run: |
           apptainer remote logout oras://${{ env.registry }}
-
