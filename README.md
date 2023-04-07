@@ -5,7 +5,7 @@ The analysis is heavily based on [ctapipe](https://github.com/cta-observatory/ct
 
 ## Installation
 
-`nectarchain` is available both as a [PyPI](https://pypi.org/project/nectarchain/) or [`conda`](https://anaconda.org/conda-forge/nectarchain) package.
+`nectarchain` is available as a [PyPI](https://pypi.org/project/nectarchain/) or [`conda`](https://anaconda.org/conda-forge/nectarchain) package, or as a [Singularity](https://apptainer.org/news/community-announcement-20211130/)/[Apptainer](https://apptainer.org/) container.
 
 ### Using conda/mamba
 
@@ -24,6 +24,30 @@ mamba create -n nectarchain python=3.8
 mamba activate nectarchain
 pip install nectarchain
 ```
+
+### As a container
+
+`nectarchain` is planned to be pushed on each release on the [GitHub Container Registry](ghcr.io) as an [Apptainer](https://apptainer.org/) image. Such a container can be instantiated with:
+
+```shell
+apptainer shell oras://ghcr.io/cta-observatory/nectarchain:latest
+```
+
+The `nectarchain` code is then available under `$CONDA_PREFIX`.
+
+#### Note to Mac OS users
+
+Mac OS users may experience errors when trying to initialize a proxy to DIRAC when the [DIRAC support is enabled](#optional-dirac-support), especially with recent hardware equipped with M1 or M2 Apple CPU chips. The container alternative can then help having an environment with CTADIRAC fully configured. However, [Apptainer](https://apptainer.org/) is [not readily available on Mac OS](https://apptainer.org/docs/admin/main/installation.html#mac), but there is a workaround using [`lima` virtualization technology](https://lima-vm.io/) on a Mac.
+
+**TL;DR**
+
+```shell
+brew install qemu lima
+limactl start template://apptainer
+limactl shell apptainer apptainer run --bind $HOME:/home/$USER.linux oras://ghcr.io/cta-observatory/nectarchain:latest
+```
+
+When starting the `apptainer` container (second line above), please select the `Proceed with the current configuration` option.
 
 ### Manual installation (for developers)
 
