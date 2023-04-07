@@ -11,12 +11,12 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+permissions: write
+
 jobs:
   deploy-container:
     runs-on: ubuntu-latest
-
-    permissions: write
-
+    
     defaults:
       run:
         shell: bash -leo pipefail {0}
