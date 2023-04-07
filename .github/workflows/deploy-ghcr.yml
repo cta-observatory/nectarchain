@@ -46,6 +46,7 @@ jobs:
         run: |
           apptainer build nectarchain.sif singularity/Singularity
           # echo ${{ secrets.GITHUB_TOKEN }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.REGISTRY }} 
-          echo "apptainer push nectarchain.sif oras://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          apptainer push nectarchain.sif oras://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          CMD="apptainer push -U --no-https nectarchain.sif oras://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo $CMD
+          $CMD
           # apptainer remote logout oras://${{ env.REGISTRY }}
