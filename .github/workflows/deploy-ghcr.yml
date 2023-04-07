@@ -11,7 +11,9 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-permissions: write
+permissions:
+  packages:
+    write
 
 jobs:
   deploy-container:
