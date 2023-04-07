@@ -1,0 +1,33 @@
+name: Build and deploy as Apptainer container image to GitHub Container Registry
+
+on:
+  push:
+  #  tags:
+  #    - 'v*'
+  pull_request:
+
+jobs:
+  deploy-container:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Apptainer environment
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.1.7
+
+      - name: Build and deploy apptainer container image to GitHub Container Registry as ORAS
+        run: |
+          apptainer build nectarchain.sif singularity/Singularity
+          # Login to GitHub Container Registry
+          echo ${{secrets.ghcr_token}} | apptainer remote login --username ${{secrets.ghcr_username}} --password-stdin oras://ghcr.io
+          apptainer push nectarchain.sif oras://ghcr.io/cta-observatory/nectarchain:latest
