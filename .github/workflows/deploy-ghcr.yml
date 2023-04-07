@@ -7,8 +7,6 @@ on:
   #    - 'v*'
   pull_request:
 
-permissions: read-all|write-all
-
 jobs:
   deploy-container:
     runs-on: ubuntu-latest
@@ -40,5 +38,5 @@ jobs:
         run: |
           apptainer build nectarchain.sif singularity/Singularity
           echo ${{ secrets.GITHUB_TOKEN }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://ghcr.io 
-          apptainer push nectarchain.sif oras://ghcr.io/jlenain/nectarchain:${{ github.event.release.tag_name }}
+          apptainer push nectarchain.sif oras://ghcr.io/jlenain/nectarchain:latest
           apptainer remote logout oras://ghcr.io
