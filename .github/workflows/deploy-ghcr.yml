@@ -10,7 +10,7 @@ on:
     types: [ published ]
 
 jobs:
-  deploy-container:
+  build-deploy-container:
     runs-on: ubuntu-latest
     
     defaults:
@@ -27,7 +27,7 @@ jobs:
 
     env:
       container: nectarchain
-      registry: oras://ghcr.io
+      registry: ghcr.io
 
     steps:
       - name: Checkout
@@ -65,4 +65,4 @@ jobs:
         # TODO: Ultimately only push on non-pull-request event
         # if: github.event_name != 'pull_request'
         run: |  
-          apptainer push ${{ env.container }}.sif ${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}"
+          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}"
