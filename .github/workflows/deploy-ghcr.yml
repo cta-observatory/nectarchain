@@ -25,9 +25,14 @@ jobs:
         with:
           apptainer-version: 1.1.7
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and deploy apptainer container image to GitHub Container Registry as ORAS
         run: |
           apptainer build nectarchain.sif singularity/Singularity
-          # Login to GitHub Container Registry
-          echo ${{secrets.ghcr_token}} | apptainer remote login --username ${{secrets.ghcr_username}} --password-stdin oras://ghcr.io
           apptainer push nectarchain.sif oras://ghcr.io/cta-observatory/nectarchain:latest
