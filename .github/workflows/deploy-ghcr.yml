@@ -2,6 +2,7 @@ name: Build and deploy as Apptainer container image to GitHub Container Registry
 
 on:
   push:
+  # TODO CHANGE EVENT TRIGGERING TYPE !!!
   #  tags:
   #    - 'v*'
   pull_request:
@@ -33,8 +34,9 @@ jobs:
 #          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and deploy apptainer container image to GitHub Container Registry as ORAS
+        # TODO CHANGE REPO HERE !!
         run: |
           apptainer build nectarchain.sif singularity/Singularity
-          echo ${{ secrets.GITHUB_TOKEN }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://ghcr.io
-          apptainer push nectarchain.sif oras://ghcr.io/cta-observatory/nectarchain:${{ github.event.release.tag_name }}
+          echo ${{ secrets.GITHUB_TOKEN }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://ghcr.io 
+          apptainer push nectarchain.sif oras://ghcr.io/jlenain/nectarchain:${{ github.event.release.tag_name }}
           apptainer remote logout oras://ghcr.io
