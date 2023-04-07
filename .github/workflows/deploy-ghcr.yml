@@ -1,19 +1,13 @@
 name: Build and deploy as Apptainer container image to GitHub Container Registry
 
 on:
+  pull_request: []
   push:
   # TODO CHANGE EVENT TRIGGERING TYPE !!!
-  #  tags:
-  #    - 'v*'
-  pull_request:
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
-permissions:
-  packages:
-    write
+#    branches:
+#      - master
+  release:
+    types: [ published ]
 
 jobs:
   deploy-container:
@@ -23,30 +17,52 @@ jobs:
       run:
         shell: bash -leo pipefail {0}
 
+    permissions:
+      packages:
+        write
+
+    strategy:
+      matrix:
+        deffiles: [[singularity/Singularity, latest]]
+
+    env:
+      container: nectarchain
+      registry: oras://ghcr.io
+
     steps:
-      - name: Check out the repo
+      - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
-      - name: Set up Apptainer environment
+      - name: Setup Apptainer
         uses: eWaterCycle/setup-apptainer@v2
         with:
           apptainer-version: 1.1.7
 
+      - name: Build ${{ matrix.deffiles[1] }}
+        run: |
+          echo "Preparing to build ${{ env.container }} from ${{ matrix.deffiles[0] }}"
+          if [ ! -f "${{ matrix.deffiles[0]}}" ]; then
+              echo "Singularity definition file ${{ matrix.deffiles[0] }} does not exist"
+              exit 1
+          fi
+          apptainer build ${{ env.container }}.sif ${{ matrix.deffiles[0] }}
+          ls
+          
       - name: Login to GitHub Container Registry
+        # Don't log into registry on pull request.
+        # TODO: ultimately only push on non-pull-request events !!!
+        # if: github.event_name != 'pull_request'
         uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.registry }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and deploy apptainer container image to GitHub Container Registry as ORAS
-        # TODO CHANGE REPO HERE !!
-        run: |
-          apptainer build nectarchain.sif singularity/Singularity
-          # echo ${{ secrets.GITHUB_TOKEN }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.REGISTRY }} 
-          CMD="apptainer push -U --no-https nectarchain.sif oras://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo $CMD
-          $CMD
-          # apptainer remote logout oras://${{ env.REGISTRY }}
+      - name: Deploy ${{ matrix.deffiles[1] }}
+        # And don't push the container on a pull request.
+        # TODO: Ultimately only push on non-pull-request event
+        # if: github.event_name != 'pull_request'
+        run: |  
+          apptainer push ${{ env.container }}.sif ${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}"
