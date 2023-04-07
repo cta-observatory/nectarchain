@@ -11,6 +11,8 @@ jobs:
   deploy-container:
     runs-on: ubuntu-latest
 
+    permissions: read-all|write-all
+
     defaults:
       run:
         shell: bash -leo pipefail {0}
