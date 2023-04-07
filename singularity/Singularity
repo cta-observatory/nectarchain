@@ -14,9 +14,6 @@
 Bootstrap: docker
 From: condaforge/mambaforge
 
-%files
-    environment.yml /tmp
-
 # From https://github.com/hpcng/singularity/issues/5075#issuecomment-594391772
 %environment
     action="${0##*/}"
@@ -47,7 +44,8 @@ From: condaforge/mambaforge
     cd /opt/cta
 
     # Install nectarchain
-    mamba env create --quiet --file /tmp/environment.yml --prefix /opt/conda/envs/nectarchain
+    git clone https://github.com/cta-observatory/nectarchain.git
+    mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
     cd nectarchain
     pip install -e .
