@@ -35,6 +35,8 @@ apptainer shell oras://ghcr.io/cta-observatory/nectarchain:latest
 
 The `nectarchain` code is then available under `$CONDA_PREFIX`.
 
+[DIRAC support](#optinal-dirac-support) is fully available and configured within such a container.
+
 #### Note to Mac OS users
 
 Mac OS users may experience errors when trying to initialize a proxy to DIRAC when the [DIRAC support is enabled](#optional-dirac-support), especially with recent hardware equipped with M1 or M2 Apple CPU chips. The container alternative can then help having an environment with CTADIRAC fully configured. However, [Apptainer](https://apptainer.org/) is [not readily available on Mac OS](https://apptainer.org/docs/admin/main/installation.html#mac), but there is a workaround using [`lima` virtualization technology](https://lima-vm.io/) on a Mac.
@@ -64,6 +66,8 @@ pip install -e .
 Please follow the [same conventions as `ctapipe`](https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change) regarding settings of Git remotes for pull requests.
 
 ### Optional DIRAC support
+
+_Note_: this is **not** needed if you are using `nectarchain` [as a container](#as-a-container), as DIRAC is already fully installed and configured within.
 
 To enable support for DIRAC within the same environment, do the following after the installation of `nectarchain` described above:
 
