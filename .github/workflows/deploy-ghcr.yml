@@ -15,6 +15,8 @@ jobs:
   deploy-container:
     runs-on: ubuntu-latest
 
+    permissions: write
+
     defaults:
       run:
         shell: bash -leo pipefail {0}
@@ -35,12 +37,13 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Build and deploy apptainer container image to GitHub Container Registry as ORAS
         # TODO CHANGE REPO HERE !!
         run: |
           apptainer build nectarchain.sif singularity/Singularity
           # echo ${{ secrets.GITHUB_TOKEN }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.REGISTRY }} 
+          echo "apptainer push nectarchain.sif oras://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           apptainer push nectarchain.sif oras://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           # apptainer remote logout oras://${{ env.REGISTRY }}
