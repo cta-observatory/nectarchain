@@ -54,11 +54,8 @@ jobs:
         # Don't log into registry on pull request.
         # TODO: ultimately only push on non-pull-request events !!!
         # if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.registry }}
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+        run: |
+          echo ${{ github.token }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.registry }}
 
       - name: Deploy ${{ matrix.deffiles[1] }}
         # And don't push the container on a pull request.
@@ -66,3 +63,11 @@ jobs:
         # if: github.event_name != 'pull_request'
         run: |  
           apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}
+
+      - name: Post Login to GitHub Container Registry
+        # Don't log into registry on pull request.
+        # TODO: ultimately only push on non-pull-request events !!!
+        # if: github.event_name != 'pull_request'
+        run: |
+          apptainer remote logout oras://${{ env.registry }}
+
