@@ -65,4 +65,4 @@ jobs:
         # TODO: Ultimately only push on non-pull-request event
         # if: github.event_name != 'pull_request'
         run: |  
-          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}"
+          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}
