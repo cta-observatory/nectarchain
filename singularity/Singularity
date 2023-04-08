@@ -40,7 +40,7 @@ From: condaforge/mambaforge
     mamba update --quiet --name base conda mamba
 
     # Install nectarchain
-    mamba env create --quiet --file environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet --file ./environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
     pip install -e .
 
