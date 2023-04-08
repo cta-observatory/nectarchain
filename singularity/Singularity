@@ -27,9 +27,7 @@ From: condaforge/mambaforge
     fi
 
 %post
-    ORIG=$PWD
-
-    # CA certificates
+    # Install CA certificates
     apt -y update
     # cf. https://serverfault.com/a/992421
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
@@ -40,14 +38,10 @@ From: condaforge/mambaforge
     . /opt/conda/etc/profile.d/conda.sh
     . /opt/conda/etc/profile.d/mamba.sh
     mamba update --quiet --name base conda mamba
-    mkdir -p /opt/cta
-    cd /opt/cta
 
     # Install nectarchain
-    git clone https://github.com/cta-observatory/nectarchain.git
-    mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet --file environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
-    cd nectarchain
     pip install -e .
 
     # Optionally install and configure DIRAC:
