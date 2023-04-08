@@ -14,6 +14,12 @@
 Bootstrap: docker
 From: condaforge/mambaforge
 
+%setup
+    mkdir -p ${SINGULARITY_ROOTFS}/opt/cta/nectarchain
+
+%files
+    . /opt/cta/nectarchain
+
 # From https://github.com/hpcng/singularity/issues/5075#issuecomment-594391772
 %environment
     action="${0##*/}"
@@ -40,12 +46,13 @@ From: condaforge/mambaforge
     mamba update --quiet --name base conda mamba
 
     # Install nectarchain
-    mamba env create --quiet --file ./environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet --file /opt/cta/nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
+    cd /opt/cta/nectarchain
     pip install -e .
 
     # Optionally install and configure DIRAC:
-    mamba install -y -c conda-forge dirac-grid
+    mamba install --quiet -y -c conda-forge dirac-grid
     conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
     mamba deactivate
     mamba activate nectarchain
