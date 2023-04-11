@@ -10,7 +10,7 @@
     max : 5.0
   },
   pp : { 
-    value : 0.463,
+    value : 0.45,
     min : .NAN,
     max : .NAN
   }, 
@@ -20,7 +20,7 @@
     max : 0.7
   },
   n : {
-    value : 0.698,
+    value : 0.697,
     min : .NAN,
     max : .NAN
   },
