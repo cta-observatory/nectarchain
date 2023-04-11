@@ -73,7 +73,7 @@ To enable support for DIRAC within the same environment, do the following after 
 
 ```shell
 mamba activate nectarchain 
-mamba install -c conda-forge dirac-grid
+mamba install dirac-grid
 conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
 # The following is needed for the environment variables, used for DIRAC configuration, to be available:
 mamba deactivate
