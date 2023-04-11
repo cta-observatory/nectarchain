@@ -49,7 +49,10 @@ limactl start template://apptainer
 limactl shell apptainer apptainer run --bind $HOME:/home/$USER.linux oras://ghcr.io/cta-observatory/nectarchain:latest
 ```
 
-When starting the `apptainer` container (second line above), please select the `Proceed with the current configuration` option.
+When starting the `apptainer` container (second line above), please select the `Open an editor to review or modify the current configuration` option and add the following line at the beginning of the configuration file:
+```shell
+arch: "x86_64"
+```
 
 ### Manual installation (for developers)
 
@@ -81,6 +84,16 @@ mamba activate nectarchain
 pip install CTADIRAC COMDIRAC
 dirac-configure
 ```
+
+Some Mac OS users (running on M1 chip) may experience a `M2Crypto.SSL.SSLError` error when trying to initiate a DIRAC proxy with `dirac-proxy-init`. Instead of:
+```shell
+mamba install dirac-grid
+```
+one may try:
+```shell
+mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
+```
+or the [container alternative](#note-to-mac-os-users) as explained above.
 
 `nectarchain` is currently pinned to `ctapipe` version 0.12.
 
