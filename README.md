@@ -49,10 +49,12 @@ limactl start template://apptainer
 limactl shell apptainer apptainer run --bind $HOME:/home/$USER.linux oras://ghcr.io/cta-observatory/nectarchain:latest
 ```
 
-When starting the `apptainer` container (second line above), please select the `Open an editor to review or modify the current configuration` option and add the following line at the beginning of the configuration file:
+If you are running a Mac which CPU is based on ARM architecture (M1 or M2 Apple chips), when starting the `apptainer` container (second line above), please select the `Open an editor to review or modify the current configuration` option and add the following line at the beginning of the configuration file:
 ```shell
 arch: "x86_64"
 ```
+otherwise, please proceed with the `Proceed with the current configuration` option.
+
 The mount point `/tmp/lima` is shared between the host machine and the `apptainer` container, and writable from both.
 
 ### Manual installation (for developers)
