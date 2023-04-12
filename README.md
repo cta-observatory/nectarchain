@@ -53,6 +53,7 @@ When starting the `apptainer` container (second line above), please select the `
 ```shell
 arch: "x86_64"
 ```
+The mount point `/tmp/lima` is shared between the host machine and the `apptainer` container, and writable from both.
 
 ### Manual installation (for developers)
 
