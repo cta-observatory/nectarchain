@@ -33,7 +33,7 @@ pip install nectarchain
 apptainer shell oras://ghcr.io/cta-observatory/nectarchain:latest
 ```
 
-The `nectarchain` code is then available under `$CONDA_PREFIX`.
+The `nectarchain` code is then available under `/opt/cta/nectarchain`.
 
 [DIRAC support](#optinal-dirac-support) is fully available and configured within such a container.
 
