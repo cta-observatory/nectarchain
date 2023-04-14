@@ -18,13 +18,13 @@ from camera_monitoring import CameraMonitoring
 
 
 # Create an ArgumentParser object
-parser = argparse.ArgumentParser(description='My script')
+parser = argparse.ArgumentParser(description='NectarCAM Data Quality Monitoring tool')
 parser.add_argument('-p', '--plot',
                      action='store_true',
                      help='Enables plots to be generated')
 parser.add_argument('-n', '--noped',
                      action='store_true',
-                     help='Enables pedestal subtraction in intergration')
+                     help='Enables pedestal subtraction in charge integration')
 parser.add_argument('-r', '--runnb',
                     help='Optional run number, automatically found on DIRAC',
                     type=int)
