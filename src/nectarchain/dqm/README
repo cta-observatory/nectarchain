@@ -6,15 +6,15 @@ Arguments:
 Input (data) directory
 Output parent directory 
 file number 
-option -r to automatically find run files
+option -r to automatically find run files on DIRAC
 Example: python start_calib.py -r 2720 $NECTARCAMDATA $NECTARDIR
 
 For manually inputing the run files: 
 Arguments: 
 Input (data) directory
 Output parent directory 
-run files names
-Example: python start_calib.py $NECTARDATA $NECTARDIR NectarCAM.Run2720.0000.fits.fz NectarCAM.Run2720.0001.fits.fz 
+Option -i : local run file names
+Example: python start_calib.py $NECTARDATA $NECTARDIR -i NectarCAM.Run2720.0000.fits.fz NectarCAM.Run2720.0001.fits.fz
 
 
 More options: 

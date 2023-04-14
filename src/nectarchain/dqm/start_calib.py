@@ -30,7 +30,7 @@ parser.add_argument('-r', '--runnb',
                     type=int)
 parser.add_argument('-i', '--input-files',
                     nargs='+',
-                    help='Input files')
+                    help='Local input files')
 
 parser.add_argument('input_paths', help='Input paths')
 parser.add_argument('output_paths', help='Output paths')
