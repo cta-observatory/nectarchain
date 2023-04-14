@@ -85,7 +85,7 @@ def GetName(RunFile):
     print(name)
     return name
 
-
+def CreateFigFolder(name, type):
     ParentFolderName = name.split('_')[0] + '_' + name.split('_')[1]
     ChildrenFolderName = './' + ParentFolderName +'/' + name + '_calib'
     FolderPath = output_path + 'output/%s/%s/' %(ChildrenFolderName, folder)
