@@ -90,7 +90,7 @@ def CreateFigFolder(name, type):
 
     ParentFolderName = name.split('_')[0] + '_' + name.split('_')[1]
     ChildrenFolderName = './' + ParentFolderName +'/' + name + '_calib'
-    FolderPath = output_path + 'output/%s/%s/' %(ChildrenFolderName, folder)
+    FolderPath = f'{output_path}/output/{ChildrenFolderName}/{folder}'
 
     if not os.path.exists(FolderPath):
         os.makedirs(FolderPath)
@@ -113,7 +113,7 @@ reader1 = EventSource(input_url=path, max_events=1)
 
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
-ResPath = output_path + 'output/%s/%s' %(ChildrenFolderName, name)
+ResPath = f'{output_path}/output/{ChildrenFolderName}/{name}'
 #######################################################################################################################
 
 
