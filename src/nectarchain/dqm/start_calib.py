@@ -27,7 +27,7 @@ parser.add_argument('-n', '--noped',
                      help='Enables pedestal subtraction in intergration')
 parser.add_argument('-r', '--runnb',
                      action='store_true',
-                     help='Emables findung run number automatically')
+                     help='Enables finding runs automatically on DIRAC')
 
 parser.add_argument('input_paths', help='Input paths')
 parser.add_argument('output_paths', help='Output paths')
