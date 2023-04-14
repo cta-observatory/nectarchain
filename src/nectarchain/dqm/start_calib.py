@@ -48,19 +48,18 @@ print("Output path:", output_path)
 
 # Defining and printing the paths of the input files.
 
-#Read run automatocally is the -r option is provided...NOT TESTED YET
 if args.runnb is not None:
+    # Grab runs automatically from DIRAC is the -r option is provided
     from nectarchain.calibration.container import utils
     dm = utils.DataManagement()
     _, filelist = dm.findrun(args.runnb)
-    args.input_files = filelist
-    path1 = filelist[0].name
-else:  # OTHERWISE READ THE RUNS FROM ARGS
-    if args.input_files is not None:
-        path1 = args.input_files[0]
-    else:
-        print('Input files should be provided, exiting...')
-        sys.exit(1)
+    args.input_files = [s.name for s in filelist]
+elif args.input_files is None:
+    print('Input files should be provided, exiting...')
+    sys.exit(1)
+
+# OTHERWISE READ THE RUNS FROM ARGS
+path1 = args.input_files[0]
 
 #THE PATH OF INPUT FILES
 path = f'{NectarPath}/{path1}'
@@ -188,7 +187,7 @@ for i, evt in enumerate(reader):
         
 #for the rest of the event files
 for arg in args.input_files[1:]:
-    path2 = NectarPath + arg
+    path2 = f'{NectarPath}/{arg}'
     print(path2)
 
     reader=EventSource(input_url=path2)
