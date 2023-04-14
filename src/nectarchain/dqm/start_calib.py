@@ -26,37 +26,44 @@ parser.add_argument('-n', '--noped',
                      action='store_true',
                      help='Enables pedestal subtraction in intergration')
 parser.add_argument('-r', '--runnb',
-                     action='store_true',
-                     help='Enables finding runs automatically on DIRAC')
+                    help='Optional run number, automatically found on DIRAC',
+                    type=int)
+parser.add_argument('-i', '--input-files',
+                    nargs='+',
+                    help='Input files')
 
 parser.add_argument('input_paths', help='Input paths')
 parser.add_argument('output_paths', help='Output paths')
-parser.add_argument('input_files', nargs='+', help='Input files')
 
-args = parser.parse_args()
+args, leftovers = parser.parse_known_args()
 
-#Reading arguments, paths and plot-boolean
-NectarPath = args.input_paths #str(os.environ['NECTARDIR'])
-print("Input files path:", NectarPath)
+# Reading arguments, paths and plot-boolean
+NectarPath = args.input_paths  # str(os.environ['NECTARDIR'])
+print("Input file path:", NectarPath)
 
-#Defining and priting the paths of the output files.
+# Defining and printing the paths of the output files.
 output_path = args.output_paths
 print("Output path:", output_path)
 
 
-#Defining and priting the paths of the input files.
+# Defining and printing the paths of the input files.
 
 #Read run automatocally is the -r option is provided...NOT TESTED YET
-AutomaticRun = args.runnb
-if AutomaticRun == True:
+if args.runnb is not None:
     from nectarchain.calibration.container import utils
     dm = utils.DataManagement()
-    path1 = dm.findrun(args.input_files)
-else: #OTHERWISE READ THE RUNS FROM ARGS
-    path1 = args.input_files[0]
-    
-#THE PATH OF INPUT FILES 
-path = NectarPath + path1
+    _, filelist = dm.findrun(args.runnb)
+    args.input_files = filelist
+    path1 = filelist[0].name
+else:  # OTHERWISE READ THE RUNS FROM ARGS
+    if args.input_files is not None:
+        path1 = args.input_files[0]
+    else:
+        print('Input files should be provided, exiting...')
+        sys.exit(1)
+
+#THE PATH OF INPUT FILES
+path = f'{NectarPath}/{path1}'
 print("Input files:")
 print(path)
 for arg in args.input_files[1:]:
