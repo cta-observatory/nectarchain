@@ -29,11 +29,11 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.cmap2 = "gnuplot2"
 
     def ProcessEvent(self, evt, noped):
-        pixels = evt.nectarcam.tel[0].svc.pixel_ids
-        #pixel21 = np.arange(0,21,1,dtype = int)
-        pixels = list(pixels)
-        #pixel21 = list(pixel21)
-        #pixels = np.concatenate([pixel21,pixel])
+        pixel = evt.nectarcam.tel[0].svc.pixel_ids
+        pixel21 = np.arange(0,21,1,dtype = int)
+        pixel = list(pixel)
+        pixel21 = list(pixel21)
+        pixels = np.concatenate([pixel21,pixel])
 
         if evt.trigger.event_type.value == 32: #count peds 
             self.counter_ped += 1
