@@ -46,9 +46,9 @@ sandboxlist = [f'{executable_wrapper}']
 
 # Get run file list from DIRAC
 for run in args.runs:
-    _, filelist = dm.findrun(run)
-    for f in filelist:
-        sandboxlist.append(f)
+    lfns = dm.get_GRID_location(run)
+    for lfn in lfns:
+        sandboxlist.append(lfn)
 
 # Now, submit the DIRAC jobs:
 j = Job()
@@ -62,9 +62,6 @@ logger.info(f'''Submitting job, with the following InputSandbox:
 {sandboxlist}
 ''')
 j.setInputSandbox(sandboxlist)
-
-# TEST: exit here
-sys.exit(0)
 
 res = dirac.submitJob(j)  # , mode='local')  # for local execution, simulating a DIRAC job on the local machine, instead of submitting it to a DIRAC Computing Element
 logger.info(f"Submission Result: {res['Value']}")
