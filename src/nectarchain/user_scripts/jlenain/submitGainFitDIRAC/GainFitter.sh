@@ -1,5 +1,7 @@
 #!/bin/env bash
 
+ORIGPWD=$PWD
+
 CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
 OUTDIR=SPEFitter
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/$OUTDIR
@@ -10,13 +12,15 @@ export NECTARCHAIN_TEST=$NECTARCAMDATA
 export NECTARCHAIN_FIGURES=$NECTARCAMDATA
 [ ! -d $NECTARCAMDATA ] && mkdir -p $NECTARCAMDATA
 
+mv *.fits.fz $NECTARCAMDATA/.
+cd $NECTARCAMDATA
 
 # Create a wrapper BASH script with cleaned environment, see https://redmine.cta-observatory.org/issues/51483
 WRAPPER="apptainerWrapper.sh"
 cat > $WRAPPER <<EOF
 #!/bin/env bash
-echo "Cleaning environment \$CLEANED_ENV" 
-[ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@" 
+echo "Cleaning environment \$CLEANED_ENV"
+[ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@"
 
 
 # Some environment variables related to python, to be passed to container:
@@ -76,6 +80,7 @@ EOF
 chmod u+x $WRAPPER
 ./${WRAPPER}
 
+cd $ORIGPWD
 
 # Archive the output directory and push it on DIRAC before leaving the job:
 tar zcf ${OUTDIR}.tar.gz ${OUTDIR}/
