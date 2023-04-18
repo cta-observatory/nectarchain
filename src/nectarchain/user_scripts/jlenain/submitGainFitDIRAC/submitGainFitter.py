@@ -48,7 +48,7 @@ sandboxlist = [f'{executable_wrapper}']
 for run in args.runs:
     lfns = dm.get_GRID_location(run)
     for lfn in lfns:
-        sandboxlist.append(lfn)
+        sandboxlist.append(f'LFN:{lfn}')
 
 # Now, submit the DIRAC jobs:
 j = Job()
