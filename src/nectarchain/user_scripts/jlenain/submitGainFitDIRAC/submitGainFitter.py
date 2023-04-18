@@ -24,23 +24,31 @@ dirac = Dirac()
 
 # Option and argument parser
 parser = argparse.ArgumentParser()
-parser.add_argument('-r', '--run',
+parser.add_argument('-r', '--runs',
                     default=None,
-                    help='only process a specific run (optional)',
+                    help='list of runs to process',
                     nargs='+',
-                    type=str)
+                    type=int)
 parser.add_argument('--log',
                     default=logging.INFO,
                     help='debug output',
                     type=str)
 args = parser.parse_args()
 
+if not args.runs:
+    logger.critical('A run, or list of runs, should be provided.')
+    sys.exit(1)
+
 logger.setLevel(args.log)
 
 executable_wrapper="GainFitter.sh"
 sandboxlist = [f'{executable_wrapper}']
 
-# TODO: Construct sandbox list using dm.findrun
+# Get run file list from DIRAC
+for run in args.runs:
+    _, filelist = dm.findrun(run)
+    for f in filelist:
+        sandboxlist.append(f)
 
 # Now, submit the DIRAC jobs:
 j = Job()
@@ -54,6 +62,9 @@ logger.info(f'''Submitting job, with the following InputSandbox:
 {sandboxlist}
 ''')
 j.setInputSandbox(sandboxlist)
+
+# TEST: exit here
+sys.exit(0)
 
 res = dirac.submitJob(j)  # , mode='local')  # for local execution, simulating a DIRAC job on the local machine, instead of submitting it to a DIRAC Computing Element
 logger.info(f"Submission Result: {res['Value']}")
