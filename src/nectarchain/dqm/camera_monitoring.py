@@ -2,6 +2,7 @@ from dqm_summary_processor import dqm_summary
 from matplotlib import pyplot as plt
 from ctapipe.visualization import CameraDisplay
 from ctapipe.instrument import CameraGeometry
+from ctapipe.coordinates import EngineeringCameraFrame
 from astropy import time as astropytime
 import numpy as np
 import sqlite3
@@ -17,7 +18,7 @@ class CameraMonitoring(dqm_summary):
         self.Chan = Chan
         self.Samp = Samp
 
-        self.camera = CameraGeometry.from_name("NectarCam", 3)
+        self.camera = self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
         self.cmap = "gnuplot2"
 
         self.subarray = Reader1.subarray

@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from ctapipe.visualization import CameraDisplay
 from ctapipe.instrument import CameraGeometry
+from ctapipe.coordinates import EngineeringCameraFrame
 from traitlets.config.loader import Config
 import ctapipe.instrument.camera.readout
 from ctapipe.image import LocalPeakWindowSum
@@ -21,7 +22,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = CameraGeometry.from_name("NectarCam-003")
+        self.camera = self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
         self.cmap = "gnuplot2"
 
         # reader1=EventSource(input_url=path, max_events = 1)
@@ -47,14 +48,25 @@ class ChargeIntegration_HighLowGain(dqm_summary):
 
     def ProcessEvent(self, evt, noped):
         #print("test", evt.r0.tel[0].waveform[0])
+        pixels = evt.nectarcam.tel[0].svc.pixel_ids
+        #pixel21 = np.arange(0,21,1,dtype = int)
+        pixels = list(pixels)
+        #pixel21 = list(pixel21)
+        #pixels = np.concatenate([pixel21,pixel])
+
         waveform=evt.r0.tel[0].waveform[self.k]
+
         if noped == True: 
             ped = np.mean(waveform[:, 20])
             w_noped = waveform - ped
             image, peakpos = self.integrator(w_noped,0,np.zeros(self.Chan, dtype = int)) 
+            image = image[pixels]
+            peakpos = peakpos[pixels]
 
         else:
             image, peakpos = self.integrator(waveform,0,np.zeros(self.Chan, dtype = int))
+            image = image[pixels]
+            peakpos = peakpos[pixels]
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
