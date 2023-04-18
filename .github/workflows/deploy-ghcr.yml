@@ -22,7 +22,7 @@ jobs:
 
     strategy:
       matrix:
-        deffiles: [[singularity/Singularity, latest]]
+        deffiles: [[Singularity, latest]]
 
     env:
       container: nectarchain

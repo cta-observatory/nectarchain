@@ -2,11 +2,8 @@
 #
 # Built from mambaforge, with special conda environment containing nectarchain
 #
-# Jean-Philippe Lenain <jlenain@in2p3.fr>
-# Time-stamp: "2023-04-08 00:20:24 jlenain"
-#
 # Typically, build this image with:
-# `sudo apptainer build nectarchain.sif singularity/Singularity`
+# `sudo apptainer build nectarchain.sif Singularity`
 #
 # Then, typically run an instance of this image with:
 # `apptainer shell nectarchain.sif`
