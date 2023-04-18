@@ -22,7 +22,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
+        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
         self.cmap = "gnuplot2"
 
         # reader1=EventSource(input_url=path, max_events = 1)
