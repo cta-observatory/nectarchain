@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python=3.8 # nail the python version, so conda does not try upgrading / downgrading
   - ctapipe=0.12
+  - ctapipe-io-nectarcam
   - numpy=1.22 # higher versions >=1.23 don't work due to astropy4 dependency in ctapipe0.12
   - jupyterlab
   - protozfits=2.0
@@ -13,6 +14,5 @@ dependencies:
   - pip
   - pandas
   - pip:
-      - ctapipe-io-nectarcam
       - mechanize
       - browser-cookie3
