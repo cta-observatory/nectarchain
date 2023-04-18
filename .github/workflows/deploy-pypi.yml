@@ -22,8 +22,9 @@ jobs:
       - name: Install dependencies
         run: |
           python --version
-          pip install -U pip setuptools wheel setuptools_scm[toml]
-          python setup.py sdist bdist_wheel
+          pip install -U build
+          python -m build
+      
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
