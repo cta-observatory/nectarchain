@@ -21,7 +21,7 @@ j.setExecutable(f'{executable_wrapper}')
 # Force job to be run from a given Computing Element:
 # j.setDestination('LCG.GRIF.fr')
 j.setName(f'NectarCAM Gain fitter')
-j.setNumberOfProcessors(minNumberOfProcessors=4)
+# j.setNumberOfProcessors(minNumberOfProcessors=2)
 j.setJobGroup('nectarchain gain')
 sandboxlist = [f'{executable_wrapper}']
 logger.info(f'''Submitting job, with the following InputSandbox:
