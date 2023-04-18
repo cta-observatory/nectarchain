@@ -2,6 +2,7 @@ from dqm_summary_processor import dqm_summary
 from matplotlib import pyplot as plt
 from ctapipe.visualization import CameraDisplay
 from ctapipe.instrument import CameraGeometry
+from ctapipe.coordinates import EngineeringCameraFrame
 from astropy import time as astropytime
 import numpy as np
 import sqlite3
@@ -17,7 +18,7 @@ class CameraMonitoring(dqm_summary):
         self.Chan = Chan
         self.Samp = Samp
 
-        self.camera = CameraGeometry.from_name("NectarCam", 3)
+        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
         self.cmap = "gnuplot2"
 
         self.subarray = Reader1.subarray
@@ -38,18 +39,22 @@ class CameraMonitoring(dqm_summary):
 
         SqlFileName = SqlFilePath + "nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
         print("SqlFileName", SqlFileName)
+        con = sqlite3.connect(SqlFileName) 
+        cursor = con.cursor()  
+        try:
+            #print(cursor.fetchall())
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            TempData=cursor.execute('''SELECT * FROM monitoring_drawer_temperatures''')
+            #print(TempData.description)
+            self.DrawerTemp = cursor.fetchall()
+            cursor.close()
+            
+        except sqlite3.Error as err:
+            print("Error Code: ", err)
+            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
 
-        con = sqlite3.connect(SqlFileName)
-        cursor = con.cursor()
-        # print(cursor.fetchall())
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        # TempData = cursor.execute('''SELECT * FROM monitoring_drawer_temperatures''')
-        # print(TempData.description)
 
-        self.DrawerTemp = cursor.fetchall()
-        cursor.close()
-
-    def ProcessEvent(self, evt):
+    def ProcessEvent(self, evt, noped):
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
 
@@ -57,52 +62,55 @@ class CameraMonitoring(dqm_summary):
         self.event_id.append(trigger_id)
 
     def FinishRun(self):
-        self.event_id = np.array(self.event_id)
-        self.event_times = np.array(self.event_times)
+        try:
 
-        self.run_start = self.event_times[self.event_id == np.min(self.event_id)] - 100
-        self.run_end = np.max(self.event_times) + 100
+            self.event_id = np.array(self.event_id)
+            self.event_times = np.array(self.event_times)
+    
+            self.run_start = self.event_times[self.event_id == np.min(self.event_id)] - 100
+            self.run_end = np.max(self.event_times) + 100
+    
+            self.DrawerTemp = np.array(self.DrawerTemp)
+            self.DrawerTimes = np.array(self.DrawerTemp[:,3])
+    
+            for i in range(len(self.DrawerTimes)):
+                self.DrawerTimes[i] = astropytime.Time(self.DrawerTimes[i], format = 'iso').unix
+    
+    
+            self.DrawerTemp11 = self.DrawerTemp[:,4][self.DrawerTimes > self.run_start]
+            self.DrawerTemp21 = self.DrawerTemp[:,5][self.DrawerTimes > self.run_start]
+            self.DrawerNum1 = self.DrawerTemp[:,2][self.DrawerTimes > self.run_start]
+    
+            self.DrawerTimes_new = self.DrawerTimes[self.DrawerTimes > self.run_start]
+    
+            self.DrawerTemp12 = self.DrawerTemp11[self.DrawerTimes_new < self.run_end]
+            self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
+            self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]   
+    
+            self.DrawerTemp1_mean = []
+            self.DrawerTemp2_mean = []
+            TotalDrawers = np.max(self.DrawerNum2)
+    
+            for i in range(TotalDrawers+1):
+                for j in range(7):
+                    self.DrawerTemp1_mean.append(np.mean(self.DrawerTemp12[self.DrawerNum2 == i]))
+                    self.DrawerTemp2_mean.append(np.mean(self.DrawerTemp22[self.DrawerNum2 == i]))
+            self.DrawerTemp1_mean = np.array(self.DrawerTemp1_mean)
+            self.DrawerTemp2_mean = np.array(self.DrawerTemp2_mean)
+    
+            self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean)/2
+        except Exception as err:
+            print("Error Code: ", err)
+            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
 
-        self.DrawerTemp = np.array(self.DrawerTemp)
-        self.DrawerTimes = np.array(self.DrawerTemp[:, 3])
-
-        for i in range(len(self.DrawerTimes)):
-            self.DrawerTimes[i] = astropytime.Time(
-                self.DrawerTimes[i], format="iso"
-            ).unix
-
-        self.DrawerTemp11 = self.DrawerTemp[:, 4][self.DrawerTimes > self.run_start]
-        self.DrawerTemp21 = self.DrawerTemp[:, 5][self.DrawerTimes > self.run_start]
-        self.DrawerNum1 = self.DrawerTemp[:, 2][self.DrawerTimes > self.run_start]
-
-        self.DrawerTimes_new = self.DrawerTimes[self.DrawerTimes > self.run_start]
-
-        self.DrawerTemp12 = self.DrawerTemp11[self.DrawerTimes_new < self.run_end]
-        self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
-        self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]
-
-        self.DrawerTemp1_mean = []
-        self.DrawerTemp2_mean = []
-        TotalDrawers = np.max(self.DrawerNum2)
-
-        for i in range(TotalDrawers + 1):
-            for j in range(7):
-                self.DrawerTemp1_mean.append(
-                    np.mean(self.DrawerTemp12[self.DrawerNum2 == i])
-                )
-                self.DrawerTemp2_mean.append(
-                    np.mean(self.DrawerTemp22[self.DrawerNum2 == i])
-                )
-        self.DrawerTemp1_mean = np.array(self.DrawerTemp1_mean)
-        self.DrawerTemp2_mean = np.array(self.DrawerTemp2_mean)
-
-        self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
 
     def GetResults(self):
         self.CameraMonitoring_Results_Dict = {}
-        self.CameraMonitoring_Results_Dict[
-            "CAMERA-TEMPERATURE-AVERAGE"
-        ] = self.DrawerTemp_mean
+        try:
+            self.CameraMonitoring_Results_Dict["CAMERA-TEMPERATURE-AVERAGE"] = self.DrawerTemp_mean
+        except Exception as err:
+            print("Error Code: ", err)
+            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
 
         return self.CameraMonitoring_Results_Dict
 
@@ -110,50 +118,56 @@ class CameraMonitoring(dqm_summary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-        fig, disp = plt.subplots()
-        disp = CameraDisplay(self.camera)
-        disp.image = self.DrawerTemp_mean
-        disp.cmap = plt.cm.coolwarm
-        disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
-        disp.add_colorbar()
-        plt.title("Camera temperature average")
-        full_name = name + "_CameraTemperature_Mean.png"
-        FullPath = FigPath + full_name
-        self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig
-        self.ChargeInt_Figures_Names_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = FullPath
+        try:
 
-        plt.close()
+            fig, disp = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp_mean
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, 'Temperature', fontsize=12,rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature average")
+            full_name = name + '_CameraTemperature_Mean.png'
+            FullPath = FigPath +full_name
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig
+            self.ChargeInt_Figures_Names_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = FullPath
+    
+            plt.close()
+    
+    
+    
+            fig1, disp = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp1_mean
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, 'Temperature 1', fontsize=12,rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature average 1")
+            full_name = name + '_CameraTemperature_average1.png'
+            FullPath = FigPath +full_name
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"] = fig1
+            self.ChargeInt_Figures_Names_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"] = FullPath
+    
+            plt.close()
+    
+    
+    
+            fig2, disp = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp2_mean
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, 'Temperature 2', fontsize=12,rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature average 2")
+            full_name = name + '_CameraTemperature_average2.png'
+            FullPath = FigPath +full_name
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = fig2
+            self.ChargeInt_Figures_Names_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = FullPath
+    
+            plt.close()
 
-        fig1, disp = plt.subplots()
-        disp = CameraDisplay(self.camera)
-        disp.image = self.DrawerTemp1_mean
-        disp.cmap = plt.cm.coolwarm
-        disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
-        disp.add_colorbar()
-        plt.title("Camera temperature average 1")
-        full_name = name + "_CameraTemperature_average1.png"
-        FullPath = FigPath + full_name
-        self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"] = fig1
-        self.ChargeInt_Figures_Names_Dict[
-            "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
-        ] = FullPath
 
-        plt.close()
-
-        fig2, disp = plt.subplots()
-        disp = CameraDisplay(self.camera)
-        disp.image = self.DrawerTemp2_mean
-        disp.cmap = plt.cm.coolwarm
-        disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
-        disp.add_colorbar()
-        plt.title("Camera temperature average 2")
-        full_name = name + "_CameraTemperature_average2.png"
-        FullPath = FigPath + full_name
-        self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = fig2
-        self.ChargeInt_Figures_Names_Dict[
-            "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
-        ] = FullPath
-
-        plt.close()
+        except Exception as err:
+            print("Error Code: ", err)
 
         return self.ChargeInt_Figures_Dict, self.ChargeInt_Figures_Names_Dict

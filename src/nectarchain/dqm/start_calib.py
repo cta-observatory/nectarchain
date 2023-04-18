@@ -2,12 +2,12 @@ import os
 import sys
 
 from matplotlib import pyplot as plt
-
-# from multiprocessing import Process
-
+import argparse
+#from multiprocessing import Process
 import time
 
 from ctapipe.io import EventSource, EventSeeker
+from ctapipe_io_nectarcam.constants import LOW_GAIN, HIGH_GAIN
 
 from mean_waveforms import MeanWaveForms_HighLowGain
 from mean_camera_display import MeanCameraDisplay_HighLowGain
@@ -15,10 +15,67 @@ from charge_integration import ChargeIntegration_HighLowGain
 from trigger_statistics import TriggerStatistics
 from camera_monitoring import CameraMonitoring
 
-print(sys.argv)
-path = sys.argv[1]  # path of the Run file: ./NectarCAM.Run2720.0000.fits.fz
 
-NectarPath = str(os.environ["NECTARDIR"])
+
+# Create an ArgumentParser object
+parser = argparse.ArgumentParser(description='NectarCAM Data Quality Monitoring tool')
+parser.add_argument('-p', '--plot',
+                     action='store_true',
+                     help='Enables plots to be generated')
+parser.add_argument('-n', '--noped',
+                     action='store_true',
+                     help='Enables pedestal subtraction in charge integration')
+parser.add_argument('-r', '--runnb',
+                    help='Optional run number, automatically found on DIRAC',
+                    type=int)
+parser.add_argument('-i', '--input-files',
+                    nargs='+',
+                    help='Local input files')
+
+parser.add_argument('input_paths', help='Input paths')
+parser.add_argument('output_paths', help='Output paths')
+
+args, leftovers = parser.parse_known_args()
+
+# Reading arguments, paths and plot-boolean
+NectarPath = args.input_paths  # str(os.environ['NECTARDIR'])
+print("Input file path:", NectarPath)
+
+# Defining and printing the paths of the output files.
+output_path = args.output_paths
+print("Output path:", output_path)
+
+
+# Defining and printing the paths of the input files.
+
+if args.runnb is not None:
+    # Grab runs automatically from DIRAC is the -r option is provided
+    from nectarchain.calibration.container import utils
+    dm = utils.DataManagement()
+    _, filelist = dm.findrun(args.runnb)
+    args.input_files = [s.name for s in filelist]
+elif args.input_files is None:
+    print('Input files should be provided, exiting...')
+    sys.exit(1)
+
+# OTHERWISE READ THE RUNS FROM ARGS
+path1 = args.input_files[0]
+
+#THE PATH OF INPUT FILES
+path = f'{NectarPath}/{path1}'
+print("Input files:")
+print(path)
+for arg in args.input_files[1:]:
+    print(arg)
+
+#Defining and priting the options
+PlotFig = args.plot
+noped = args.noped
+
+print("Plot:", PlotFig)
+print("Noped:", noped)
+
+
 
 
 def GetName(RunFile):
@@ -27,14 +84,13 @@ def GetName(RunFile):
     print(name)
     return name
 
-
 def CreateFigFolder(name, type):
     if type == 0:
         folder = "Plots"
 
-    ParentFolderName = name.split("_")[0] + "_" + name.split("_")[1]
-    ChildrenFolderName = "./" + ParentFolderName + "/" + name + "_calib"
-    FolderPath = NectarPath + "output/%s/%s/" % (ChildrenFolderName, folder)
+    ParentFolderName = name.split('_')[0] + '_' + name.split('_')[1]
+    ChildrenFolderName = './' + ParentFolderName +'/' + name + '_calib'
+    FolderPath = f'{output_path}/output/{ChildrenFolderName}/{folder}'
 
     if not os.path.exists(FolderPath):
         os.makedirs(FolderPath)
@@ -46,7 +102,8 @@ start = time.time()
 
 # INITIATE
 path = path
-cmap = "gnuplot2"
+print(path)
+cmap = 'gnuplot2'
 
 # Read and seek
 reader = EventSource(input_url=path)
@@ -56,18 +113,30 @@ reader1 = EventSource(input_url=path, max_events=1)
 
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
-ResPath = NectarPath + "output/%s/%s" % (ChildrenFolderName, name)
+ResPath = f'{output_path}/output/{ChildrenFolderName}/{name}'
+#######################################################################################################################
 
 
-# LIST OF PROCESSES TO RUN
-a = TriggerStatistics(0)
-b = MeanWaveForms_HighLowGain(0)  # 0 is for high gain and 1 is for low gain
-c = MeanWaveForms_HighLowGain(1)
-d = MeanCameraDisplay_HighLowGain(0)
-e = MeanCameraDisplay_HighLowGain(1)
-f = ChargeIntegration_HighLowGain(0)
-g = ChargeIntegration_HighLowGain(1)
-h = CameraMonitoring(0)
+
+
+                                                  ########################
+
+
+
+
+
+
+
+#LIST OF PROCESSES TO RUN
+#######################################################################################################################
+a = TriggerStatistics(HIGH_GAIN)
+b = MeanWaveForms_HighLowGain(HIGH_GAIN) #0 is for high gain and 1 is for low gain
+c = MeanWaveForms_HighLowGain(LOW_GAIN)
+d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
+e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
+f = ChargeIntegration_HighLowGain(HIGH_GAIN)
+g = ChargeIntegration_HighLowGain(LOW_GAIN)
+h = CameraMonitoring(HIGH_GAIN)
 
 processors = list()
 
@@ -113,16 +182,20 @@ for p in processors:
     p.ConfigureForRun(path, Chan, Samp, reader1)
 
 for i, evt in enumerate(reader):
-    for p in processors:
-        p.ProcessEvent(evt)
+	for p in processors:
+		p.ProcessEvent(evt, noped)
+        
+#for the rest of the event files
+for arg in args.input_files[1:]:
+    path2 = f'{NectarPath}/{arg}'
+    print(path2)
 
-for arg in sys.argv[2:]:
-    reader = EventSource(input_url=arg)
+    reader=EventSource(input_url=path2)
     seeker = EventSeeker(reader)
 
     for i, evt in enumerate(reader):
         for p in processors:
-            p.ProcessEvent(evt)
+            p.ProcessEvent(evt, noped)
 
 for p in processors:
     p.FinishRun()
@@ -133,23 +206,25 @@ for p in processors:
     NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.GetResults()
     dict_num += 1
 
-# in order to allow to change the name easily
-name = name
-# if we want to write all results in 1 pickle file we do this.
-p.WriteAllResults(ResPath, NESTED_DICT)
 
-for p in processors:
-    processor_figure_dict, processor_figure_name_dict = p.PlotResults(name, FigPath)
+name = name #in order to allow to change the name easily
+p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
 
-    for fig_plot in processor_figure_dict:
-        fig = processor_figure_dict[fig_plot]
-        SavePath = processor_figure_name_dict[fig_plot]
-        plt.gcf()
-        fig.savefig(SavePath)
+#if -plot in args it will construct the figures and save them
+if PlotFig == True:
+    for p in processors:
+        processor_figure_dict, processor_figure_name_dict  = p.PlotResults(name, FigPath)
+    
+        for fig_plot in processor_figure_dict:
+            fig = processor_figure_dict[fig_plot]
+            SavePath = processor_figure_name_dict[fig_plot]
+            plt.gcf()
+            fig.savefig(SavePath)
+            
+    plt.clf()
+    plt.cla()
+    plt.close()
 
-plt.clf()
-plt.cla()
-plt.close()
 
 end = time.time()
 print("Processing time:", end - start)

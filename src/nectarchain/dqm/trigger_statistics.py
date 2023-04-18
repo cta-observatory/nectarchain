@@ -20,7 +20,7 @@ class TriggerStatistics(dqm_summary):
         self.event_id = []
         self.run_times = []
 
-    def ProcessEvent(self, evt):
+    def ProcessEvent(self, evt, noped):
         trigger_type = evt.trigger.event_type.value
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
