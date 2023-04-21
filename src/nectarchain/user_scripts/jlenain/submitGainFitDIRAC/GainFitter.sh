@@ -12,6 +12,9 @@ export NECTARCHAIN_TEST=$NECTARCAMDATA
 export NECTARCHAIN_FIGURES=$NECTARCAMDATA
 [ ! -d $NECTARCAMDATA ] && mkdir -p $NECTARCAMDATA
 
+echo "Environment variables are:"
+env
+
 mv *.fits.fz $NECTARCAMDATA/.
 cd $NECTARCAMDATA
 
@@ -44,7 +47,7 @@ eval \$cmd
 
 cmd="apptainer exec --home $PWD $CONTAINER \
                \$PYTHONBIN \$SCRIPTDIR/load_wfs_compute_charge.py -f 3937 \
-               --extractorMethod LocalPeakWindowSum --extractor_kwargs '{\"window_width\":16,\"window_shift\":4}'"
+               --extractorMethod FullWaveformSum"
 echo \$cmd
 eval \$cmd
 
@@ -67,14 +70,14 @@ cmd="apptainer exec --home $PWD $CONTAINER \
 echo \$cmd
 eval \$cmd
 
-cmd="apptainer exec --home $PWD $CONTAINER \
-               \$PYTHONBIN \$SCRIPTDIR/gain_SPEfit_combined_computation.py -r 3936 \
-               --SPE_fit_results_tag 3942 --chargeExtractorPath LocalPeakWindowSum_4-12 \
-               --overwrite \
-               # --multiproc --chunksize 50 \
-               --VVH_fitted_results \"$NECTARCAMDATA/../SPEfit/data/MULTI-1400V-SPEStd-3942-LocalPeakWindowSum_4-12/output_table.ecsv\""
-echo \$cmd
-eval \$cmd
+# cmd="apptainer exec --home $PWD $CONTAINER \
+#                \$PYTHONBIN \$SCRIPTDIR/gain_SPEfit_combined_computation.py -r 3936 \
+#                --SPE_fit_results_tag 3942 --chargeExtractorPath LocalPeakWindowSum_4-12 \
+#                --overwrite \
+#                # --multiproc --chunksize 50 \
+#                --VVH_fitted_results \"$NECTARCAMDATA/../SPEfit/data/MULTI-1400V-SPEStd-3942-LocalPeakWindowSum_4-12/output_table.ecsv\""
+# echo \$cmd
+# eval \$cmd
 EOF
 
 chmod u+x $WRAPPER
