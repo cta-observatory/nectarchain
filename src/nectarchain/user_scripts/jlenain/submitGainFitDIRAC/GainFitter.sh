@@ -3,7 +3,7 @@
 ORIGPWD=$PWD
 
 CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
-OUTDIR=SPEFitter
+OUTDIR=SPEFitter_$DIRACJOBID
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/$OUTDIR
 
 export NECTARCAMDATA=$PWD/$OUTDIR
@@ -52,6 +52,12 @@ echo \$cmd
 eval \$cmd
 
 cmd="apptainer exec --home $PWD $CONTAINER \
+               \$PYTHONBIN \$SCRIPTDIR/load_wfs_compute_charge.py -f 3937 \
+               --extractorMethod LocalPeakWindowSum --extractor_kwargs '{\"window_width\":16,\"window_shift\":4}'"
+echo \$cmd
+eval \$cmd
+
+cmd="apptainer exec --home $PWD $CONTAINER \
                \$PYTHONBIN \$SCRIPTDIR/load_wfs_compute_charge.py -p 3938 \
                --extractorMethod LocalPeakWindowSum --extractor_kwargs '{\"window_width\":16,\"window_shift\":4}'"
 echo \$cmd
@@ -66,6 +72,7 @@ eval \$cmd
 cmd="apptainer exec --home $PWD $CONTAINER \
                \$PYTHONBIN \$SCRIPTDIR/gain_PhotoStat_computation.py -p 3938 -f 3937 \
                --chargeExtractorPath LocalPeakWindowSum_4-12 --correlation --overwrite \
+               --FFchargeExtractorWindowLength 16 \
                --SPE_fit_results_tag 3936 --SPE_fit_results \"$NECTARCAMDATA/../SPEfit/data/MULTI-nominal-SPEStd-3936-LocalPeakWindowSum_4-12/output_table.ecsv\""
 echo \$cmd
 eval \$cmd
