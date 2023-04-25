@@ -194,10 +194,10 @@ class ChargeContainer() :
         hdr['COMMENT'] = f"The charge containeur for run {self.__run_number} with {self.__method} method : primary is the pixels id, then you can find HG charge, LG charge, HG peak and LG peak, 2 last HDU are composed of event properties and trigger patern"
 
         primary_hdu = fits.PrimaryHDU(self.pixels_id,header=hdr)
-        charge_hg_hdu = fits.ImageHDU(self.charge_hg)
-        charge_lg_hdu = fits.ImageHDU(self.charge_lg)
-        peak_hg_hdu = fits.ImageHDU(self.peak_hg)
-        peak_lg_hdu = fits.ImageHDU(self.peak_lg)
+        charge_hg_hdu = fits.ImageHDU(self.charge_hg,name = "HG charge")
+        charge_lg_hdu = fits.ImageHDU(self.charge_lg,name = "LG charge")
+        peak_hg_hdu = fits.ImageHDU(self.peak_hg, name = 'HG peak time')
+        peak_lg_hdu = fits.ImageHDU(self.peak_lg, name = 'LG peak time')
 
         col1 = fits.Column(array = self.event_id, name = "event_id", format = '1I')
         col2 = fits.Column(array = self.event_type, name = "event_type", format = '1I')
@@ -207,12 +207,12 @@ class ChargeContainer() :
         col6 = fits.Column(array = self.multiplicity, name = "multiplicity", format = '1I')
 
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
-        event_properties = fits.BinTableHDU.from_columns(coldefs)
+        event_properties = fits.BinTableHDU.from_columns(coldefs, name = 'event properties')
 
         col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * self.CAMERA.n_pixels}L',dim = f'({self.CAMERA.n_pixels},4)')
         col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
         coldefs = fits.ColDefs([col1, col2])
-        trigger_patern = fits.BinTableHDU.from_columns(coldefs)
+        trigger_patern = fits.BinTableHDU.from_columns(coldefs, name = 'trigger patern')
 
         hdul = fits.HDUList([primary_hdu, charge_hg_hdu, charge_lg_hdu,peak_hg_hdu,peak_lg_hdu,event_properties,trigger_patern])
         try : 

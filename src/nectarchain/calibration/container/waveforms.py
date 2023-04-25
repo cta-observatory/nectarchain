@@ -187,8 +187,8 @@ class WaveformsContainer() :
 
         primary_hdu = fits.PrimaryHDU(self.pixels_id,header=hdr)
 
-        wfs_hg_hdu = fits.ImageHDU(self.wfs_hg)
-        wfs_lg_hdu = fits.ImageHDU(self.wfs_lg)
+        wfs_hg_hdu = fits.ImageHDU(self.wfs_hg,name = "HG Waveforms")
+        wfs_lg_hdu = fits.ImageHDU(self.wfs_lg,name = "LG Waveforms")
 
 
         col1 = fits.Column(array = self.event_id, name = "event_id", format = '1J')
@@ -199,13 +199,13 @@ class WaveformsContainer() :
         col6 = fits.Column(array = self.multiplicity, name = "multiplicity", format = '1I')
 
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
-        event_properties = fits.BinTableHDU.from_columns(coldefs)
+        event_properties = fits.BinTableHDU.from_columns(coldefs,name = 'event properties')
 
         col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * self.CAMERA.n_pixels}L',dim = f'({self.CAMERA.n_pixels},4)')
         col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
         coldefs = fits.ColDefs([col1, col2])
-        trigger_patern = fits.BinTableHDU.from_columns(coldefs)
-        
+        trigger_patern = fits.BinTableHDU.from_columns(coldefs,name = 'trigger patern')
+
         hdul = fits.HDUList([primary_hdu, wfs_hg_hdu, wfs_lg_hdu,event_properties,trigger_patern])
         try : 
             hdul.writeto(Path(path)/f"waveforms_run{self.run_number}{suffix}.fits",overwrite=kwargs.get('overwrite',False))
