@@ -47,7 +47,7 @@ parser.add_argument('--ff_max_events',
                     nargs="+",
                     #default=[],
                     help='FF max events to be load',
-                    type=list)
+                    type=int)
 
 #n_events in runs
 parser.add_argument('--spe_nevents',
@@ -64,7 +64,7 @@ parser.add_argument('--ff_nevents',
                     nargs="+",
                     #default=[],
                     help='FF n events to be load',
-                    type=list)
+                    type=int)
 
 #boolean arguments
 parser.add_argument('--reload_wfs',
@@ -187,12 +187,12 @@ def main(spe_run_number : list = [],
     #print(kwargs)
 
     spe_nevents = kwargs.pop('spe_nevents',[-1 for i in range(len(spe_run_number))])
-    ff_nevents = kwargs.pop('spe_nevents',[-1 for i in range(len(ff_run_number))])
-    ped_nevents = kwargs.pop('spe_nevents',[-1 for i in range(len(ped_run_number))])
+    ff_nevents = kwargs.pop('ff_nevents',[-1 for i in range(len(ff_run_number))])
+    ped_nevents = kwargs.pop('ped_nevents',[-1 for i in range(len(ped_run_number))])
 
     spe_max_events = kwargs.pop('spe_max_events',[None for i in range(len(spe_run_number))])
-    ff_max_events = kwargs.pop('spe_max_events',[None for i in range(len(ff_run_number))])
-    ped_max_events = kwargs.pop('spe_max_events',[None for i in range(len(ped_run_number))])
+    ff_max_events = kwargs.pop('ff_max_events',[None for i in range(len(ff_run_number))])
+    ped_max_events = kwargs.pop('ped_max_events',[None for i in range(len(ped_run_number))])
 
     runs_list = spe_run_number + ff_run_number + ped_run_number
     nevents = spe_nevents + ff_nevents + ped_nevents
@@ -251,7 +251,14 @@ if __name__ == '__main__':
 
     log.info(f"arguments passed to main are : {arg}")
  
-    path= args.extractorMethod+f"_{args.extractor_kwargs['window_shift']}-{args.extractor_kwargs['window_width']-args.extractor_kwargs['window_shift']}"
+    path= args.extractorMethod
+    if args.extractorMethod in ["GlobalPeakWindowSum", "LocalPeakWindowSum"] :
+        path +=f"_{args.extractor_kwargs['window_shift']}-{args.extractor_kwargs['window_width']-args.extractor_kwargs['window_shift']}"
+    elif args.extractorMethod in ["SlidingWindowMaxSum"] :
+        path +=f"_{args.extractor_kwargs['window_width']}"
+    elif args.extractorMethod in ["FixedWindowSum"] :
+        path +=f"_{args.extractor_kwargs['peak_index']}_{args.extractor_kwargs['window_shift']}-{args.extractor_kwargs['window_width']-args.extractor_kwargs['window_shift']}"
+    
     arg['path'] = path
     
     main(**arg)

@@ -27,9 +27,9 @@ class PhotoStatGain(ABC):
 
     def _readFF(self,FFRun,maxevents: int = None,**kwargs) :
         log.info('reading FF data')
-        method = kwargs.get('method','std')
+        method = kwargs.get('method','FullWaveformSum')
         FFchargeExtractorWindowLength = kwargs.get('FFchargeExtractorWindowLength',None)
-        if method != 'std' :
+        if method != 'FullWaveformSum' :
             if FFchargeExtractorWindowLength is None : 
                 e = Exception(f"we have to specify FFchargeExtractorWindowLength argument if charge extractor method is not FullwaveformSum")
                 log.error(e,exc_info=True)
@@ -68,7 +68,7 @@ class PhotoStatGain(ABC):
 
     def _readPed(self,PedRun,maxevents: int = None,**kwargs) :
         log.info('reading Ped data')
-        method = 'std'#kwargs.get('method','std')
+        method = 'FullWaveformSum'#kwargs.get('method','std')
         if isinstance(PedRun,int) : 
             try : 
                 self.Pedcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",PedRun)
