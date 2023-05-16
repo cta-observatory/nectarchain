@@ -4,6 +4,7 @@ import os
 import argparse
 import json
 import glob
+import gc
 
 import logging
 logging.getLogger("numba").setLevel(logging.WARNING)
@@ -205,7 +206,16 @@ def load_wfs_charge_split_from_wfsFiles(wfsFiles,charge_childpath,extractor_kwar
                                                      method = charge_childpath,
                                                      **extractor_kwargs))
         log.debug(f"deleting waveformsContainer from {file} to free RAM")
+        del wfs.wfs_hg
+        del wfs.wfs_lg
+        del wfs.ucts_timestamp
+        del wfs.ucts_busy_counter
+        del wfs.ucts_event_counter
+        del wfs.event_type
+        del wfs.event_id
+        del wfs.trig_pattern_all
         del wfs
+        #gc.collect()
     
     log.info("merging charge")
     charge = charge.merge()
@@ -251,7 +261,7 @@ def load_wfs_compute_charge(runs_list : list,
             log.info(f"trying to load waveforms from {os.environ['NECTARCAMDATA']}/waveforms/")
             try : 
                 if split : 
-                    files = glob.glob(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}*.fits")
+                    files = glob.glob(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}_*.fits")
                     if len(files) ==  0 : 
                         raise FileNotFoundError(f"no splitted waveforms found")
                     else :

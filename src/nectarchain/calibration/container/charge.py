@@ -242,44 +242,29 @@ class ChargeContainer() :
         if kwargs.get("explicit_filename",False) : 
             filename = kwargs.get("explicit_filename")
             log.info(f"loading {filename}")
-            hdul = fits.open(filename)
         else : 
             log.info(f"loading in {path} run number {run_number}")
-            hdul = fits.open(Path(path)/f"charge_run{run_number}.fits")
-
+            filename = Path(path)/f"charge_run{run_number}.fits"
         
-        #table = Table.read(Path(path)/f"charge_hg_run{run_number}.ecsv")
-        #pixels_id = table.meta['pixels_id']
-        #charge_hg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        #table = Table.read(Path(path)/f"charge_lg_run{run_number}.ecsv")
-        #charge_lg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        #table = Table.read(Path(path)/f"peak_hg_run{run_number}.ecsv")
-        #peak_hg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        #table = Table.read(Path(path)/f"peak_lg_run{run_number}.ecsv")
-        #peak_lg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        pixels_id = hdul[0].data
-        nevents = hdul[0].header['NEVENTS'] 
-        npixels = hdul[0].header['NPIXELS'] 
-        charge_hg = hdul[1].data
-        charge_lg = hdul[2].data
-        peak_hg = hdul[3].data
-        peak_lg = hdul[4].data
+        with fits.open(filename) as hdul :
+            pixels_id = hdul[0].data
+            nevents = hdul[0].header['NEVENTS'] 
+            npixels = hdul[0].header['NPIXELS'] 
+            charge_hg = hdul[1].data
+            charge_lg = hdul[2].data
+            peak_hg = hdul[3].data
+            peak_lg = hdul[4].data
 
+            cls = ChargeContainer(charge_hg,charge_lg,peak_hg,peak_lg,run_number,pixels_id,nevents,npixels)
 
-        cls = ChargeContainer(charge_hg,charge_lg,peak_hg,peak_lg,run_number,pixels_id,nevents,npixels)
+            cls.event_id = hdul[5].data["event_id"]
+            cls.event_type = hdul[5].data["event_type"]
+            cls.ucts_timestamp = hdul[5].data["ucts_timestamp"]
+            cls.ucts_busy_counter = hdul[5].data["ucts_busy_counter"]
+            cls.ucts_event_counter = hdul[5].data["ucts_event_counter"]
 
-        cls.event_id = hdul[5].data["event_id"]
-        cls.event_type = hdul[5].data["event_type"]
-        cls.ucts_timestamp = hdul[5].data["ucts_timestamp"]
-        cls.ucts_busy_counter = hdul[5].data["ucts_busy_counter"]
-        cls.ucts_event_counter = hdul[5].data["ucts_event_counter"]
-
-        table_trigger = hdul[6].data
-        cls.trig_pattern_all = table_trigger["trig_pattern_all"]
+            table_trigger = hdul[6].data
+            cls.trig_pattern_all = table_trigger["trig_pattern_all"]
 
         return cls
 

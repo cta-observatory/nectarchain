@@ -237,31 +237,30 @@ class WaveformsContainer() :
             WaveformsContainer: WaveformsContainer instance
         """
         log.info(f"loading from {path}")
-        hdul = fits.open(Path(path))
+        with fits.open(Path(path)) as hdul : 
+            cls = WaveformsContainer.__new__(WaveformsContainer)
 
-        cls = WaveformsContainer.__new__(WaveformsContainer)
+            cls.__run_number = hdul[0].header['RUN'] 
+            cls.__nevents = hdul[0].header['NEVENTS'] 
+            cls.__npixels = hdul[0].header['NPIXELS'] 
+            cls.__nsamples = hdul[0].header['NSAMPLES'] 
 
-        cls.__run_number = hdul[0].header['RUN'] 
-        cls.__nevents = hdul[0].header['NEVENTS'] 
-        cls.__npixels = hdul[0].header['NPIXELS'] 
-        cls.__nsamples = hdul[0].header['NSAMPLES'] 
-
-        cls.__subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
+            cls.__subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
 
 
-        cls.__pixels_id = hdul[0].data
-        cls.wfs_hg = hdul[1].data
-        cls.wfs_lg = hdul[2].data
+            cls.__pixels_id = hdul[0].data
+            cls.wfs_hg = hdul[1].data
+            cls.wfs_lg = hdul[2].data
 
-        table_prop = hdul[3].data
-        cls.event_id = table_prop["event_id"]
-        cls.event_type = table_prop["event_type"]
-        cls.ucts_timestamp = table_prop["ucts_timestamp"]
-        cls.ucts_busy_counter = table_prop["ucts_busy_counter"]
-        cls.ucts_event_counter = table_prop["ucts_event_counter"]
+            table_prop = hdul[3].data
+            cls.event_id = table_prop["event_id"]
+            cls.event_type = table_prop["event_type"]
+            cls.ucts_timestamp = table_prop["ucts_timestamp"]
+            cls.ucts_busy_counter = table_prop["ucts_busy_counter"]
+            cls.ucts_event_counter = table_prop["ucts_event_counter"]
 
-        table_trigger = hdul[4].data
-        cls.trig_pattern_all = table_trigger["trig_pattern_all"]
+            table_trigger = hdul[4].data
+            cls.trig_pattern_all = table_trigger["trig_pattern_all"]
 
         return cls
 
