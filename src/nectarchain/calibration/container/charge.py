@@ -505,18 +505,39 @@ class ChargeContainers() :
             return cls
 
     @property
-    def nChargeContainer(self) : return self.__nChargeContainer
+    def nChargeContainer(self) : 
+        """getter giving the number of chargeContainer into the ChargeContainers instance
+
+        Returns:
+            int: the number of chargeContainer
+        """
+        return self.__nChargeContainer
 
     @property
     def nevents(self) : 
+        """number of events into the whole ChargesContainers
+
+        Returns:
+            int: number of events
+        """
         return np.sum([self.chargeContainers[i].nevents for i in range(self.__nChargeContainer)])
 
-    def append(self,chargeContainer : ChargeContainer) : 
+    def append(self,chargeContainer : ChargeContainer) :
+        """method to stack a ChargeContainer into the ChargeContainers
+
+        Args:
+            chargeContainer (ChargeContainer): the data to be stacked into
+        """
         self.chargeContainers.append(chargeContainer)
         self.__nChargeContainer += 1
 
 
     def merge(self) -> ChargeContainer : 
+        """method to merge a ChargeContainers into one single ChargeContainer
+
+        Returns:
+            ChargeContainer: the merged object
+        """
         cls  = ChargeContainer.__new__(ChargeContainer)
         cls.charge_hg = np.concatenate([chargecontainer.charge_hg for chargecontainer in self.chargeContainers],axis = 0) 
         cls.charge_lg = np.concatenate([chargecontainer.charge_lg for chargecontainer in self.chargeContainers],axis = 0) 

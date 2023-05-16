@@ -281,12 +281,29 @@ class WaveformsContainer() :
 
     ##methods used to display
     def display(self,evt,cmap = 'gnuplot2') : 
+        """plot camera display
+
+        Args:
+            evt (int): event index
+            cmap (str, optional): colormap. Defaults to 'gnuplot2'.
+
+        Returns:
+            CameraDisplay: thoe cameraDisplay plot
+        """
         image = self.wfs_hg.sum(axis=2)
         disp = CameraDisplay(geometry=WaveformsContainer.CAMERA, image=image[evt], cmap=cmap)
         disp.add_colorbar()
         return disp
 
     def plot_waveform(self,evt) :
+        """plot the waveform of the evt
+
+        Args:
+            evt (int): the event index
+
+        Returns:
+            tuple: the figure and axes
+        """
         fig,ax = plt.subplots(1,1)
         ax.plot(self.wfs_hg[evt].T)
         return fig,ax
@@ -466,10 +483,17 @@ class WaveformsContainers() :
 
         
     @property
-    def nWaveformsContainer(self) : return self.__nWaveformsContainer
+    def nWaveformsContainer(self) : 
+        """getter giving the number of waveformsContainer into the waveformsContainers instance
+
+        Returns:
+            int: the number of waveformsContainer
+        """
+        return self.__nWaveformsContainer
 
     @property
     def nevents(self) : 
+        """getter giving the number of events in the waveformsContainers instance"""
         return np.sum([self.waveformsContainer[i].nevents for i in range(self.__nWaveformsContainer)])
 
     def append(self,waveformsContainer : WaveformsContainer) : 
