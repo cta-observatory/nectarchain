@@ -312,7 +312,7 @@ class ChargeContainer() :
         if "apply_integration_correction" in eval(method).class_own_traits().keys() : #to change the default behavior of ctapipe extractor
             extractor_kwargs["apply_integration_correction"] = kwargs.get("apply_integration_correction",False)
 
-        log.debug(f"Extracting waveforms with method {method} and extractor_kwargs {extractor_kwargs}")
+        log.debug(f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}")
         ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
         if channel == constants.HIGH_GAIN:
             out = np.array([ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_hg))]).reshape(2,waveformContainer.wfs_hg.shape[0], waveformContainer.wfs_hg.shape[1])
