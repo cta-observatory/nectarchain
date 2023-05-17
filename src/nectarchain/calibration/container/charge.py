@@ -300,10 +300,10 @@ class ChargeContainer() :
         log.debug(f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}")
         ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
         if channel == constants.HIGH_GAIN:
-            out = np.array([ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_hg))]).reshape(2,waveformContainer.wfs_hg.shape[0], waveformContainer.wfs_hg.shape[1])
+            out = np.array([ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
             return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            out = np.array([ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_lg))]).reshape(2,waveformContainer.wfs_lg.shape[0], waveformContainer.wfs_lg.shape[1])
+            out = np.array([ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
             return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")

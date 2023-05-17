@@ -294,7 +294,7 @@ class WaveformsContainer() :
         disp.add_colorbar()
         return disp
 
-    def plot_waveform(self,evt) :
+    def plot_waveform_hg(self,evt,**kwargs) :
         """plot the waveform of the evt
 
         Args:
@@ -303,7 +303,11 @@ class WaveformsContainer() :
         Returns:
             tuple: the figure and axes
         """
-        fig,ax = plt.subplots(1,1)
+        if 'figure' in kwargs.keys() and 'ax' in kwargs.keys() :
+            fig = kwargs.get('figure')
+            ax = kwargs.get('ax')
+        else : 
+            fig,ax = plt.subplots(1,1)
         ax.plot(self.wfs_hg[evt].T)
         return fig,ax
 
@@ -320,7 +324,7 @@ class WaveformsContainer() :
         mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
         res = np.array([self.wfs_hg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
-        res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
+        res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
         return res
 
 
@@ -338,7 +342,7 @@ class WaveformsContainer() :
         mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
         res =  np.array([self.wfs_lg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
-        res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
+        res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
         return res
 
     @property
