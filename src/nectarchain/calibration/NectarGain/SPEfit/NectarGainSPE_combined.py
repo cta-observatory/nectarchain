@@ -231,7 +231,7 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
                     np.trapz(self.nectarGain.histo[pixel],self.nectarGain.charge[pixel])*MPE2(self.nectarGain.charge[pixel],self.__pp.value,self.__resolution.value,self.__mean.value,self.__n.value,self.__pedestal.value,self.__pedestalWidth.value,self.__luminosity.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval):.3f},\n likelihood = {fit.fval:.2f}")
                 ax[0].set_xlabel("Charge (ADC)", size=15)
                 ax[0].set_ylabel("Events", size=15)
                 ax[0].set_title(f"SPE fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
@@ -242,7 +242,7 @@ class NectarGainSPECombinedNoPed(NectarGainSPE):
                     np.trapz(self.nectarGainHHV.histo[pixel],self.nectarGainHHV.charge[pixel])*MPE2(self.nectarGainHHV.charge[pixel],self.__pp.value,self.__resolution.value,self.__meanHHV.value,self.__n.value,self.__pedestalHHV.value,self.__pedestalWidth.value,self.__luminosity.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gainHHV : {self.__gainHHV[pixel,0] - self.__gainHHV[pixel,1]:.2f} < {self.__gainHHV[pixel,0]:.2f} < {self.__gainHHV[pixel,0] + self.__gainHHV[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"SPE model fit \n gainHHV : {self.__gainHHV[pixel,0] - self.__gainHHV[pixel,1]:.2f} < {self.__gainHHV[pixel,0]:.2f} < {self.__gainHHV[pixel,0] + self.__gainHHV[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval):.3f},\n likelihood = {fit.fval:.2f}")
                 ax[1].set_xlabel("Charge (ADC)", size=15)
                 ax[1].set_ylabel("Events", size=15)
                 ax[1].set_title(f"SPE fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")

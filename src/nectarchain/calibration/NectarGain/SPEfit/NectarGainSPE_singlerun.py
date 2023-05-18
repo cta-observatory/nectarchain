@@ -463,7 +463,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                     np.trapz(histo,charge)*MPE2(charge,parameters['pp'].value, parameters['resolution'].value, parameters['mean'].value, parameters['n'].value, parameters['pedestal'].value, parameters['pedestalWidth'].value, parameters['luminosity'].value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe,\n pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval):.3f},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"SPE fit pixel {it} with pixel_id : {pixels_id}")
@@ -510,7 +510,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
                     np.trapz(self.histo[pixel],self.charge[pixel])*MPE2(self.charge[pixel],self.__pp.value,self.__resolution.value,self.__mean.value,self.__n.value,self.pedestal.value,self.__pedestalWidth.value,self.__luminosity.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe,\n pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval):.3f},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"SPE fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
@@ -867,7 +867,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                     np.trapz(self.histo[pixel],self.charge[pixel])*gaussian(self.charge[pixel],self.pedestal.value,self.__pedestalWidth.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"MPE model fit \n Pedestal = {round(self.__pedestalFitted[pixel,0]):.2f} +/-  {round(self.__pedestalFitted[pixel,1],2):.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"MPE model fit \n Pedestal = {round(self.__pedestalFitted[pixel,0]):.2f} +/-  {round(self.__pedestalFitted[pixel,1],2):.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval):.3f},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"Pedestal fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
@@ -912,7 +912,7 @@ class NectarGainSPESinglePed(NectarGainSPESingle):
                     np.trapz(histo, charge)*gaussian(charge, parameters["pedestal"].value,parameters["pedestalWidth"].value),
                     zorder=1,
                     linewidth=2,
-                    label = f"MPE model fit \n Pedestal = {round(parameters['pedestal'].value):.2f} +/-  {round(parameters['pedestal'].error,2):.2e} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"MPE model fit \n Pedestal = {round(parameters['pedestal'].value):.2f} +/-  {round(parameters['pedestal'].error,2):.2e} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval):.3f},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"Pedestal fit pixel_id = {pixels_id})")

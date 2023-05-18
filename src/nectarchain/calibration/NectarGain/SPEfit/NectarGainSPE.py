@@ -81,7 +81,7 @@ class NectarGainSPE(ABC) :
                 tmp.error = m.errors[i]
 
     @staticmethod
-    def _make_output_dict_obs(m : Minuit,valid,pixels_id,parameters : Parameters,ndof : int) :
+    def _make_output_dict_obs(m : Minuit, valid, pixels_id, parameters : Parameters, ndof : int) :
         __class__._update_parameters_postfit(m,parameters)
         output = {"is_valid" : valid, "pixel" : pixels_id}
         for parameter in parameters.parameters : 
