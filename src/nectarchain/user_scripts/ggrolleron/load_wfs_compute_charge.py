@@ -4,7 +4,6 @@ import os
 import argparse
 import json
 import glob
-import gc
 
 import logging
 logging.getLogger("numba").setLevel(logging.WARNING)
