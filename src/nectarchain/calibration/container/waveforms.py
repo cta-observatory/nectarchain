@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import copy
 import os
+import glob
 from pathlib import Path
 
 from enum import Enum
@@ -129,6 +130,11 @@ class WaveformsContainer() :
 
 
     def load_wfs(self,compute_trigger_patern = False):
+        """mathod to extract waveforms data from the EventSource 
+
+        Args:
+            compute_trigger_patern (bool, optional): To recompute on our side the trigger patern. Defaults to False.
+        """
         wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
         wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
 
@@ -179,7 +185,7 @@ class WaveformsContainer() :
         hdr['NSAMPLES'] = self.nsamples
         hdr['SUBARRAY'] = self.subarray.name
 
-        self.subarray.to_hdf(f"{Path(path)}/subarray_run{self.run_number}.hdf5",overwrite=kwargs.get('overwrite',False))
+        self.subarray.to_hdf(f"{Path(path)}/subarray_run{self.run_number}{suffix}.hdf5",overwrite=kwargs.get('overwrite',False))
 
 
 
@@ -231,31 +237,30 @@ class WaveformsContainer() :
             WaveformsContainer: WaveformsContainer instance
         """
         log.info(f"loading from {path}")
-        hdul = fits.open(Path(path))
+        with fits.open(Path(path)) as hdul : 
+            cls = WaveformsContainer.__new__(WaveformsContainer)
 
-        cls = WaveformsContainer.__new__(WaveformsContainer)
+            cls.__run_number = hdul[0].header['RUN'] 
+            cls.__nevents = hdul[0].header['NEVENTS'] 
+            cls.__npixels = hdul[0].header['NPIXELS'] 
+            cls.__nsamples = hdul[0].header['NSAMPLES'] 
 
-        cls.__run_number = hdul[0].header['RUN'] 
-        cls.__nevents = hdul[0].header['NEVENTS'] 
-        cls.__npixels = hdul[0].header['NPIXELS'] 
-        cls.__nsamples = hdul[0].header['NSAMPLES'] 
-
-        cls.__subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
+            cls.__subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
 
 
-        cls.__pixels_id = hdul[0].data
-        cls.wfs_hg = hdul[1].data
-        cls.wfs_lg = hdul[2].data
+            cls.__pixels_id = hdul[0].data
+            cls.wfs_hg = hdul[1].data
+            cls.wfs_lg = hdul[2].data
 
-        table_prop = hdul[3].data
-        cls.event_id = table_prop["event_id"]
-        cls.event_type = table_prop["event_type"]
-        cls.ucts_timestamp = table_prop["ucts_timestamp"]
-        cls.ucts_busy_counter = table_prop["ucts_busy_counter"]
-        cls.ucts_event_counter = table_prop["ucts_event_counter"]
+            table_prop = hdul[3].data
+            cls.event_id = table_prop["event_id"]
+            cls.event_type = table_prop["event_type"]
+            cls.ucts_timestamp = table_prop["ucts_timestamp"]
+            cls.ucts_busy_counter = table_prop["ucts_busy_counter"]
+            cls.ucts_event_counter = table_prop["ucts_event_counter"]
 
-        table_trigger = hdul[4].data
-        cls.trig_pattern_all = table_trigger["trig_pattern_all"]
+            table_trigger = hdul[4].data
+            cls.trig_pattern_all = table_trigger["trig_pattern_all"]
 
         return cls
 
@@ -265,6 +270,8 @@ class WaveformsContainer() :
 
 
     def compute_trigger_patern(self) : 
+        """(preliminary) function to compute the trigger patern
+        """
         #mean.shape nevents * npixels
         mean,std =np.mean(self.wfs_hg,axis = 2),np.std(self.wfs_hg,axis = 2)
         self.trig_pattern = self.wfs_hg.max(axis = 2) > (mean + 3 * std)
@@ -273,13 +280,34 @@ class WaveformsContainer() :
 
     ##methods used to display
     def display(self,evt,cmap = 'gnuplot2') : 
+        """plot camera display
+
+        Args:
+            evt (int): event index
+            cmap (str, optional): colormap. Defaults to 'gnuplot2'.
+
+        Returns:
+            CameraDisplay: thoe cameraDisplay plot
+        """
         image = self.wfs_hg.sum(axis=2)
         disp = CameraDisplay(geometry=WaveformsContainer.CAMERA, image=image[evt], cmap=cmap)
         disp.add_colorbar()
         return disp
 
-    def plot_waveform(self,evt) :
-        fig,ax = plt.subplots(1,1)
+    def plot_waveform_hg(self,evt,**kwargs) :
+        """plot the waveform of the evt
+
+        Args:
+            evt (int): the event index
+
+        Returns:
+            tuple: the figure and axes
+        """
+        if 'figure' in kwargs.keys() and 'ax' in kwargs.keys() :
+            fig = kwargs.get('figure')
+            ax = kwargs.get('ax')
+        else : 
+            fig,ax = plt.subplots(1,1)
         ax.plot(self.wfs_hg[evt].T)
         return fig,ax
 
@@ -296,7 +324,7 @@ class WaveformsContainer() :
         mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
         res = np.array([self.wfs_hg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
-        res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
+        res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
         return res
 
 
@@ -314,7 +342,7 @@ class WaveformsContainer() :
         mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
         res =  np.array([self.wfs_lg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
-        res = res.reshape(res.shape[1],res.shape[0],res.shape[2])
+        res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
         return res
 
     @property
@@ -358,8 +386,22 @@ class WaveformsContainer() :
 class WaveformsContainers() : 
     """This class is to be used for computing waveforms of a run treating run files one by one
     """
+    def __new__(cls,*args,**kwargs) : 
+        """base class constructor
 
+        Returns:
+            WaveformsContainers : the new object
+        """
+        obj = object.__new__(cls)
+        return obj
+    
     def __init__(self,run_number : int,max_events : int = None) :
+        """initialize the waveformsContainer list inside the main object
+
+        Args:
+            run_number (int): the run number
+            max_events (int, optional): max events we want to read. Defaults to None.
+        """
         log.info('Initialization of WaveformsContainers') 
         _,filenames = DataManagement.findrun(run_number)
         self.waveformsContainer = []
@@ -369,24 +411,99 @@ class WaveformsContainers() :
             self.__nWaveformsContainer += 1
             if not(max_events is None) : max_events -= self.waveformsContainer[i].nevents
             log.info(f'WaveformsContainer number {i} is created')
-            if max_events <= 0 : break
+            if not(max_events is None) and max_events <= 0 : break
 
-    def load_wfs(self,compute_trigger_patern = False) : 
-        for i in range(self.__nWaveformsContainer) : 
-            self.waveformsContainer[i].load_wfs(compute_trigger_patern = compute_trigger_patern)
+    def load_wfs(self,compute_trigger_patern = False,index : int = None) : 
+        """load waveforms from the Eventsource reader
 
-    def write(self,path : str, **kwargs) : 
-        for i in range(self.__nWaveformsContainer) : 
-            self.waveformsContainer[i].write(path,suffix = f"{i:04d}" ,**kwargs)
+        Args:
+            compute_trigger_patern (bool, optional): to compute manually the trigger patern. Defaults to False.
+            index (int, optional): to only load waveforms from EventSource for the waveformsContainer at index, this parameters
+            can be used to load, write or perform some work step by step. Thus all the event are not nessessary loaded at the same time 
+            In such case memory can be saved. Defaults to None.
+
+        Raises:
+            IndexError: the index is > nWaveformsContainer or < 0
+        """
+        if index is None : 
+            for i in range(self.__nWaveformsContainer) : 
+                self.waveformsContainer[i].load_wfs(compute_trigger_patern = compute_trigger_patern)
+        else : 
+            if index < self.__nWaveformsContainer and index >= 0 : 
+                self.waveformsContainer[index].load_wfs(compute_trigger_patern = compute_trigger_patern)
+            else : 
+                raise IndexError(f"index must be >= 0 and < {self.__nWaveformsContainer}")
+
+
+    def write(self,path : str, index : int = None, **kwargs) : 
+        """method to write on disk all the waveformsContainer in the list
+
+        Args:
+            path (str): path where to save the waveforms
+            index (int, optional): index of the waveforms list you want to write. Defaults to None.
+
+        Raises:
+            IndexError: the index is > nWaveformsContainer or < 0
+        """
+        if index is None : 
+            for i in range(self.__nWaveformsContainer) : 
+                self.waveformsContainer[i].write(path,suffix = f"{i:04d}" ,**kwargs)
+        else : 
+            if index < self.__nWaveformsContainer and index >= 0 : 
+                self.waveformsContainer[index].write(path,suffix = f"{index:04d}" ,**kwargs)
+            else : 
+                raise IndexError(f"index must be >= 0 and < {self.__nWaveformsContainer}")
+
+    @staticmethod
+    def load(path : str) :
+        """method to load the waveforms list from splited fits files
+
+        Args:
+            path (str): path where data should be, it contain filename without extension
+
+        Raises:
+            e: File not found
+
+        Returns:
+            WaveformsContainers:
+        """
+        log.info(f"loading from {path}")
+        files = glob.glob(f"{path}_*.fits")
+        if len(files) == 0 : 
+            e = FileNotFoundError(f"no files found corresponding to {path}_*.fits")
+            log.error(e)
+            raise e
+        else : 
+            cls = WaveformsContainers.__new__(WaveformsContainers)
+            cls.waveformsContainer = []
+            cls.__nWaveformsContainer = len(files)
+            for file in files : 
+                cls.waveformsContainer.append(WaveformsContainer.load(file))
+            return cls
+
+
+
 
         
     @property
-    def nWaveformsContainer(self) : return self.__nWaveformsContainer
+    def nWaveformsContainer(self) : 
+        """getter giving the number of waveformsContainer into the waveformsContainers instance
+
+        Returns:
+            int: the number of waveformsContainer
+        """
+        return self.__nWaveformsContainer
 
     @property
     def nevents(self) : 
+        """getter giving the number of events in the waveformsContainers instance"""
         return np.sum([self.waveformsContainer[i].nevents for i in range(self.__nWaveformsContainer)])
 
     def append(self,waveformsContainer : WaveformsContainer) : 
-        self.waveforms.append(waveformsContainer)
+        """method to append WaveformsContainer to the waveforms list
+
+        Args:
+            waveformsContainer (WaveformsContainer): the waveformsContainer to stack
+        """
+        self.waveformsContainer.append(waveformsContainer)
         self.__nWaveformsContainer += 1

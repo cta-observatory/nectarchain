@@ -3,13 +3,14 @@ import sys
 import os
 import argparse
 import json
+import glob
 
 import logging
 logging.getLogger("numba").setLevel(logging.WARNING)
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.DEBUG,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
 log = logging.getLogger(__name__)
 
-from nectarchain.calibration.container import WaveformsContainer,ChargeContainer
+from nectarchain.calibration.container import WaveformsContainer,WaveformsContainers,ChargeContainer,ChargeContainers
 
 parser = argparse.ArgumentParser(
                     prog = 'load_wfs_compute_charge',
@@ -78,6 +79,12 @@ parser.add_argument('--overwrite',
                     help='to force overwrite files on disk'
                     )
 
+parser.add_argument('--split',
+                    action='store_true',
+                    default=False,
+                    help='split waveforms extraction with 1 file per fits.fz raw data file'
+                    )
+
 #extractor arguments
 parser.add_argument('--extractorMethod',
                     choices=["FullWaveformSum",
@@ -119,6 +126,99 @@ for arg in ['spe','ff','ped'] :
         e = Exception(f'{arg}_run_number and {arg}_nevents must have same length')
         log.error(e,exc_info=True)
         raise e
+    
+
+def load_wfs_no_split(i,runs_list,max_events,nevents,overwrite) : 
+    """method to load waveforms without splitting
+
+    Args:
+        i (int): index in the run list
+        runs_list (list): the run number list
+        max_events (list): max_events list
+        nevents (list): nevents list
+        overwrite (bool): to overwrite 
+
+    Returns:
+        WaveformsContainer: the output waveformsContainer
+    """
+    log.info("loading wfs not splitted")
+    wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
+    wfs.load_wfs()
+    wfs.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
+    return wfs
+
+def load_wfs_charge_split(i,runs_list,max_events,overwrite,charge_childpath,extractor_kwargs) :
+    """_summary_
+
+    Args:
+        i (int): index in the run list
+        runs_list (list): the run number list
+        max_events (list): max_events list
+        nevents (list): nevents list
+        overwrite (bool): to overwrite 
+        charge_childpath (str): the extraction method
+        extractor_kwargs (dict): the charge extractor kwargs
+
+    Returns:
+        WaveformsContainers,ChargeContainers: the output WaveformsContainers and ChargeContainers
+    """
+     
+    log.info("splitting wafevorms extraction with raw data list files")
+    log.debug(f"creation of the WaveformsContainers")
+    wfs = WaveformsContainers(runs_list[i],max_events = max_events[i])
+    log.info(f"computation of charge with {charge_childpath}")
+    log.info("splitting charge computation with raw data list files")
+    charge = ChargeContainers()
+    for j in range(wfs.nWaveformsContainer) :
+        log.debug(f"reader events for file {j}")
+        wfs.load_wfs(index = j)
+        wfs.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",index = j, overwrite = overwrite)
+        log.debug(f"computation of charge for file {j}")
+        charge.append(ChargeContainer.from_waveforms(wfs.waveformsContainer[j],
+                                                     method = charge_childpath,
+                                                     **extractor_kwargs))
+        log.debug(f"deleting waveformsContainer at index {j} to free RAM")
+        wfs.waveformsContainer[j] = WaveformsContainer.__new__(WaveformsContainer)
+    
+    
+    log.info("merging charge")
+    charge = charge.merge()
+    return wfs,charge
+
+def load_wfs_charge_split_from_wfsFiles(wfsFiles,charge_childpath,extractor_kwargs) : 
+    """_summary_
+
+    Args:
+        wfsFiles (list): list of the waveformsContainer FITS files
+        charge_childpath (str): the extraction method
+        extractor_kwargs (dict): the charge extractor kwargs
+
+    Returns:
+        None,ChargeContainers: the output ChargeContainers (return tuple with None to keep same structure as load_wfs_charge_split)
+    """
+    charge = ChargeContainers()
+    for j,file in enumerate(wfsFiles):
+        log.debug(f"loading wfs from file {file}")
+        wfs = WaveformsContainer.load(file)
+        log.debug(f"computation of charge for file {file}")
+        charge.append(ChargeContainer.from_waveforms(wfs,
+                                                     method = charge_childpath,
+                                                     **extractor_kwargs))
+        log.debug(f"deleting waveformsContainer from {file} to free RAM")
+        del wfs.wfs_hg
+        del wfs.wfs_lg
+        del wfs.ucts_timestamp
+        del wfs.ucts_busy_counter
+        del wfs.ucts_event_counter
+        del wfs.event_type
+        del wfs.event_id
+        del wfs.trig_pattern_all
+        del wfs
+        #gc.collect()
+    
+    log.info("merging charge")
+    charge = charge.merge()
+    return None,charge
 
 def load_wfs_compute_charge(runs_list : list,
                             reload_wfs : bool = False,
@@ -149,32 +249,47 @@ def load_wfs_compute_charge(runs_list : list,
 
     charge_childpath = kwargs.get("charge_childpath",charge_extraction_method)
     extractor_kwargs = kwargs.get("extractor_kwargs",{})
+
+    split =  kwargs.get("split",False)
     
 
     for i in range(len(runs_list)) : 
         log.info(f"treating run {runs_list[i]}")
         log.info("waveform computation")
-        if not(reload_wfs) :
+        if not(reload_wfs):
             log.info(f"trying to load waveforms from {os.environ['NECTARCAMDATA']}/waveforms/")
             try : 
-                wfs = WaveformsContainer.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
+                if split : 
+                    files = glob.glob(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}_*.fits")
+                    if len(files) ==  0 : 
+                        raise FileNotFoundError(f"no splitted waveforms found")
+                    else :
+                        wfs,charge = load_wfs_charge_split_from_wfsFiles(files,charge_childpath,extractor_kwargs)
+                        
+                else :
+                    wfs = WaveformsContainer.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
             except FileNotFoundError as e : 
                 log.warning(f"argument said to not reload waveforms from zfits files but computed waveforms not found at {os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{runs_list[i]}.fits")
                 log.warning(f"reloading from zfits files")
-                wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
-                wfs.load_wfs()
-                wfs.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
+                if split : 
+                    wfs,charge = load_wfs_charge_split(i,runs_list,max_events,overwrite,charge_childpath,extractor_kwargs)
+                else : 
+                    wfs = load_wfs_no_split(i,runs_list,max_events,nevents,overwrite)
             except Exception as e :
                 log.error(e,exc_info = True)
                 raise e
         else : 
-            wfs = WaveformsContainer(runs_list[i],max_events = max_events[i],nevents = nevents[i])
-            wfs.load_wfs()
-            wfs.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = overwrite)
+            if split : 
+                wfs,charge = load_wfs_charge_split(i,runs_list,max_events,overwrite,charge_childpath,extractor_kwargs)
+            else : 
+                wfs = load_wfs_no_split(i,runs_list,max_events,nevents,overwrite)
 
-        log.info(f"computation of charge with {charge_childpath}")
-        charge = ChargeContainer.from_waveforms(wfs,method = charge_childpath,**extractor_kwargs)
+        
+        if not(split) :   
+            log.info(f"computation of charge with {charge_childpath}")
+            charge = ChargeContainer.from_waveforms(wfs,method = charge_childpath,**extractor_kwargs)
         del wfs
+
         charge.write(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",overwrite = overwrite)
         del charge
     
