@@ -52,7 +52,7 @@ mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARDIR/.
 
 LISTRUNS=""
 for run in $NECTARDIR/NectarCAM.Run${runnb}.*.fits.fz; do
-    LISTRUNS="$LISTRUNS $run"
+    LISTRUNS="$LISTRUNS $(basename $run)"
 done
 
 # Create a wrapper BASH script with cleaned environment, see https://redmine.cta-observatory.org/issues/51483
@@ -75,7 +75,7 @@ export APPTAINERENV_NECTARDIR=$NECTARDIR
 echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
-cmd="singularity exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_calib.py $LISTRUNS"
+cmd="singularity exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_calib.py $NECTARDIR $NECTARDIR -i $LISTRUNS"
 echo \$cmd
 eval \$cmd
 EOF
