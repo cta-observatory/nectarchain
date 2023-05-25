@@ -41,7 +41,7 @@ parser.add_argument('--log',
                     type=str)
 args = parser.parse_args()
 
-logger.setLevel(args.log)
+logger.setLevel(args.log.upper())
 
 if args.date is None:
     logger.critical('A date should be provided, in a format astropy.time.Time compliant. E.g. "2022-04-01".')
