@@ -63,15 +63,19 @@ echo "Cleaning environment \$CLEANED_ENV"
 [ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@" 
 
 
-# Some environment variables related to python, to be passed to container:
+# Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
 export SINGULARITYENV_MPLCONFIGDIR=/tmp
 export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
 export SINGULARITYENV_NECTARDIR=$NECTARDIR
 
+export APPTAINERENV_MPLCONFIGDIR=/tmp
+export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
+export APPTAINERENV_NECTARDIR=$NECTARDIR
+
 echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
-cmd="singularity exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/nectarchain/dqm/start_calib.py $LISTRUNS" 
+cmd="singularity exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_calib.py $LISTRUNS"
 echo \$cmd
 eval \$cmd
 EOF
