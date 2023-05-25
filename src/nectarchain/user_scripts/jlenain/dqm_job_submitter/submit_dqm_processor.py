@@ -47,7 +47,6 @@ if args.date is None:
     logger.critical('A date should be provided, in a format astropy.time.Time compliant. E.g. "2022-04-01".')
     sys.exit(1)
 
-container="nectarchain_w_2023_02.sif"
 executable_wrapper="dqm_processor.sh"
 
 ## Possible massive job processing via loop on run numbers:
@@ -115,7 +114,6 @@ for run in runlist:
     j.setName(f'NectarCAM DQM run {run}')
     j.setJobGroup('NectarCAM DQM')
     sandboxlist = [f'{executable_wrapper}',
-                   f'LFN:/vo.cta.in2p3.fr/user/j/jlenain/local/opt/singularity/nectarchain/{container}',
                    f'LFN:{sqlfile}']
     for f in meta['Files']:
         if f.endswith('.fits.fz') and f'NectarCAM.Run{run}' in f:

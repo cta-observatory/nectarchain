@@ -41,7 +41,7 @@ if [ -z $runnb ]; then
     exit 1
 fi
 
-CONTAINER=nectarchain_w_2023_02.sif
+CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
 OUTDIR=NectarCAM_DQM_Run${runnb}
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm
 
