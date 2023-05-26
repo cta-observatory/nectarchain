@@ -1,6 +1,6 @@
 #!/bin/env bash
 #
-# Time-stamp: "2023-01-30 16:21:22 jlenain"
+# Time-stamp: "2023-05-26 15:57:50 jlenain"
 
 
 function usage ()
@@ -41,14 +41,29 @@ if [ -z $runnb ]; then
     exit 1
 fi
 
+WRAPPER="singularity_wrapper.sh"
 CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
 OUTDIR=NectarCAM_DQM_Run${runnb}
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm
 
+function exit_script() {
+    return_code=$1
+
+    # Some cleanup before leaving:
+    [ -d $CONTAINER ] && rm -rf $CONTAINER
+    [ -f $CONTAINER ] && rm -f $CONTAINER
+    [ -d $OUTDIR ] && rm -rf $OUTDIR
+    [ -f ${OUTDIR}.tar.gz ] && rm -f ${OUTDIR}.tar.gz
+    [ -d ${OUTDIR} ] && rm -rf ${OUTDIR}
+    [ -f $WRAPPER ] && rm -f $WRAPPER
+
+    exit $return_code
+}
+
 # Halim's DQM code needs to use a specific output directory:
 export NECTARDIR=$PWD/$OUTDIR
-[ ! -d $NECTARDIR ] && mkdir -p $NECTARDIR
-mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARDIR/.
+[ ! -d $NECTARDIR ] && mkdir -p $NECTARDIR || exit_script $?
+# mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARDIR/.
 
 LISTRUNS=""
 for run in $NECTARDIR/NectarCAM.Run${runnb}.*.fits.fz; do
@@ -56,7 +71,6 @@ for run in $NECTARDIR/NectarCAM.Run${runnb}.*.fits.fz; do
 done
 
 # Create a wrapper BASH script with cleaned environment, see https://redmine.cta-observatory.org/issues/51483
-WRAPPER="sing.sh"
 cat > $WRAPPER <<EOF
 #!/bin/env bash
 echo "Cleaning environment \$CLEANED_ENV" 
@@ -64,33 +78,39 @@ echo "Cleaning environment \$CLEANED_ENV"
 
 
 # Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
-export SINGULARITYENV_MPLCONFIGDIR=/tmp
-export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
-export SINGULARITYENV_NECTARDIR=$NECTARDIR
 
-export APPTAINERENV_MPLCONFIGDIR=/tmp
-export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
-export APPTAINERENV_NECTARDIR=$NECTARDIR
+# Handle Singularity or Apptainer case:
+if command -v singularity &> /dev/null; then
+    CALLER=singularity
+
+    export SINGULARITYENV_MPLCONFIGDIR=/tmp
+    export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
+    export SINGULARITYENV_NECTARDIR=$NECTARDIR
+elif command -v apptainer &> /dev/null; then
+    CALLER=apptainer
+
+    export APPTAINERENV_MPLCONFIGDIR=/tmp
+    export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
+    export APPTAINERENV_NECTARDIR=$NECTARDIR
+else
+    echo "It seems neither Singularity nor Apptainer are available from here"
+    exit 1
+fi
 
 echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
-cmd="singularity exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_calib.py $NECTARDIR $NECTARDIR -i $LISTRUNS"
+cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_calib.py $PWD $NECTARDIR -i $LISTRUNS"
 echo \$cmd
 eval \$cmd
 EOF
 
-chmod u+x $WRAPPER
-./${WRAPPER}
+chmod u+x $WRAPPER || exit_script $?
+./${WRAPPER} || exit_script $?
 
 
 # Archive the output directory and push it on DIRAC before leaving the job:
-tar zcf ${OUTDIR}.tar.gz ${OUTDIR}output/
-dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz LPNHE-USER
+tar zcf ${OUTDIR}.tar.gz ${OUTDIR}/ || exit_script $?
+dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz LPNHE-USER || exit_script $?
 
-# Some cleanup before leaving:
-[ -d $CONTAINER ] && rm -rf $CONTAINER
-[ -f $CONTAINER ] && rm -f $CONTAINER
-[ -d $OUTDIR ] && rm -rf $OUTDIR
-[ -d ${OUTDIR}output ] && rm -rf ${OUTDIR}output
-[ -f $WRAPPER ] && rm -f $WRAPPER
+exit_script 0
