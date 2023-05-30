@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2023-05-30 13:07:50 jlenain"
+# Time-stamp: "2023-05-30 13:09:04 jlenain"
 
 import argparse
 import sys
@@ -37,7 +37,7 @@ parser.add_argument('--dry-run',
                     default=False,
                     help='dry run (does not actually submit jobs)')
 parser.add_argument('--log',
-                    default=logging.INFO,
+                    default='info',
                     help='debug output',
                     type=str)
 args = parser.parse_args()
