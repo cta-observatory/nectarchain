@@ -1,6 +1,6 @@
 #!/bin/env bash
 #
-# Time-stamp: "2023-05-26 15:57:50 jlenain"
+# Time-stamp: "2023-05-30 12:05:14 jlenain"
 
 
 function usage ()
@@ -50,8 +50,8 @@ function exit_script() {
     return_code=$1
 
     # Some cleanup before leaving:
-    [ -d $CONTAINER ] && rm -rf $CONTAINER
-    [ -f $CONTAINER ] && rm -f $CONTAINER
+    # [ -d $CONTAINER ] && rm -rf $CONTAINER
+    # [ -f $CONTAINER ] && rm -f $CONTAINER
     [ -d $OUTDIR ] && rm -rf $OUTDIR
     [ -f ${OUTDIR}.tar.gz ] && rm -f ${OUTDIR}.tar.gz
     [ -d ${OUTDIR} ] && rm -rf ${OUTDIR}
@@ -66,7 +66,7 @@ export NECTARDIR=$PWD/$OUTDIR
 # mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARDIR/.
 
 LISTRUNS=""
-for run in $NECTARDIR/NectarCAM.Run${runnb}.*.fits.fz; do
+for run in $PWD/NectarCAM.Run${runnb}.*.fits.fz; do
     LISTRUNS="$LISTRUNS $(basename $run)"
 done
 
@@ -78,20 +78,19 @@ echo "Cleaning environment \$CLEANED_ENV"
 
 
 # Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
+export SINGULARITYENV_MPLCONFIGDIR=/tmp
+export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
+export SINGULARITYENV_NECTARDIR=$NECTARDIR
+
+export APPTAINERENV_MPLCONFIGDIR=/tmp
+export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
+export APPTAINERENV_NECTARDIR=$NECTARDIR
 
 # Handle Singularity or Apptainer case:
 if command -v singularity &> /dev/null; then
     CALLER=singularity
-
-    export SINGULARITYENV_MPLCONFIGDIR=/tmp
-    export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
-    export SINGULARITYENV_NECTARDIR=$NECTARDIR
 elif command -v apptainer &> /dev/null; then
     CALLER=apptainer
-
-    export APPTAINERENV_MPLCONFIGDIR=/tmp
-    export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
-    export APPTAINERENV_NECTARDIR=$NECTARDIR
 else
     echo "It seems neither Singularity nor Apptainer are available from here"
     exit 1
