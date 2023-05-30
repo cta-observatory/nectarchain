@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2023-05-30 11:42:52 jlenain"
+# Time-stamp: "2023-05-30 13:07:50 jlenain"
 
 import argparse
 import sys
@@ -144,5 +144,5 @@ Aborting...
     j.setInputSandbox(sandboxlist)
 
     if not args.dry_run:
-        res = dirac.submitJob(j, mode='local')  # for local execution, simulating a DIRAC job on the local machine, instead of submitting it to a DIRAC Computing Element
+        res = dirac.submitJob(j)  # , mode='local')  # for local execution, simulating a DIRAC job on the local machine, instead of submitting it to a DIRAC Computing Element
         logger.info(f"Submission Result: {res['Value']}")
