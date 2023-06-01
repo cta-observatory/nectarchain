@@ -24,6 +24,8 @@ dependencies = [
     "numpy~=1.22",
     "protozfits~=2.0",
     "tables>=3.7",
+    "zodb",
+    "zeo",
 ]
 dynamic = ["version"]
 
