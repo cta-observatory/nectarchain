@@ -36,7 +36,7 @@ From: condaforge/mambaforge
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
     curl -L https://repository.egi.eu/sw/production/cas/1/current/GPG-KEY-EUGridPMA-RPM-3 | apt-key add -
     add-apt-repository -y 'deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core'
-    apt -y install ca-policy-egi-core
+    apt -y install ca-policy-egi-core || apt -y install -f
 
     . /opt/conda/etc/profile.d/conda.sh
     . /opt/conda/etc/profile.d/mamba.sh
