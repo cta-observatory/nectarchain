@@ -1,10 +1,9 @@
 from ZODB import DB
 from ZEO import ClientStorage
-import persistent
 import transaction
 
 
-class SaveDB(persistent.Persistent):
+class SaveDB():
     def __int__(self):
         addr = 'localhost', 8100
         zeo = ClientStorage.ClientStorage(addr)
