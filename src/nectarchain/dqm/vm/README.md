@@ -5,6 +5,11 @@
 ```shell
 docker-compose up -d
 ```
+* Launch Bokeh server with:
+```shell
+bokeh serve --show bokeh_app.py
+```
+TO BE TESTED!
 
 # TODO
 * Add `cloud-init` configuration script for the VM creation.
