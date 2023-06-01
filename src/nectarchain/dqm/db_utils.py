@@ -4,7 +4,7 @@ import transaction
 
 
 class SaveDB():
-    def __int__(self):
+    def __init__(self):
         addr = 'localhost', 8100
         zeo = ClientStorage.ClientStorage(addr)
         self.db = DB(zeo)
