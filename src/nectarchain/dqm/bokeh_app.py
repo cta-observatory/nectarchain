@@ -14,6 +14,8 @@ from db_utils import SaveDB
 db = SaveDB()
 runnb_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 
+DATALIST = db.root[runnb_input].keys()
+
 # Example camera display
 geom = CameraGeometry.from_name("NectarCam-003")
 image = db.root[runnb_input]['Results_MeanCameraDisplay_HighGain']['CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-HIGH-GAIN']
@@ -26,3 +28,6 @@ def callback(attr, new, old):
 
 
 display.enable_pixel_picker(callback)
+
+doc = curdoc()
+doc.title('NectarCAM DQM web app')
