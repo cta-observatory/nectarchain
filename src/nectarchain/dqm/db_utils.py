@@ -13,7 +13,12 @@ class SaveDB(persistent.Persistent):
         self.root = conn.root()
 
     def insert(self, key=None, value=None):
-        self.root[key] = value
+        if key is not None and value is not None:
+            try:
+                self.root[key] = value
+                return True
+            except AttributeError:
+                return False
 
     def commit_and_close(self):
         transaction.commit()

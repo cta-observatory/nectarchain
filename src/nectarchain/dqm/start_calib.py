@@ -210,8 +210,10 @@ for p in processors:
 name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
 db = SaveDB()
-db.insert(name, NESTED_DICT)
-db.commit_and_close()
+if db.insert(name, NESTED_DICT):
+    db.commit_and_close()
+else:
+    db.abort_and_close()
 
 #if -plot in args it will construct the figures and save them
 if PlotFig == True:
