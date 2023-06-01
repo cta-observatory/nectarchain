@@ -1,0 +1,12 @@
+version: "3"
+services:
+  db:
+    image: plone/plone-zeo:latest
+    restart: always
+    volumes:
+      - data:/data
+    ports:
+      - "8100:8100"
+
+volumes:
+  data: {}
