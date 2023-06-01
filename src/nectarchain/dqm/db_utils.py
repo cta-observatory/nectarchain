@@ -3,6 +3,7 @@ from ZEO import ClientStorage
 import persistent
 import transaction
 
+
 class SaveDB(persistent.Persistent):
     def __int__(self):
         addr = 'localhost', 8100
@@ -13,6 +14,7 @@ class SaveDB(persistent.Persistent):
 
     def insert(self, key=None, value=None):
         self.root[key] = value
+
     def commit_and_close(self):
         transaction.commit()
         self.db.close()
