@@ -1,8 +1,10 @@
 import numpy as np
 
+from markupsafe import Markup
+
 # bokeh imports
 from bokeh.layouts import column, row
-from bokeh.models import ColumnDataSource, NumericInput
+from bokeh.models import ColumnDataSource, Select  # , NumericInput
 from bokeh.plotting import figure, curdoc
 
 # ctapipe imports
@@ -12,9 +14,10 @@ from ctapipe.instrument import CameraGeometry
 from db_utils import SaveDB
 
 db = SaveDB()
-runnb_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
+DATALIST = list(db.root.keys())
 
-DATALIST = db.root[runnb_input].keys()
+# runnb_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
+runnb_input = Select(value = 'Choose the run', title = 'Choose the run', options = DATALIST)
 
 # Example camera display
 geom = CameraGeometry.from_name("NectarCam-003")
