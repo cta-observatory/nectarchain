@@ -23,7 +23,7 @@ def make_camera_display(source):
     geom = CameraGeometry.from_name("NectarCam-003")
     image = source['Results_MeanCameraDisplay_HighGain']['CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-HIGH-GAIN']
     display = CameraDisplay(geometry=geom, image=image)
-    return display
+    return display.figure
     
 def update_camera_display(attr, old, new):
     runnb = run_select.value
@@ -49,4 +49,4 @@ controls = row(run_select)
 
 doc = curdoc()
 doc.add_root(layout(controls, plot))
-doc.title('NectarCAM Data Quality Monitoring web app')
+# doc.title('NectarCAM Data Quality Monitoring web app')
