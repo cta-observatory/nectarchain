@@ -56,7 +56,11 @@ def update_camera_displays(attr, old, new):
                 print(f'Run id {runid} Updating plot for {parentkey}, {childkey}')
                 # try:
                 image = new_rundata[parentkey][childkey]
-                displays[parentkey][childkey].image = image
+                try:
+                    displays[parentkey][childkey].image = image
+                except ValueError:
+                    image = np.zeros(shape=display.image.shape)
+                    displays[parentkey][childkey].image = image
                 # TODO: TRY TO USE `stream`` INSTEAD, ON UPDATES:
                 # display.datasource.stream(new_data)
                 # displays[parentkey][childkey].datasource.stream(image)
