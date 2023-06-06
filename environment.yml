@@ -7,6 +7,7 @@ dependencies:
   - ctapipe=0.12
   - ctapipe-io-nectarcam
   - numpy=1.22 # higher versions >=1.23 don't work due to astropy4 dependency in ctapipe0.12
+  - jinja2=3.0.1
   - jupyterlab
   - protozfits=2.0
   - pytables>=3.7
