@@ -15,7 +15,7 @@ from charge_integration import ChargeIntegration_HighLowGain
 from trigger_statistics import TriggerStatistics
 from camera_monitoring import CameraMonitoring
 
-from db_utils import SaveDB
+from db_utils import DQMDB
 
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser(description='NectarCAM Data Quality Monitoring tool')
@@ -209,7 +209,7 @@ for p in processors:
 
 name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
-db = SaveDB()
+db = DQMDB()
 if db.insert(name, NESTED_DICT):
     db.commit_and_close()
 else:

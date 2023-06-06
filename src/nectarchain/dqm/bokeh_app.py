@@ -13,7 +13,7 @@ from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe.instrument import CameraGeometry
 from ctapipe.coordinates import EngineeringCameraFrame
 
-from db_utils import SaveDB
+from db_utils import DQMDB
 
 NOTDISPLAY = ['Results_TriggerStatistics', 'Results_MeanWaveForms_HighGain', 'Results_MeanWaveForms_LowGain']
 
@@ -58,7 +58,7 @@ def update_camera_display(attr, old, new):
     src = get_rundata(db, runid)
     source.data.update(src.data)
 
-db = SaveDB().root
+db = DQMDB().root
 runid = sorted(list(db.keys()))[-1]
 print(sorted(list(db.keys())))
 

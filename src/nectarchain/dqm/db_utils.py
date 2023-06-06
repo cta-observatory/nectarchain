@@ -3,7 +3,7 @@ from ZEO import ClientStorage
 import transaction
 
 
-class SaveDB():
+class DQMDB():
     def __init__(self):
         addr = 'localhost', 8100
         zeo = ClientStorage.ClientStorage(addr)
