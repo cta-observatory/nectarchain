@@ -67,7 +67,7 @@ bokeh serve --show bokeh_app.py
 ```
 and served on `localhost` on port 5006.
 
-The data base can directly be fed using the DQM starting script `start_calib.py`, which writes on the local data base deployed with ZEO on `loclahost`.
+The data base can directly be fed using the DQM starting script `start_calib.py`, which writes on the local data base deployed with ZEO on `localhost`.
 
 ##  TODO
 
