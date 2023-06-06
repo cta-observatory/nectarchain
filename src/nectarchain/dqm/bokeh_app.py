@@ -1,10 +1,7 @@
 import numpy as np
 
-# from markupsafe import Markup
-
 # bokeh imports
-from bokeh.layouts import layout, row, gridplot
-from bokeh.io import show
+from bokeh.layouts import layout, row
 from bokeh.models import Select  # , NumericInput
 from bokeh.plotting import curdoc
 
@@ -15,7 +12,7 @@ from ctapipe.coordinates import EngineeringCameraFrame
 
 from db_utils import DQMDB
 
-NOTDISPLAY = ['Results_TriggerStatistics', 'Results_MeanWaveForms_HighGain', 'Results_MeanWaveForms_LowGain']
+NOTINDISPLAY = ['Results_TriggerStatistics', 'Results_MeanWaveForms_HighGain', 'Results_MeanWaveForms_LowGain']
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
@@ -46,9 +43,10 @@ def make_camera_display(source, parent_key, child_key):
     display.figure.title = child_key
     return display.figure
 
-def update_camera_displays(db, runid):
+def update_camera_displays(attr, old, new):
+    runid = run_select.value
     for parentkey in db[runid].keys():
-        if parentkey not in NOTDISPLAY:
+        if parentkey not in NOTINDISPLAY:
             for childkey in db[runid][parentkey].keys():
                 update_camera_display()
     
