@@ -24,7 +24,7 @@ def get_rundata(src, runid):
 def make_camera_displays(db, source, runid):
     plots = []
     for parentkey in db[runid].keys():
-        if parentkey not in NOTDISPLAY:
+        if parentkey not in NOTINDISPLAY:
             for childkey in db[runid][parentkey].keys():
                 print(f'Preparing plot for {parentkey}, {childkey}')
                 # try:
