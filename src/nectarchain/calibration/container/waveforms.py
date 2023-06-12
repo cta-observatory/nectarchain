@@ -40,7 +40,7 @@ class WaveformsContainer() :
         obj = object.__new__(cls)
         return obj
 
-    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1,run_file = None):
+    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1,run_file = None, init_arrays : bool = False):
         """construtor
 
         Args:
@@ -52,7 +52,9 @@ class WaveformsContainer() :
         """
 
         self.__run_number = run_number
-        #gerer ici le fait de traiter plusieurs fichiers ou simplement 1 par 1
+        self.__run_file = run_file
+        self.__max_events = max_events
+
         self.__reader = WaveformsContainer.load_run(run_number,max_events,run_file = run_file)
 
         #from reader members
@@ -68,12 +70,20 @@ class WaveformsContainer() :
         #run properties
         if nevents != -1 :
             self.__nevents = nevents if max_events is None else min(max_events,nevents) #self.check_events()
+            self.__reader = None
         else :
             self.__nevents = self.check_events()
-            #reload file (bc check_events has drained reader generator)
-            self.__reader = WaveformsContainer.load_run(run_number,max_events,run_file = run_file)
+            
         log.info(f"N_events : {self.nevents}")
 
+        if init_arrays : 
+            self.__init_arrays()
+            
+    def __init_arrays(self) : 
+        log.debug('creation of the EventSource reader')
+        self.__reader = WaveformsContainer.load_run(self.__run_number,self.__max_events,run_file = self.__run_file)
+        
+        log.debug("create wfs, ucts, event properties and triger pattern arrays")
         #define zeros members which will be filled therafter
         self.wfs_hg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
         self.wfs_lg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
@@ -98,8 +108,8 @@ class WaveformsContainer() :
         Returns:
             List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for each run files
         """
-        generic_filename,filenames = DataManagement.findrun(run_number)
         if run_file is None : 
+            generic_filename,_ = DataManagement.findrun(run_number)
             log.info(f"{str(generic_filename)} will be loaded")
             eventsource = NectarCAMEventSource(input_url=generic_filename,max_events=max_events)
         else :  
@@ -135,6 +145,9 @@ class WaveformsContainer() :
         Args:
             compute_trigger_patern (bool, optional): To recompute on our side the trigger patern. Defaults to False.
         """
+        if not(hasattr(self, "wfs_hg")) : 
+            self.__init_arrays()
+
         wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
         wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
 
@@ -345,6 +358,13 @@ class WaveformsContainer() :
         res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
         return res
 
+
+    @property 
+    def _run_file(self) : return self.__run_file 
+
+    @property
+    def _max_events(self) : return self.__max_events
+
     @property
     def reader(self) : return self.__reader
 
@@ -395,7 +415,7 @@ class WaveformsContainers() :
         obj = object.__new__(cls)
         return obj
     
-    def __init__(self,run_number : int,max_events : int = None) :
+    def __init__(self,run_number : int,max_events : int = None, init_arrays : bool = False) :
         """initialize the waveformsContainer list inside the main object
 
         Args:
@@ -407,7 +427,7 @@ class WaveformsContainers() :
         self.waveformsContainer = []
         self.__nWaveformsContainer = 0
         for i,file in enumerate(filenames) : 
-            self.waveformsContainer.append(WaveformsContainer(run_number,max_events=max_events,run_file=file))
+            self.waveformsContainer.append(WaveformsContainer(run_number,max_events=max_events,run_file=file, init_arrays= init_arrays))
             self.__nWaveformsContainer += 1
             if not(max_events is None) : max_events -= self.waveformsContainer[i].nevents
             log.info(f'WaveformsContainer number {i} is created')
