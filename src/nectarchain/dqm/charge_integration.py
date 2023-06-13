@@ -47,12 +47,14 @@ class ChargeIntegration_HighLowGain(dqm_summary):
 
 
     def ProcessEvent(self, evt, noped):
-        #print("test", evt.r0.tel[0].waveform[0])
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        pixel21 = np.arange(0,21,1,dtype = int)
-        pixel = list(pixel)
-        pixel21 = list(pixel21)
-        pixels = np.concatenate([pixel21,pixel])
+        if len(pixel) < self.Chan:
+            pixel21 = np.arange(0,self.Chan - len(pixel),1,dtype = int)
+            pixel = list(pixel)
+            pixel21 = list(pixel21)
+            pixels = np.concatenate([pixel21,pixel])
+        else: 
+            pixels = pixel
 
         waveform=evt.r0.tel[0].waveform[self.k]
 
