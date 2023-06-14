@@ -3,7 +3,6 @@ import sys
 
 from matplotlib import pyplot as plt
 import argparse
-#from multiprocessing import Process
 import time
 
 from ctapipe.io import EventSource, EventSeeker
@@ -16,15 +15,14 @@ from trigger_statistics import TriggerStatistics
 from camera_monitoring import CameraMonitoring
 
 
-
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser(description='NectarCAM Data Quality Monitoring tool')
 parser.add_argument('-p', '--plot',
-                     action='store_true',
-                     help='Enables plots to be generated')
+                    action='store_true',
+                    help='Enables plots to be generated')
 parser.add_argument('-n', '--noped',
-                     action='store_true',
-                     help='Enables pedestal subtraction in charge integration')
+                    action='store_true',
+                    help='Enables pedestal subtraction in charge integration')
 parser.add_argument('-r', '--runnb',
                     help='Optional run number, automatically found on DIRAC',
                     type=int)
@@ -61,21 +59,19 @@ elif args.input_files is None:
 # OTHERWISE READ THE RUNS FROM ARGS
 path1 = args.input_files[0]
 
-#THE PATH OF INPUT FILES
+# THE PATH OF INPUT FILES
 path = f'{NectarPath}/{path1}'
 print("Input files:")
 print(path)
 for arg in args.input_files[1:]:
     print(arg)
 
-#Defining and priting the options
+# Defining and priting the options
 PlotFig = args.plot
 noped = args.noped
 
 print("Plot:", PlotFig)
 print("Noped:", noped)
-
-
 
 
 def GetName(RunFile):
@@ -84,12 +80,13 @@ def GetName(RunFile):
     print(name)
     return name
 
+
 def CreateFigFolder(name, type):
     if type == 0:
         folder = "Plots"
 
     ParentFolderName = name.split('_')[0] + '_' + name.split('_')[1]
-    ChildrenFolderName = './' + ParentFolderName +'/' + name + '_calib'
+    ChildrenFolderName = './' + ParentFolderName + '/' + name + '_calib'
     FolderPath = f'{output_path}/output/{ChildrenFolderName}/{folder}'
 
     if not os.path.exists(FolderPath):
@@ -114,23 +111,12 @@ reader1 = EventSource(input_url=path, max_events=1)
 name = GetName(path)
 ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
 ResPath = f'{output_path}/output/{ChildrenFolderName}/{name}'
-#######################################################################################################################
 
 
-
-
-                                                  ########################
-
-
-
-
-
-
-
-#LIST OF PROCESSES TO RUN
+# LIST OF PROCESSES TO RUN
 #######################################################################################################################
 a = TriggerStatistics(HIGH_GAIN)
-b = MeanWaveForms_HighLowGain(HIGH_GAIN) #0 is for high gain and 1 is for low gain
+b = MeanWaveForms_HighLowGain(HIGH_GAIN)
 c = MeanWaveForms_HighLowGain(LOW_GAIN)
 d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
 e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
@@ -182,15 +168,15 @@ for p in processors:
     p.ConfigureForRun(path, Pix, Samp, reader1)
 
 for i, evt in enumerate(reader):
-	for p in processors:
-		p.ProcessEvent(evt, noped)
+    for p in processors:
+        p.ProcessEvent(evt, noped)
         
-#for the rest of the event files
+# for the rest of the event files
 for arg in args.input_files[1:]:
     path2 = f'{NectarPath}/{arg}'
     print(path2)
 
-    reader=EventSource(input_url=path2)
+    reader = EventSource(input_url=path2)
     seeker = EventSeeker(reader)
 
     for i, evt in enumerate(reader):
@@ -207,13 +193,13 @@ for p in processors:
     dict_num += 1
 
 
-name = name #in order to allow to change the name easily
+name = name  # in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT)  # if we want to write all results in 1 fits file we do this.
 
-#if -plot in args it will construct the figures and save them
-if PlotFig == True:
+# if -plot in args it will construct the figures and save them
+if PlotFig:
     for p in processors:
-        processor_figure_dict, processor_figure_name_dict  = p.PlotResults(name, FigPath)
+        processor_figure_dict, processor_figure_name_dict = p.PlotResults(name, FigPath)
     
         for fig_plot in processor_figure_dict:
             fig = processor_figure_dict[fig_plot]
