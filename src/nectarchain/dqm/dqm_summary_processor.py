@@ -39,9 +39,9 @@ class dqm_summary:
         for i, evt1 in enumerate(reader1):
             self.FirstReader = reader1
             self.Samp = len(evt1.r0.tel[0].waveform[0][0])
-            self.Chan = len(evt1.r0.tel[0].waveform[0])
+            self.Pix = len(evt1.r0.tel[0].waveform[0])
 
-        return self.Chan, self.Samp
+        return self.Pix, self.Samp
 
     def ConfigureForRun(self):
         print("Processor 1")
@@ -56,7 +56,7 @@ class dqm_summary:
         print("Processor 4")
 
     def PlotResults(
-        self, name, FigPath, k, M, M_ped, Mean_M_overChan, Mean_M_ped_overChan
+        self, name, FigPath, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
     ):
         print("Processor 5")
 

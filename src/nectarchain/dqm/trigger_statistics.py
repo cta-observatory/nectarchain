@@ -10,9 +10,9 @@ class TriggerStatistics(dqm_summary):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self, path, Chan, Samp, Reader1):
-        # define number of channels and samples
-        self.Chan = Chan
+    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+        # define number of pixels and samples
+        self.Pix = Pix
         self.Samp = Samp
 
         self.event_type = []

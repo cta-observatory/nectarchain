@@ -12,28 +12,27 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self, path, Chan, Samp, Reader1):
-        # define number of channels and samples
-        self.Chan = Chan
+    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+        # define number of pixels and samples
+        self.Pix = Pix
         self.Samp = Samp
 
-        self.CameraAverage = np.zeros((self.Chan))
-        self.CameraAverage_ped = np.zeros((self.Chan))
+        self.CameraAverage = np.zeros(self.Pix)
+        self.CameraAverage_ped = np.zeros(self.Pix)
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam-003")
-        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam-003")
+        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
+        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
 
         self.cmap = "gnuplot2"
         self.cmap2 = "gnuplot2"
 
     def ProcessEvent(self, evt, noped):
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        if len(pixel) < self.Chan:
-            pixel21 = np.arange(0,self.Chan - len(pixel),1,dtype = int)
+        if len(pixel) < self.Pix:
+            pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
-            pixel21 = list(pixel21)
             pixels = np.concatenate([pixel21,pixel])
         else: 
             pixels = pixel
@@ -46,12 +45,12 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         if evt.trigger.event_type.value == 32:  # only peds now
             self.CameraAverage_ped += (
                 evt.r0.tel[0].waveform[self.k].sum(axis=1)
-            )  # fill channels one by one and sum them for peds only
+            )  # fill pixels one by one and sum them for peds only
             self.CameraAverage_ped = self.CameraAverage_ped[pixels]
         else:
             self.CameraAverage += (
                 evt.r0.tel[0].waveform[self.k].sum(axis=1)
-            )  # fill channels one by one and sum them
+            )  # fill pixels one by one and sum them
             self.CameraAverage = self.CameraAverage[pixels]
         return None
 

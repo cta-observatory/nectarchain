@@ -175,11 +175,11 @@ NESTED_DICT_KEYS = [
 
 # START
 for p in processors:
-    Chan, Samp = p.DefineForRun(reader1)
+    Pix, Samp = p.DefineForRun(reader1)
     break
 
 for p in processors:
-    p.ConfigureForRun(path, Chan, Samp, reader1)
+    p.ConfigureForRun(path, Pix, Samp, reader1)
 
 for i, evt in enumerate(reader):
 	for p in processors:
@@ -208,7 +208,7 @@ for p in processors:
 
 
 name = name #in order to allow to change the name easily
-p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
+p.WriteAllResults(ResPath, NESTED_DICT)  # if we want to write all results in 1 fits file we do this.
 
 #if -plot in args it will construct the figures and save them
 if PlotFig == True:

@@ -14,9 +14,9 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self, path, Chan, Samp, Reader1):
-        # define number of channels and samples
-        self.Chan = Chan
+    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+        # define number of pixels and samples
+        self.Pix = Pix
         self.Samp = Samp
 
         self.counter_evt = 0
@@ -48,10 +48,9 @@ class ChargeIntegration_HighLowGain(dqm_summary):
 
     def ProcessEvent(self, evt, noped):
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        if len(pixel) < self.Chan:
-            pixel21 = np.arange(0,self.Chan - len(pixel),1,dtype = int)
+        if len(pixel) < self.Pix:
+            pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
-            pixel21 = list(pixel21)
             pixels = np.concatenate([pixel21,pixel])
         else: 
             pixels = pixel
@@ -61,12 +60,12 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         if noped == True: 
             ped = np.mean(waveform[:, 20])
             w_noped = waveform - ped
-            image, peakpos = self.integrator(w_noped,0,np.zeros(self.Chan, dtype = int)) 
+            image, peakpos = self.integrator(w_noped, 0, np.zeros(self.Pix, dtype=int))
             image = image[pixels]
             peakpos = peakpos[pixels]
 
         else:
-            image, peakpos = self.integrator(waveform,0,np.zeros(self.Chan, dtype = int))
+            image, peakpos = self.integrator(waveform, 0, np.zeros(self.Pix, dtype=int))
             image = image[pixels]
             peakpos = peakpos[pixels]
 
@@ -393,7 +392,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         # Charge integration SPECTRUM
         if self.counter_evt > 0:
             fig9, disp = plt.subplots()
-            for i in range(self.Chan):
+            for i in range(self.Pix):
                 plt.hist(
                     self.image_all[:, i],
                     100,
@@ -430,7 +429,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
 
         if self.counter_ped > 0:
             fig10, disp = plt.subplots()
-            for i in range(self.Chan):
+            for i in range(self.Pix):
                 plt.hist(
                     self.image_ped[:, i],
                     100,
