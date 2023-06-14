@@ -28,9 +28,8 @@ class MeanWaveForms_HighLowGain(dqm_summary):
 
         return None
 
-
     def ProcessEvent(self, evt, noped):
-        if evt.trigger.event_type.value == 32: #count peds 
+        if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
         else:
             self.counter_evt += 1
@@ -68,24 +67,20 @@ class MeanWaveForms_HighLowGain(dqm_summary):
         # INITIATE DICT
         self.MeanWaveForms_Results_Dict = {}
 
-        #ASSIGN RESUTLS TO DICT
-        if (self.k==0):
-            #self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-HIGH-GAIN"]  = self.Mwf_average
-            self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PIX-HIGH-GAIN"]  = self.Mwf_Mean_overPix
+        # ASSIGN RESUTLS TO DICT
+        if self.k == 0:
+            # self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-HIGH-GAIN"]  = self.Mwf_average
+            self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PIX-HIGH-GAIN"] = self.Mwf_Mean_overPix
             if self.counter_ped > 0:
-                #self.MeanWaveForms_Results_Dict["WF-PED-AVERAGE-HIGH-GAIN"] = self.Mwf_ped_average
-                self.MeanWaveForms_Results_Dict["WF-AVERAGE-PED-PIX-HIGH-GAIN"]  = self.Mwf_ped_Mean_overPix
+                # self.MeanWaveForms_Results_Dict["WF-PED-AVERAGE-HIGH-GAIN"] = self.Mwf_ped_average
+                self.MeanWaveForms_Results_Dict["WF-AVERAGE-PED-PIX-HIGH-GAIN"] = self.Mwf_ped_Mean_overPix
 
-
-
-        if (self.k ==1):
-            #self.MeanWaveForms_Results_Dict["WF-AVERAGE-LOW-GAIN"]  = self.Mwf_average
-            self.MeanWaveForms_Results_Dict["WF-AVERAGE-PIX-LOW-GAIN"]  = self.Mwf_Mean_overPix
+        if self.k == 1:
+            # self.MeanWaveForms_Results_Dict["WF-AVERAGE-LOW-GAIN"]  = self.Mwf_average
+            self.MeanWaveForms_Results_Dict["WF-AVERAGE-PIX-LOW-GAIN"] = self.Mwf_Mean_overPix
             if self.counter_ped > 0:
-                #self.MeanWaveForms_Results_Dict["WF-PHY-PED-AVERAGE-LOW-GAIN"] = self.Mwf_ped_average
-                self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PED-PIX-LOW-GAIN"]  = self.Mwf_ped_Mean_overPix
-                
-
+                # self.MeanWaveForms_Results_Dict["WF-PHY-PED-AVERAGE-LOW-GAIN"] = self.Mwf_ped_average
+                self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PED-PIX-LOW-GAIN"] = self.Mwf_ped_Mean_overPix
 
         return self.MeanWaveForms_Results_Dict
 
