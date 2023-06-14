@@ -31,8 +31,7 @@ class dqm_summary:
     ):
         print("Processor 5")
 
-
-    def WriteAllResults(self,path, DICT):
+    def WriteAllResults(self, path, DICT):
         data2 = Table()
         data1 = Table()
         data = Table()
@@ -43,14 +42,12 @@ class dqm_summary:
                     data2[n2] = m2
                 hdu2 = fits.BinTableHDU(data2)
                 hdu2.name = "Trigger"
-            
 
-            elif ((i == "Results_MeanWaveForms_HighGain") or (i == "Results_MeanWaveForms_LowGain")): 
+            elif (i == "Results_MeanWaveForms_HighGain") or (i == "Results_MeanWaveForms_LowGain"):
                 for n1, m1 in j.items():
                     data1[n1] = m1 
                 hdu1 = fits.BinTableHDU(data1)
                 hdu1.name = "MWF"
-
 
             else:
                 for n, m in j.items():
