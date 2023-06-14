@@ -22,7 +22,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
+        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
         self.cmap = "gnuplot2"
 
         # reader1=EventSource(input_url=path, max_events = 1)
@@ -45,19 +45,18 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.image_ped = []
         self.peakpos_ped = []
 
-
     def ProcessEvent(self, evt, noped):
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
         if len(pixel) < self.Pix:
             pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
-            pixels = np.concatenate([pixel21,pixel])
+            pixels = np.concatenate([pixel21, pixel])
         else: 
             pixels = pixel
 
-        waveform=evt.r0.tel[0].waveform[self.k]
+        waveform = evt.r0.tel[0].waveform[self.k]
 
-        if noped == True: 
+        if noped:
             ped = np.mean(waveform[:, 20])
             w_noped = waveform - ped
             image, peakpos = self.integrator(w_noped, 0, np.zeros(self.Pix, dtype=int))
