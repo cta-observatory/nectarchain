@@ -79,7 +79,7 @@ class WaveformsContainer() :
         if init_arrays : 
             self.__init_arrays()
             
-    def __init_arrays(self) : 
+    def __init_arrays(self,**kwargs) : 
         log.debug('creation of the EventSource reader')
         self.__reader = WaveformsContainer.load_run(self.__run_number,self.__max_events,run_file = self.__run_file)
         
@@ -96,6 +96,14 @@ class WaveformsContainer() :
         #self.trig_pattern = np.zeros((self.nevents,self.npixels),dtype = bool)
         #self.multiplicity = np.zeros((self.nevents,self.npixels),dtype = np.uint16)
 
+        self.__broken_pixels_hg = np.zeros((self.npixels),dtype = bool)
+        self.__broken_pixels_lg = np.zeros((self.npixels),dtype = bool)
+
+
+    def __compute_broken_pixels(self,**kwargs) : 
+        log.warning("computation of broken pixels is not yet implemented")
+        self.__broken_pixels_hg = np.zeros((self.npixels),dtype = bool)
+        self.__broken_pixels_lg = np.zeros((self.npixels),dtype = bool)
 
     @staticmethod
     def load_run(run_number : int,max_events : int = None, run_file = None) : 
@@ -172,7 +180,7 @@ class WaveformsContainer() :
             self.wfs_hg[i] = wfs_hg_tmp
             self.wfs_lg[i] = wfs_lg_tmp
 
-
+        self.__compute_broken_pixels()
 
         #if compute_trigger_patern and np.max(self.trig_pattern) == 0:
         #    self.compute_trigger_patern()
@@ -274,6 +282,8 @@ class WaveformsContainer() :
 
             table_trigger = hdul[4].data
             cls.trig_pattern_all = table_trigger["trig_pattern_all"]
+
+        cls.__compute_broken_pixels()
 
         return cls
 
@@ -389,7 +399,12 @@ class WaveformsContainer() :
     @property
     def run_number(self) : return self.__run_number
 
+    @property
+    def broken_pixels_hg(self) : return self.__broken_pixels_hg
 
+    @property
+    def broken_pixels_lg(self) : return self.__broken_pixels_lg
+    
     #physical properties
     @property
     def multiplicity(self) :  return np.uint16(np.count_nonzero(self.trig_pattern,axis = 1))

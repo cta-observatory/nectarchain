@@ -18,11 +18,11 @@ classifiers = [
 ]
 requires-python = "~=3.8"
 dependencies = [
-    "astropy~=4.2",
-    "ctapipe~=0.12",
+    "astropy>=5.0",
+    "ctapipe>=0.19",
     "ctapipe-io-nectarcam",
-    "numpy~=1.22",
-    "protozfits~=2.0",
+    "numpy>=1.22",
+    "protozfits>=2.0",
     "tables>=3.7",
 ]
 dynamic = ["version"]
