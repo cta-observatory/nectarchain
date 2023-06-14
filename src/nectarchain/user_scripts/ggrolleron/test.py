@@ -15,6 +15,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 log.addHandler(handler)
 
+#sys.path.append("/home/ggroller/projects/nectarchain/src/nectarchain")
+
 
 
 from nectarchain.calibration.container import ChargeContainer,WaveformsContainer,WaveformsContainers,ChargeContainers
@@ -22,36 +24,64 @@ from nectarchain.calibration.container.utils import DataManagement
 
 def test_multicontainers() :
     run_number = [3731]
-    #waveforms = WaveformsContainers(run_number[0],max_events=20000)
-    #log.info("waveforms created")
-    #waveforms.load_wfs()
-    #log.info("waveforms loaded")
-    #
+    waveforms = WaveformsContainers(run_number[0],max_events=1000)
+    log.info("waveforms created")
+    waveforms.load_wfs()
+    log.info("waveforms loaded")
+    
     #waveforms.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
     #log.info('waveforms written')
 
     #waveforms = WaveformsContainers.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}")
     #log.info("waveforms loaded")
 
-    #charge = ChargeContainers.from_waveforms(waveforms,method = "LocalPeakWindowSum", window_width = 16, window_shift = 4)
-    #log.info("charge computed")
-    #
+    charge = ChargeContainers.from_waveforms(waveforms,method = "LocalPeakWindowSum", window_width = 16, window_shift = 4)
+    log.info("charge computed")
+    
     path = "LocalPeakWindowSum_4-12"
     #charge.write(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",overwrite = True)
     #log.info("charge written")
 
-    charge = ChargeContainers.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",run_number = run_number[0])
-    log.info("charge loaded")
+    #charge = ChargeContainers.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",run_number = run_number[0])
+    #log.info("charge loaded")
 
     charge_merged = charge.merge()
     log.info('charge merged')
 
+def test_white_target() :
+    run_number = [4129]
+    waveforms = WaveformsContainers(run_number[0],max_events=10000)
+    log.info("waveforms created")
+    waveforms.load_wfs()
+    log.info("waveforms loaded")
+    
+    #waveforms.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
+    #log.info('waveforms written')
+
+    #waveforms = WaveformsContainers.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}")
+    #log.info("waveforms loaded")
+
+    charge = ChargeContainers.from_waveforms(waveforms,method = "LocalPeakWindowSum", window_width = 16, window_shift = 4)
+    log.info("charge computed")
+    
+    path = "LocalPeakWindowSum_4-12"
+    #charge.write(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",overwrite = True)
+    #log.info("charge written")
+
+    #charge = ChargeContainers.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{path}/",run_number = run_number[0])
+    #log.info("charge loaded")
+
+    #charge_merged = charge.merge()
+    #log.info('charge merged')
 
 
 
 
 
-"""
+
+
+
+
 def test_simplecontainer() :
     run_number = [2633]
     ped_run_number = [2630]
@@ -61,22 +91,23 @@ def test_simplecontainer() :
 
     spe_run_1000V.load_wfs()
 
-    spe_run_1000V.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
+    #spe_run_1000V.write(f"{os.environ['NECTARCAMDATA']}/waveforms/",overwrite = True)
 
-    spe_run_1000V.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}.fits")
+    #spe_run_1000V.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}.fits")
 
-    charge = ChargeContainer.compute_charge(spe_run_1000V,1,method = "gradient_extractor")
-
-
-
-    charge = ChargeContainer.from_waveform(spe_run_1000V)
+    charge = ChargeContainer.compute_charge(spe_run_1000V,1,method = "LocalPeakWindowSum",extractor_kwargs = {'window_width' : 16, 'window_shift' : 4})
 
 
-    charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = True)
 
-"""
+    charge = ChargeContainer.from_waveforms(spe_run_1000V)
+
+
+    #charge.write(f"{os.environ['NECTARCAMDATA']}/charges/std/",overwrite = True)
+
+
 
 if __name__ == "__main__" : 
-    test_multicontainers()
+    #test_multicontainers()
+    test_simplecontainer()
 
     print("work completed")
