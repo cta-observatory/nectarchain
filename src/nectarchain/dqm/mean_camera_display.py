@@ -6,7 +6,6 @@ from ctapipe.coordinates import EngineeringCameraFrame
 import numpy as np
 
 
-
 class MeanCameraDisplay_HighLowGain(dqm_summary):
     def __init__(self, gaink):
         self.k = gaink
@@ -33,11 +32,11 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         if len(pixel) < self.Pix:
             pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
-            pixels = np.concatenate([pixel21,pixel])
+            pixels = np.concatenate([pixel21, pixel])
         else: 
             pixels = pixel
 
-        if evt.trigger.event_type.value == 32: #count peds 
+        if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
         else:
             self.counter_evt += 1
