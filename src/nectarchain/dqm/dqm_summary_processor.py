@@ -1,35 +1,6 @@
-import pickle
-
-import os
-import sys
-
-
-#from ctapipe.io import event_source
-import sys
- 
-from matplotlib import pyplot as plt
-import numpy as np
-from scipy.stats import norm
-from traitlets.config.loader import Config 
 from astropy.io import fits
 from astropy.table import Table
 
-# ctapipe modules
-from ctapipe import utils
-from ctapipe.visualization import CameraDisplay
-#from ctapipe.plotting.camera import CameraPlotter
-from ctapipe.image.extractor import *
-from ctapipe.io import EventSeeker 
-from ctapipe.instrument import CameraGeometry
-from ctapipe.coordinates import EngineeringCameraFrame
-
-from ctapipe.io.hdf5tableio import HDF5TableWriter, HDF5TableReader
-
-from ctapipe.io import EventSource
-import ctapipe.instrument.camera.readout
-from ctapipe_io_nectarcam.constants import LOW_GAIN, HIGH_GAIN
-
-from astropy import time as astropytime
 
 class dqm_summary:
     def __init__(self):
