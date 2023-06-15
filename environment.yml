@@ -12,4 +12,4 @@ dependencies:
   - pip:
       - mechanize
       - browser-cookie3
-      - ctapipe-io-nectarcam=0.1.3
+      - ctapipe-io-nectarcam==0.1.3
