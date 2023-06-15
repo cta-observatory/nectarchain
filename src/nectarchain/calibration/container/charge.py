@@ -412,6 +412,23 @@ class ChargeContainer() :
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
         return np.array([self.charge_lg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
 
+    def sort(self, method = 'event_id') : 
+        if method == 'event_id' :
+            log.info('sorting ChargeContaineur with event_id')
+            index = np.argsort(self.event_id)
+            self.ucts_timestamp = self.ucts_timestamp[index]
+            self.ucts_busy_counter = self.ucts_busy_counter[index]
+            self.ucts_event_counter = self.ucts_event_counter[index]
+            self.event_type = self.event_type[index]
+            self.event_id = self.event_id[index] 
+            self.trig_pattern_all = self.trig_pattern_all[index]
+            self.charge_hg = self.charge_hg[index] 
+            self.charge_lg = self.charge_lg[index] 
+            self.peak_hg = self.peak_hg[index]
+            self.peak_lg = self.peak_lg[index]
+        else : 
+            raise ArgumentError(f"{method} is not a valid method for sorting")
+
     @property
     def run_number(self) : return self._run_number
 
@@ -549,4 +566,7 @@ class ChargeContainers() :
         cls.event_type = np.concatenate([chargecontainer.event_type for chargecontainer in self.chargeContainers ])
         cls.event_id = np.concatenate([chargecontainer.event_id for chargecontainer in self.chargeContainers ])
         cls.trig_pattern_all = np.concatenate([chargecontainer.trig_pattern_all for chargecontainer in self.chargeContainers ],axis = 0)
+        
+        cls.sort()
+
         return cls

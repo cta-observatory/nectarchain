@@ -109,7 +109,7 @@ class WaveformsContainer() :
     def load_run(run_number : int,max_events : int = None, run_file = None) : 
         """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
 
-        Args:
+        Args:self.__run_number = run_number
             run_number (int): run_id
             maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
             merge_file (optional) : if True will load all fits.fz files of the run, else merge_file can be integer to select the run fits.fz file according to this number
@@ -137,6 +137,7 @@ class WaveformsContainer() :
         previous_trigger = None
         n_events = 0
         for i,event in enumerate(self.__reader):
+            log.debug(f"events i has ID : {np.uint16(event.index.event_id)}")
             if previous_trigger is not None :
                 has_changed = (previous_trigger.value != event.trigger.event_type.value)
             previous_trigger = event.trigger.event_type
@@ -290,7 +291,19 @@ class WaveformsContainer() :
     
 
     
-
+    def sort(self, method = 'event_id') : 
+        if method == 'event_id' :
+            index = np.argsort(self.event_id)
+            self.ucts_timestamp = self.ucts_timestamp[index]
+            self.ucts_busy_counter = self.ucts_busy_counter[index]
+            self.ucts_event_counter = self.ucts_event_counter[index]
+            self.event_type = self.event_type[index]
+            self.event_id = self.event_id[index] 
+            self.trig_pattern_all = self.trig_pattern_all[index]
+            self.wfs_hg = self.wfs_hg[index]
+            self.wfs_lg = self.wfs_lg[index]
+        else : 
+            raise ArgumentError(f"{method} is not a valid method for sorting")
 
     def compute_trigger_patern(self) : 
         """(preliminary) function to compute the trigger patern
