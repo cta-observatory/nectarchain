@@ -37,6 +37,8 @@ parser.add_argument('output_paths', help='Output paths')
 
 args, leftovers = parser.parse_known_args()
 
+print('hello')
+
 # Reading arguments, paths and plot-boolean
 NectarPath = args.input_paths  # str(os.environ['NECTARDIR'])
 print("Input file path:", NectarPath)
