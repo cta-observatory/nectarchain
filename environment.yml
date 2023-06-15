@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python>=3.8 # nail the python version, so conda does not try upgrading / downgrading
-  - ctapipe=0.19
+  - ctapipe=0.19.2
   - ctapipe-io-nectarcam
   - jupyterlab
   - pytest-runner
