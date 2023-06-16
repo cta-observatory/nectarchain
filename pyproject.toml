@@ -20,7 +20,7 @@ requires-python = "~=3.8"
 dependencies = [
     "astropy~=4.2",
     "ctapipe~=0.12",
-    "ctapipe-io-nectarcam",
+    "ctapipe-io-nectarcam~=0.1.2",
     "numpy~=1.22",
     "protozfits~=2.0",
     "tables>=3.7",
