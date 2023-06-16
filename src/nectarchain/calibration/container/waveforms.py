@@ -106,6 +106,34 @@ class WaveformsContainer() :
         self.__broken_pixels_lg = np.zeros((self.npixels),dtype = bool)
 
     @staticmethod
+    def create_from_events_list(events_list : list,
+                                run_number : int,
+                                npixels : int,
+                                nsamples : int,
+                                subarray,
+                                pixels_id : int,
+                                ) : 
+        cls = WaveformsContainer.__new__(WaveformsContainer)
+
+        cls.__run_number =  run_number
+        cls.__nevents = len(events_list)
+        cls.__npixels = npixels
+        cls.__nsamples = nsamples
+        cls.__subarray = subarray
+        cls.__pixels_id = pixels_id
+
+
+        wfs_hg_tmp=np.zeros((npixels,nsamples),dtype = np.uint16)
+        wfs_lg_tmp=np.zeros((npixels,nsamples),dtype = np.uint16)
+        
+        for i, event in enumerate(events_list):
+            cls.fill_wfs_from_event(event,i,wfs_hg_tmp,wfs_lg_tmp)
+
+        cls.__compute_broken_pixels()
+
+
+
+    @staticmethod
     def load_run(run_number : int,max_events : int = None, run_file = None) : 
         """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
 
@@ -164,28 +192,32 @@ class WaveformsContainer() :
         for i,event in enumerate(self.__reader):
             if i%100 == 0:
                 log.info(f"reading event number {i}")
-
-            self.event_id[i] = np.uint16(event.index.event_id)
-            self.ucts_timestamp[i]=event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_timestamp
-            self.event_type[i]=event.trigger.event_type.value
-            self.ucts_busy_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_busy_counter
-            self.ucts_event_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_event_counter
-
-
-            self.trig_pattern_all[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.T
-
-            for pix in range(self.npixels):
-                wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,self.pixels_id[pix]]
-                wfs_hg_tmp[pix]=event.r0.tel[0].waveform[0,self.pixels_id[pix]]
-
-            self.wfs_hg[i] = wfs_hg_tmp
-            self.wfs_lg[i] = wfs_lg_tmp
+            self.fill_wfs_from_event(event,i,wfs_hg_tmp,wfs_lg_tmp)
 
         self.__compute_broken_pixels()
 
         #if compute_trigger_patern and np.max(self.trig_pattern) == 0:
         #    self.compute_trigger_patern()
 
+    def fill_wfs_from_event(self,
+                            event,
+                            i : int,
+                            wfs_hg_tmp : np.ndarray,
+                            wfs_lg_tmp : np.ndarray
+                            ) : 
+        self.event_id[i] = np.uint16(event.index.event_id)
+        self.ucts_timestamp[i]=event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_timestamp
+        self.event_type[i]=event.trigger.event_type.value
+        self.ucts_busy_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_busy_counter
+        self.ucts_event_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_event_counter
+        self.trig_pattern_all[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.T
+
+        for pix in range(self.npixels):
+            wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,self.pixels_id[pix]]
+            wfs_hg_tmp[pix]=event.r0.tel[0].waveform[0,self.pixels_id[pix]]
+
+        self.wfs_hg[i] = wfs_hg_tmp
+        self.wfs_lg[i] = wfs_lg_tmp
 
     def write(self,path : str, **kwargs) : 
         """method to write in an output FITS file the WaveformsContainer. Two files are created, one FITS representing the data

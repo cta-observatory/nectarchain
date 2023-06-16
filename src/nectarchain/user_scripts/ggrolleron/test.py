@@ -108,6 +108,6 @@ def test_simplecontainer() :
 
 if __name__ == "__main__" : 
     #test_multicontainers()
-    test_simplecontainer()
+    test_white_target()
 
     print("work completed")
