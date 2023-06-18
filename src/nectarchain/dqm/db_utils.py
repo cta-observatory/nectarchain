@@ -4,9 +4,9 @@ import transaction
 
 
 class DQMDB():
-    def __init__(self):
+    def __init__(self, read_only=True):
         addr = 'localhost', 8100
-        zeo = ClientStorage.ClientStorage(addr)
+        zeo = ClientStorage.ClientStorage(addr, read_only=read_only)
         self.db = DB(zeo)
         conn = self.db.open()
         self.root = conn.root()

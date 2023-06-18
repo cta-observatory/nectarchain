@@ -209,7 +209,7 @@ for p in processors:
 
 name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
-db = DQMDB()
+db = DQMDB(read_only=False)
 if db.insert(name, NESTED_DICT):
     db.commit_and_close()
 else:

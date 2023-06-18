@@ -66,7 +66,7 @@ def update_camera_displays(attr, old, new):
                 # displays[parentkey][childkey].datasource.stream(image)
 
 
-db = DQMDB().root
+db = DQMDB(read_only=True).root
 runids = sorted(list(db.keys()))
 runid = runids[0]
 
