@@ -243,6 +243,8 @@ bokeh serve --show bokeh_app.py
 ```
 and served on `localhost` on port 5006.
 
+Then, make sure with your local IT team that `<SECONDARY_HOST_IP_ADDRESS>:5006/bokeh_app` is visible from the web.
+
 ##  TODO
 
 * Open the access of the web app worldwide, protected with NectarCAM user/password.
