@@ -29,6 +29,7 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.cmap2 = "gnuplot2"
 
     def ProcessEvent(self, evt, noped):
+        self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
         if len(pixel) < self.Chan:
             pixel21 = np.arange(0,self.Chan - len(pixel),1,dtype = int)
@@ -121,8 +122,8 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         if self.counter_evt > 0:
             fig1, self.disp1 = plt.subplots()
             self.disp1 = CameraDisplay(
-                geometry=self.camera,
-                image=self.CameraAverage_overEvents_overSamp,
+                geometry=self.camera[~self.pixelBAD[0]],
+                image=self.CameraAverage_overEvents_overSamp[~self.pixelBAD[0]],
                 cmap=self.cmap,
             )
             self.disp1.cmap = self.cmap
@@ -144,8 +145,8 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         if self.counter_ped > 0:
             fig2, self.disp2 = plt.subplots()
             self.disp2 = CameraDisplay(
-                geometry=self.camera2,
-                image=self.CameraAverage_ped_overEvents_overSamp,
+                geometry=self.camera2[~self.pixelBAD[0]],
+                image=self.CameraAverage_ped_overEvents_overSamp[~self.pixelBAD[0]],
                 cmap=self.cmap2,
             )
             self.disp2.cmap = self.cmap2

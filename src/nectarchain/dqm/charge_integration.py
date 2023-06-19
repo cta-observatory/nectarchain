@@ -181,7 +181,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         # Charge integration MEAN plot
         if self.counter_evt > 0:
             fig1, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBAD][0])
+            disp = CameraDisplay(self.camera[~self.pixelBAD[0]])
             # disp = CameraDisplay(self.subarray.tels[0].camera)
             disp.image = self.image_all_average[~self.pixelBAD[0]]
             disp.cmap = plt.cm.coolwarm
