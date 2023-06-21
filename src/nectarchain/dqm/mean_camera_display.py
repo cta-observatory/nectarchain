@@ -28,6 +28,10 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.cmap = "gnuplot2"
         self.cmap2 = "gnuplot2"
 
+        self.CameraAverage = []
+        self.CameraAverage_ped = []
+
+
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
@@ -41,28 +45,31 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
 
         if evt.trigger.event_type.value == 32: #count peds 
             self.counter_ped += 1
+            self.CameraAverage_ped1 = (
+                evt.r0.tel[0].waveform[self.k].sum(axis=1))
+            self.CameraAverage_ped.append(self.CameraAverage_ped1[pixels])
+
         else:
             self.counter_evt += 1
-
-        if evt.trigger.event_type.value == 32:  # only peds now
-            self.CameraAverage_ped += (
-                evt.r0.tel[0].waveform[self.k].sum(axis=1)
-            )  # fill channels one by one and sum them for peds only
-            self.CameraAverage_ped = self.CameraAverage_ped[pixels]
-        else:
-            self.CameraAverage += (
-                evt.r0.tel[0].waveform[self.k].sum(axis=1)
-            )  # fill channels one by one and sum them
-            self.CameraAverage = self.CameraAverage[pixels]
+            self.CameraAverage1 = (
+                evt.r0.tel[0].waveform[self.k].sum(axis=1))
+            self.CameraAverage.append(self.CameraAverage1[pixels])
+            
         return None
 
     def FinishRun(self):
-        self.CameraAverage_overEvents = self.CameraAverage / self.counter_evt
-        self.CameraAverage_overEvents_overSamp = (
-            self.CameraAverage_overEvents / self.Samp
-        )
+        if self.counter_evt > 0:
+            self.CameraAverage = np.array(self.CameraAverage)
+            self.CameraAverage = self.CameraAverage.sum(axis = 0)
+            self.CameraAverage_overEvents = (self.CameraAverage / self.counter_evt)
+        
+            self.CameraAverage_overEvents_overSamp = (
+                self.CameraAverage_overEvents / self.Samp
+            )
 
         if self.counter_ped > 0:
+            self.CameraAverage_ped = np.array(self.CameraAverage_ped)
+            self.CameraAverage_ped = self.CameraAverage_ped.sum(axis = 0)
             self.CameraAverage_ped_overEvents = (
                 self.CameraAverage_ped / self.counter_ped
             )
@@ -76,12 +83,14 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
-            # self.MeanCameraDisplay_Results_Dict[
-            # "CAMERA-AVERAGE-OverEVENTS-HIGH-GAIN"
-            # ]  = self.CameraAverage_overEvents
-            self.MeanCameraDisplay_Results_Dict[
-                "CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-HIGH-GAIN"
-            ] = self.CameraAverage_overEvents_overSamp
+
+            if self.counter_evt > 0:
+                # self.MeanCameraDisplay_Results_Dict[
+                # "CAMERA-AVERAGE-OverEVENTS-HIGH-GAIN"
+                # ]  = self.CameraAverage_overEvents
+                self.MeanCameraDisplay_Results_Dict[
+                    "CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-HIGH-GAIN"
+                ] = self.CameraAverage_overEvents_overSamp
 
             if self.counter_ped > 0:
                 # self.MeanCameraDisplay_Results_Dict[
@@ -92,12 +101,13 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
                 ] = self.CameraAverage_ped_overEvents_overSamp
 
         if self.k == 1:
-            # self.MeanCameraDisplay_Results_Dict[
-            # "CAMERA-AVERAGE-OverEVENTS-LOW-GAIN"
-            # ]  = self.CameraAverage_overEvents
-            self.MeanCameraDisplay_Results_Dict[
-                "CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-LOW-GAIN"
-            ] = self.CameraAverage_overEvents_overSamp
+            if self.counter_evt > 0:
+                # self.MeanCameraDisplay_Results_Dict[
+                # "CAMERA-AVERAGE-OverEVENTS-LOW-GAIN"
+                # ]  = self.CameraAverage_overEvents
+                self.MeanCameraDisplay_Results_Dict[
+                    "CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-LOW-GAIN"
+                ] = self.CameraAverage_overEvents_overSamp
 
             if self.counter_ped > 0:
                 # self.MeanCameraDisplay_Results_Dict[
