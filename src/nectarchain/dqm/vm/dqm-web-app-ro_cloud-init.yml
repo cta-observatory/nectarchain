@@ -97,6 +97,7 @@ runcmd:
   - cd /opt/cta
   - git clone https://github.com/jlenain/nectarchain.git
   - cd nectarchain
+  - git remote add upstream https://github.com/cta-observatory/nectarchain.git
   - git fetch --tags --all
   - git switch dqm-zodb
   - mamba create -n ctapipe -c conda-forge ctapipe=0.19.1

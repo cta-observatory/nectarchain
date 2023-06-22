@@ -118,6 +118,7 @@ runcmd:
   - cd /opt/cta
   - git clone https://github.com/jlenain/nectarchain.git
   - cd nectarchain
+  - git remote add upstream https://github.com/cta-observatory/nectarchain.git
   - git fetch --tags --all
   - git switch dqm-zodb
   - mamba env create --name nectarchain --file environment.yml
