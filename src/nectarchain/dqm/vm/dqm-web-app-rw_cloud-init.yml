@@ -1,0 +1,133 @@
+#cloud-config
+
+# Update apt database on first boot
+package_update: true
+
+# Upgrade the instance OS packages on first boot
+package_upgrade: true
+
+# Add packages
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+
+# Add users
+users:
+  - name: nectarcam
+    gecos: NectarCAM
+    primary_group: nectarcam
+    groups: docker, cta
+    sudo: ALL=(ALL) ALL
+    shell: /bin/bash
+    lock_passwd: false
+    passwd: <YOUR_PASSWORD_HASH_HERE>
+    ssh_authorized_keys:
+      - <YOUR_SSH_PUBLIC_KEY_HERE>
+
+# Add Docker recipe, Docker compose file and ZODB server configuration for Plone Zeo
+write_files:
+  - content: |
+      version: "3"
+      services:
+        db:
+          image: plone-zeo:latest
+          restart: always
+          volumes:
+            - data:/data
+          ports:
+            - "8100:8100"
+            - "5000:5000"
+      
+      volumes:
+        data: {}
+    path: /opt/docker/plone-zeo/docker-compose.yml
+  - content: |
+      %import zc.zrs
+
+      %define INSTANCE /app
+      %define DATA_DIR /data
+      %define SECONDARY_PORT 5000
+
+      <zeo>
+        address 0.0.0.0:$(ZEO_PORT)
+        read-only $(ZEO_READ_ONLY)
+        invalidation-queue-size $(ZEO_INVALIDATION_QUEUE_SIZE)
+        pid-filename $INSTANCE/var/zeo.pid
+      </zeo>
+
+      <zrs>
+      replicate-to $SECONDARY_PORT
+      keep-alive-delay 60
+
+      <filestorage 1>
+        path $DATA_DIR/filestorage/Data.fs
+        blob-dir $DATA_DIR/blobstorage
+        pack-keep-old $(ZEO_PACK_KEEP_OLD)
+      </filestorage>
+      </zrs>
+
+      <eventlog>
+        level info
+        <logfile>
+            path $DATA_DIR/log/zeo.log
+            format %(asctime)s %(message)s
+          </logfile>
+      </eventlog>
+
+      <runner>
+        program $INSTANCE/bin/runzeo
+        socket-name $INSTANCE/var/zeo.zdsock
+        daemon true
+        forever false
+        backoff-limit 10
+        exit-codes 0, 2
+        directory $INSTANCE
+        default-to-interactive true
+
+        # This logfile should match the one in the zeo.conf file.
+        # It is used by zdctl's logtail command, zdrun/zdctl doesn't write it.
+        logfile $DATA_DIR/log/zeo.log
+      </runner>
+    path: /opt/docker/plone-zeo/zeo.conf
+  - content: |
+      FROM plone/plone-zeo:latest
+      COPY zeo.conf /app/etc/zeo.conf
+      # ZRS is not compatible with ZODB 5.6 and above:
+      RUN /app/bin/pip install zc.zrs ZODB==5.5 --no-cache-dir
+    path: /opt/docker/plone-zeo/Dockerfile
+
+# Install Docker and Mambaforge, deploy mamba environment and launch Docker compose
+runcmd:
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - chmod a+r /etc/apt/keyrings/docker.gpg
+  - echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | tee /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"
+  - sed -i '0,/\$HOME/{s/\$HOME/\/opt/}' Mambaforge-$(uname)-$(uname -m).sh
+  - bash Mambaforge-$(uname)-$(uname -m).sh -b -p /opt/conda
+  - cd /opt/docker/plone-zeo
+  - docker build -t plone-zeo --network host .
+  - docker image rm plone/plone-zeo:latest
+  - docker compose -f /opt/docker/plone-zeo/docker-compose.yml up -d
+  - . /opt/conda/etc/profile.d/conda.sh
+  - . /opt/conda/etc/profile.d/mamba.sh
+  - mkdir -p /opt/cta
+  - cd /opt/cta
+  - git clone https://github.com/jlenain/nectarchain.git
+  - cd nectarchain
+  - git fetch --tags --all
+  - git switch dqm-zodb
+  - mamba env create --name nectarchain --file environment.yml
+  - mamba activate nectarchain
+  - pip install -e .
+  - mamba install dirac-grid
+  - pip install CTADIRAC COMDIRAC
+  - conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
+  - mamba deactivate
+  - chown -R nectarcam:cta /opt/cta
+  - chown -R nectarcam:cta /opt/conda
+  - chown -R nectarcam:docker /opt/docker
+  - su -c '. /opt/conda/etc/profile.d/conda.sh; . /opt/conda/etc/profile.d/mamba.sh; mamba init --user bash' - nectarcam
