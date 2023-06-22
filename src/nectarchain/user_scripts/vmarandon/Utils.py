@@ -12,6 +12,9 @@ try:
     from ctapipe.coordinates import EngineeringCameraFrame
     from ctapipe.containers import EventType
 
+    from scipy.interpolate import InterpolatedUnivariateSpline
+
+
 
     from tqdm import tqdm
 
@@ -228,50 +231,84 @@ def NeighborPeakIntegration(waveform, neighbor_matrix, left_bound=5, right_bound
 
 
 
-def GetPixelMaxRiseTime(waveform):
-    nsamples = len(waveform)
-    times = np.arange(0,nsamples)
-    
-    times_oversample =  np.linspace(0,nsamples-1,2*nsamples-1)
-    f = sp.interpolate.interp1d(times, waveform,fill_value="extrapolate",kind="linear")
-    wvf_oversample = f(times_oversample)
-
-    ydiff = wvf_oversample[3:] + wvf_oversample[2:-1] - wvf_oversample[1:-2] - wvf_oversample[:-3]
-    xdiff = times_oversample[2:-1]
-    tmax_pos =  np.argmax(ydiff)
-    tmax = xdiff[ tmax_pos ]
-    #return tmax
-
-    trange = 6
-    nbins = 2*trange*50 + 1
-    pos_min = tmax_pos-trange
-    pos_max = tmax_pos+trange
-    pos_min = pos_min if pos_min>=0 else 0
-    pos_max = pos_max if pos_max<len(times_oversample) else len(times_oversample)-1
-    #print(f"tmax_pos: {tmax_pos} pos_min: {pos_min} pos_max: {pos_max}")
-    tck = sp.interpolate.splrep( times_oversample[pos_min:pos_max+1],wvf_oversample[pos_min:pos_max+1])
-    newtimes = np.linspace(times_oversample[pos_min],times_oversample[pos_max],nbins)
-    newtrace = sp.interpolate.BSpline(*tck)(newtimes)
-    return newtimes[ np.argmax(newtrace) ]
-
-
-
-def GetPixelT0Spline(waveform):
+def getPixelT0Spline(waveform):
     times = np.arange(0,len(waveform))
-    tmax_pos = np.argmax(waveform)
-    #tmax = times[ tmax_pos ]
+    pmax = np.argmax(waveform)
+    #tmax = times[ pmax ]
+    
+    ts = times[ pmax-5 : pmax+6 ]
+    ws = waveform[ pmax-5 : pmax+6 ]
+    interp = InterpolatedUnivariateSpline(ts,ws)
 
-    trange = 3
-    nbins = 2*trange*100 + 1 #to get to 0.01s
-    pos_min = tmax_pos-trange
-    pos_max = tmax_pos+trange
-    pos_min = pos_min if pos_min>=0 else 0
-    pos_max = pos_max if pos_max<len(times) else len(times)-1
-    #print(f"pos_min: {pos_min} pos_max: {pos_max}")
-    tck = sp.interpolate.splrep( times[pos_min:pos_max+1],waveform[pos_min:pos_max+1])
-    newtimes = np.linspace(times[pos_min],times[pos_max],nbins)
-    newtrace = sp.interpolate.BSpline(*tck)(newtimes)
-    return newtimes[ np.argmax(newtrace) ]
+    ts = times[ pmax-1 : pmax+2 ]
+    it = np.linspace(ts[0],ts[-1],(len(ts)-1)*100+1)
+    iw = interp(it)
+
+    ipmax = np.argmax(iw)
+    itmax = it[ipmax]
+
+
+def getPixelRiseTime(waveform):
+    times = np.arange(0,len(waveform))
+    pmax = np.argmax(waveform)
+
+    ts = times[ pmax-5 : pmax+6 ]
+    ws = waveform[ pmax-5 : pmax+6 ]
+    interp = InterpolatedUnivariateSpline(ts,ws).derivative()
+
+    ts = times[ pmax-4 : pmax+1 ]
+    it = np.linspace(ts[0],ts[-1],(len(ts)-1)*100+1)
+    iw = interp(it)
+
+    ipmax = np.argmax(iw)
+    itmax = it[ipmax]
+    return itmax
+
+
+# def GetPixelMaxRiseTime(waveform):
+#     nsamples = len(waveform)
+#     times = np.arange(0,nsamples)
+    
+#     times_oversample =  np.linspace(0,nsamples-1,2*nsamples-1)
+#     f = sp.interpolate.interp1d(times, waveform,fill_value="extrapolate",kind="linear")
+#     wvf_oversample = f(times_oversample)
+
+#     ydiff = wvf_oversample[3:] + wvf_oversample[2:-1] - wvf_oversample[1:-2] - wvf_oversample[:-3]
+#     xdiff = times_oversample[2:-1]
+#     tmax_pos =  np.argmax(ydiff)
+#     tmax = xdiff[ tmax_pos ]
+#     #return tmax
+
+#     trange = 6
+#     nbins = 2*trange*50 + 1
+#     pos_min = tmax_pos-trange
+#     pos_max = tmax_pos+trange
+#     pos_min = pos_min if pos_min>=0 else 0
+#     pos_max = pos_max if pos_max<len(times_oversample) else len(times_oversample)-1
+#     #print(f"tmax_pos: {tmax_pos} pos_min: {pos_min} pos_max: {pos_max}")
+#     tck = sp.interpolate.splrep( times_oversample[pos_min:pos_max+1],wvf_oversample[pos_min:pos_max+1])
+#     newtimes = np.linspace(times_oversample[pos_min],times_oversample[pos_max],nbins)
+#     newtrace = sp.interpolate.BSpline(*tck)(newtimes)
+#     return newtimes[ np.argmax(newtrace) ]
+
+
+
+# def GetPixelT0Spline(waveform):
+#     times = np.arange(0,len(waveform))
+#     tmax_pos = np.argmax(waveform)
+#     #tmax = times[ tmax_pos ]
+
+#     trange = 3
+#     nbins = 2*trange*100 + 1 #to get to 0.01s
+#     pos_min = tmax_pos-trange
+#     pos_max = tmax_pos+trange
+#     pos_min = pos_min if pos_min>=0 else 0
+#     pos_max = pos_max if pos_max<len(times) else len(times)-1
+#     #print(f"pos_min: {pos_min} pos_max: {pos_max}")
+#     tck = sp.interpolate.splrep( times[pos_min:pos_max+1],waveform[pos_min:pos_max+1])
+#     newtimes = np.linspace(times[pos_min],times[pos_max],nbins)
+#     newtrace = sp.interpolate.BSpline(*tck)(newtimes)
+#     return newtimes[ np.argmax(newtrace) ]
 
 # @njit(parallel=True)
 # def NeighborPeakIntegrationCameraAgnostic(waveform, n_pixels=None, neighbor_matrix=None, nchannel=None, left_bound=5, right_bound=7):
