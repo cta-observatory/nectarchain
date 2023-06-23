@@ -30,7 +30,15 @@ write_files:
   - content: |
       version: "3"
       services:
-        db:
+        backend:
+          image: plone/plone-backend:latest
+          environment:
+            ZEO_ADDRESS: zeo:8100
+          ports:
+          - "8080:8080"
+          depends_on:
+            - zeo
+        zeo:
           image: plone-zeo:latest
           restart: always
           volumes:
