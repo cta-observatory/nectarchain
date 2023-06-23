@@ -10,7 +10,7 @@ Two virtual machines (VM) should be created:
 
 Create a cloud VM using the `cloud-init` configuration file `dqm-web-app-rw_cloud-init.yml` provided in this directory. It is assumed to be based on a Debian/Ubuntu image.
 
-You will first need to adjust the password hash and SSH public key to be used to create the `nectarcam` user therein. You will also need to provide the IP address of a known server which will be the only one allowed to connect to the Plone backend for user management.
+You will first need to adjust the password hash and SSH public key to be used to create the `nectarcam` user therein. The only server allowed to connect to the Plone backend for user management is the host VM.
 
 A Docker container with a ZODB/ZEO server with `zc.zrs` replication enabled on port 5000 will automatically be created and launched within the VM.
 

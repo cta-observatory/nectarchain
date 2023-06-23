@@ -35,7 +35,7 @@ write_files:
           environment:
             ZEO_ADDRESS: zeo:8100
           ports:
-          - "<SOME_SERVER_IP_ADDRESS>:8080:8080"
+          - "127.0.0.1:8080:8080"
           depends_on:
             - zeo
         zeo:
