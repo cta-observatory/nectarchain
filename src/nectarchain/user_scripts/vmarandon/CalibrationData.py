@@ -9,6 +9,18 @@ from Utils import GetCamera
 
 from IPython import embed
 
+class CalibrationCameraDisplay(CameraDisplay):
+
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args,**kwargs)
+
+    def set_function(self,func_name):
+        self.clickfunc = func_name
+
+    def on_pixel_clicked(self, pix_id):
+        self.clickfunc(pix_id)
+
+
 class CalibInfo:
     def __init__(self):
         self.tel = dict()
@@ -189,14 +201,6 @@ class IntegratedRawData:
     charge: int = field( default = 0)
     t0: int = field(default=0, compare=False)
 
-
-class CalibrationCameraDisplay(CameraDisplay):
-
-    def set_function(self,func_name):
-        self.clickfunc = func_name
-
-    def on_pixel_clicked(self, pix_id):
-        self.clickfunc(pix_id)
 
 
 class RawDataCameraDisplay(CameraDisplay):
