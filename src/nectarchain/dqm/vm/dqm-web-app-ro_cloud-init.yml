@@ -39,7 +39,7 @@ write_files:
             - data:/data
           ports:
             - "8100:8100"
-            - "<PRIMARY_HOST_INTERNAL_IP_ADDRESS>:5000:5000"
+            - "5000:5000"
       
       volumes:
         data: {}
