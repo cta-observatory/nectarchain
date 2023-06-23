@@ -46,11 +46,11 @@ Then, make sure with your local IT team that `<SECONDARY_HOST_IP_ADDRESS>:5006/b
 Backups of the DQM ZODB database can be created, from the _primary_ VM, with (cf. e.g. https://docs.docker.com/storage/volumes/#back-up-a-volume):
 
 ```shell
-docker run --rm --volumes-from plone-zeo-db-1 -v $(pwd):/backup ubuntu tar zcf /backup/zodb.tar.gz /data
+docker run --rm --volumes-from plone-zeo-zeo-1 -v $(pwd):/backup ubuntu tar zcf /backup/zodb.tar.gz /data
 ```
 Such a backup can then be fed into a new production VM with:
 ```shell
-docker run -v $(pwd):/backup plone-zeo-db-1 bash -c "cd /data && tar xvf /backup/zodb.tar.gz --strip 1"
+docker run --rm --volumes-from plone-zeo-zeo-1 -v $(pwd):/backup ubuntu bash -c "cd /data && tar xvf /backup/zodb.tar.gz --strip 1"
 ```
 
 ##  TODO
