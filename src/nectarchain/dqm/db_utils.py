@@ -15,7 +15,7 @@ class DQMDB():
 
     def get_token(self, user=None, password=None):
         action = f'http://{self.server}:8080/NectarCAM/@login'
-        headers = """"{'Accept': 'application/json', 'Content-Type': 'application/json'}"""
+        headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
         credentials = {'login': user, 'password': password}
         result = requests.post(action,
                                headers=headers,
