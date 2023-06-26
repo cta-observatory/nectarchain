@@ -22,6 +22,9 @@ parser = argparse.ArgumentParser(description='NectarCAM Data Quality Monitoring 
 parser.add_argument('-p', '--plot',
                      action='store_true',
                      help='Enables plots to be generated')
+parser.add_argument('--write-db',
+                     action='store_true',
+                     help='Write DQM output in DQM ZODB data base')
 parser.add_argument('-n', '--noped',
                      action='store_true',
                      help='Enables pedestal subtraction in charge integration')
@@ -36,6 +39,17 @@ parser.add_argument('input_paths', help='Input paths')
 parser.add_argument('output_paths', help='Output paths')
 
 args, leftovers = parser.parse_known_args()
+
+# If writing outputs to DQM ZODB, ask for login/password and acquire a PLone-Zeo token:
+if args.write_db:
+    import getpass
+    print("""The DQM needs your credentials to store output results in the DQM ZODB data base.
+    Please provide your user name:""")
+    user = input()
+    password = getpass.getpass('Please provide your password:')
+    db = DQMDB(read_only=True)
+    token = db.get_token(user=user, password=password)
+    db.abort_and_close()
 
 # Reading arguments, paths and plot-boolean
 NectarPath = args.input_paths  # str(os.environ['NECTARDIR'])
@@ -209,11 +223,12 @@ for p in processors:
 
 name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
-db = DQMDB(read_only=False)
-if db.insert(name, NESTED_DICT):
-    db.commit_and_close()
-else:
-    db.abort_and_close()
+if args.write_db:
+    db = DQMDB(read_only=False)
+    if db.insert(name, NESTED_DICT):
+        db.commit_and_close()
+    else:
+        db.abort_and_close()
 
 #if -plot in args it will construct the figures and save them
 if PlotFig == True:
