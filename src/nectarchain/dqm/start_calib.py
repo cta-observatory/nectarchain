@@ -50,6 +50,9 @@ if args.write_db:
     db = DQMDB(read_only=True)
     token = db.get_token(user=user, password=password)
     db.abort_and_close()
+    if not token:
+        print(f'JWT token could not be acquired for user {user}, aborting...')
+        sys.exit(1)
 
 # Reading arguments, paths and plot-boolean
 NectarPath = args.input_paths  # str(os.environ['NECTARDIR'])
