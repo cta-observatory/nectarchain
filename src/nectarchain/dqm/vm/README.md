@@ -3,24 +3,24 @@
 These notes are meant to admins deploying a Bokeh service to display NectarCAM DQM results through a web app.
 
 Two virtual machines (VM) should be created:
-* one with read/write access to a ZODB data base (the _primary_ host);
-* another one with a replicated, read-only data base using `zc.zrs` (the _secondary_ host).
+* one with read/write access to a ZODB database (the _primary_ host);
+* another one with a replicated, read-only database using `zc.zrs` (the _secondary_ host).
 
 ## Primary VM, with read/write database
 
 Create a cloud VM using the `cloud-init` configuration file `dqm-web-app-rw_cloud-init.yml` provided in this directory. It is assumed to be based on a Debian/Ubuntu image.
 
-You will first need to adjust the password hash and SSH public key to be used to create the `nectarcam` user therein. The only server allowed to connect to the Plone backend for user management is the host VM.
+You will first need to adjust the password hash (`<YOUR_PASSWORD_HASH_HERE>`) and SSH public key (`<YOUR_SSH_PUBLIC_KEY_HERE>`) to be used to create the `nectarcam` user therein.
 
 A Docker container with a ZODB/ZEO server with `zc.zrs` replication enabled on port 5000 will automatically be created and launched within the VM.
 
-The database can then be directly fed using the DQM starting script `start_calib.py`, which writes on the local data base deployed with ZEO on `localhost`.
+The database can then be directly fed using the DQM starting script `start_calib.py`, which writes on the local database deployed with ZEO on `localhost`.
 
-## Secondary, read-only data base VM
+## Secondary, read-only database VM
 
 Create another cloud VM using the `cloud-init` configuration file `dqm-web-app-ro_cloud-init.yml` provided in this directory. It is also assumed to be based on a Debian/Ubuntu image. 
 
-Here also, you will first need to adjust the password hash and SSH public key to be used to create the `nectarcam` user therein. You will also need to provide the internal IP address of the primary host we created just before, for the secondary to know which host the ZODB database has to be replicated from.
+Here also, you will first need to adjust the password hash (`<YOUR_PASSWORD_HASH_HERE>`) and SSH public key (`<YOUR_SSH_PUBLIC_KEY_HERE>`) to be used to create the `nectarcam` user therein. You will also need to provide the internal IP address of the primary host we created just before (`<PRIMARY_HOST_INTERNAL_IP_ADDRESS>`), for the secondary to know which host the ZODB database has to be replicated from.
 
 Any attempt to write in the database on the secondary host will rightfully result in a `ZODB.POSException.ReadOnlyError` error.
 
@@ -39,7 +39,7 @@ bokeh serve --num-procs $(grep -c ^processor /proc/cpuinfo) \
 ```
 and served on `localhost` on port 5006.
 
-Then, make sure with your local IT team that `<SECONDARY_HOST_IP_ADDRESS>:5006/bokeh_app` is visible from the web.
+Then, make sure with your local IT team that `<SECONDARY_HOST_IP_ADDRESS>:5006/bokeh_app` is exposed to the web.
 
 ## How to back the database up ?
 
@@ -56,4 +56,7 @@ docker run --rm --volumes-from plone-zeo-zeo-1 -v $(pwd):/backup ubuntu bash -c 
 ##  TODO
 
 * Open the access of the web app worldwide, protected with NectarCAM user/password.
-* Open write access to the DB for worker nodes on DIRAC, presumably using temporary, volatile tokens.
+* ~~Open write access to the DB for worker nodes on DIRAC, presumably using temporary, volatile tokens.~~ For security reasons, the DB should rather not be open in write access to the world. Instead, the revised workflow is the following:
+  * Launch DQM jobs on DIRAC when transferring the data from CEA to DIRAC.
+  * Instead of *pushing* the DQM output from DIRAC workers to the DQM DB, the primary VM will *pull* them from DIRAC to feed the DB.
+  * So, we need an automatic mechanism, such as a cronjob, pulling DQM data from DIRAC, parsing the DQM FITS files, and writing to the DB.

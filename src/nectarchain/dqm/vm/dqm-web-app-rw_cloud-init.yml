@@ -30,14 +30,6 @@ write_files:
   - content: |
       version: "3"
       services:
-        backend:
-          image: plone/plone-backend:latest
-          environment:
-            ZEO_ADDRESS: zeo:8100
-          ports:
-          - "127.0.0.1:8080:8080"
-          depends_on:
-            - zeo
         zeo:
           image: plone-zeo:latest
           restart: always
@@ -65,22 +57,22 @@ write_files:
       </zeo>
 
       <zrs>
-      replicate-to $SECONDARY_PORT
-      keep-alive-delay 60
+        replicate-to $SECONDARY_PORT
+        keep-alive-delay 60
 
-      <filestorage 1>
-        path $DATA_DIR/filestorage/Data.fs
-        blob-dir $DATA_DIR/blobstorage
-        pack-keep-old $(ZEO_PACK_KEEP_OLD)
-      </filestorage>
+        <filestorage 1>
+          path $DATA_DIR/filestorage/Data.fs
+          blob-dir $DATA_DIR/blobstorage
+          pack-keep-old $(ZEO_PACK_KEEP_OLD)
+        </filestorage>
       </zrs>
 
       <eventlog>
         level info
         <logfile>
-            path $DATA_DIR/log/zeo.log
-            format %(asctime)s %(message)s
-          </logfile>
+          path $DATA_DIR/log/zeo.log
+          format %(asctime)s %(message)s
+        </logfile>
       </eventlog>
 
       <runner>

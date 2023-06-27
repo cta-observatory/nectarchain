@@ -60,19 +60,19 @@ write_files:
       </zeo>
 
       <zrs>
-      replicate-from $PRIMARY_HOST:$PRIMARY_PORT
-      keep-alive-delay 60
+        replicate-from $PRIMARY_HOST:$PRIMARY_PORT
+        keep-alive-delay 60
 
-      <filestorage 1>
-        path $DATA_DIR/filestorage/Data.fs
-        blob-dir $DATA_DIR/blobstorage
-      </filestorage>
+        <filestorage 1>
+          path $DATA_DIR/filestorage/Data.fs
+          blob-dir $DATA_DIR/blobstorage
+        </filestorage>
       </zrs>
     path: /opt/docker/plone-zeo/zeo.conf
   - content: |
       FROM plone/plone-zeo:latest
       COPY zeo.conf /app/etc/zeo.conf
-      # ZRS is not ccompatible with ZODB 5.6 and above:
+      # ZRS is not compatible with ZODB 5.6 and above:
       RUN /app/bin/pip install zc.zrs ZODB==5.5 --no-cache-dir
     path: /opt/docker/plone-zeo/Dockerfile
 
