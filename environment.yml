@@ -8,6 +8,7 @@ dependencies:
   - ctapipe-io-nectarcam
   - numpy=1.22 # higher versions >=1.23 don't work due to astropy4 dependency in ctapipe0.12
   - jupyterlab
+  - pre-commit
   - protozfits=2.0
   - pytables>=3.7
   - pytest-runner
