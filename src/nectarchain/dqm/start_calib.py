@@ -40,19 +40,6 @@ parser.add_argument('output_paths', help='Output paths')
 
 args, leftovers = parser.parse_known_args()
 
-# If writing outputs to DQM ZODB, ask for login/password and acquire a PLone-Zeo token:
-if args.write_db:
-    import getpass
-    print('The DQM needs your credentials to store output results in the DQM ZODB data base.')
-    user = input('Please provide your user name: ')
-    password = getpass.getpass('Please provide your password: ')
-    db = DQMDB(read_only=True)
-    token = db.get_token(user=user, password=password)
-    db.abort_and_close()
-    if not token:
-        print(f'JWT token could not be acquired for user {user}, aborting...')
-        sys.exit(1)
-
 # Reading arguments, paths and plot-boolean
 NectarPath = args.input_paths  # str(os.environ['NECTARDIR'])
 print("Input file path:", NectarPath)
