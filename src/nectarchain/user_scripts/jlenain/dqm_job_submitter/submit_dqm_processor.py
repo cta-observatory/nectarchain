@@ -87,7 +87,10 @@ if not infos['OK'] or not infos['Value']['Successful']:
 if not infosTomorrow['OK'] or not infosTomorrow['Value']['Successful']:
     logger.warning(f"Could not properly retrieve the file metadata for {dfcDirTomorrow} ... Continuing !")
 meta = infos['Value']['Successful'][dfcDir]
-metaTomorrow = infosTomorrow['Value']['Successful'][dfcDirTomorrow]
+try:
+    metaTomorrow = infosTomorrow['Value']['Successful'][dfcDirTomorrow]
+except KeyError:
+    metaTomorrow = None
 
 runlist = []
 
@@ -99,9 +102,10 @@ for f in meta['Files']:
             runlist.append(run)
     if f.endswith('.sqlite'):
         sqlfilelist.append(f)
-for f in metaTomorrow['Files']:
-    if f.endswith('.sqlite'):
-        sqlfilelist.append(f)
+if metaTomorrow:
+    for f in metaTomorrow['Files']:
+        if f.endswith('.sqlite'):
+            sqlfilelist.append(f)
 if args.run is not None:
     if args.run not in runlist:
         logger.critical(f'Your specified run {args.run} was not found in {dfcDir}, aborting...')
