@@ -11,9 +11,11 @@ from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe.instrument import CameraGeometry
 from ctapipe.coordinates import EngineeringCameraFrame
 
+from ctapipe_io_nectarcam import constants
+
 from db_utils import DQMDB
 
-NOTINDISPLAY = ['Results_TriggerStatistics', 'Results_MeanWaveForms_HighGain', 'Results_MeanWaveForms_LowGain']
+NOTINDISPLAY = ['Results_TriggerStatistics', 'Results_MeanWaveForms_HighGain', 'Results_MeanWaveForms_LowGain', 'Results_CameraMonitoring']
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
@@ -36,11 +38,15 @@ def make_camera_displays(db, source, runid):
 def make_camera_display(source, parent_key, child_key):
     # Example camera display
     image = source[parent_key][child_key]
+    image = np.nan_to_num(image, nan=0.0)
     display = CameraDisplay(geometry=geom)
     try:
         display.image = image
     except ValueError:
         image = np.zeros(shape=display.image.shape)
+        display.image = image
+    except KeyError:
+        image = np.zeros(shape=constants.N_PIXELS)
         display.image = image
     display.add_colorbar()
     display.figure.title = child_key
@@ -56,10 +62,14 @@ def update_camera_displays(attr, old, new):
                 print(f'Run id {runid} Updating plot for {parentkey}, {childkey}')
                 # try:
                 image = new_rundata[parentkey][childkey]
+                image = np.nan_to_num(image, nan=0.0)
                 try:
                     displays[parentkey][childkey].image = image
                 except ValueError:
                     image = np.zeros(shape=displays[parentkey][childkey].image.shape)
+                    displays[parentkey][childkey].image = image
+                except KeyError:
+                    image = np.zeros(shape=constants.N_PIXELS)
                     displays[parentkey][childkey].image = image
                 # TODO: TRY TO USE `stream` INSTEAD, ON UPDATES:
                 # display.datasource.stream(new_data)
@@ -68,7 +78,7 @@ def update_camera_displays(attr, old, new):
 
 db = DQMDB(read_only=True).root
 runids = sorted(list(db.keys()))
-runid = runids[0]
+runid = runids[-1]
 
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 run_select = Select(value=runid, title='NectarCAM run number', options=runids)

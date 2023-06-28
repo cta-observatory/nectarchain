@@ -102,7 +102,7 @@ runcmd:
   - git switch dqm-zodb
   - mamba create -n ctapipe -c conda-forge ctapipe=0.19.1
   - mamba activate ctapipe
-  - mamba install ZODB ZEO
+  - mamba install ZODB ZEO ctapipe-io-nectarcam
   - chown -R nectarcam:cta /opt/cta
   - chown -R nectarcam:cta /opt/conda
   - chown -R nectarcam:docker /opt/docker
