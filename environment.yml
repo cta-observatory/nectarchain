@@ -3,7 +3,7 @@ channels:
   - default
   - conda-forge
 dependencies:
-  - python>=3.8 # nail the python version, so conda does not try upgrading / downgrading
+  - python=3.11
   - ctapipe=0.19.1
   - ctapipe-io-nectarcam
   - jupyterlab
