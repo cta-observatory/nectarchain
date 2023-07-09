@@ -13,6 +13,8 @@ from tqdm import tqdm
 import matplotlib
 matplotlib.use('AGG',force = True)
 
+import time
+
 import pandas as pd
 
 import logging
@@ -36,8 +38,10 @@ __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGai
 
 
 class NectarGainSPESingle(NectarGainSPE):
-    _Ncall = 4000000
+    _Ncall = 100
     _Nproc_Multiprocess = mlp.cpu_count() // 2
+    _FitTol = 1e20
+    _FitStrategy = 0
 
     def __init__(self,signal : ChargeContainer,**kwargs) : 
         log.info("initialisation of the SPE fit instance")
@@ -91,6 +95,10 @@ class NectarGainSPESingle(NectarGainSPE):
     def _run_fit(funct,parameters,pixels_id,prescan = False,**kwargs) :
         minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters.unfrozen)
         fit = Minuit(funct,**minuitParameters['values'])
+        fit.errordef = Minuit.LIKELIHOOD
+        fit.tol = __class__._FitTol
+        #fit.precision = 1e-2
+
         UtilsMinuit.set_minuit_parameters_limits_and_errors(fit,minuitParameters)
         log.info(f"Initial value of Likelihood = {funct(**minuitParameters['values'])}")
         log.info(f"Initial parameters value : {fit.values}")
@@ -105,15 +113,19 @@ class NectarGainSPESingle(NectarGainSPE):
         if log.getEffectiveLevel() == logging.DEBUG :
             fit.print_level = 3
         
-        fit.strategy = 2
+        fit.strategy = __class__._FitStrategy
         fit.throw_nan = True
         if prescan : 
             log.info("let's do a fisrt brut force scan") 
             fit.scan()
         try : 
             log.info('migrad execution')
-            fit.migrad(ncall=super(__class__,__class__)._Ncall)
-            fit.hesse()
+            t = time.time()
+            fit.migrad(ncall=__class__._Ncall)
+            log.debug(f'time for migrad execution is {time.time() - t:.0f} sec')
+            t = time.time()
+            fit.hesse(ncall=__class__._Ncall)
+            log.debug(f'time for hesse execution is {time.time() - t:.0f} sec')
             valid = fit.valid
         except RuntimeError as e : 
             log.warning(e,exc_info = True)
@@ -125,7 +137,7 @@ class NectarGainSPESingle(NectarGainSPE):
                 fit.scan()
             try :
                 log.info('simplex execution')
-                fit.simplex(ncall=super(__class__,__class__)._Ncall)
+                fit.simplex(ncall=__class__._Ncall)
                 fit.hesse()
                 valid = fit.valid
             except Exception as e :
