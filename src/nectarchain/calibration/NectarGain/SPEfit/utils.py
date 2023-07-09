@@ -42,6 +42,8 @@ class UtilsMinuit() :
             error = 0.1 if np.isnan(parameter.error) else parameter.error
             kwargs[f"limit_{parameter.name}"] = (min_, max_)
             kwargs[f"error_{parameter.name}"] = error
+            if parameter.frozen : 
+                kwargs[f"fix_{parameter.name}"] = True
         return kwargs
     
     @staticmethod
@@ -55,6 +57,8 @@ class UtilsMinuit() :
         for name in parameters["names"] :
             m.limits[name] = parameters[f"limit_{name}"]
             m.errors[name] = parameters[f"error_{name}"]
+            if parameters.get(f"fix_{name}",False) :  
+                m.fixed[name] = True
 
 
 # Usefull fucntions for the fit
