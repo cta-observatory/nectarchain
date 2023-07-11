@@ -69,6 +69,12 @@ mamba activate nectarchain
 pip install -e .
 ```
 
+Enable [pre-commit hooks](https://pre-commit.com/), which enforces adherence to PEP8 coding style:
+
+```shell
+pre-commit install
+```
+
 Please follow the [same conventions as `ctapipe`](https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change) regarding settings of Git remotes for pull requests.
 
 ### Optional DIRAC support
