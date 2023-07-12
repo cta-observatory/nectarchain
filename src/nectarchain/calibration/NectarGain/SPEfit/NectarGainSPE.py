@@ -28,6 +28,25 @@ from .utils import UtilsMinuit,weight_gaussian,Statistics
 
 __all__ = ['NectarGainSPE']
 
+class NectarGainSPE_new(ABC) :
+    _Ncall = 4000000
+    _Windows_lenght = 40
+    _Order = 2
+
+    def __init__(self) :
+        #set parameters value for fit
+        self.__parameters = Parameters()      
+        #output
+        self._output_table = QTable()
+        #self.create_output_table() #need to be done in the child class __init__
+
+
+
+
+
+
+
+
 class NectarGainSPE(ABC) :
     _Ncall = 4000000
     _Windows_lenght = 40

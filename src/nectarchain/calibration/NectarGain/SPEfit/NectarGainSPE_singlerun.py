@@ -37,6 +37,211 @@ from abc import abstractclassmethod
 __all__ = ["NectarGainSPESingleSignalStd","NectarGainSPESingleSignal","NectarGainSPESinglePed","NectarGainSPESingleSignalfromHHVFit"]
 
 
+
+class NectarGainSPESingle(NectarGainSPE):
+
+    def __init__(self,signal : ChargeContainer,**kwargs) : 
+        log.info("initialisation of the SPE fit instance")
+        super().__init__(**kwargs)
+
+        histo = signal.histo_hg(autoscale = True)
+        #access data
+        self.__charge = histo[1]
+        self.__histo = histo[0]
+        self.__mask_fitted_pixel = np.zeros((self.__charge.shape[0]),dtype = bool)
+        self.__pixels_id = signal.pixels_id
+
+        self.__pedestal = Parameter(name = "pedestal",
+                                value = (np.min(self.__charge) + np.sum(self.__charge * self.__histo)/(np.sum(self.__histo)))/2,
+                                min = np.min(self.__charge),
+                                max = np.sum(self.__charge*self.__histo)/np.sum(self.__histo),
+                                unit = u.dimensionless_unscaled)
+        
+
+        self._parameters.append(self.__pedestal)
+
+    def _update_parameters()
+
+
+    def _make_fit_array_from_parameters(self) : 
+        fit_array = np.empty((self.npixels),dtype = np.object_)
+        for i in range(len(fit_array)) : 
+            parameters = self._update_parameters(parameters,charge[i].data[~charge[i].mask],counts[i].data[~charge[i].mask])
+            minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
+            #log.info('creation of fit')
+            fit_array[i] = Minuit(cost(charge[i].data[~charge[i].mask],counts[i].data[~charge[i].mask]),
+                         pedestal = minuitParameters['values']['pedestal'],
+                         pp = minuitParameters['values']['pp'],
+                         luminosity = minuitParameters['values']['luminosity'],
+                         resolution = minuitParameters['values']['resolution'],
+                         mean = minuitParameters['values']['mean'],
+                         n = minuitParameters['values']['n'],
+                         pedestalWidth = minuitParameters['values']['pedestalWidth']                  
+                         )
+            #log.info('fit created')
+            fit_array[i].errordef = Minuit.LIKELIHOOD
+            fit_array[i].strategy = 0
+            fit_array[i].tol = 1e40
+            fit_array[i].print_level = 1
+            fit_array[i].throw_nan = True
+            UtilsMinuit.set_minuit_parameters_limits_and_errors(fit_array[i],minuitParameters)
+            #log.info(fit_array[i].values)
+            #log.info(fit_array[i].limits)
+            #log.info(fit_array[i].fixed)
+        return fit_array
+
+
+
+class NectarGainSPESingleSignal_new(NectarGainSPESingle_new) : 
+
+    """class to perform fit of the SPE signal with all free parameters"""
+    __parameters_file = 'parameters_signal.yaml'
+    #def __new__(cls) : 
+    #    print("NectarGainSPESingleSignal is not instanciable")
+    #    return 0
+    def __init__(self,signal : ChargeContainer,parameters_file = None,**kwargs) : 
+        super().__init__(signal,**kwargs)
+        self.__gain = np.empty((self.charge.shape[0],3))
+        #if parameters file is provided
+        if parameters_file is None :
+            parameters_file = NectarGainSPESingleSignal.__parameters_file
+        with open(f"{os.path.dirname(os.path.abspath(__file__))}/{parameters_file}") as parameters :
+            param = yaml.safe_load(parameters) 
+            self.__pp = Parameter(name = "pp",
+                                value = param["pp"]["value"],
+                                min = param["pp"].get("min",np.nan),
+                                max = param["pp"].get("max",np.nan),
+                                unit = param["pp"].get("unit",u.dimensionless_unscaled))
+            self._parameters.append(self.__pp)
+            
+            self.__luminosity = Parameter(name = "luminosity",
+                                value = param["luminosity"]["value"],
+                                min = param["luminosity"].get("min",np.nan),
+                                max = param["luminosity"].get("max",np.nan),
+                                unit = param["luminosity"].get("unit",u.dimensionless_unscaled))
+            self._parameters.append(self.__luminosity)
+            
+            self.__resolution = Parameter(name = "resolution",
+                                value = param["resolution"]["value"],
+                                min = param["resolution"].get("min",np.nan),
+                                max = param["resolution"].get("max",np.nan),
+                                unit = param["resolution"].get("unit",u.dimensionless_unscaled))
+            self._parameters.append(self.__resolution)
+            
+            self.__mean = Parameter(name = "mean",
+                                value = param["mean"]["value"],
+                                min = param["mean"].get("min",0),
+                                max = param["mean"].get("max",np.nan),
+                                unit = param["mean"].get("unit",u.dimensionless_unscaled))
+            self._parameters.append(self.__mean)
+            
+            self.__n = Parameter(name = "n",
+                                value = param["n"]["value"],
+                                min = param["n"].get("min",np.nan),
+                                max = param["n"].get("max",np.nan),
+                                unit = param["n"].get("unit",u.dimensionless_unscaled))
+            self._parameters.append(self.__n)
+            
+            self.__pedestalWidth = Parameter(name = "pedestalWidth",
+                                value = param["pedestalWidth"]["value"],
+                                min = param["pedestalWidth"].get("min",np.nan),
+                                max = param["pedestalWidth"].get("max",np.nan),
+                                unit = param["pedestalWidth"].get("unit",u.dimensionless_unscaled))
+            self._parameters.append(self.__pedestalWidth)
+        
+        self._make_minuit_parameters()
+
+        self.create_output_table()
+
+
+    @classmethod
+    def NG_Likelihood_Chi2(cls,pp,res,mu2,n,muped,sigped,lum,charge,histo,**kwargs):
+        pdf = MPE2(charge,pp,res,mu2,n,muped,sigped,lum,**kwargs)
+        #log.debug(f"pdf : {np.sum(pdf)}")
+        Ntot = np.sum(histo)
+        #log.debug(f'Ntot : {Ntot}')
+        mask = histo > 0
+        Lik = np.sum(((pdf*Ntot-histo)[mask])**2/histo[mask]) #2 times faster
+        return Lik
+    
+    def Chi2(self,pixel : int):
+        def _Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity) :
+            #assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or np.isnan(luminosity))
+            if self.__old_lum != luminosity :
+                for i in range(1000):
+                    if (gammainc(i+1,luminosity) < 1e-5):
+                        self.__old_ntotalPE = i
+                        break
+                self.__old_lum = luminosity
+            kwargs = {"ntotalPE" : self.__old_ntotalPE}
+
+            return self.NG_Likelihood_Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity,self.charge[pixel],self.histo[pixel],**kwargs)
+        return _Chi2
+
+    def Chi2_static(self,pixel : int) : 
+        charge = copy.deepcopy(self.charge[pixel].data[~self.charge[pixel].mask])
+        histo = copy.deepcopy(self.histo[pixel].data[~self.histo[pixel].mask])
+        def _Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity) :
+            #assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or np.isnan(luminosity))
+            ntotalPE = 0
+            for i in range(1000):
+                if (gammainc(i+1,luminosity) < 1e-5):
+                    ntotalPE = i
+                    break
+            kwargs = {"ntotalPE" : ntotalPE}
+            return __class__.NG_Likelihood_Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity,charge,histo,**kwargs)
+        return _Chi2
+
+    @classmethod
+    def _update_parameters_prefit_static(cls,it : int, parameters : Parameters, charge : np.ndarray, histo : np.ndarray,**kwargs) : 
+        super(__class__, cls)._update_parameters_prefit_static(it,parameters,charge,histo,**kwargs)
+        pedestal = parameters['pedestal']
+        pedestalWidth = parameters["pedestalWidth"]
+        pedestalWidth.value = pedestal.max - pedestal.value
+        pedestalWidth.max = 3 * pedestalWidth.value
+        log.debug(f"pedestalWidth updated : {pedestalWidth}")
+        try : 
+            coeff,var_matrix =  NectarGainSPE._get_mean_gaussian_fit(charge,histo,f'{it}_nominal')
+            if (coeff[1] - pedestal.value < 0) or ((coeff[1] - coeff[2]) - pedestal.max < 0) : raise Exception("mean gaussian fit not good")
+            mean = parameters['mean']
+            mean.value = coeff[1] - pedestal.value
+            mean.min = (coeff[1] - coeff[2]) - pedestal.max
+            mean.max = (coeff[1] + coeff[2]) - pedestal.min
+            log.debug(f"mean updated : {mean}")
+        except Exception as e :
+            log.warning(e,exc_info=True)
+            log.warning("mean parameters limits and starting value not changed")
+    
+    #fit parameters
+    @property
+    def pp(self) : return self.__pp  
+    @property
+    def luminosity(self) : return self.__luminosity
+    @property
+    def mean(self) : return self.__mean      
+    @property
+    def n(self) : return self.__n
+    @property
+    def resolution(self) : return self.__resolution
+    @property
+    def pedestalWidth(self) : return self.__pedestalWidth
+    @property
+    def gain(self) : return self.__gain
+
+
+    #intern parameters
+    @property
+    def _old_lum(self) : return self.__old_lum
+    @_old_lum.setter
+    def _old_lum(self,value) : self.__old_lum = value
+    @property
+    def _old_ntotalPE(self) : return self.__old_ntotalPE
+    @_old_ntotalPE.setter
+    def _old_ntotalPE(self,value) : self.__old_ntotalPE = value
+
+
+
+
 class NectarGainSPESingle(NectarGainSPE):
     _Ncall = 100
     _Nproc_Multiprocess = mlp.cpu_count() // 2
