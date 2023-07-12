@@ -9,8 +9,6 @@ dependencies:
   - jupyterlab
   - jupytext
   - pre-commit
-  - protozfits=2.0
-  - pytables>=3.7
   - pytest-runner
   - pip
   - pandas
