@@ -3,13 +3,10 @@ channels:
   - default
   - conda-forge
 dependencies:
-  - python=3.8 # nail the python version, so conda does not try upgrading / downgrading
-  - ctapipe=0.12
+  - python=3.11
+  - ctapipe=0.19.1
   - ctapipe-io-nectarcam
-  - numpy=1.22 # higher versions >=1.23 don't work due to astropy4 dependency in ctapipe0.12
   - jupyterlab
-  - protozfits=2.0
-  - pytables>=3.7
   - pytest-runner
   - pip
   - pandas

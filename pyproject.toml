@@ -15,15 +15,17 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11"
 ]
-requires-python = "~=3.8"
+requires-python = ">=3.8"
 dependencies = [
-    "astropy~=4.2",
-    "ctapipe~=0.12",
+    "browser_cookie3",
+    "ctapipe~=0.19",
     "ctapipe-io-nectarcam",
-    "numpy~=1.22",
-    "protozfits~=2.0",
-    "tables>=3.7",
+    "mechanize",
+    "pandas",
 ]
 dynamic = ["version"]
 

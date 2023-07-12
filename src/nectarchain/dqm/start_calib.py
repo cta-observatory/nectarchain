@@ -182,8 +182,8 @@ for p in processors:
     p.ConfigureForRun(path, Chan, Samp, reader1)
 
 for i, evt in enumerate(reader):
-	for p in processors:
-		p.ProcessEvent(evt, noped)
+    for p in processors:
+        p.ProcessEvent(evt, noped)
         
 #for the rest of the event files
 for arg in args.input_files[1:]:
@@ -202,7 +202,6 @@ for p in processors:
 
 dict_num = 0
 for p in processors:
-    # True if want to compute plots, sedond true if want to save results
     NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.GetResults()
     dict_num += 1
 
@@ -211,7 +210,7 @@ name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
 
 #if -plot in args it will construct the figures and save them
-if PlotFig == True:
+if PlotFig:
     for p in processors:
         processor_figure_dict, processor_figure_name_dict  = p.PlotResults(name, FigPath)
     
