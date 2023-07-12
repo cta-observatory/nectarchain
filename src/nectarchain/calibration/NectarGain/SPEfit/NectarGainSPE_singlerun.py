@@ -4,7 +4,7 @@ from scipy.special import gammainc
 from iminuit import Minuit
 import random
 import astropy.units as u
-from astropy.table import Table,QTable,Column,MaskedColumn
+from astropy.table import QTable,Column,MaskedColumn
 import yaml
 import os
 from datetime import date
