@@ -10,6 +10,8 @@ from DIRAC.Interfaces.API.Dirac import Dirac
 from pathlib import Path
 from typing import List,Tuple
 
+from ctapipe.containers import DL1CameraContainer 
+
 
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
@@ -90,33 +92,30 @@ class DataManagement() :
 
         url_run = f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?mode=full&reverse=0&reverse=1&npp=20&subtext=%23{run_number}"
 
-        #try to acces data by getting cookies from firefox and Chrome
-        log.debug('try to get data with cookies from Firefox abnd Chrome')
-        cookies = browser_cookie3.load()
-        req = requests.get(f'http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=&ModuleCount=&subtext=%23{run_number}',cookies = cookies)
-        
-        if "<title>ELOG Login</title>" in req.text : 
-            log.debug('log to Elog with cookies impossible, try again with password')
+        if not(username is None or password is None) :  
+            log.debug('log to Elog with username and password')
             #log to Elog
             br = mechanize.Browser()
             br.open(url)
-
             form = br.select_form('form1')
-
             for i in range(4) : 
                 log.debug(br.form.find_control(nr=i).name)
-
             br.form['uname'] = username
             br.form['upassword'] = password
             br.method = "POST"
-
             req = br.submit()
             #html_page = req.get_data()
             cookies = br._ua_handlers['_cookies'].cookiejar
-
             #get data
-            req = requests.get(f'http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=&ModuleCount=&subtext=%23{run_number}',cookies = cookies)
-
+            req = requests.get(f'http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=%23{run_number}&ModuleCount=&subtext=',cookies = cookies)
+        
+        else : 
+            #try to acces data by getting cookies from firefox and Chrome
+            log.debug('try to get data with cookies from Firefox abnd Chrome')
+            cookies = browser_cookie3.load()
+            req = requests.get(f'http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=%23{run_number}&ModuleCount=&subtext=',cookies = cookies)
+        
+        #if "<title>ELOG Login</title>" in req.text : 
 
         lines = req.text.split('\r\n')
 
@@ -134,13 +133,14 @@ class DataManagement() :
             raise e
 
         if output_lfns : 
+            lfns = []
             try : 
                 #Dirac
                 dirac = Dirac()
                 loc = f"/vo.cta.in2p3.fr/nectarcam/{url_data.split('/')[-2]}/{url_data.split('/')[-1]}"
+                log.debug(f"searching in Dirac filecatalog at {loc}")
                 res = dirac.listCatalogDirectory(loc, printOutput=True)
 
-                lfns = []
                 for key in res['Value']['Successful'][loc]['Files'].keys():
                     if str(run_number) in key and "fits.fz" in key : 
                         lfns.append(key)
@@ -182,3 +182,6 @@ class ChainGenerator():
         else :
             return ChainGenerator.chain(list[0],ChainGenerator.chainEventSource(list[1:]))
 
+class CtaPipeExtractor():
+    def get_image_peak_time(cameraContainer : DL1CameraContainer) : 
+        return cameraContainer.image, cameraContainer.peak_time

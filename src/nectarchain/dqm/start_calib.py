@@ -188,7 +188,6 @@ for p in processors:
 
 dict_num = 0
 for p in processors:
-    # True if want to compute plots, sedond true if want to save results
     NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.GetResults()
     dict_num += 1
 

@@ -2,17 +2,20 @@
 #
 # Built from mambaforge, with special conda environment containing nectarchain
 #
-# Jean-Philippe Lenain <jlenain@in2p3.fr>
-# Time-stamp: "2023-04-06 14:42:19 jlenain"
-#
 # Typically, build this image with:
-# `sudo singularity build nectarchain.sif Singularity`
+# `sudo apptainer build nectarchain.sif Singularity`
 #
 # Then, typically run an instance of this image with:
-# `singularity shell nectarchain.sif`
+# `apptainer shell nectarchain.sif`
 
 Bootstrap: docker
 From: condaforge/mambaforge
+
+%setup
+    mkdir -p ${SINGULARITY_ROOTFS}/opt/cta/nectarchain
+
+%files
+    . /opt/cta/nectarchain
 
 # From https://github.com/hpcng/singularity/issues/5075#issuecomment-594391772
 %environment
@@ -27,37 +30,31 @@ From: condaforge/mambaforge
     fi
 
 %post
-    ORIG=$PWD
-
-    # CA certificates
+    # Install CA certificates
     apt -y update
     # cf. https://serverfault.com/a/992421
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
     curl -L https://repository.egi.eu/sw/production/cas/1/current/GPG-KEY-EUGridPMA-RPM-3 | apt-key add -
     add-apt-repository -y 'deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core'
-    apt -y install ca-policy-egi-core
+    apt -y install ca-policy-egi-core || apt -y install -f
 
     . /opt/conda/etc/profile.d/conda.sh
     . /opt/conda/etc/profile.d/mamba.sh
     mamba update --quiet --name base conda mamba
-    mkdir -p /opt/cta
-    cd /opt/cta
 
     # Install nectarchain
-    git clone https://github.com/cta-observatory/nectarchain.git
-    mamba env create --quiet --file nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet --file /opt/cta/nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
-    cd nectarchain
+    cd /opt/cta/nectarchain
     pip install -e .
 
     # Optionally install and configure DIRAC:
-    mamba install -y -c conda-forge dirac-grid
+    mamba install --quiet -y -c conda-forge dirac-grid
     conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
     mamba deactivate
     mamba activate nectarchain
-    pip install CTADIRAC
-    pip install COMDIRAC
-    
+    pip install CTADIRAC COMDIRAC
+
     # Since there is no proxy available at build time, manually configure the CTADIRAC client
     cat <<EOF > ${CONDA_PREFIX}/etc/dirac.cfg
 DIRAC

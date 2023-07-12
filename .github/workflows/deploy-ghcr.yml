@@ -1,0 +1,68 @@
+name: Build and deploy as Apptainer container image to GitHub Container Registry
+
+on:
+  pull_request: []
+  push:
+    branches:
+      - master
+  release:
+    types: [ published ]
+
+jobs:
+  build-deploy-container:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+
+    permissions:
+      packages:
+        write
+
+    strategy:
+      matrix:
+        deffiles: [[Singularity, latest]]
+
+    env:
+      container: nectarchain
+      registry: ghcr.io
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Setup Apptainer
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.1.7
+
+      - name: Build ${{ matrix.deffiles[1] }}
+        run: |
+          echo "Preparing to build ${{ env.container }} from ${{ matrix.deffiles[0] }}"
+          if [ ! -f "${{ matrix.deffiles[0]}}" ]; then
+              echo "Singularity definition file ${{ matrix.deffiles[0] }} does not exist"
+              exit 1
+          fi
+          apptainer build ${{ env.container }}.sif ${{ matrix.deffiles[0] }}
+          ls -lh
+          
+      - name: Login to GitHub Container Registry
+        # Don't log into registry on pull request.
+        if: github.event_name != 'pull_request'
+        run: |
+          echo ${{ github.token }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.registry }}
+
+      - name: Deploy ${{ matrix.deffiles[1] }}
+        # Don't push the container on a pull request.
+        if: github.event_name != 'pull_request'
+        run: |  
+          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}
+
+      - name: Post Login to GitHub Container Registry
+        # Don't log out from registry on pull request.
+        if: github.event_name != 'pull_request'
+        run: |
+          apptainer remote logout oras://${{ env.registry }}

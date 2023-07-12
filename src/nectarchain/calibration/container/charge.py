@@ -4,6 +4,7 @@ import numpy.ma as ma
 from matplotlib import pyplot as plt
 import copy
 from pathlib import Path
+import glob
 import time
 import sys
 import os
@@ -33,6 +34,7 @@ from astropy.io import fits
 from numba import guvectorize, float64, int64, bool_
 
 from .waveforms import WaveformsContainer,WaveformsContainers
+from .utils import CtaPipeExtractor
 
 
 
@@ -116,11 +118,11 @@ class ChargeContainer() :
         self.charge_lg = charge_lg
         self.peak_hg = peak_hg
         self.peak_lg = peak_lg
-        self.__run_number = run_number
-        self.__pixels_id = pixels_id
-        self.__method = method
-        self.__nevents = nevents
-        self.__npixels = npixels
+        self._run_number = run_number
+        self._pixels_id = pixels_id
+        self._method = method
+        self._nevents = nevents
+        self._npixels = npixels
 
 
         self.ucts_timestamp = np.zeros((self.nevents),dtype = np.uint64)
@@ -129,6 +131,7 @@ class ChargeContainer() :
         self.event_type = np.zeros((self.nevents),dtype = np.uint8)
         self.event_id = np.zeros((self.nevents),dtype = np.uint16)
         self.trig_pattern_all = np.zeros((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
+
 
     @classmethod
     def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
@@ -172,32 +175,32 @@ class ChargeContainer() :
         os.makedirs(path,exist_ok = True)
 
         #table = Table(self.charge_hg)
-        #table.meta["pixels_id"] = self.__pixels_id
+        #table.meta["pixels_id"] = self._pixels_id
         #table.write(Path(path)/f"charge_hg_run{self.run_number}.ecsv",format='ascii.ecsv',overwrite=kwargs.get('overwrite',False))
         #
         #table = Table(self.charge_lg)
-        #table.meta["pixels_id"] = self.__pixels_id
+        #table.meta["pixels_id"] = self._pixels_id
         #table.write(Path(path)/f"charge_lg_run{self.run_number}.ecsv",format='ascii.ecsv',overwrite=kwargs.get('overwrite',False))
         #
         #table = Table(self.peak_hg)
-        #table.meta["pixels_id"] = self.__pixels_id
+        #table.meta["pixels_id"] = self._pixels_id
         #table.write(Path(path)/f"peak_hg_run{self.run_number}.ecsv",format='ascii.ecsv',overwrite=kwargs.get('overwrite',False))
         #
         #table = Table(self.peak_lg)
-        #table.meta["pixels_id"] = self.__pixels_id
+        #table.meta["pixels_id"] = self._pixels_id
         #table.write(Path(path)/f"peak_lg_run{self.run_number}.ecsv",format='ascii.ecsv',overwrite=kwargs.get('overwrite',False))
 
         hdr = fits.Header()
-        hdr['RUN'] = self.__run_number
+        hdr['RUN'] = self._run_number
         hdr['NEVENTS'] = self.nevents
         hdr['NPIXELS'] = self.npixels
-        hdr['COMMENT'] = f"The charge containeur for run {self.__run_number} with {self.__method} method : primary is the pixels id, then you can find HG charge, LG charge, HG peak and LG peak, 2 last HDU are composed of event properties and trigger patern"
+        hdr['COMMENT'] = f"The charge containeur for run {self._run_number} with {self._method} method : primary is the pixels id, then you can find HG charge, LG charge, HG peak and LG peak, 2 last HDU are composed of event properties and trigger patern"
 
         primary_hdu = fits.PrimaryHDU(self.pixels_id,header=hdr)
-        charge_hg_hdu = fits.ImageHDU(self.charge_hg)
-        charge_lg_hdu = fits.ImageHDU(self.charge_lg)
-        peak_hg_hdu = fits.ImageHDU(self.peak_hg)
-        peak_lg_hdu = fits.ImageHDU(self.peak_lg)
+        charge_hg_hdu = fits.ImageHDU(self.charge_hg,name = "HG charge")
+        charge_lg_hdu = fits.ImageHDU(self.charge_lg,name = "LG charge")
+        peak_hg_hdu = fits.ImageHDU(self.peak_hg, name = 'HG peak time')
+        peak_lg_hdu = fits.ImageHDU(self.peak_lg, name = 'LG peak time')
 
         col1 = fits.Column(array = self.event_id, name = "event_id", format = '1I')
         col2 = fits.Column(array = self.event_type, name = "event_type", format = '1I')
@@ -207,12 +210,12 @@ class ChargeContainer() :
         col6 = fits.Column(array = self.multiplicity, name = "multiplicity", format = '1I')
 
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
-        event_properties = fits.BinTableHDU.from_columns(coldefs)
+        event_properties = fits.BinTableHDU.from_columns(coldefs, name = 'event properties')
 
         col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * self.CAMERA.n_pixels}L',dim = f'({self.CAMERA.n_pixels},4)')
         col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
         coldefs = fits.ColDefs([col1, col2])
-        trigger_patern = fits.BinTableHDU.from_columns(coldefs)
+        trigger_patern = fits.BinTableHDU.from_columns(coldefs, name = 'trigger patern')
 
         hdul = fits.HDUList([primary_hdu, charge_hg_hdu, charge_lg_hdu,peak_hg_hdu,peak_lg_hdu,event_properties,trigger_patern])
         try : 
@@ -233,45 +236,37 @@ class ChargeContainer() :
         
         Args:
             path (str): path of the FITS file
+            run_number (int) : the run number
 
         Returns:
             ChargeContainer: ChargeContainer instance
         """
-        log.info(f"loading in {path} run number {run_number}")
+        if kwargs.get("explicit_filename",False) : 
+            filename = kwargs.get("explicit_filename")
+            log.info(f"loading {filename}")
+        else : 
+            log.info(f"loading in {path} run number {run_number}")
+            filename = Path(path)/f"charge_run{run_number}.fits"
         
-        #table = Table.read(Path(path)/f"charge_hg_run{run_number}.ecsv")
-        #pixels_id = table.meta['pixels_id']
-        #charge_hg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        #table = Table.read(Path(path)/f"charge_lg_run{run_number}.ecsv")
-        #charge_lg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        #table = Table.read(Path(path)/f"peak_hg_run{run_number}.ecsv")
-        #peak_hg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        #table = Table.read(Path(path)/f"peak_lg_run{run_number}.ecsv")
-        #peak_lg = np.array([table[colname] for colname in table.colnames]).T
-        #
-        hdul = fits.open(Path(path)/f"charge_run{run_number}.fits")
-        pixels_id = hdul[0].data
-        nevents = hdul[0].header['NEVENTS'] 
-        npixels = hdul[0].header['NPIXELS'] 
-        charge_hg = hdul[1].data
-        charge_lg = hdul[2].data
-        peak_hg = hdul[3].data
-        peak_lg = hdul[4].data
+        with fits.open(filename) as hdul :
+            pixels_id = hdul[0].data
+            nevents = hdul[0].header['NEVENTS'] 
+            npixels = hdul[0].header['NPIXELS'] 
+            charge_hg = hdul[1].data
+            charge_lg = hdul[2].data
+            peak_hg = hdul[3].data
+            peak_lg = hdul[4].data
 
+            cls = ChargeContainer(charge_hg,charge_lg,peak_hg,peak_lg,run_number,pixels_id,nevents,npixels)
 
-        cls = ChargeContainer(charge_hg,charge_lg,peak_hg,peak_lg,run_number,pixels_id,nevents,npixels)
+            cls.event_id = hdul[5].data["event_id"]
+            cls.event_type = hdul[5].data["event_type"]
+            cls.ucts_timestamp = hdul[5].data["ucts_timestamp"]
+            cls.ucts_busy_counter = hdul[5].data["ucts_busy_counter"]
+            cls.ucts_event_counter = hdul[5].data["ucts_event_counter"]
 
-        cls.event_id = hdul[5].data["event_id"]
-        cls.event_type = hdul[5].data["event_type"]
-        cls.ucts_timestamp = hdul[5].data["ucts_timestamp"]
-        cls.ucts_busy_counter = hdul[5].data["ucts_busy_counter"]
-        cls.ucts_event_counter = hdul[5].data["ucts_event_counter"]
-
-        table_trigger = hdul[6].data
-        cls.trig_pattern_all = table_trigger["trig_pattern_all"]
+            table_trigger = hdul[6].data
+            cls.trig_pattern_all = table_trigger["trig_pattern_all"]
 
         return cls
 
@@ -304,13 +299,14 @@ class ChargeContainer() :
         if "apply_integration_correction" in eval(method).class_own_traits().keys() : #to change the default behavior of ctapipe extractor
             extractor_kwargs["apply_integration_correction"] = kwargs.get("apply_integration_correction",False)
 
-        log.debug(f"Extracting waveforms with method {method} and extractor_kwargs {extractor_kwargs}")
+        log.debug(f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}")
         ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
+
         if channel == constants.HIGH_GAIN:
-            out = np.array([ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_hg))]).reshape(2,waveformContainer.wfs_hg.shape[0], waveformContainer.wfs_hg.shape[1])
+            out = np.array([CtaPipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
             return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            out = np.array([ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_lg))]).reshape(2,waveformContainer.wfs_lg.shape[0], waveformContainer.wfs_lg.shape[1])
+            out = np.array([CtaPipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
             return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
@@ -417,16 +413,19 @@ class ChargeContainer() :
         return np.array([self.charge_lg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
 
     @property
-    def run_number(self) : return self.__run_number
+    def run_number(self) : return self._run_number
 
     @property
-    def pixels_id(self) : return self.__pixels_id
+    def pixels_id(self) : return self._pixels_id
 
     @property
-    def npixels(self) : return self.__npixels
+    def npixels(self) : return self._npixels
 
     @property
-    def nevents(self) : return self.__nevents
+    def nevents(self) : return self._nevents
+
+    @property
+    def method(self) : return self._method
 
 
     #physical properties
@@ -455,7 +454,7 @@ class ChargeContainers() :
         """
         chargeContainers = cls()
         for i in range(waveformContainers.nWaveformsContainer) : 
-            chargeContainers.append(ChargeContainer.from_waveforms(waveformContainers.waveformsContainer[i]))
+            chargeContainers.append(ChargeContainer.from_waveforms(waveformContainers.waveformsContainer[i],**kwargs))
         return chargeContainers
 
     def write(self,path : str, **kwargs) : 
@@ -467,13 +466,87 @@ class ChargeContainers() :
         for i in range(self.__nChargeContainer) : 
             self.chargeContainers[i].write(path,suffix = f"{i:04d}" ,**kwargs)
 
+    @staticmethod
+    def from_file(path : Path,run_number : int,**kwargs) :
+        """load ChargeContainers from FITS file previously written with ChargeContainers.write() method 
+        This method will search all the fits files corresponding to {path}/charge_run{run_number}_*.fits scheme
+        
+        Args:
+            path (str): path with name of the FITS file without .fits extension
+            run_number (int) : the run number
+
+        Returns:
+            ChargeContainers: ChargeContainers instance
+        """
+        log.info(f"loading from {path}/charge_run{run_number}_*.fits")
+        files = glob.glob(f"{path}/charge_run{run_number}_*.fits")
+        if len(files) == 0 : 
+            e = FileNotFoundError(f"no files found corresponding to {path}_*.fits")
+            log.error(e)
+            raise e
+        else : 
+            cls = ChargeContainers.__new__(ChargeContainers)
+            cls.chargeContainers = []
+            cls.__nchargeContainers = len(files)
+            for file in files : 
+                cls.chargeContainers.append(ChargeContainer.from_file(path,run_number,explicit_filename = file))
+            return cls
+
     @property
-    def nChargeContainer(self) : return self.__nChargeContainer
+    def nChargeContainer(self) : 
+        """getter giving the number of chargeContainer into the ChargeContainers instance
+
+        Returns:
+            int: the number of chargeContainer
+        """
+        return self.__nChargeContainer
 
     @property
     def nevents(self) : 
+        """number of events into the whole ChargesContainers
+
+        Returns:
+            int: number of events
+        """
         return np.sum([self.chargeContainers[i].nevents for i in range(self.__nChargeContainer)])
 
-    def append(self,chargeContainer : ChargeContainer) : 
+    def append(self,chargeContainer : ChargeContainer) :
+        """method to stack a ChargeContainer into the ChargeContainers
+
+        Args:
+            chargeContainer (ChargeContainer): the data to be stacked into
+        """
         self.chargeContainers.append(chargeContainer)
         self.__nChargeContainer += 1
+
+
+    def merge(self) -> ChargeContainer : 
+        """method to merge a ChargeContainers into one single ChargeContainer
+
+        Returns:
+            ChargeContainer: the merged object
+        """
+        cls  = ChargeContainer.__new__(ChargeContainer)
+        cls.charge_hg = np.concatenate([chargecontainer.charge_hg for chargecontainer in self.chargeContainers],axis = 0) 
+        cls.charge_lg = np.concatenate([chargecontainer.charge_lg for chargecontainer in self.chargeContainers],axis = 0) 
+        cls.peak_hg = np.concatenate([chargecontainer.peak_hg for chargecontainer in self.chargeContainers],axis = 0) 
+        cls.peak_lg = np.concatenate([chargecontainer.peak_lg for chargecontainer in self.chargeContainers],axis = 0) 
+
+        if np.all([chargecontainer.run_number == self.chargeContainers[0].run_number for chargecontainer in self.chargeContainers]) : 
+            cls._run_number = self.chargeContainers[0].run_number
+        if np.all([chargecontainer.pixels_id == self.chargeContainers[0].pixels_id for chargecontainer in self.chargeContainers]) : 
+            cls._pixels_id = self.chargeContainers[0].pixels_id
+        if np.all([chargecontainer.method == self.chargeContainers[0].method for chargecontainer in self.chargeContainers]):
+            cls._method = self.chargeContainers[0].method
+        cls._nevents = np.sum([chargecontainer.nevents for chargecontainer in self.chargeContainers])
+        if np.all([chargecontainer.npixels == self.chargeContainers[0].npixels for chargecontainer in self.chargeContainers]):
+            cls._npixels = self.chargeContainers[0].npixels
+
+
+        cls.ucts_timestamp = np.concatenate([chargecontainer.ucts_timestamp for chargecontainer in self.chargeContainers ])
+        cls.ucts_busy_counter = np.concatenate([chargecontainer.ucts_busy_counter for chargecontainer in self.chargeContainers ])
+        cls.ucts_event_counter = np.concatenate([chargecontainer.ucts_event_counter for chargecontainer in self.chargeContainers ])
+        cls.event_type = np.concatenate([chargecontainer.event_type for chargecontainer in self.chargeContainers ])
+        cls.event_id = np.concatenate([chargecontainer.event_id for chargecontainer in self.chargeContainers ])
+        cls.trig_pattern_all = np.concatenate([chargecontainer.trig_pattern_all for chargecontainer in self.chargeContainers ],axis = 0)
+        return cls
