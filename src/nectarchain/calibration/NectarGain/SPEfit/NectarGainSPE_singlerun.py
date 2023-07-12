@@ -4,7 +4,7 @@ from scipy.special import gammainc
 from iminuit import Minuit
 import random
 import astropy.units as u
-from astropy.table import QTable,Column,MaskedColumn
+from astropy.table import Table,QTable,Column,MaskedColumn
 import yaml
 import os
 from datetime import date
@@ -457,17 +457,18 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
 
 
             if kwargs.get('figpath',0) != 0 :
-                fig,ax = plt.subplots(1,1,figsize=(8, 6))
+                fig,ax = plt.subplots(1,1,figsize=(8, 8))
                 ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
                 ax.plot(charge,
                     np.trapz(histo,charge)*MPE2(charge,parameters['pp'].value, parameters['resolution'].value, parameters['mean'].value, parameters['n'].value, parameters['pedestal'].value, parameters['pedestalWidth'].value, parameters['luminosity'].value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"SPE model fit \n gain : {gain[0] - gain[1]:.2f} < {gain[0]:.2f} < {gain[0] + gain[2]:.2f} ADC/pe,\n pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"SPE fit pixel {it} with pixel_id : {pixels_id}")
-                ax.legend(fontsize=15)
+                ax.set_xlim([parameters['pedestal'].value - 6 * parameters['pedestalWidth'].value, None])
+                ax.legend(fontsize=18)
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
                 fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{pixels_id}.pdf")
                 fig.clf()
@@ -503,17 +504,18 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
 
 
             if kwargs.get('figpath',0) != 0 :
-                fig,ax = plt.subplots(1,1,figsize=(8, 6))
+                fig,ax = plt.subplots(1,1,figsize=(8, 8))
                 ax.errorbar(self.charge[pixel],self.histo[pixel],np.sqrt(self.histo[pixel]),zorder=0,fmt=".",label = "data")
                 ax.plot(self.charge[pixel],
                     np.trapz(self.histo[pixel],self.charge[pixel])*MPE2(self.charge[pixel],self.__pp.value,self.__resolution.value,self.__mean.value,self.__n.value,self.pedestal.value,self.__pedestalWidth.value,self.__luminosity.value),
                     zorder=1,
                     linewidth=2,
-                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe, pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
+                    label = f"SPE model fit \n gain : {self.__gain[pixel,0] - self.__gain[pixel,1]:.2f} < {self.__gain[pixel,0]:.2f} < {self.__gain[pixel,0] + self.__gain[pixel,2]:.2f} ADC/pe,\n pvalue = {Statistics.chi2_pvalue(ndof,fit.fval)},\n likelihood = {fit.fval:.2f}")
                 ax.set_xlabel("Charge (ADC)", size=15)
                 ax.set_ylabel("Events", size=15)
                 ax.set_title(f"SPE fit pixel : {pixel} (pixel id : {self.pixels_id[pixel]})")
-                ax.legend(fontsize=15)
+                ax.set_xlim([self.pedestal.value - 6 * self.pedestalWidth.value, None])
+                ax.legend(fontsize=18)
                 os.makedirs(kwargs.get('figpath'),exist_ok = True)
                 fig.savefig(f"{kwargs.get('figpath')}/fit_SPE_pixel{self.pixels_id[pixel]}.pdf")
                 fig.clf()
@@ -571,7 +573,7 @@ class NectarGainSPESingleSignal(NectarGainSPESingle):
         log.debug(f"pedestalWidth updated : {pedestalWidth}")
         try : 
             coeff,var_matrix =  NectarGainSPE._get_mean_gaussian_fit(charge,histo,f'{it}_nominal')
-            if coeff[1] - pedestal.value < 0 : raise Exception("mean gaussian fit not good")
+            if (coeff[1] - pedestal.value < 0) or ((coeff[1] - coeff[2]) - pedestal.max < 0) : raise Exception("mean gaussian fit not good")
             mean = parameters['mean']
             mean.value = coeff[1] - pedestal.value
             mean.min = (coeff[1] - coeff[2]) - pedestal.max
@@ -785,7 +787,7 @@ class NectarGainSPESingleSignalfromHHVFit(NectarGainSPESingleSignal):
         super().run(pixel,multiproc,**kwargs)
 
     def _run_obs(self,pixel,prescan = False,**kwargs) : 
-        if self.__nectarGainSPEresult[pixel]['is_valid'].value : 
+        if self.__nectarGainSPEresult[pixel]['is_valid'] : 
             kwargs['pixel_id'] = self.pixels_id[pixel]
             super()._run_obs(pixel,prescan,**kwargs)
         else :
