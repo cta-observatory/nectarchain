@@ -34,6 +34,7 @@ from astropy.io import fits
 from numba import guvectorize, float64, int64, bool_
 
 from .waveforms import WaveformsContainer,WaveformsContainers
+from .utils import CtaPipeExtractor
 
 
 
@@ -130,6 +131,7 @@ class ChargeContainer() :
         self.event_type = np.zeros((self.nevents),dtype = np.uint8)
         self.event_id = np.zeros((self.nevents),dtype = np.uint16)
         self.trig_pattern_all = np.zeros((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
+
 
     @classmethod
     def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
@@ -299,11 +301,12 @@ class ChargeContainer() :
 
         log.debug(f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}")
         ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
+
         if channel == constants.HIGH_GAIN:
-            out = np.array([ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
+            out = np.array([CtaPipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
             return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            out = np.array([ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
+            out = np.array([CtaPipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
             return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")

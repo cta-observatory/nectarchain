@@ -30,6 +30,9 @@ __all__ = ['NectarGainSPE']
 
 class NectarGainSPE(ABC) :
     _Ncall = 4000000
+    _Windows_lenght = 40
+    _Order = 2
+
     def __init__(self) :
         #set parameters value for fit
         self.__parameters = Parameters()
@@ -104,8 +107,8 @@ class NectarGainSPE(ABC) :
         charge = charge_in.data[~histo_in.mask]
         histo = histo_in.data[~histo_in.mask]
 
-        windows_lenght = 80
-        order = 2
+        windows_lenght = NectarGainSPE._Windows_lenght
+        order = NectarGainSPE._Order
         histo_smoothed = savgol_filter(histo, windows_lenght, order)
 
         peaks = find_peaks(histo_smoothed,10)
@@ -126,15 +129,16 @@ class NectarGainSPE(ABC) :
 
         if log.getEffectiveLevel() == logging.DEBUG :
             log.debug('plotting figures with prefit parameters computation') 
-            fig,ax = plt.subplots(1,1,figsize = (8,8))
+            fig,ax = plt.subplots(1,1,figsize = (5,5))
             ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
             ax.plot(charge,histo_smoothed,label = f'smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})')
             ax.plot(charge,weight_gaussian(charge,coeff_mean[0],coeff_mean[1],coeff_mean[2]),label = 'gaussian fit of the SPE')
             ax.vlines(coeff_mean[1],0,peak_value,label = f'mean initial value = {coeff_mean[1] - coeff[1]:.0f}',color = "red")
             ax.add_patch(Rectangle((coeff_mean[1]-coeff_mean[2], 0), 2 * coeff_mean[2], peak_value_mean,fc=to_rgba('red', 0.5)))
+            ax.set_xlim([peak_pos - 500,None])
             ax.set_xlabel("Charge (ADC)", size=15)
             ax.set_ylabel("Events", size=15)
-            ax.legend(fontsize=15)
+            ax.legend(fontsize=7)
             os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/",exist_ok=True)
             fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf")
             fig.clf()
@@ -149,8 +153,8 @@ class NectarGainSPE(ABC) :
         charge = charge_in.data[~histo_in.mask]
         histo = histo_in.data[~histo_in.mask]
 
-        windows_lenght = 80
-        order = 2
+        windows_lenght = NectarGainSPE._Windows_lenght
+        order = NectarGainSPE._Order
         histo_smoothed = savgol_filter(histo, windows_lenght, order)
 
         peaks = find_peaks(histo_smoothed,10)
@@ -161,15 +165,16 @@ class NectarGainSPE(ABC) :
 
         if log.getEffectiveLevel() == logging.DEBUG :
             log.debug('plotting figures with prefit parameters computation') 
-            fig,ax = plt.subplots(1,1,figsize = (8,8))
+            fig,ax = plt.subplots(1,1,figsize = (5,5))
             ax.errorbar(charge,histo,np.sqrt(histo),zorder=0,fmt=".",label = "data")
             ax.plot(charge,histo_smoothed,label = f'smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})')
             ax.plot(charge,weight_gaussian(charge,coeff[0],coeff[1],coeff[2]),label = 'gaussian fit of the pedestal, left tail only')
+            ax.set_xlim([peak_pos - 500,None])
             ax.vlines(coeff[1],0,peak_value,label = f'pedestal initial value = {coeff[1]:.0f}',color = 'red')
             ax.add_patch(Rectangle((coeff[1]-coeff[2], 0), 2 * coeff[2], peak_value,fc=to_rgba('red', 0.5)))
             ax.set_xlabel("Charge (ADC)", size=15)
             ax.set_ylabel("Events", size=15)
-            ax.legend(fontsize=15)
+            ax.legend(fontsize=7)
             os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/",exist_ok=True)
             fig.savefig(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_pedestal_pixel{extension}_{os.getpid()}.pdf")
             fig.clf()

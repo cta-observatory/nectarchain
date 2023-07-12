@@ -90,7 +90,7 @@ conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certif
 # The following is needed for the environment variables, used for DIRAC configuration, to be available:
 mamba deactivate
 mamba activate nectarchain
-pip install CTADIRAC COMDIRAC
+pip install CTADIRAC
 dirac-configure
 ```
 
