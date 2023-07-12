@@ -52,14 +52,10 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         #print("test", evt.r0.tel[0].waveform[0])
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        
-        if len(pixel) < self.Chan:
-            pixel21 = np.arange(0,self.Chan - len(pixel),1,dtype = int)
-            pixel = list(pixel)
-            pixel21 = list(pixel21)
-            pixels = np.concatenate([pixel21,pixel])
-        else:
-            pixels = pixel
+        pixel21 = np.arange(0, 21, 1, dtype=int)
+        pixel = list(pixel)
+        pixel21 = list(pixel21)
+        pixels = np.concatenate([pixel21, pixel])
 
         waveform=evt.r0.tel[0].waveform[self.k]
 
