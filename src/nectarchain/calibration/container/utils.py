@@ -10,6 +10,8 @@ from DIRAC.Interfaces.API.Dirac import Dirac
 from pathlib import Path
 from typing import List,Tuple
 
+from ctapipe.containers import DL1CameraContainer 
+
 
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
@@ -180,3 +182,6 @@ class ChainGenerator():
         else :
             return ChainGenerator.chain(list[0],ChainGenerator.chainEventSource(list[1:]))
 
+class CtaPipeExtractor():
+    def get_image_peak_time(cameraContainer : DL1CameraContainer) : 
+        return cameraContainer.image, cameraContainer.peak_time

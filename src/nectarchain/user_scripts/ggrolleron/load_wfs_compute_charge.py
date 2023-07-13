@@ -165,7 +165,7 @@ def load_wfs_charge_split(i,runs_list,max_events,overwrite,charge_childpath,extr
      
     log.info("splitting wafevorms extraction with raw data list files")
     log.debug(f"creation of the WaveformsContainers")
-    wfs = WaveformsContainers(runs_list[i],max_events = max_events[i])
+    wfs = WaveformsContainers(runs_list[i],max_events = max_events[i],init_arrays = False)
     log.info(f"computation of charge with {charge_childpath}")
     log.info("splitting charge computation with raw data list files")
     charge = ChargeContainers()
