@@ -35,7 +35,7 @@ Congrats! You now have two VMs with ZODB/ZEO servers with ZRS replication enable
 The Bokeh service is launched from the second VM (the one hosting the secondary, read-only database) with:
 ```shell
 bokeh serve --num-procs $(grep -c ^processor /proc/cpuinfo) \
-            --show bokeh_app.py
+            --show bokeh_app
 ```
 and served on `localhost` on port 5006.
 

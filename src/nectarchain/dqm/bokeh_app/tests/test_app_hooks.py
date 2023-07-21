@@ -17,11 +17,6 @@ test_dict = {'run1': {'mykey1': {'mysubkey1': np.random.normal(size=geom.n_pixel
                                  'mysubkey2': np.random.normal(size=geom.n_pixels)},
                       'mykey2': {'mysubkey1': np.random.normal(size=geom.n_pixels),
                                  'mysubkey2': np.random.normal(size=geom.n_pixels)}
-                      },
-             'run2': {'mykey1': {'mysubkey1': np.random.normal(size=geom.n_pixels),
-                                 'mysubkey2': np.random.normal(size=geom.n_pixels)},
-                      'mykey2': {'mysubkey1': np.random.normal(size=geom.n_pixels),
-                                 'mysubkey2': np.random.normal(size=geom.n_pixels)}
                       }
              }
 # Renders the second image incomplete
@@ -29,14 +24,13 @@ test_dict['run1']['mykey2']['mysubkey2'][10:20] = np.nan
 
 
 def test_make_camera_displays():
-    from ..bokeh_app import make_camera_displays
+    from nectarchain.dqm.bokeh_app.app_hooks import make_camera_displays
     for runid in list(test_dict.keys()):
         make_camera_displays(test_dict, test_dict[runid], runid)
 
 
 def test_bokeh(tmp_path):
-    from ..bokeh_app import make_camera_displays, update_camera_displays, \
-        get_rundata
+    from nectarchain.dqm.bokeh_app.app_hooks import get_rundata, make_camera_displays
 
     db = DB(None)
     conn = db.open()
@@ -53,18 +47,10 @@ def test_bokeh(tmp_path):
     source = get_rundata(root, run_select.value)
     displays = make_camera_displays(root, source, runid)
 
-    run_select.on_change('value', update_camera_displays)
-
-    controls = row(run_select)
-
-    # Test an update of run:
-    # update_camera_displays(run_select, runid, runids[0])
-
     ncols = 3
     plots = [displays[parentkey][childkey].figure for parentkey in displays.keys() for
              childkey in displays[parentkey].keys()]
-    curdoc().add_root(layout([[controls],
-                              [[plots[x:x + ncols] for x in
+    curdoc().add_root(layout([[[plots[x:x + ncols] for x in
                                 range(0, len(plots), ncols)]]],
                              sizing_mode='scale_width'
                              )
