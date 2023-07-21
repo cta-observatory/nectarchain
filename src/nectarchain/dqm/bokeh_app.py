@@ -13,16 +13,18 @@ from ctapipe.coordinates import EngineeringCameraFrame
 
 from ctapipe_io_nectarcam import constants
 
-from db_utils import DQMDB
+from nectarchain.dqm.db_utils import DQMDB
 
 NOTINDISPLAY = ['Results_TriggerStatistics', 'Results_MeanWaveForms_HighGain', 'Results_MeanWaveForms_LowGain', 'Results_CameraMonitoring']
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
+
 def get_rundata(src, runid):
     run_data = src[runid]
     return run_data
+
 
 def make_camera_displays(db, source, runid):
     displays = collections.defaultdict(dict)
@@ -34,6 +36,7 @@ def make_camera_displays(db, source, runid):
                                                                     parent_key=parentkey,
                                                                     child_key=childkey)
     return dict(displays)
+
 
 def make_camera_display(source, parent_key, child_key):
     # Example camera display
@@ -52,6 +55,7 @@ def make_camera_display(source, parent_key, child_key):
     display.figure.title = child_key
     return display
    
+
 def update_camera_displays(attr, old, new):
     runid = run_select.value
     new_rundata = get_rundata(db, runid)
@@ -76,31 +80,36 @@ def update_camera_displays(attr, old, new):
                 # displays[parentkey][childkey].datasource.stream(image)
 
 
-db = DQMDB(read_only=True).root
-runids = sorted(list(db.keys()))
-runid = runids[-1]
+def main():
+    db = DQMDB(read_only=True).root
+    runids = sorted(list(db.keys()))
+    runid = runids[-1]
 
-# runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
-run_select = Select(value=runid, title='NectarCAM run number', options=runids)
+    # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
+    run_select = Select(value=runid, title='NectarCAM run number', options=runids)
 
-source = get_rundata(db, run_select.value)
-displays = make_camera_displays(db, source, runid)
+    source = get_rundata(db, run_select.value)
+    displays = make_camera_displays(db, source, runid)
 
-run_select.on_change('value', update_camera_displays)
+    run_select.on_change('value', update_camera_displays)
 
-controls = row(run_select)
+    controls = row(run_select)
 
-# # TEST:
-# attr = 'value'
-# old = runid
-# new = runids[1]
-# update_camera_displays(attr, old, new)
+    # # TEST:
+    # attr = 'value'
+    # old = runid
+    # new = runids[1]
+    # update_camera_displays(attr, old, new)
 
-ncols = 3
-plots = [displays[parentkey][childkey].figure for parentkey in displays.keys() for childkey in displays[parentkey].keys()]
-curdoc().add_root(layout([[controls],
-                          [[plots[x:x+ncols] for x in range(0, len(plots), ncols)]]],
-                         sizing_mode='scale_width'
-                         )
-                  )
-curdoc().title = 'NectarCAM Data Quality Monitoring web app'
+    ncols = 3
+    plots = [displays[parentkey][childkey].figure for parentkey in displays.keys() for childkey in displays[parentkey].keys()]
+    curdoc().add_root(layout([[controls],
+                              [[plots[x:x+ncols] for x in range(0, len(plots), ncols)]]],
+                             sizing_mode='scale_width'
+                             )
+                      )
+    curdoc().title = 'NectarCAM Data Quality Monitoring web app'
+
+
+if __name__ == '__main__':
+    main()
