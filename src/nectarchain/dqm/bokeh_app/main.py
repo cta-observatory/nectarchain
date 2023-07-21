@@ -70,8 +70,8 @@ controls = row(run_select)
 ncols = 3
 plots = [displays[parentkey][childkey].figure for parentkey in displays.keys() for childkey in displays[parentkey].keys()]
 curdoc().add_root(layout([[controls],
-                            [[plots[x:x+ncols] for x in range(0, len(plots), ncols)]]],
-                            sizing_mode='scale_width'
-                            )
-                    )
+                          [[plots[x:x+ncols] for x in range(0, len(plots), ncols)]]],
+                         sizing_mode='scale_width'
+                         )
+                  )
 curdoc().title = 'NectarCAM Data Quality Monitoring web app'
