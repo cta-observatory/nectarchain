@@ -10,7 +10,7 @@ from bokeh.io import output_file, save
 from ctapipe.instrument import CameraGeometry
 from ctapipe.coordinates import EngineeringCameraFrame
 
-geom = CameraGeometry.from_name("NectarCam-003")
+geom = CameraGeometry.from_name("NectarCam")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 test_dict = {'run1': {'mykey1': {'mysubkey1': np.random.normal(size=geom.n_pixels),
