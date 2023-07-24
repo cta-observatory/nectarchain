@@ -13,7 +13,7 @@ NOTINDISPLAY = ['Results_TriggerStatistics',
                 'Results_MeanWaveForms_LowGain',
                 'Results_CameraMonitoring']
 
-geom = CameraGeometry.from_name("NectarCam")
+geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 
