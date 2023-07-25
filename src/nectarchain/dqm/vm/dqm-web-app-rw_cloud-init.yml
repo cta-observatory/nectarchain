@@ -116,16 +116,13 @@ runcmd:
   - . /opt/conda/etc/profile.d/mamba.sh
   - mkdir -p /opt/cta
   - cd /opt/cta
-  - git clone https://github.com/jlenain/nectarchain.git
+  - git clone https://github.com/cta-observatory/nectarchain.git
   - cd nectarchain
-  - git remote add upstream https://github.com/cta-observatory/nectarchain.git
-  - git fetch --tags --all
-  - git switch dqm-zodb
   - mamba env create --name nectarchain --file environment.yml
   - mamba activate nectarchain
   - pip install -e .
   - mamba install dirac-grid
-  - pip install CTADIRAC COMDIRAC
+  - pip install CTADIRAC
   - conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
   - mamba deactivate
   - chown -R nectarcam:cta /opt/cta
