@@ -15,13 +15,16 @@ from charge_integration import ChargeIntegration_HighLowGain
 from trigger_statistics import TriggerStatistics
 from camera_monitoring import CameraMonitoring
 
-
+from db_utils import DQMDB
 
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser(description='NectarCAM Data Quality Monitoring tool')
 parser.add_argument('-p', '--plot',
                      action='store_true',
                      help='Enables plots to be generated')
+parser.add_argument('--write-db',
+                     action='store_true',
+                     help='Write DQM output in DQM ZODB data base')
 parser.add_argument('-n', '--noped',
                      action='store_true',
                      help='Enables pedestal subtraction in charge integration')
@@ -208,6 +211,12 @@ for p in processors:
 
 name = name #in order to allow to change the name easily
 p.WriteAllResults(ResPath, NESTED_DICT) #if we want to write all results in 1 fits file we do this. 
+if args.write_db:
+    db = DQMDB(read_only=False)
+    if db.insert(name, NESTED_DICT):
+        db.commit_and_close()
+    else:
+        db.abort_and_close()
 
 #if -plot in args it will construct the figures and save them
 if PlotFig:

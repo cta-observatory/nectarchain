@@ -24,6 +24,8 @@ dependencies = [
     "ctapipe~=0.19",
     "ctapipe-io-nectarcam",
     "pandas",
+    "zodb",
+    "zeo",
 ]
 dynamic = ["version"]
 
