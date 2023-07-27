@@ -35,11 +35,11 @@ apptainer shell oras://ghcr.io/cta-observatory/nectarchain:latest
 
 The `nectarchain` code is then available under `/opt/cta/nectarchain`.
 
-[DIRAC support](#optinal-dirac-support) is fully available and configured within such a container.
+[DIRAC support](#optional-dirac-support) is fully available and configured within such a container.
 
-#### Note to Mac OS users
+#### Note to macOS users
 
-Mac OS users may experience errors when trying to initialize a proxy to DIRAC when the [DIRAC support is enabled](#optional-dirac-support), especially with recent hardware equipped with M1 or M2 Apple CPU chips. The container alternative can then help having an environment with CTADIRAC fully configured. However, [Apptainer](https://apptainer.org/) is [not readily available on Mac OS](https://apptainer.org/docs/admin/main/installation.html#mac), but there is a workaround using [`lima` virtualization technology](https://lima-vm.io/) on a Mac.
+macOS users may experience errors when trying to initialize a proxy to DIRAC when the [DIRAC support is enabled](#optional-dirac-support), especially with recent hardware equipped with M1 or M2 Apple CPU chips. The container alternative can then help having an environment with CTADIRAC fully configured. However, [Apptainer](https://apptainer.org/) is [not readily available on macOS](https://apptainer.org/docs/admin/main/installation.html#mac), but there is a workaround using [`lima` virtualization technology](https://lima-vm.io/) on a Mac.
 
 **TL;DR**
 
@@ -69,6 +69,12 @@ mamba activate nectarchain
 pip install -e .
 ```
 
+Enable [pre-commit hooks](https://pre-commit.com/), which enforces adherence to PEP8 coding style:
+
+```shell
+pre-commit install
+```
+
 Please follow the [same conventions as `ctapipe`](https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change) regarding settings of Git remotes for pull requests.
 
 ### Optional DIRAC support
@@ -96,7 +102,7 @@ one may try:
 ```shell
 mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
 ```
-or the [container alternative](#note-to-mac-os-users) as explained above.
+or the [container alternative](#note-to-macos-users) as explained above.
 
 `nectarchain` is currently pinned to `ctapipe` version 0.12.
 

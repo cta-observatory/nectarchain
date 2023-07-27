@@ -8,6 +8,8 @@ dependencies:
   - ctapipe-io-nectarcam
   - jinja2=3.0.1
   - jupyterlab
+  - jupytext
+  - pre-commit
   - pytest-runner
   - pip
   - pandas
