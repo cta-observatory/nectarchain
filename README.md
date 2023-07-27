@@ -75,7 +75,7 @@ Enable [pre-commit hooks](https://pre-commit.com/), which enforces adherence to 
 pre-commit install
 ```
 
-Please follow the [same conventions as `ctapipe`](https://cta-observatory.github.io/ctapipe/getting_started/index.html#developing-a-new-feature-or-code-change) regarding settings of Git remotes for pull requests.
+Please follow the [same conventions as `ctapipe`](https://ctapipe.readthedocs.io/en/latest/getting_started/) regarding settings of Git remotes, and how to contribute to the code with pull requests.
 
 ### Optional DIRAC support
 
@@ -110,8 +110,8 @@ or the [container alternative](#note-to-macos-users) as explained above.
 
 All contribution are welcome.
 
-Guidelines are the same as [ctapipe's ones](https://cta-observatory.github.io/ctapipe/development/index.html)
-See [here](https://cta-observatory.github.io/ctapipe/development/pullrequests.html) how to make a pull request to contribute.
+Guidelines are the same as [ctapipe's ones](https://ctapipe.readthedocs.io/en/latest/getting_started/)
+See [here](https://ctapipe.readthedocs.io/en/latest/development/pullrequests.html#pullrequests) how to make a pull request to contribute.
 
 
 ## Report issue / Ask a question
