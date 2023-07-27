@@ -104,7 +104,7 @@ mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
 ```
 or the [container alternative](#note-to-macos-users) as explained above.
 
-`nectarchain` is currently pinned to `ctapipe` version 0.12.
+`nectarchain` is currently pinned to `ctapipe` version 0.19.
 
 ## Contributing
 
