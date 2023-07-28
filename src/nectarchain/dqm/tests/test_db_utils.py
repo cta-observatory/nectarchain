@@ -1,5 +1,5 @@
-from ZODB import DB
 import transaction
+from ZODB import DB
 
 
 class TestDQMDB:
@@ -14,8 +14,8 @@ class TestDQMDB:
         assert self.root is not None
 
     def test_insert(self):
-        key = 'mykey'
-        value = 'myvalue'
+        key = "mykey"
+        value = "myvalue"
         self.root[key] = value
         assert self.root[key] == value
 
