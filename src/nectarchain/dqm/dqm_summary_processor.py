@@ -38,7 +38,7 @@ class DQMSummary:
         data2 = Table()
         data1 = Table()
         data = Table()
-        hdu, hdu1, hdu2 = None, None
+        hdu, hdu1, hdu2 = None, None, None
         hdulist = fits.HDUList()
         for i, j in DICT.items():
             if i == "Results_TriggerStatistics":
