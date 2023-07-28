@@ -42,6 +42,9 @@ if [ -z $runnb ]; then
 fi
 
 WRAPPER="singularity_wrapper.sh"
+# We can instantiate a particular container version:
+# CONTAINER="oras://ghcr.io/cta-observatory/nectarchain@sha256:cf5a812bdb1113d027facceec30009759535a8579eb4caf38f56143e65cb35e7"
+# or just use the latest available:
 CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
 OUTDIR=NectarCAM_DQM_Run${runnb}
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm
@@ -110,6 +113,6 @@ chmod u+x $WRAPPER || exit_script $?
 
 # Archive the output directory and push it on DIRAC before leaving the job:
 tar zcf ${OUTDIR}.tar.gz ${OUTDIR}/ || exit_script $?
-dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz LPNHE-USER || exit_script $?
+dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz || exit_script $?
 
 exit_script 0

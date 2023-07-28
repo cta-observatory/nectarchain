@@ -14,7 +14,7 @@ env:
   PYTEST_ADDOPTS: --color=yes
 
 jobs:
-  flake8-lint:
+  lint:
     runs-on: ubuntu-latest
     name: Lint
     steps:
@@ -23,19 +23,23 @@ jobs:
       - name: Set up Python environment
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
-      - name: flake8 Lint
-        uses: py-actions/flake8@v2 
+          python-version: "3.9"
+      - name: Runs pre-commit hooks
+        uses: pre-commit/action@v3.0.0
+        with:
+          extra_args: --files $(git diff origin/main --name-only)
 
   tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10", 3.11]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         ctapipe-version: [v0.19.1]
+        install-method: [ "mamba", "pip" ]
 
     defaults:
       run:
+        # We need login shells (-l) for micromamba to work.
         shell: bash -leo pipefail {0}
 
     steps:
@@ -49,15 +53,22 @@ jobs:
         run: |
           sed -i -e "s/- python=.*/- python=$PYTHON_VERSION/g" environment.yml
 
-      - name: Create and activate env
+      - name: Mamba setup
+        if: matrix.install-method == 'mamba'
         uses: mamba-org/provision-with-micromamba@v15
         with:
           environment-name: "ci"
           environment-file: environment.yml
 
+      - name: Python setup
+        if: matrix.install-method == 'pip'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          check-latest: true
+
       - name: Install dependencies
         env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
           CTAPIPE_VERSION: ${{ matrix.ctapipe-version }}
 
         run: |

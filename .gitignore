@@ -63,7 +63,8 @@ distribute-*.tar.gz
 # Rope refactoring data:
 .ropeproject
 
-# ipython notebook checkpoints
+# ipython/jupyter notebooks and checkpoints
+*.ipynb
 .ipynb_checkpoints
 .cache*
 .cache
