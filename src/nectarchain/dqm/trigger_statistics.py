@@ -1,11 +1,12 @@
 import math
-from matplotlib import pyplot as plt
+
 import numpy as np
 from astropy import time as astropytime
-from dqm_summary_processor import dqm_summary
+from dqm_summary_processor import DQMSummary
+from matplotlib import pyplot as plt
 
 
-class TriggerStatistics(dqm_summary):
+class TriggerStatistics(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
 

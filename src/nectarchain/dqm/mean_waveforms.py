@@ -1,9 +1,9 @@
-from dqm_summary_processor import dqm_summary
-from matplotlib import pyplot as plt
 import numpy as np
+from dqm_summary_processor import DQMSummary
+from matplotlib import pyplot as plt
 
 
-class MeanWaveForms_HighLowGain(dqm_summary):
+class MeanWaveFormsHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
         return None
@@ -69,18 +69,22 @@ class MeanWaveForms_HighLowGain(dqm_summary):
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
-            # self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-HIGH-GAIN"]  = self.Mwf_average
-            self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PIX-HIGH-GAIN"] = self.Mwf_Mean_overPix
+            self.MeanWaveForms_Results_Dict[
+                "WF-PHY-AVERAGE-PIX-HIGH-GAIN"
+            ] = self.Mwf_Mean_overPix
             if self.counter_ped > 0:
-                # self.MeanWaveForms_Results_Dict["WF-PED-AVERAGE-HIGH-GAIN"] = self.Mwf_ped_average
-                self.MeanWaveForms_Results_Dict["WF-AVERAGE-PED-PIX-HIGH-GAIN"] = self.Mwf_ped_Mean_overPix
+                self.MeanWaveForms_Results_Dict[
+                    "WF-AVERAGE-PED-PIX-HIGH-GAIN"
+                ] = self.Mwf_ped_Mean_overPix
 
         if self.k == 1:
-            # self.MeanWaveForms_Results_Dict["WF-AVERAGE-LOW-GAIN"]  = self.Mwf_average
-            self.MeanWaveForms_Results_Dict["WF-AVERAGE-PIX-LOW-GAIN"] = self.Mwf_Mean_overPix
+            self.MeanWaveForms_Results_Dict[
+                "WF-AVERAGE-PIX-LOW-GAIN"
+            ] = self.Mwf_Mean_overPix
             if self.counter_ped > 0:
-                # self.MeanWaveForms_Results_Dict["WF-PHY-PED-AVERAGE-LOW-GAIN"] = self.Mwf_ped_average
-                self.MeanWaveForms_Results_Dict["WF-PHY-AVERAGE-PED-PIX-LOW-GAIN"] = self.Mwf_ped_Mean_overPix
+                self.MeanWaveForms_Results_Dict[
+                    "WF-PHY-AVERAGE-PED-PIX-LOW-GAIN"
+                ] = self.Mwf_ped_Mean_overPix
 
         return self.MeanWaveForms_Results_Dict
 
