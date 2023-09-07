@@ -24,7 +24,7 @@ from ...container import ChargeContainer
 
 __all__ = ["PhotoStatGainFFandPed"]
 
-class PhotoStatGain(ABC):
+class PhotoStatisticMaker(ABC):
 
     def _readFF(self,FFRun,maxevents: int = None,**kwargs) :
         log.info('reading FF data')
@@ -257,28 +257,5 @@ class PhotoStatGainFFandPed(PhotoStatGain):
         """
         self.create_output_table()
 
-
-
-class PhotoStatGainFF(PhotoStatGain):
-    def __init__(self, FFRun, PedRun, SPEresults : str, maxevents : int = None, **kwargs) : 
-        e = NotImplementedError("PhotoStatGainFF is not yet implemented")
-        log.error(e, exc_info = True)
-        raise e
-        self._readFF(FFRun,maxevents,**kwargs)
-
-        self._readSPE(SPEresults)
-        
-        """
-        if self.FFcharge.pixels_id != self._SPE_pixels_id : 
-            e = DifferentPixelsID("Ped run, FF run and SPE run need to have same pixels id")
-            log.error(e,exc_info = True)
-            raise e
-        else : 
-            self._pixels_id = self.FFcharge.pixels_id
-        """
-
-        self._reshape_all()
-
-        self.create_output_table()
 
 class PhotoStatisticMaker(GainMaker) :
