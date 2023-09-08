@@ -44,7 +44,7 @@ from .utils import UtilsMinuit,weight_gaussian,Statistics,MPE2
 
 
 
-__all__ = ["FlatFieldSingleSPEMaker"]
+__all__ = ["FlatFieldSingleSPEMaker","FlatFieldSingleStdSPEMaker"]
 
 
 
@@ -176,23 +176,9 @@ class FlatFieldSPEMaker(GainMaker) :
                 self._results.add_column(Column(data = np.empty((self.npixels),dtype = np.float64),name = f"{param.name}_error",unit = param.unit))
 
 
-    
-
-"""
-    def make_table_from_output_multi(self,list_dict : list) :
-        self._output_table = QTable.from_pandas(pd.DataFrame.from_dict(list_dict))
-        for param in self._parameters.parameters :
-            self._output_table[param.name] = Column(self._output_table[param.name].value, param.name, unit=param.unit)
-        if 'gain' in self._output_table.colnames :
-            if isinstance(self._output_table['gain'],MaskedColumn) :
-                self._output_table['gain'] = self._output_table['gain']._data
-                self._output_table['gain_error'] = self._output_table['gain_error']._data
-        self._output_table.meta['npixel'] = self.npixels
-        self._output_table.meta['comments'] = f'Produced with NectarGain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
-"""
-
-
 class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) : 
+    """class to perform fit of the SPE signal with all free parameters"""
+
     __parameters_file = 'parameters_signal.yaml'
     __fit_array = None
     __reduced_name = "FlatFieldSingleSPE"
@@ -429,5 +415,21 @@ class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) :
             del fig,ax
 
 
+class FlatFieldSingleStdSPEMaker(FlatFieldSingleSPEMaker):
+    """class to perform fit of the SPE signal with n and pp fixed"""
+    __parameters_file = 'parameters_signalStd.yaml'
+    
+    def __init__(self,charge,counts,*args,**kwargs) : 
+        super().__init__(charge,counts,*args,**kwargs)
+        self.__fix_parameters()
+
+    def __fix_parameters(self) : 
+        """this method should be used to fix n and pp
+        """
+        log.info("updating parameters by fixing pp and n")
+        pp = self._parameters["pp"]
+        pp.frozen = True
+        n = self._parameters["n"]
+        n.frozen = True
 
             
