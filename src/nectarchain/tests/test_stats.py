@@ -153,3 +153,16 @@ def test_stats_print():
     assert s.__str__() == 'mean: [2.]\nstd: [1.]\nmin: [1.]\nmax: [3.]\ncount: [3]\nshape: (1,)'
     assert s.__repr__() == s.__str__()
 
+def test_stats_badmerge():
+    import numpy as np
+    from nectarchain.utils.stats import Stats
+
+    s = Stats()
+    s.add(1)
+
+    s2 = Stats(5)
+    s2.add([1,2,3,4,5])
+
+
+    with pytest.raises(ValueError, match="Trying to merge from a different shape this:.*"):
+        s.merge(s2)
