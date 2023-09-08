@@ -51,7 +51,7 @@ class Stats:
         infos += f"min: {self.min}" + "\n"
         infos += f"max: {self.max}" + "\n"
         infos += f"count: {self.count}" + "\n"
-        infos += f"shape: {self.shape}" + "\n"
+        infos += f"shape: {self.shape}"
         return infos
     
     def __repr__(self):
