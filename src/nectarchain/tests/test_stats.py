@@ -125,3 +125,31 @@ def test_stats_merge3():
     np.testing.assert_allclose( s.variance, np.array([1,1,1,2,2]) )
     np.testing.assert_allclose( s.min,      np.array([0,1,2,3,4]) )
     np.testing.assert_allclose( s.max,      np.array([2,3,4,5,6]) )
+
+def test_stats_shape():
+    import numpy as np
+    from nectarchain.utils.stats import Stats, CameraStats, CameraSampleStats
+
+    s = Stats()
+    assert s.shape == (1,)
+
+    s = CameraStats()
+    assert s.shape == (2,1855)
+
+    s = CameraSampleStats()
+    assert s.shape == (2,1855,60)
+
+
+def test_stats_print():
+    import numpy as np
+    from nectarchain.utils.stats import Stats, CameraStats, CameraSampleStats
+
+    s = Stats()
+    s.add(1)
+    s.add(2)
+    s.add(3)
+
+
+    assert s.__str__() == 'mean: [2.]\nstd: [1.]\nmin: [1.]\nmax: [3.]\ncount: [3]\nshape: (1,)'
+    assert s.__repr__() == s.__str__()
+
