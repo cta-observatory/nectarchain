@@ -38,13 +38,7 @@ parser.add_argument('--voltage_tag',
                     help='tag for voltage specifcication (1400V or nominal), used to setup the output path. See help for more details'
                     )
 
-#output figures and path extension
-parser.add_argument('--display', 
-                    action='store_true',
-                    default=False,
-                    help='whether to save plot or not'
-                    )
-
+#output figures path extension
 parser.add_argument('--output_fig_tag', 
                     type = str,
                     default='',
@@ -93,7 +87,7 @@ parser.add_argument('-v',"--verbosity",
 
 
 def main(args) : 
-    figpath = f"{os.environ.get('NECTARCHAIN_FIGURES')}/"
+    figpath = f"{os.environ.get('NECTARCHAIN_FIGURES',f'/tmp/nectarchain_log/{os.getpid()}/figure')}/"
     figpath_ext = "" if args.output_fig_tag == "" else f"-{args.output_fig_tag}"
 
     multipath = "MULTI-" if args.multiproc else ""
@@ -102,20 +96,13 @@ def main(args) :
     charge_run_1400V = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges/{args.chargeExtractorPath}/",args.run_number)
 
     if args.free_pp_n :
-        gain_Std = FlatFieldSingleHHVSPEMaker.create_from_chargeContainer(signal = charge_run_1400V)
+        gain_Std = FlatFieldSingleHHVSPEMaker(signal = charge_run_1400V)
 
     else :
-        gain_Std = FlatFieldSingleHHVStdSPEMaker.create_from_chargeContainer(signal = charge_run_1400V)
+        gain_Std = FlatFieldSingleHHVStdSPEMaker(signal = charge_run_1400V)
 
     t = time.time()
-    gain_Std.make(pixels_id = args.pixels, 
-                  multiproc = args.multiproc,
-                  display = args.display,
-                  nproc = args.nproc, 
-                  chunksize = args.chunksize, 
-                  figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}"
-                  )
-    
+    gain_Std.make(pixels_id = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}")
     log.info(f"fit time =  {time.time() - t } sec")
     gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     conv_rate = len(gain_Std._results[gain_Std._results['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._results[gain_Std._results['is_valid']])/len(args.pixels)
@@ -131,7 +118,7 @@ if __name__ == "__main__":
     elif args.verbosity == "debug" : 
         logginglevel = logging.DEBUG
 
-    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','tmp/nectarchain_log')}/{os.getpid()}/figures")
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',force = True, level=logginglevel,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log")
 
     log = logging.getLogger(__name__)

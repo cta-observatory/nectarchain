@@ -13,7 +13,7 @@ import argparse
 
 #import seaborn as sns
 from nectarchain.calibration.container import ChargeContainer
-from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalfromHHVFit
+from nectarchain.calibration.makers.gain.FlatFieldSPEMakers import FlatFieldSingleNominalSPEMaker
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_SPEfit_combined_computation.py',
@@ -97,7 +97,7 @@ parser.add_argument('-v',"--verbosity",
 
 
 def main(args) : 
-    figpath = f"{os.environ.get('NECTARCHAIN_FIGURES')}/"
+    figpath = f"{os.environ.get('NECTARCHAIN_FIGURES',f'/tmp/nectarchain_log/{os.getpid()}/figure')}/"
     figpath_ext = "" if args.output_fig_tag == "" else f"-{args.output_fig_tag}"
 
 
@@ -108,15 +108,22 @@ def main(args) :
     if args.combined : 
         raise NotImplementedError("combined fit not implemented yet")
     else : 
-        gain_Std = NectarGainSPESingleSignalfromHHVFit(signal = charge_run,
+        gain_Std = FlatFieldSingleNominalSPEMaker.create_from_chargeContainer(signal = charge_run,
                                     nectarGainSPEresult=args.VVH_fitted_results,
                                     same_luminosity=args.same_luminosity
                                     )
         t = time.time()
-        gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}")
+        gain_Std.make(pixels_id = args.pixels, 
+                  multiproc = args.multiproc,
+                  display = args.display,
+                  nproc = args.nproc, 
+                  chunksize = args.chunksize, 
+                  figpath = figpath+f"/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}"
+                  )
+        
         log.info(f"fit time =  {time.time() - t } sec")
         gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
-        log.info(f"convergence rate : {len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels}")
+        log.info(f"convergence rate : {len(gain_Std._results[gain_Std._results['is_valid']])/gain_Std.npixels}")
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -128,7 +135,7 @@ if __name__ == "__main__":
     elif args.verbosity == "debug" : 
         logginglevel = logging.DEBUG
 
-    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp/nectarchain_log')}/{os.getpid()}/figures")
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',force = True, level=logginglevel,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log")
     
     log = logging.getLogger(__name__)
