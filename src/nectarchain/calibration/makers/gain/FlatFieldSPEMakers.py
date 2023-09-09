@@ -6,7 +6,7 @@ log.handlers = logging.getLogger('__main__').handlers
 
 import numpy as np
 import astropy.units as u
-from astropy.table import Column
+from astropy.table import Column,QTable
 
 import copy
 import os
@@ -42,10 +42,7 @@ from .parameters import Parameter, Parameters
 from .utils import UtilsMinuit,weight_gaussian,Statistics,MPE2
 
 
-
-
-__all__ = ["FlatFieldSingleSPEMaker","FlatFieldSingleStdSPEMaker"]
-
+__all__ = ["FlatFieldSingleHHVSPEMaker","FlatFieldSingleHHVStdSPEMaker"]
 
 
 class FlatFieldSPEMaker(GainMaker) : 
@@ -90,7 +87,7 @@ class FlatFieldSPEMaker(GainMaker) :
                     self._parameters.append(eval(f"self.__{name}"))
 
     @staticmethod
-    def _update_parameters(parameters,charge,counts) : 
+    def _update_parameters(parameters,charge,counts,**kwargs) : 
         coeff_ped,coeff_mean = __class__._get_mean_gaussian_fit(charge,counts)
         pedestal = parameters['pedestal']
         pedestal.value = coeff_ped[1]
@@ -176,12 +173,15 @@ class FlatFieldSPEMaker(GainMaker) :
                 self._results.add_column(Column(data = np.empty((self.npixels),dtype = np.float64),name = f"{param.name}_error",unit = param.unit))
 
 
-class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) : 
+
+class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) : 
     """class to perform fit of the SPE signal with all free parameters"""
 
     __parameters_file = 'parameters_signal.yaml'
     __fit_array = None
     __reduced_name = "FlatFieldSingleSPE"
+    __nproc_default = 8
+    __chunksize_default = 1
 
 #constructors
     def __init__(self,charge,counts,*args,**kwargs) : 
@@ -288,7 +288,7 @@ class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) :
 
         for _id in pixels_id : 
             i = np.where(self.pixels_id == _id)[0][0]
-            parameters = __class__._update_parameters(self.parameters,self._charge[i].data[~self._charge[i].mask],self._counts[i].data[~self._charge[i].mask])
+            parameters = __class__._update_parameters(self.parameters,self._charge[i].data[~self._charge[i].mask],self._counts[i].data[~self._charge[i].mask],pixel_id=_id,**kwargs)
             minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
             minuit_kwargs = {parname : minuitParameters['values'][parname] for parname in minuitParameters['values']}
             log.info(f'creation of fit instance for pixel : {_id}')
@@ -315,7 +315,11 @@ class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) :
         log.info("Finished")
         return {f"values_{i}" : _values, f"errors_{i}" : _errors}
 
-    def make(self,pixels_id = None, display = True,**kwargs) : 
+    def make(self,
+             pixels_id = None,
+             multiproc = True, 
+             display = True,
+             **kwargs) : 
         log.info("running maker")
         log.info('checking asked pixels id')
         if pixels_id is None : 
@@ -338,18 +342,30 @@ class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) :
                                     )
 
             log.info("running fits")
-            t = time.time()
-            with Pool(8) as pool: 
-                result = pool.starmap_async(__class__.run_fit, 
-                [(i,) for i in range(npix)])
-                result.wait()
-            try : 
-                res = result.get()
-            except Exception as e : 
-                log.error(e,exc_info=True)
-                raise e
-            log.debug(res)
-            log.info(f'time for multiproc with starmap_async execution is {time.time() - t:.2e} sec')
+            if multiproc : 
+                nproc = kwargs.get("nproc",__class__.__nproc_default)
+                chunksize = kwargs.get("chunksize",max(__class__.__chunksize_default,npix//(nproc*10)))
+                log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
+
+                t = time.time()
+                with Pool(nproc) as pool: 
+                    result = pool.starmap_async(__class__.run_fit, 
+                    [(i,) for i in range(npix)],
+                    chunksize=chunksize)
+                    result.wait()
+                try : 
+                    res = result.get()
+                except Exception as e : 
+                    log.error(e,exc_info=True)
+                    raise e
+                log.debug(res)
+                log.info(f'time for multiproc with starmap_async execution is {time.time() - t:.2e} sec')
+            else : 
+                log.info("running in mono-cpu")
+                t = time.time()
+                res = [__class__.run_fit(i) for i in range(npix)]
+                log.debug(res)
+                log.info(f'time for singleproc execution is {time.time() - t:.2e} sec')
 
             log.info("filling result table from fits results")
             self._fill_results_table_from_dict(res,pixels_id)
@@ -388,9 +404,9 @@ class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) :
         ax.legend(fontsize=18)
         return fig,ax
 
-
     def display(self,pixels_id,**kwargs) : 
         figpath = kwargs.get('figpath',f"/tmp/NectarGain_pid{os.getpid()}")
+        os.makedirs(figpath,exist_ok = True)
         for _id in pixels_id :
             index = np.argmax(self._results['pixels_id'] == _id) 
             fig,ax = __class__.plot_single(
@@ -407,22 +423,23 @@ class FlatFieldSingleSPEMaker(FlatFieldSPEMaker) :
                 self._results['luminosity'][index].value,
                 self._results['likelihood'][index],
             )
-            
-            os.makedirs(figpath,exist_ok = True)
             fig.savefig(f"{figpath}/fit_SPE_pixel{_id}.pdf")
             fig.clf()
             plt.close(fig)
             del fig,ax
 
 
-class FlatFieldSingleStdSPEMaker(FlatFieldSingleSPEMaker):
+
+class FlatFieldSingleHHVStdSPEMaker(FlatFieldSingleHHVSPEMaker):
     """class to perform fit of the SPE signal with n and pp fixed"""
     __parameters_file = 'parameters_signalStd.yaml'
     
+#constructors
     def __init__(self,charge,counts,*args,**kwargs) : 
         super().__init__(charge,counts,*args,**kwargs)
         self.__fix_parameters()
 
+#methods
     def __fix_parameters(self) : 
         """this method should be used to fix n and pp
         """
@@ -431,5 +448,73 @@ class FlatFieldSingleStdSPEMaker(FlatFieldSingleSPEMaker):
         pp.frozen = True
         n = self._parameters["n"]
         n.frozen = True
+  
 
-            
+
+class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
+    """class to perform fit of the SPE signal at nominal voltage from fitted data obtained with 1400V run
+    Thus, n, pp and res are fixed"""
+    __parameters_file = 'parameters_signal_fromHHVFit.yaml'
+
+#constructors
+    def __init__(self, charge, counts, nectarGainSPEresult : str, same_luminosity : bool = True, *args, **kwargs):
+        super().__init__(charge, counts, *args, **kwargs)
+        self.__fix_parameters(same_luminosity)
+        self.__same_luminosity = same_luminosity
+        self.__nectarGainSPEresult = self._read_SPEresult(nectarGainSPEresult)
+
+#getters and setters
+    @property
+    def nectarGainSPEresult(self) : return copy.deepcopy(self.__nectarGainSPEresult)
+
+    @property
+    def same_luminosity(self) : return copy.deepcopy(self.__same_luminosity)
+
+#methods
+    def _read_SPEresult(self,nectarGainSPEresult : str) : 
+        table = QTable.read(nectarGainSPEresult,format = "ascii.ecsv")
+        argsort = []
+        mask = []
+        for _id in self._pixels_id : 
+            if _id in table['pixels_id'] : 
+                argsort.append(np.where(_id==table['pixels_id'])[0][0])
+                mask.append(True)
+            else : 
+                mask.append(True)
+        self._pixels_id = self._pixels_id[np.array(mask)]
+        return table[np.array(argsort)]
+
+    def __fix_parameters(self, same_luminosity : bool) : 
+        """this method should be used to fix n, pp and res
+        """
+        log.info("updating parameters by fixing pp, n and res")
+        pp = self._parameters["pp"]
+        pp.frozen = True
+        n = self._parameters["n"]
+        n.frozen = True
+        resolution = self._parameters["resolution"]
+        resolution.frozen = True
+        if same_luminosity : 
+            luminosity = self._parameters["luminosity"]
+            luminosity.frozen = True
+
+    def _make_fit_array_from_parameters(self, pixels_id = None, **kwargs) : 
+        return super()._make_fit_array_from_parameters(self, pixels_id = pixels_id, nectarGainSPEresult = self.__nectarGainSPEresult, **kwargs)
+
+    @staticmethod
+    def _update_parameters(parameters,charge,counts,pixel_id,nectarGainSPEresult,**kwargs) : 
+        param = super()._update_parameters(parameters,charge,counts,**kwargs)
+        luminosity = param["luminosity"]
+        resolution = param["resolution"]
+        pp = param["pp"]
+        n = param["n"]
+        
+        index = np.where(pixel_id == nectarGainSPEresult["pixels_id"])[0][0]
+
+        resolution.value = nectarGainSPEresult[index]["resolution"].value
+        pp.value = nectarGainSPEresult[index]["pp"].value
+        n.value = nectarGainSPEresult[index]["n"].value
+
+        if luminosity.frozen : 
+            luminosity.value = nectarGainSPEresult[index]["luminosity"].value
+        return param

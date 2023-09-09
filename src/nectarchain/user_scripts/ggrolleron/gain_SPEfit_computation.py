@@ -14,7 +14,7 @@ import argparse
 
 #import seaborn as sns
 from nectarchain.calibration.container import ChargeContainer
-from nectarchain.calibration.NectarGain import NectarGainSPESingleSignalStd,NectarGainSPESingleSignal
+from nectarchain.calibration.makers.gain.FlatFieldSPEMakers import FlatFieldSingleHHVSPEMaker,FlatFieldSingleHHVStdSPEMaker
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_SPEfit_computation.py',
@@ -96,15 +96,16 @@ def main(args) :
     charge_run_1400V = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges/{args.chargeExtractorPath}/",args.run_number)
 
     if args.free_pp_n :
-        gain_Std = NectarGainSPESingleSignal(signal = charge_run_1400V)
+        gain_Std = FlatFieldSingleHHVSPEMaker(signal = charge_run_1400V)
 
     else :
-        gain_Std = NectarGainSPESingleSignalStd(signal = charge_run_1400V)
+        gain_Std = FlatFieldSingleHHVStdSPEMaker(signal = charge_run_1400V)
+
     t = time.time()
-    gain_Std.run(pixel = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}")
+    gain_Std.make(pixels_id = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}")
     log.info(f"fit time =  {time.time() - t } sec")
     gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
-    conv_rate = len(gain_Std._output_table[gain_Std._output_table['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._output_table[gain_Std._output_table['is_valid']])/len(args.pixels)
+    conv_rate = len(gain_Std._results[gain_Std._results['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._results[gain_Std._results['is_valid']])/len(args.pixels)
     log.info(f"convergence rate : {conv_rate}")
 
 if __name__ == "__main__":
