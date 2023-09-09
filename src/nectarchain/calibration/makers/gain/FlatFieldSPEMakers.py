@@ -288,15 +288,15 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
 
         fit_array = np.empty((npix),dtype = np.object_)
 
-        for _id in pixels_id : 
+        for i,_id in enumerate(pixels_id) : 
         #for j in prange(len(pixels_id)) : 
         #    _id = pixels_id[j]
-            i = np.where(self.pixels_id == _id)[0][0]
-            parameters = __class__._update_parameters(self.parameters,self._charge[i].data[~self._charge[i].mask],self._counts[i].data[~self._charge[i].mask],pixel_id=_id,**kwargs)
+            index = np.where(self.pixels_id == _id)[0][0]
+            parameters = __class__._update_parameters(self.parameters,self._charge[index].data[~self._charge[index].mask],self._counts[index].data[~self._charge[index].mask],pixel_id=_id,**kwargs)
             minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
             minuit_kwargs = {parname : minuitParameters['values'][parname] for parname in minuitParameters['values']}
             log.info(f'creation of fit instance for pixel : {_id}')
-            fit_array[i] = Minuit(__class__.cost(self._charge[i].data[~self._charge[i].mask],self._counts[i].data[~self._charge[i].mask]),**minuit_kwargs)
+            fit_array[i] = Minuit(__class__.cost(self._charge[index].data[~self._charge[index].mask],self._counts[index].data[~self._charge[index].mask]),**minuit_kwargs)
             log.debug('fit created')
             fit_array[i].errordef = Minuit.LIKELIHOOD
             fit_array[i].strategy = 0
@@ -438,6 +438,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
 class FlatFieldSingleHHVStdSPEMaker(FlatFieldSingleHHVSPEMaker):
     """class to perform fit of the SPE signal with n and pp fixed"""
     __parameters_file = 'parameters_signalStd.yaml'
+    __reduced_name = "FlatFieldSingleStdSPE"
     
 #constructors
     def __init__(self,charge,counts,*args,**kwargs) : 
@@ -460,6 +461,7 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
     """class to perform fit of the SPE signal at nominal voltage from fitted data obtained with 1400V run
     Thus, n, pp and res are fixed"""
     __parameters_file = 'parameters_signal_fromHHVFit.yaml'
+    __reduced_name = "FlatFieldSingleNominalSPE"
 
 #constructors
     def __init__(self, charge, counts, nectarGainSPEresult : str, same_luminosity : bool = True, *args, **kwargs):

@@ -31,7 +31,12 @@ parser.add_argument('--overwrite',
                     help='to force overwrite files on disk'
                     )
 
-#output figures path extension
+#output figures and path extension
+parser.add_argument('--display', 
+                    action='store_true',
+                    default=False,
+                    help='whether to save plot or not'
+                    )
 parser.add_argument('--output_fig_tag', 
                     type = str,
                     default='',
