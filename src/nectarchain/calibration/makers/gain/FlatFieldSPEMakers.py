@@ -32,6 +32,7 @@ from multiprocessing import  Pool
 
 from inspect import signature
 
+from numba import njit, prange
 
 from .gainMakers import GainMaker
 
@@ -88,7 +89,7 @@ class FlatFieldSPEMaker(GainMaker) :
 
     @staticmethod
     def _update_parameters(parameters,charge,counts,**kwargs) : 
-        coeff_ped,coeff_mean = __class__._get_mean_gaussian_fit(charge,counts)
+        coeff_ped,coeff_mean = __class__._get_mean_gaussian_fit(charge,counts,**kwargs)
         pedestal = parameters['pedestal']
         pedestal.value = coeff_ped[1]
         pedestal.min = coeff_ped[1] - coeff_ped[2]
@@ -111,7 +112,7 @@ class FlatFieldSPEMaker(GainMaker) :
         return parameters
 
     @staticmethod
-    def _get_mean_gaussian_fit(charge, counts ,extension = ""):
+    def _get_mean_gaussian_fit(charge, counts ,extension = "",**kwargs):
         #charge = charge_in.data[~histo_in.mask]
         #histo = histo_in.data[~histo_in.mask]
         windows_lenght = __class__._Windows_lenght
@@ -121,7 +122,7 @@ class FlatFieldSPEMaker(GainMaker) :
         peak_max = np.argmax(histo_smoothed[peaks[0]])
         peak_pos,peak_value = charge[peaks[0][peak_max]], counts[peaks[0][peak_max]]
         coeff, _ = curve_fit(weight_gaussian, charge[:peaks[0][peak_max]], histo_smoothed[:peaks[0][peak_max]],p0 = [peak_value,peak_pos,1])
-        if log.getEffectiveLevel() == logging.DEBUG :
+        if log.getEffectiveLevel() == logging.DEBUG and kwargs.get("display",False) :
             log.debug('plotting figures with prefit parameters computation') 
             fig,ax = plt.subplots(1,1,figsize = (5,5))
             ax.errorbar(charge,counts,np.sqrt(counts),zorder=0,fmt=".",label = "data")
@@ -146,7 +147,7 @@ class FlatFieldSPEMaker(GainMaker) :
         peak_pos_mean,peak_value_mean = charge[mask][peaks_mean[0][peak_max_mean]], histo_smoothed[mask][peaks_mean[0][peak_max_mean]]
         mask = (charge > ((coeff[1]+peak_pos_mean)/2)) * (charge < (peak_pos_mean + (peak_pos_mean-coeff[1])/2))
         coeff_mean, _ = curve_fit(weight_gaussian, charge[mask], histo_smoothed[mask],p0 = [peak_value_mean,peak_pos_mean,1])
-        if log.getEffectiveLevel() == logging.DEBUG :
+        if log.getEffectiveLevel() == logging.DEBUG and kwargs.get("display",False) :
             log.debug('plotting figures with prefit parameters computation') 
             fig,ax = plt.subplots(1,1,figsize = (5,5))
             ax.errorbar(charge,counts,np.sqrt(counts),zorder=0,fmt=".",label = "data")
@@ -211,7 +212,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
     @classmethod
     def create_from_chargeContainer(cls, signal : ChargeContainer,**kwargs) : 
         histo = signal.histo_hg(autoscale = True)
-        return cls(charge = histo[1],counts = histo[0],pixels_id = signal.pixels_id)
+        return cls(charge = histo[1],counts = histo[0],pixels_id = signal.pixels_id,**kwargs)
     
 #getters and setters
     @property
@@ -277,6 +278,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
             return __class__._NG_Likelihood_Chi2(pp,resolution,mean,n,pedestal,pedestalWidth,luminosity,charge,counts,**kwargs)
         return Chi2
 
+    #@njit(parallel=True,nopython = True)
     def _make_fit_array_from_parameters(self, pixels_id = None, **kwargs) : 
         if pixels_id is None : 
             npix = self.npixels
@@ -287,6 +289,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
         fit_array = np.empty((npix),dtype = np.object_)
 
         for _id in pixels_id : 
+        #for j in prange(len(pixels_id)) : 
+        #    _id = pixels_id[j]
             i = np.where(self.pixels_id == _id)[0][0]
             parameters = __class__._update_parameters(self.parameters,self._charge[i].data[~self._charge[i].mask],self._counts[i].data[~self._charge[i].mask],pixel_id=_id,**kwargs)
             minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
@@ -326,7 +330,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
             npix = self.npixels
         else : 
             log.debug('checking that asked pixels id are in data')
-            mask = np.array([_id in self.pixels_id for _id in pixels_id])
+            pixels_id = np.asarray(pixels_id)
+            mask = np.array([_id in self.pixels_id for _id in pixels_id],dtype = bool)
             if False in mask : 
                 log.debug(f"The following pixels are not in data : {pixels_id[~mask]}")
                 pixels_id = pixels_id[mask]

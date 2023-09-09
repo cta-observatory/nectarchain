@@ -38,7 +38,13 @@ parser.add_argument('--voltage_tag',
                     help='tag for voltage specifcication (1400V or nominal), used to setup the output path. See help for more details'
                     )
 
-#output figures path extension
+#output figures and path extension
+parser.add_argument('--display', 
+                    action='store_true',
+                    default=False,
+                    help='whether to save plot or not'
+                    )
+
 parser.add_argument('--output_fig_tag', 
                     type = str,
                     default='',
@@ -96,13 +102,20 @@ def main(args) :
     charge_run_1400V = ChargeContainer.from_file(f"{os.environ.get('NECTARCAMDATA')}/charges/{args.chargeExtractorPath}/",args.run_number)
 
     if args.free_pp_n :
-        gain_Std = FlatFieldSingleHHVSPEMaker(signal = charge_run_1400V)
+        gain_Std = FlatFieldSingleHHVSPEMaker.create_from_chargeContainer(signal = charge_run_1400V)
 
     else :
-        gain_Std = FlatFieldSingleHHVStdSPEMaker(signal = charge_run_1400V)
+        gain_Std = FlatFieldSingleHHVStdSPEMaker.create_from_chargeContainer(signal = charge_run_1400V)
 
     t = time.time()
-    gain_Std.make(pixels_id = args.pixels, multiproc = args.multiproc, nproc = args.nproc, chunksize = args.chunksize, figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}")
+    gain_Std.make(pixels_id = args.pixels, 
+                  multiproc = args.multiproc,
+                  display = args.display,
+                  nproc = args.nproc, 
+                  chunksize = args.chunksize, 
+                  figpath = figpath+f"/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}"
+                  )
+    
     log.info(f"fit time =  {time.time() - t } sec")
     gain_Std.save(f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}{args.voltage_tag}-{SPEpath}-{args.run_number}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     conv_rate = len(gain_Std._results[gain_Std._results['is_valid']])/gain_Std.npixels if args.pixels is None else len(gain_Std._results[gain_Std._results['is_valid']])/len(args.pixels)
