@@ -12,7 +12,7 @@ import astropy.units as u
 
 from ..core import CalibrationMaker
 
-__all__ = ["high_gainMaker"]
+__all__ = ["GainMaker"]
 
 class GainMaker(CalibrationMaker) : 
     """mother class for of the gain calibration
