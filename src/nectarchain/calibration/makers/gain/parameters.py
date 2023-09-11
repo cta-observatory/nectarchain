@@ -10,7 +10,15 @@ import astropy.units as u
 __all__ = ["Parameter","Parameters"]
 
 class Parameter() :
-    def __init__(self, name, value, min = np.nan, max = np.nan, error = np.nan, unit = u.dimensionless_unscaled, frozen : bool = False):
+    def __init__(self, 
+                    name, 
+                    value, 
+                    min = np.nan, 
+                    max = np.nan, 
+                    error = np.nan, 
+                    unit = u.dimensionless_unscaled, 
+                    frozen : bool = False
+                    )-> None:
         self.__name = name
         self.__value = value
         self.__error = error
@@ -67,7 +75,7 @@ class Parameters() :
         self.__parameters = copy.deepcopy(parameters_liste)
         
     
-    def append(self,parameter : Parameter) :
+    def append(self,parameter : Parameter) -> None:
         self.__parameters.append(parameter)
 
     def __getitem__(self,key) : 

@@ -38,7 +38,7 @@ class PhotoStatisticMaker(GainMaker):
                  SPE_resolution,
                  *args,
                  **kwargs
-                 ) :
+                 ) -> None:
         super().__init__(*args,**kwargs)
 
         self.__coefCharge_FF_Ped = coefCharge_FF_Ped
@@ -162,14 +162,14 @@ class PhotoStatisticMaker(GainMaker):
             raise e
         return {"Pedcharge" : Pedcharge}
 
-    def __check_shape(self) : 
+    def __check_shape(self) -> None: 
         try : 
             self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[0] * self.__Pedcharge_lg[0] * self.__SPE_resolution * self._pixels_id
         except Exception as e : 
             log.error(e,exc_info = True)
             raise e
 
-    def make(self,**kwargs):
+    def make(self,**kwargs)-> None:
         log.info('running photo statistic method')
         self._results["high_gain"] = self.gainHG
         self._results["low_gain"] = self.gainLG
@@ -191,7 +191,7 @@ class PhotoStatisticMaker(GainMaker):
             #ax.set_xlim(xmin = 0)
             #ax.set_ylim(ymin = 0)
             ax.legend(fontsize=15)
-            return fig
+        return fig
 
 #getters and setters
     @property

@@ -13,7 +13,6 @@ import os
 import yaml
 import time
 
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -31,8 +30,6 @@ from scipy.special import gammainc
 from multiprocessing import  Pool
 
 from inspect import signature
-
-from numba import njit, prange
 
 from .gainMakers import GainMaker
 
@@ -53,7 +50,7 @@ class FlatFieldSPEMaker(GainMaker) :
     _Order = 2
 
 #constructors
-    def __init__(self,*args,**kwargs) : 
+    def __init__(self,*args,**kwargs) -> None: 
         super().__init__(*args,**kwargs)
         self.__parameters = Parameters()
 
@@ -66,7 +63,7 @@ class FlatFieldSPEMaker(GainMaker) :
     def _parameters(self) : return self.__parameters
 
 #methods
-    def read_param_from_yaml(self,parameters_file,only_update = False) :
+    def read_param_from_yaml(self,parameters_file,only_update = False) -> None:
         with open(f"{os.path.dirname(os.path.abspath(__file__))}/{parameters_file}") as parameters :
             param = yaml.safe_load(parameters) 
             if only_update : 
@@ -174,7 +171,7 @@ class FlatFieldSPEMaker(GainMaker) :
     
         return coeff, coeff_mean
 
-    def _update_table_from_parameters(self) : 
+    def _update_table_from_parameters(self) -> None: 
         for param in self._parameters.parameters : 
             if not(param.name in self._results.colnames) : 
                 self._results.add_column(Column(data = np.empty((self.npixels),dtype = np.float64),name = param.name,unit = param.unit))
@@ -192,13 +189,10 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
     __chunksize_default = 1
 
 #constructors
-    def __init__(self,charge,counts,*args,**kwargs) : 
+    def __init__(self,charge,counts,*args,**kwargs) -> None: 
         super().__init__(*args,**kwargs)
         self.__charge = charge
         self.__counts = counts
-        self.__mask_fitted_pixel = np.zeros((self.__charge.shape[0]),dtype = bool)
-
-
 
         self.__pedestal = Parameter(name = "pedestal",
                                 value = (np.min(self.__charge) + np.sum(self.__charge * self.__counts)/(np.sum(self.__counts)))/2,
@@ -233,7 +227,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
     def _counts(self) : return self.__counts
 
 #methods
-    def _fill_results_table_from_dict(self,dico,pixels_id) : 
+    def _fill_results_table_from_dict(self,dico,pixels_id) -> None: 
         chi2_sig = signature(__class__.cost(self._charge,self._counts))
         for i in range(len(pixels_id)) : 
             values = dico[i].get(f"values_{i}",None)
@@ -444,12 +438,12 @@ class FlatFieldSingleHHVStdSPEMaker(FlatFieldSingleHHVSPEMaker):
     _reduced_name = "FlatFieldSingleStdSPE"
     
 #constructors
-    def __init__(self,charge,counts,*args,**kwargs) : 
+    def __init__(self,charge,counts,*args,**kwargs) -> None: 
         super().__init__(charge,counts,*args,**kwargs)
         self.__fix_parameters()
 
 #methods
-    def __fix_parameters(self) : 
+    def __fix_parameters(self) -> None: 
         """this method should be used to fix n and pp
         """
         log.info("updating parameters by fixing pp and n")
@@ -467,7 +461,7 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
     _reduced_name = "FlatFieldSingleNominalSPE"
 
 #constructors
-    def __init__(self, charge, counts, nectarGainSPEresult : str, same_luminosity : bool = False, *args, **kwargs):
+    def __init__(self, charge, counts, nectarGainSPEresult : str, same_luminosity : bool = False, *args, **kwargs) -> None:
         super().__init__(charge, counts, *args, **kwargs)
         self.__fix_parameters(same_luminosity)
         self.__same_luminosity = same_luminosity
@@ -497,7 +491,7 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         self._pixels_id = self._pixels_id[np.array(mask)]
         return table[np.array(argsort)]
 
-    def __fix_parameters(self, same_luminosity : bool) : 
+    def __fix_parameters(self, same_luminosity : bool) -> None: 
         """this method should be used to fix n, pp, res and possibly luminosity
         """
         log.info("updating parameters by fixing pp, n and res")

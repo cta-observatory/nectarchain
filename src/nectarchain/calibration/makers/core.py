@@ -35,7 +35,7 @@ class CalibrationMaker(ABC) :
 
 #methods
     @abstractmethod
-    def make(self,*args,**kwargs) :
+    def make(self,*args,**kwargs) : 
         pass
 
 #I/O method
