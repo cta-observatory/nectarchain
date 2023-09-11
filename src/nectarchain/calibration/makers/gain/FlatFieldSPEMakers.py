@@ -42,6 +42,8 @@ from .parameters import Parameter, Parameters
 
 from .utils import UtilsMinuit,weight_gaussian,Statistics,MPE2
 
+from .utils import MeanValueError,PedestalValueError
+
 
 __all__ = ["FlatFieldSingleHHVSPEMaker","FlatFieldSingleHHVStdSPEMaker"]
 
@@ -89,26 +91,31 @@ class FlatFieldSPEMaker(GainMaker) :
 
     @staticmethod
     def _update_parameters(parameters,charge,counts,**kwargs) : 
-        coeff_ped,coeff_mean = __class__._get_mean_gaussian_fit(charge,counts,**kwargs)
-        pedestal = parameters['pedestal']
-        pedestal.value = coeff_ped[1]
-        pedestal.min = coeff_ped[1] - coeff_ped[2]
-        pedestal.max = coeff_ped[1] + coeff_ped[2]
-        log.debug(f"pedestal updated : {pedestal}")
-        pedestalWidth = parameters["pedestalWidth"]
-        pedestalWidth.value = pedestal.max - pedestal.value
-        pedestalWidth.max = 3 * pedestalWidth.value
-        log.debug(f"pedestalWidth updated : {pedestalWidth.value}")
         try : 
-            if (coeff_mean[1] - pedestal.value < 0) or ((coeff_mean[1] - coeff_mean[2]) - pedestal.max < 0) : raise Exception("mean gaussian fit not good")
+            coeff_ped,coeff_mean = __class__._get_mean_gaussian_fit(charge,counts,**kwargs)
+            pedestal = parameters['pedestal']
+            pedestal.value = coeff_ped[1]
+            pedestal.min = coeff_ped[1] - coeff_ped[2]
+            pedestal.max = coeff_ped[1] + coeff_ped[2]
+            log.debug(f"pedestal updated : {pedestal}")
+            pedestalWidth = parameters["pedestalWidth"]
+            pedestalWidth.value = pedestal.max - pedestal.value
+            pedestalWidth.max = 3 * pedestalWidth.value
+            log.debug(f"pedestalWidth updated : {pedestalWidth.value}")
+            
+            if (coeff_mean[1] - pedestal.value < 0) or ((coeff_mean[1] - coeff_mean[2]) - pedestal.max < 0) : raise MeanValueError("mean gaussian fit not good")
             mean = parameters['mean']
             mean.value = coeff_mean[1] - pedestal.value
             mean.min = (coeff_mean[1] - coeff_mean[2]) - pedestal.max
             mean.max = (coeff_mean[1] + coeff_mean[2]) - pedestal.min
             log.debug(f"mean updated : {mean}")
-        except Exception as e :
+        except MeanValueError as e :
             log.warning(e,exc_info=True)
             log.warning("mean parameters limits and starting value not changed")
+        except Exception as e : 
+            log.warning(e, exc_info = True)
+            log.warning("pedestal and mean parameters limits and starting value not changed")
+        
         return parameters
 
     @staticmethod
@@ -180,7 +187,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
 
     __parameters_file = 'parameters_signal.yaml'
     __fit_array = None
-    __reduced_name = "FlatFieldSingleSPE"
+    _reduced_name = "FlatFieldSingleSPE"
     __nproc_default = 8
     __chunksize_default = 1
 
@@ -225,13 +232,6 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
     @property
     def _counts(self) : return self.__counts
 
-#I/O method
-    def save(self,path,**kwargs) : 
-        path = Path(path)
-        os.makedirs(path,exist_ok = True)
-        log.info(f'data saved in {path}')
-        self._results.write(f"{path}/results_{self.__reduced_name}.ecsv", format='ascii.ecsv',overwrite = kwargs.get("overwrite",False))
-
 #methods
     def _fill_results_table_from_dict(self,dico,pixels_id) : 
         chi2_sig = signature(__class__.cost(self._charge,self._counts))
@@ -248,9 +248,9 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
                     self._results[key][index] = values[j]
                     self._results[f"{key}_error"][index] = errors[j]
                     if key == 'mean' : 
-                        self._gain[index] = values[j]
-                        self._results[f"gain_error"][index] = [errors[j],errors[j]]
-                        self._results[f"gain"][index] = values[j]
+                        self._high_gain[index] = values[j]
+                        self._results[f"high_gain_error"][index] = [errors[j],errors[j]]
+                        self._results[f"high_gain"][index] = values[j]
                 self._results['is_valid'][index] = True
                 self._results["likelihood"][index] = __class__.__fit_array[i].fcn(__class__.__fit_array[i].values)
                 ndof = self._counts.data[index][~self._counts.mask[index]].shape[0] - __class__.__fit_array[i].nfit
@@ -327,6 +327,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
         log.info("running maker")
         log.info('checking asked pixels id')
         if pixels_id is None : 
+            pixels_id = self.pixels_id
             npix = self.npixels
         else : 
             log.debug('checking that asked pixels id are in data')
@@ -343,7 +344,9 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
         else : 
             log.info("creation of the fits instance array")
             __class__.__fit_array = self._make_fit_array_from_parameters(
-                                    pixels_id = pixels_id
+                                    pixels_id = pixels_id,
+                                    display = display,
+                                    **kwargs
                                     )
 
             log.info("running fits")
@@ -420,8 +423,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
                 self._counts[index],
                 self._results['pp'][index].value, 
                 self._results['resolution'][index].value, 
-                self._results['gain'][index].value, 
-                self._results['gain_error'][index].value.mean(),
+                self._results['high_gain'][index].value, 
+                self._results['high_gain_error'][index].value.mean(),
                 self._results['n'][index].value, 
                 self._results['pedestal'][index].value, 
                 self._results['pedestalWidth'][index].value, 
@@ -438,7 +441,7 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
 class FlatFieldSingleHHVStdSPEMaker(FlatFieldSingleHHVSPEMaker):
     """class to perform fit of the SPE signal with n and pp fixed"""
     __parameters_file = 'parameters_signalStd.yaml'
-    __reduced_name = "FlatFieldSingleStdSPE"
+    _reduced_name = "FlatFieldSingleStdSPE"
     
 #constructors
     def __init__(self,charge,counts,*args,**kwargs) : 
@@ -461,14 +464,16 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
     """class to perform fit of the SPE signal at nominal voltage from fitted data obtained with 1400V run
     Thus, n, pp and res are fixed"""
     __parameters_file = 'parameters_signal_fromHHVFit.yaml'
-    __reduced_name = "FlatFieldSingleNominalSPE"
+    _reduced_name = "FlatFieldSingleNominalSPE"
 
 #constructors
-    def __init__(self, charge, counts, nectarGainSPEresult : str, same_luminosity : bool = True, *args, **kwargs):
+    def __init__(self, charge, counts, nectarGainSPEresult : str, same_luminosity : bool = False, *args, **kwargs):
         super().__init__(charge, counts, *args, **kwargs)
         self.__fix_parameters(same_luminosity)
         self.__same_luminosity = same_luminosity
         self.__nectarGainSPEresult = self._read_SPEresult(nectarGainSPEresult)
+        if len(self.__nectarGainSPEresult) == 0 : 
+            log.warning("The intersection between pixels id from the data and those valid from the SPE fit result is empty")
 
 #getters and setters
     @property
@@ -480,6 +485,7 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
 #methods
     def _read_SPEresult(self,nectarGainSPEresult : str) : 
         table = QTable.read(nectarGainSPEresult,format = "ascii.ecsv")
+        table = table[table["is_valid"]]
         argsort = []
         mask = []
         for _id in self._pixels_id : 
@@ -487,12 +493,12 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
                 argsort.append(np.where(_id==table['pixels_id'])[0][0])
                 mask.append(True)
             else : 
-                mask.append(True)
+                mask.append(False)
         self._pixels_id = self._pixels_id[np.array(mask)]
         return table[np.array(argsort)]
 
     def __fix_parameters(self, same_luminosity : bool) : 
-        """this method should be used to fix n, pp and res
+        """this method should be used to fix n, pp, res and possibly luminosity
         """
         log.info("updating parameters by fixing pp, n and res")
         pp = self._parameters["pp"]
@@ -502,11 +508,12 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         resolution = self._parameters["resolution"]
         resolution.frozen = True
         if same_luminosity : 
+            log.info("fixing luminosity")
             luminosity = self._parameters["luminosity"]
             luminosity.frozen = True
 
     def _make_fit_array_from_parameters(self, pixels_id = None, **kwargs) : 
-        return super()._make_fit_array_from_parameters(self, pixels_id = pixels_id, nectarGainSPEresult = self.__nectarGainSPEresult, **kwargs)
+        return super()._make_fit_array_from_parameters(pixels_id = pixels_id, nectarGainSPEresult = self.__nectarGainSPEresult, **kwargs)
 
     @staticmethod
     def _update_parameters(parameters,charge,counts,pixel_id,nectarGainSPEresult,**kwargs) : 
