@@ -12,7 +12,10 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 
 import argparse
 
-from nectarchain.calibration.NectarGain import PhotoStatGainFFandPed
+from astropy.table import QTable
+
+from nectarchain.calibration.makers.gain.PhotoStatisticMakers import PhotoStatisticMaker
+
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_PhotoStat_computation.py',
@@ -77,14 +80,23 @@ def main(args) :
     figpath = os.environ.get('NECTARCHAIN_FIGURES')
 
 
-    photoStat_FFandPed = PhotoStatGainFFandPed(args.FF_run_number, args.ped_run_number, SPEresults = args.SPE_fit_results,method = args.chargeExtractorPath, FFchargeExtractorWindowLength = args.FFchargeExtractorWindowLength)    
-    photoStat_FFandPed.run()
+    photoStat_FFandPed = PhotoStatisticMaker.create_from_run_numbers(
+                            FFrun = args.FF_run_number,
+                            Pedrun = args.ped_run_number,
+                            SPE_resolution = args.SPE_fit_results,
+                            method = args.chargeExtractorPath,
+                            FFchargeExtractorWindowLength = args.FFchargeExtractorWindowLength
+                            )    
+    photoStat_FFandPed.make()
     photoStat_FFandPed.save(f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",overwrite = args.overwrite)
     log.info(f"BF^2 HG : {np.power(np.mean(photoStat_FFandPed.BHG),2)}")
     log.info(f"BF^2 LG : {np.power(np.mean(photoStat_FFandPed.BLG),2)}")
 
     if args.correlation : 
-        fig = photoStat_FFandPed.plot_correlation()
+        table = QTable.read(args.SPE_fit_results,format = 'ascii.ecsv')
+        table.sort('pixels_id')
+        mask = np.array([pix in photoStat_FFandPed.pixels_id for pix in table['pixels_id'].value],dtype = bool)
+        fig = PhotoStatisticMaker.plot_correlation(photoStat_FFandPed.results['high_gain'],table['high_gain'][mask])
         os.makedirs(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}/",exist_ok=True)
         fig.savefig(f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf")
 
