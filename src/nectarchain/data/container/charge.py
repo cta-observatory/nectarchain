@@ -34,7 +34,7 @@ from astropy.io import fits
 from numba import guvectorize, float64, int64, bool_
 
 from .waveforms import WaveformsContainer,WaveformsContainers
-from .utils import CtaPipeExtractor
+from ...makers.extractor.utils import CtapipeExtractor
 
 
 
@@ -56,7 +56,6 @@ list_ctapipe_charge_extractor = ["FullWaveformSum",
 list_nectarchain_charge_extractor = ['gradient_extractor']
 
 
-    
 @guvectorize(
 [
     (int64[:], float64[:], bool_, bool_[:], int64[:]),

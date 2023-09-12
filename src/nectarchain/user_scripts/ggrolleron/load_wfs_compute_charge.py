@@ -10,7 +10,7 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level=logging.DEBUG,filename = f"{os.environ.get('NECTARCHAIN_LOG')}/{Path(__file__).stem}_{os.getpid()}.log")
 log = logging.getLogger(__name__)
 
-from nectarchain.calibration.container import WaveformsContainer,WaveformsContainers,ChargeContainer,ChargeContainers
+from nectarchain.data.container import WaveformsContainer,WaveformsContainers,ChargeContainer,ChargeContainers
 
 parser = argparse.ArgumentParser(
                     prog = 'load_wfs_compute_charge',

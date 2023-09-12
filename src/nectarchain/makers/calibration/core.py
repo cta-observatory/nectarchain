@@ -6,17 +6,17 @@ import os
 from pathlib import Path
 import numpy as np
 
-from abc import ABC, abstractmethod
-
 from astropy.table import QTable,Column
 import astropy.units as u
 from copy import copy
 from datetime import date
 from collections.abc import Iterable
 
+from ..core import GeneralMaker
+
 
 __all__ = [""]
-class CalibrationMaker(ABC):
+class CalibrationMaker(GeneralMaker):
     """
     Mother class for all calibration makers that can be defined to compute calibration coefficients from data.
 
@@ -56,14 +56,6 @@ class CalibrationMaker(ABC):
         self.__results.add_column(Column(self.__pixels_id, __class__.PIXELS_ID_COLUMN, unit=u.dimensionless_unscaled))
         self.__results.meta[__class__.NP_PIXELS] = self.npixels
         self.__results.meta['comments'] = f'Produced with NectarChain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
-
-    @abstractmethod
-    def make(self, *args, **kwargs):
-        """
-        Abstract method that needs to be implemented by subclasses.
-        Used to compute the calibration coefficients.
-        """
-        pass
 
     def save(self, path, **kwargs):
         """

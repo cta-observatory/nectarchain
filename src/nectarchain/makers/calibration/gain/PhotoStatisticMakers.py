@@ -18,7 +18,7 @@ import copy
 
 from ctapipe_io_nectarcam import constants
 
-from ...container import ChargeContainer
+from ....data.container import ChargeContainer
 
 from .gainMakers import GainMaker
 

@@ -20,8 +20,8 @@ import glob
 
 
 
-from nectarchain.calibration.container import ChargeContainer,WaveformsContainer,ChargeContainers,WaveformsContainers
-from nectarchain.calibration.container.utils import DataManagement
+from nectarchain.data.container import ChargeContainer,WaveformsContainer,ChargeContainers,WaveformsContainers
+from nectarchain.data.container.utils import DataManagement
 
 
 def test_check_wfs() :

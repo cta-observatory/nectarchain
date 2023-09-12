@@ -13,8 +13,8 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 import argparse
 
 #import seaborn as sns
-from nectarchain.calibration.container import ChargeContainer
-from nectarchain.calibration.makers.gain.FlatFieldSPEMakers import FlatFieldSingleHHVSPEMaker,FlatFieldSingleHHVStdSPEMaker
+from nectarchain.data.container import ChargeContainer
+from nectarchain.makers.calibration.gain.FlatFieldSPEMakers import FlatFieldSingleHHVSPEMaker,FlatFieldSingleHHVStdSPEMaker
 
 parser = argparse.ArgumentParser(
                     prog = 'gain_SPEfit_computation.py',
