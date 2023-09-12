@@ -129,15 +129,16 @@ def test_stats_merge3():
 def test_stats_shape():
     import numpy as np
     from nectarchain.utils.stats import Stats, CameraStats, CameraSampleStats
+    from ctapipe_io_nectarcam import constants as nc
 
     s = Stats()
     assert s.shape == (1,)
 
     s = CameraStats()
-    assert s.shape == (2,1855)
+    assert s.shape == (nc.N_GAINS,nc.N_PIXELS)
 
     s = CameraSampleStats()
-    assert s.shape == (2,1855,60)
+    assert s.shape == (nc.N_GAINS,nc.N_PIXELS,nc.N_SAMPLES)
 
 
 def test_stats_print():

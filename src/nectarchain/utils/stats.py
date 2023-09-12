@@ -10,6 +10,8 @@ import numpy as np
 import warnings
 from copy import deepcopy
 
+from ctapipe_io_nectarcam import constants as nc
+
 class Stats:
     """class Stats
     Accumulator object for Welfords online / parallel variance algorithm.
@@ -175,7 +177,7 @@ class CameraStats(Stats):
     Accumulator object for Welfords online / parallel variance algorithm, specialized for camera info
     """ 
 
-    def __init__(self,shape=(2,1855), *args, **kwargs):
+    def __init__(self,shape=(nc.N_GAINS,nc.N_PIXELS), *args, **kwargs):
         super().__init__(shape,*args,**kwargs)
 
 
@@ -198,5 +200,7 @@ class CameraSampleStats(Stats):
     >>> print(s.mean)
     """ 
 
-    def __init__(self,shape=(2,1855,60), *args, **kwargs):
+    def __init__(self,shape=(nc.N_GAINS,nc.N_PIXELS,nc.N_SAMPLES), *args, **kwargs):
         super().__init__(shape,*args,**kwargs)
+
+
