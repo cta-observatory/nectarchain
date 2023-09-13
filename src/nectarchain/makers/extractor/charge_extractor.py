@@ -40,17 +40,14 @@ class gradient_extractor(ImageExtractor) :
         return peak_time, charge_integral
 
 
-
-
 @guvectorize(
     [
-        (np.uint16[:], np.uint8, np.uint8, np.uint16[:]),
+        '(np.uint16[:], np.uint8, np.uint8, np.uint16[:])',
     ],
     "(n,p,s),(),()->(n,p)",
     nopython=True,
     cache=True,
 )
-
 def extract_charge(y,height_peak,fixed_window) : 
     x = np.linspace(0, len(y), len(y))
     xi = np.linspace(0, len(y), 251)

@@ -13,7 +13,7 @@ from DIRAC.Interfaces.API.Dirac import Dirac
 from pathlib import Path
 from typing import List,Tuple
 
-__all__ = ['DataManagement','ChainGenerator']
+__all__ = ['DataManagement']
 
 class DataManagement() :
     @staticmethod

@@ -17,10 +17,8 @@ from ctapipe.coordinates import CameraFrame,EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry,SubarrayDescription,TelescopeDescription
 
 from ctapipe_io_nectarcam import NectarCAMEventSource
-from ctapipe.containers import EventType
-from ctapipe.io import EventSource, EventSeeker
 
-from .utils import DataManagement,ChainGenerator
+from ..management import DataManagement
 
 import sys
 import logging

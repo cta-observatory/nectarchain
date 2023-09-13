@@ -1,44 +1,27 @@
-from argparse import ArgumentError
-import numpy as np
-import numpy.ma as ma
-from matplotlib import pyplot as plt
-import copy
-from pathlib import Path
-import glob
-import time
-import sys
-import os
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
-from ctapipe.visualization import CameraDisplay
-from ctapipe.coordinates import CameraFrame,EngineeringCameraFrame
+from argparse import ArgumentError
+import numpy as np
+import numpy.ma as ma
+from pathlib import Path
+import glob
+import time
+import os
+
 from ctapipe.instrument import CameraGeometry
-from ctapipe.image.extractor import (FullWaveformSum,
-    FixedWindowSum,
-    GlobalPeakWindowSum,
-    LocalPeakWindowSum,
-    SlidingWindowMaxSum,
-    NeighborPeakWindowSum,
-    BaselineSubtractedNeighborPeakWindowSum,
-    TwoPassWindowSum)
 
-from ctapipe_io_nectarcam import NectarCAMEventSource,constants
-from ctapipe.io import EventSource, EventSeeker
+from ctapipe_io_nectarcam import constants
 
-from astropy.table import Table
 from astropy.io import fits
 
 from numba import guvectorize, float64, int64, bool_
 
 from .waveforms import WaveformsContainer,WaveformsContainers
-from ...makers.extractor.utils import CtapipeExtractor
 
 
-
-#from .charge_extractor import *
 
 __all__ = ['ChargeContainer','ChargeContainers']
 
@@ -107,12 +90,85 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         #print("this pixel is broken, skipped")
         pass
         
+
 class ChargeContainer() : 
-    """class used to compute charge from waveforms container"""
+    """
+    class used to compute charge from waveforms container
+
+    Attributes:
+        TEL_ID (int): Telescope ID
+        CAMERA (CameraGeometry): Camera geometry
+
+    Methods:
+        __init__(self, charge_hg, charge_lg, peak_hg, peak_lg, run_number, pixels_id, nevents, npixels, method="FullWaveformSum"): Initializes a ChargeContainer instance
+        from_waveforms(cls, waveformContainer, method="FullWaveformSum", **kwargs): Creates a ChargeContainer instance from a WaveformsContainer
+        write(self, path, **kwargs): Writes the charge data to a FITS file
+        from_file(path, run_number, **kwargs): Loads charge data from a FITS file
+        compute_charge(waveformContainer, channel, method="FullWaveformSum", **kwargs): Computes charge from waveforms
+        histo_hg(self, n_bins=1000, autoscale=True): Computes the histogram of the high-gain (HG) channel charge values
+        histo_lg(self, n_bins=1000, autoscale=True): Computes the histogram of the low-gain (LG) channel charge values
+        select_charge_hg(self, pixel_id): Extracts the high-gain (HG) charge values for the specified pixel IDs
+        select_charge_lg(self, pixel_id): Extracts the low-gain (LG) charge values for the specified pixel IDs
+        sort(self, method='event_id'): Sorts the charge data based on the specified method
+        run_number(self): Returns the run number
+        pixels_id(self): Returns the pixel IDs
+        npixels(self): Returns the number of pixels
+        nevents(self): Returns the number of events
+        method(self): Returns the charge computation method
+        multiplicity(self): Returns the multiplicity of events
+        trig_pattern(self): Returns the trigger pattern
+
+    Example Usage:
+        # Create a ChargeContainer instance from a WaveformsContainer
+        chargeContainer = ChargeContainer.from_waveforms(waveformContainer)
+
+        # Write the charge data to a FITS file
+        chargeContainer.write(path)
+
+        # Load charge data from a FITS file
+        chargeContainer = ChargeContainer.from_file(path, run_number)
+
+        # Compute histograms of the charge values
+        hist_hg = chargeContainer.histo_hg()
+        hist_lg = chargeContainer.histo_lg()
+
+        # Select charge values for specific pixels
+        pixel_ids = [1, 2, 3]
+        charge_hg = chargeContainer.select_charge_hg(pixel_ids)
+        charge_lg = chargeContainer.select_charge_lg(pixel_ids)
+
+        # Sort the charge data based on event ID
+        chargeContainer.sort()
+
+        # Access properties of the ChargeContainer
+        run_number = chargeContainer.run_number
+        pixels_id = chargeContainer.pixels_id
+        npixels = chargeContainer.npixels
+        nevents = chargeContainer.nevents
+        method = chargeContainer.method
+    """
     TEL_ID = 0
     CAMERA = CameraGeometry.from_name("NectarCam-003")
 
-    def __init__(self,charge_hg,charge_lg,peak_hg,peak_lg,run_number,pixels_id,nevents,npixels, method = "FullWaveformSum") : 
+    def __init__(self, charge_hg, charge_lg, peak_hg, peak_lg, run_number, pixels_id, nevents, npixels, method="FullWaveformSum"):
+        """
+        Initializes a ChargeContainer instance with the provided arguments and sets some additional attributes to default values.
+
+        Args:
+            charge_hg (array): The high-gain charge values.
+            charge_lg (array): The low-gain charge values.
+            peak_hg (array): The high-gain peak time values.
+            peak_lg (array): The low-gain peak time values.
+            run_number (int): The run number.
+            pixels_id (array): The pixel IDs.
+            nevents (int): The number of events.
+            npixels (int): The number of pixels.
+            method (str, optional): The charge computation method. Defaults to "FullWaveformSum".
+
+        Returns:
+            None
+
+        """
         self.charge_hg = charge_hg
         self.charge_lg = charge_lg
         self.peak_hg = peak_hg
@@ -123,42 +179,37 @@ class ChargeContainer() :
         self._nevents = nevents
         self._npixels = npixels
 
-
-        self.ucts_timestamp = np.zeros((self.nevents),dtype = np.uint64)
-        self.ucts_busy_counter = np.zeros((self.nevents),dtype = np.uint16)
-        self.ucts_event_counter = np.zeros((self.nevents),dtype = np.uint16)
-        self.event_type = np.zeros((self.nevents),dtype = np.uint8)
-        self.event_id = np.zeros((self.nevents),dtype = np.uint16)
-        self.trig_pattern_all = np.zeros((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
+        self.ucts_timestamp = np.zeros((self.nevents), dtype=np.uint64)
+        self.ucts_busy_counter = np.zeros((self.nevents), dtype=np.uint16)
+        self.ucts_event_counter = np.zeros((self.nevents), dtype=np.uint16)
+        self.event_type = np.zeros((self.nevents), dtype=np.uint8)
+        self.event_id = np.zeros((self.nevents), dtype=np.uint16)
+        self.trig_pattern_all = np.zeros((self.nevents, self.CAMERA.n_pixels, 4), dtype=bool)
 
 
     @classmethod
-    def from_waveforms(cls,waveformContainer : WaveformsContainer,method : str = "FullWaveformSum",**kwargs) : 
-        """ create a new ChargeContainer from a WaveformsContainer
+    def from_waveforms(cls, waveformContainer: WaveformsContainer, method: str = "FullWaveformSum", **kwargs) -> 'ChargeContainer':
+        """Create a new ChargeContainer instance from a WaveformsContainer.
         Args:
-            waveformContainer (WaveformsContainer): the waveforms
-            method (str, optional): Ctapipe ImageExtractor method. Defaults to "FullWaveformSum".
-
+            waveformContainer (WaveformsContainer): The waveforms container object from which to compute the charge values.
+            method (str, optional): The method to use for charge computation. Defaults to "FullWaveformSum".
         Returns:
-            chargeContainer : the ChargeContainer instance
+            ChargeContainer: The created ChargeContainer instance with computed charge values and other attributes.
         """
         log.info(f"computing hg charge with {method} method")
-        charge_hg,peak_hg = ChargeContainer.compute_charge(waveformContainer,constants.HIGH_GAIN,method,**kwargs)
-        charge_hg = np.array(charge_hg,dtype = np.uint16)
+        charge_hg, peak_hg = ChargeContainer.compute_charge(waveformContainer, constants.HIGH_GAIN, method, **kwargs)
+        charge_hg = np.array(charge_hg, dtype=np.uint16)
         log.info(f"computing lg charge with {method} method")
-        charge_lg,peak_lg = ChargeContainer.compute_charge(waveformContainer,constants.LOW_GAIN,method,**kwargs)
-        charge_lg = np.array(charge_lg,dtype = np.uint16)
-
-        chargeContainer = cls(charge_hg,charge_lg,peak_hg,peak_lg,waveformContainer.run_number,waveformContainer.pixels_id,waveformContainer.nevents,waveformContainer.npixels ,method)
-        
+        charge_lg, peak_lg = ChargeContainer.compute_charge(waveformContainer, constants.LOW_GAIN, method, **kwargs)
+        charge_lg = np.array(charge_lg, dtype=np.uint16)
+        chargeContainer = cls(charge_hg, charge_lg, peak_hg, peak_lg, waveformContainer.run_number, waveformContainer.pixels_id, waveformContainer.nevents, waveformContainer.npixels, method)
         chargeContainer.ucts_timestamp = waveformContainer.ucts_timestamp
         chargeContainer.ucts_busy_counter = waveformContainer.ucts_busy_counter
         chargeContainer.ucts_event_counter = waveformContainer.ucts_event_counter
         chargeContainer.event_type = waveformContainer.event_type
         chargeContainer.event_id = waveformContainer.event_id
         chargeContainer.trig_pattern_all = waveformContainer.trig_pattern_all
-
-        return chargeContainer 
+        return chargeContainer
 
 
     def write(self,path : Path,**kwargs) : 
@@ -286,6 +337,9 @@ class ChargeContainer() :
         Returns:
             output of the extractor called on waveforms
         """
+
+        #import is here for fix issue with pytest (TypeError :  inference is not possible with python <3.9 (Numba conflict bc there is no inference...))
+        from ...makers.extractor.utils import CtapipeExtractor
         
         if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
             raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
@@ -302,10 +356,10 @@ class ChargeContainer() :
         ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
 
         if channel == constants.HIGH_GAIN:
-            out = np.array([CtaPipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
+            out = np.array([CtapipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
             return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            out = np.array([CtaPipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
+            out = np.array([CtapipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
             return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
@@ -443,7 +497,6 @@ class ChargeContainer() :
     @property
     def method(self) : return self._method
 
-
     #physical properties
     @property
     def multiplicity(self) :  return np.uint16(np.count_nonzero(self.trig_pattern,axis = 1))
@@ -452,12 +505,40 @@ class ChargeContainer() :
     def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 1)
 
 
-
 class ChargeContainers() : 
+    """
+    The `ChargeContainers` class is used to store and manipulate a collection of `ChargeContainer` objects. It provides methods for creating, writing, and merging `ChargeContainer` instances.
+
+    Example Usage:
+        # Create a `ChargeContainers` instance from a `WaveformsContainers` object
+        waveform_containers = WaveformsContainers()
+        charge_containers = ChargeContainers.from_waveforms(waveform_containers)
+
+        # Write the `ChargeContainers` to disk
+        charge_containers.write("path/to/save")
+
+        # Load `ChargeContainers` from a FITS file
+        charge_containers = ChargeContainers.from_file("path/to/file", run_number=123)
+
+        # Merge the `ChargeContainers` into a single `ChargeContainer`
+        merged_charge_container = charge_containers.merge()
+
+    Methods:
+        - `from_waveforms(waveformContainers: WaveformsContainers, **kwargs)`: Creates a `ChargeContainers` instance from a `WaveformsContainers` object.
+        - `write(path: str, **kwargs)`: Writes each `ChargeContainer` in `ChargeContainers` to disk.
+        - `from_file(path: Path, run_number: int, **kwargs)`: Loads `ChargeContainers` from FITS files previously written with `write()` method.
+        - `append(chargeContainer: ChargeContainer)`: Stacks a `ChargeContainer` into the `ChargeContainers` instance.
+        - `merge() -> ChargeContainer`: Merges the `ChargeContainers` into a single `ChargeContainer`.
+
+    Fields:
+        - `chargeContainers`: A list to store `ChargeContainer` objects.
+        - `__nChargeContainer`: The number of `ChargeContainer` objects stored in `chargeContainers`.
+        - `nChargeContainer`: A property that returns the number of `ChargeContainer` objects in `chargeContainers`.
+        - `nevents`: A property that returns the total number of events in all `ChargeContainer` objects in `chargeContainers`.
+    """
     def __init__(self, *args, **kwargs) : 
         self.chargeContainers = []
         self.__nChargeContainer = 0
-
     @classmethod
     def from_waveforms(cls,waveformContainers : WaveformsContainers,**kwargs) : 
         """create ChargeContainers from waveformContainers
@@ -503,7 +584,7 @@ class ChargeContainers() :
         else : 
             cls = ChargeContainers.__new__(ChargeContainers)
             cls.chargeContainers = []
-            cls.__nchargeContainers = len(files)
+            cls.__nChargeContainer = len(files)
             for file in files : 
                 cls.chargeContainers.append(ChargeContainer.from_file(path,run_number,explicit_filename = file))
             return cls
