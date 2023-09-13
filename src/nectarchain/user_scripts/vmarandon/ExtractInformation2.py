@@ -16,6 +16,7 @@ try:
     from ctapipe.containers import EventType
 
     from multiprocessing.dummy import Pool as ThreadPool
+    #from multiprocessing import Pool as ThreadPool
 
 
 
@@ -33,7 +34,7 @@ except ImportError as e:
 
 #        data_path = FindDataPath(run,args.dataPath)
 
-def ExtractInformationSingleRun(run,data_path,dest_path,data_block,applycalib=True,keepR1=True,nnint=False):
+def ExtractInformationSingleRun(run,data_path,dest_path,data_block,applycalib=True,keepR1=True,nnint=False,onlytrigger=False):
 
     sleep_time = random.uniform(0.,1.) 
     #print(sleep_time)
@@ -67,6 +68,9 @@ def ExtractInformationSingleRun(run,data_path,dest_path,data_block,applycalib=Tr
         #for i,evt in tqdm(enumerate(events)):
 
         doIntegration = nnint
+
+        if onlytrigger:
+            doIntegration = False
 
         for evt in tqdm(events):
             #if data_block != 42 and data_block!=8:
@@ -113,7 +117,10 @@ def ExtractInformationSingleRun(run,data_path,dest_path,data_block,applycalib=Tr
                 
             for k in evt.keys():
                 if k not in exclusion:
-                    dd[k].dump( copy.deepcopy(getattr(evt,k)), time=event_time )
+                    if onlytrigger and k!="trigger":
+                        continue
+                    else:
+                        dd[k].dump( copy.deepcopy(getattr(evt,k)), time=event_time )
 
 def TrueOrFalse(arg):
     ua = str(arg).upper()
@@ -140,6 +147,7 @@ def ExtractInformation(arglist):
     p.add_argument("--keep-r1",dest='keepR1',type=str,default="True",help="Save the R1 data if True")
     p.add_argument("--split",dest='split',action='store_true',help='Split the files per groups. 0-1 together in a file, 2-3 in another, etc... Need the ctapipe_io_nectarcam version compatible with ctapipe 0.18')
     p.add_argument("--nnint",dest='nnint',action='store_true',help='Do an integration of the data using Next Neighbor Peak Search. At the moment hard coded to be 10 ns -4 and +6 ns after the max. Will create charge and TO data set')
+    p.add_argument("--only-trigger",dest='onlytrig',action='store_true',help='Extract only the trigger information to a file. Useful for big runs')
 
     args = p.parse_args(arglist)
 
@@ -164,7 +172,7 @@ def ExtractInformation(arglist):
             dest_path = args.destPath
 
 
-        if args.split:
+        if False and args.split:
 
             runs = list()
             paths = list()
@@ -173,6 +181,7 @@ def ExtractInformation(arglist):
             calib = list()
             keepR1 = list()
             nnints = list()
+            trigonly = list()
 
             for block in range(GetNumberOfDataBlocks(run,data_path)):
             #for block in range(8):
@@ -184,13 +193,14 @@ def ExtractInformation(arglist):
                 calib.append(applyCalib)
                 keepR1.append(  keepR1)
                 nnints.append(args.nnint)
+                trigonly.append(args.onlytrig)
 
             # Make the Pool of workers
-            pool = ThreadPool(1)
+            pool = ThreadPool(4)
 
             # Open the URLs in their own threads
             # and return the results
-            results = pool.starmap(ExtractInformationSingleRun, zip(runs,paths,dest_paths,blocks,calib,keepR1,nnints) )
+            results = pool.starmap(ExtractInformationSingleRun, zip(runs,paths,dest_paths,blocks,calib,keepR1,nnints,trigonly) )
 
             # Close the pool and wait for the work to finish
             pool.close()
@@ -198,7 +208,14 @@ def ExtractInformation(arglist):
             #ExtractInformationSingleRun(run,args.dataPath,args.destPath,data_block=block)
 
         else:
-            ExtractInformationSingleRun(run=run,data_path=data_path,dest_path=dest_path,data_block=-1,applycalib=applyCalib,keepR1=keepR1,nnint=args.nnint)
+            if args.split:
+                nBlocks = GetNumberOfDataBlocks(run,data_path)
+                for block in range(nBlocks):
+                    print(f'block: {block+1}/{nBlocks}')
+                    ExtractInformationSingleRun(run=run,data_path=data_path,dest_path=dest_path,data_block=block,applycalib=applyCalib,keepR1=keepR1,nnint=args.nnint,onlytrigger=args.onlytrig)
+            else:
+                ExtractInformationSingleRun(run=run,data_path=data_path,dest_path=dest_path,data_block=-1,applycalib=applyCalib,keepR1=keepR1,nnint=args.nnint,onlytrigger=args.onlytrig)
+                
             #def ExtractInformationSingleRun(run,data_path,dest_path,data_block,applycalib=True,keepR1=True):
 
 

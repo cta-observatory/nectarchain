@@ -6,6 +6,9 @@ try:
     import datetime
     import re
     import enum
+    import pickle
+    import lz4.frame
+
 
     from ctapipe.io import EventSource
     from ctapipe.instrument import CameraGeometry
@@ -36,6 +39,26 @@ except ImportError as e:
 # thanks : http://stackoverflow.com/questions/18462610
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     pass
+
+def ConvertTitleToName(title: str):
+    title = title.replace(' ','_')
+    title = title.replace("\n","_")
+    title = title.replace("(","_")
+    title = title.replace(")","_")
+    title = title.replace(":","_")
+    title = title.replace(",","_")
+    title = title.replace("=","_")
+    title = title.replace("_-_","_")
+    title = title.replace(">","Above")
+    title = title.replace("<","Below")
+    #title = title.replace("0.","0d")
+    title = title.replace(".","d")
+    
+
+    ## do a bit of cleanup of the _
+    while title.find('__') != -1:
+        title = title.replace("__","_")
+    return title
 
 
 def GetDefaultDataPath():
@@ -145,11 +168,12 @@ def clean_waveform(wvf, use_nan = True):
 class IntegrationMethod(enum.Enum):
     PEAKSEARCH = enum.auto()
     NNSEARCH = enum.auto()
+    USERPEAK = enum.auto()
 
 
 
 
-def SignalIntegration(waveform,exclusion_mask=None, method = IntegrationMethod.PEAKSEARCH,left_bound=5,right_bound=7,camera=None):
+def SignalIntegration(waveform,exclusion_mask=None, method = IntegrationMethod.PEAKSEARCH,left_bound=5,right_bound=7,camera=None,peakpositions=None):
     wvf = waveform.astype(float)
     if exclusion_mask is not None:
         wvf[ exclusion_mask ] = 0.
@@ -160,6 +184,9 @@ def SignalIntegration(waveform,exclusion_mask=None, method = IntegrationMethod.P
         if camera is None:
             camera = GetCamera()
         charge, time = NeighborPeakIntegration(waveform, camera.neighbor_matrix, left_bound=5, right_bound=7)
+    elif method == IntegrationMethod.USERPEAK:
+        #print("HERE")
+        charge, time = UserPeakIntegration(waveform,peakpositions=peakpositions,left_bound=left_bound,right_bound=right_bound)
     else:
         print("I Don't know about this method !")
 
@@ -229,6 +256,37 @@ def NeighborPeakIntegration(waveform, neighbor_matrix, left_bound=5, right_bound
             
     return integrated_signal, signal_timeslice
 
+@njit(parallel=True)
+def UserPeakIntegration(waveform, peakpositions, left_bound=5, right_bound=7):
+
+    wvf_shape = waveform.shape
+    n_channel = wvf_shape[0]
+    n_pixels = wvf_shape[1]
+    n_samples = wvf_shape[2]
+
+    integrated_signal = np.zeros( (n_channel,n_pixels) )
+    signal_timeslice = np.zeros( (n_channel,n_pixels) )
+
+    integ_window = left_bound+right_bound
+
+    for chan in prange(2):
+        chan_wvf = waveform[chan,:,:]
+        for pix in range(n_pixels):
+            trace = chan_wvf[pix,:]
+            peak_pos = peakpositions[chan,pix]
+            if (peak_pos-left_bound) < 0:
+                lo_bound = 0
+                up_bound = integ_window
+            elif (peak_pos + right_bound) > n_samples:
+                lo_bound = n_samples-integ_window
+                up_bound = n_samples
+            else:
+                lo_bound = peak_pos - left_bound
+                up_bound = peak_pos + right_bound
+            integrated_signal[chan,pix] = np.sum( trace[lo_bound:up_bound]  )
+            signal_timeslice[chan,pix] = peak_pos
+            
+    return integrated_signal, signal_timeslice
 
 
 def getPixelT0Spline(waveform):
@@ -368,3 +426,17 @@ def GetEventTypeFromString(event_str):
         print(f"WARNING> Don't know about the event type [{event_str}]")
         evt_type = EventType.UNKNOWN
     return evt_type
+
+
+def save_simple_data(datas, fileName):
+    """Save info in a file using pickle"""
+    with lz4.frame.open( fileName, 'wb' ) as f :
+        pickle.dump(datas,f)
+
+    #with open(fileName,'wb') as file:
+    #    pickle.dump(datas,file)
+
+def read_simple_data(fileName):
+    """Read info from a file using pickle"""
+    with lz4.frame.open( fileName, 'rb' ) as f :
+        return pickle.load(f)

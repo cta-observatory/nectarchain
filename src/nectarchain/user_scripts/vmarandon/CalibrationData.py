@@ -13,12 +13,14 @@ class CalibrationCameraDisplay(CameraDisplay):
 
     def __init__(self,*args, **kwargs):
         super().__init__(*args,**kwargs)
+        self.clickfunc = None
 
     def set_function(self,func_name):
         self.clickfunc = func_name
 
     def on_pixel_clicked(self, pix_id):
-        self.clickfunc(pix_id)
+        if self.clickfunc is not None:
+            self.clickfunc(pix_id)
 
 
 class CalibInfo:
@@ -156,8 +158,25 @@ class PedestalInfo(TimedInfo):
 
         plt.show()
 
+class XYTableDataElement(TimedInfo):
+    '''Class to store waveforms for each position of the XY tables'''
+    def __init__(self,startTime=None, endTime=None,bloc=None):
+        super().__init__(startTime,endTime)
+        self.waveforms = None
+        self.masks = None
+        self.averaged_waveform = None
+        self.bloc_number = bloc
 
-
+class XYTableDataIntegratedElement(TimedInfo):
+    '''Class to store integrated waveforms for each position of the XY tables'''
+    def __init__(self,startTime=None,endTime=None,bloc=None):
+        super().__init__(startTime,endTime)
+        self.pixels = None
+        self.times = None
+        self.pedestals = None
+        self.pedwidths = None
+        self.integrated = None
+        self.bloc_number = bloc
 
 
 class FlatFieldInfo(TimedInfo):
