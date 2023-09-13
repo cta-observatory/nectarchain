@@ -24,6 +24,8 @@ class CalibrationMaker(GeneralMaker):
         _reduced_name (str): A string representing the name of the calibration.
         PIXELS_ID_COLUMN (str): A string representing the name of the column in the result table that stores the pixels id.
         NP_PIXELS (str): A string representing the key in the metadata that stores the number of pixels.
+
+    Members:
         _pixels_id (ndarray): A private property that stores the pixels id.
         _results (QTable): A private property that stores the result table.
     """
