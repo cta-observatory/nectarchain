@@ -254,8 +254,14 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
 #constructors
     def __init__(self,charge,counts,*args,**kwargs) -> None: 
         super().__init__(*args,**kwargs)
-        self.__charge = charge
-        self.__counts = counts
+        if isinstance(charge,np.ma.masked_array) : 
+            self.__charge = charge
+        else : 
+            self.__charge = np.ma.asarray(charge)
+        if isinstance(counts,np.ma.masked_array) : 
+            self.__counts = counts
+        else : 
+            self.__counts = np.ma.asarray(counts)
 
         self.__pedestal = Parameter(name = "pedestal",
                                 value = (np.min(self.__charge) + np.sum(self.__charge * self.__counts)/(np.sum(self.__counts)))/2,

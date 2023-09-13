@@ -7,10 +7,11 @@ def create_fake_chargeContainer() :
     pixels_id = np.array([2,4,3,8,6,9,7,1,5,10])
     nevents = 40
     npixels = 10
-    charge_hg = np.random.randn(nevents,npixels)
-    charge_lg = np.random.randn(nevents,npixels)
-    peak_hg = np.random.randn(nevents,npixels)
-    peak_lg = np.random.randn(nevents,npixels)
+    rng = np.random.default_rng()
+    charge_hg = rng.integers(low=0, high=1000, size= (nevents,npixels))
+    charge_lg = rng.integers(low=0, high=1000, size= (nevents,npixels))
+    peak_hg = rng.integers(low=0, high=60, size= (nevents,npixels))
+    peak_lg = rng.integers(low=0, high=60, size= (nevents,npixels))
     run_number = 1234
     return ChargeContainer(
         charge_hg = charge_hg ,

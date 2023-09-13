@@ -36,7 +36,7 @@ class TestGainMaker:
         assert np.array_equal(gain_maker.low_gain, low_gain_values)
 
     # Tests that the results can be saved to a file.
-    def test_save_results_to_file(self, tmp_path = Path('/tmp')):
+    def test_save_results_to_file(self, tmp_path = Path(f'/tmp/{np.random.rand()}')):
         pixel_ids = [1, 2, 3, 4, 5]
         gain_maker = GainMakerforTest(pixel_ids)
         high_gain_values = np.array([0.5, 0.6, 0.7, 0.8, 0.9])

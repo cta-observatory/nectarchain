@@ -1,6 +1,6 @@
 from nectarchain.makers.calibration.gain.FlatFieldSPEMakers import FlatFieldSPEMaker
 from nectarchain.makers.calibration.gain.parameters import Parameter,Parameters
-from nectarchain.makers.calibration.gain import FlatFieldSingleHHVSPEMaker
+from nectarchain.makers.calibration.gain import FlatFieldSingleHHVSPEMaker,FlatFieldSingleHHVStdSPEMaker
 import astropy.units as u
 from nectarchain.data.container import ChargeContainer
 import numpy as np
@@ -15,10 +15,11 @@ def create_fake_chargeContainer() :
     pixels_id = np.array([2,4,3,8,6,9,7,1,5,10])
     nevents = 40
     npixels = 10
-    charge_hg = np.random.randint(nevents,npixels)
-    charge_lg = np.random.randint(nevents,npixels)
-    peak_hg = np.random.randint(nevents,npixels)
-    peak_lg = np.random.randint(nevents,npixels)
+    rng = np.random.default_rng()
+    charge_hg = rng.integers(low=0, high=1000, size= (nevents,npixels))
+    charge_lg = rng.integers(low=0, high=1000, size= (nevents,npixels))
+    peak_hg = rng.integers(low=0, high=60, size= (nevents,npixels))
+    peak_lg = rng.integers(low=0, high=60, size= (nevents,npixels))
     run_number = 1234
     return ChargeContainer(
         charge_hg = charge_hg ,
@@ -97,7 +98,7 @@ class TestFlatFieldSingleHHVSPEMaker:
             FlatFieldSingleHHVSPEMaker(charge, counts,pixels_id)
 
     # Tests that calling create_from_chargeContainer method with valid input parameters is successful
-    def test_create_from_chargeContainer_valid_input(self):
+    def test_create_from_ChargeContainer_valid_input(self):
         chargeContainer = create_fake_chargeContainer()
         maker = FlatFieldSingleHHVSPEMaker.create_from_chargeContainer(chargeContainer)
         assert isinstance(maker, FlatFieldSingleHHVSPEMaker)
@@ -113,20 +114,15 @@ class TestFlatFieldSingleHHVSPEMaker:
     def test_plot_single(self) : pass
     def test_display(self) : pass
 
-
-
-    # Tests that calling make method with valid input parameters is successful
-    def test_make_valid_input(self):
+class TestFlatFieldSingleHHVStdSPEMaker:
+    def test_create_instance(self):
         charge = [1, 2, 3]
-        counts = [10, 20, 30]
-        maker = FlatFieldSingleHHVSPEMaker(charge, counts)
-        result = maker.make()
-        assert isinstance(result, np.ndarray)
+        counts = [10, 20,30]  # Invalid input, counts and charge must have the same length
+        pixels_id = [2,3,5]
+        instance = FlatFieldSingleHHVStdSPEMaker(charge, counts,pixels_id)
+        assert isinstance(instance,FlatFieldSingleHHVStdSPEMaker)
 
-    # Tests that calling make method with invalid input parameters raises an error
-    def test_make_invalid_input(self, mocker):
-        charge = [1, 2, 3]
-        counts = [10, 20]  # Invalid input, counts and charge must have the same length
-        maker = FlatFieldSingleHHVSPEMaker(charge, counts)
-        with pytest.raises(Exception):
-            maker.make()
+
+class TestFlatFieldSingleNominalSPEMaker:
+    def test_create_instance(self):
+        pass

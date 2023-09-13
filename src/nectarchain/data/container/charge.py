@@ -364,7 +364,7 @@ class ChargeContainer() :
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
 
-    def histo_hg(self,n_bins : int = 1000,autoscale : bool = True) -> np.ndarray:
+    def histo_hg(self,n_bins : int = 1000,autoscale : bool = True) -> ma.masked_array:
         """method to compute histogram of HG channel
         Numba is used to compute histograms in vectorized way
 
