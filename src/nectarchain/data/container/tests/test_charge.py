@@ -2,7 +2,6 @@ from nectarchain.data.container.charge import ChargeContainers, ChargeContainer
 from nectarchain.data.container.waveforms import WaveformsContainers
 import glob
 import numpy as np
-import pytest
 
 def create_fake_chargeContainer() : 
     pixels_id = np.array([2,4,3,8,6,9,7,1,5,10])

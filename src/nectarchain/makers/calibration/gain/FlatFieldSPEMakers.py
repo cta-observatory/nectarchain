@@ -46,6 +46,44 @@ __all__ = ["FlatFieldSingleHHVSPEMaker","FlatFieldSingleHHVStdSPEMaker"]
 
 
 class FlatFieldSPEMaker(GainMaker) : 
+
+    """
+    The `FlatFieldSPEMaker` class is used for flat field single photoelectron (SPE) calibration calculations on data. It inherits from the `GainMaker` class and adds functionality specific to flat field SPE calibration.
+
+    Example Usage:
+        # Create an instance of the FlatFieldSPEMaker class
+        flat_field_maker = FlatFieldSPEMaker()
+
+        # Read parameters from a YAML file
+        flat_field_maker.read_param_from_yaml("parameters.yaml")
+
+        # Update parameters based on data
+        flat_field_maker._update_parameters(parameters, charge, counts)
+
+        # Update the result table based on the parameters
+        flat_field_maker._update_table_from_parameters()
+
+    Main functionalities:
+    - Inherits from the `GainMaker` class and adds functionality specific to flat field SPE calibration.
+    - Reads parameters from a YAML file and updates the internal parameters of the class.
+    - Updates the parameters based on data, such as charge and counts.
+    - Updates a result table based on the parameters.
+
+    Methods:
+    - `read_param_from_yaml(parameters_file, only_update)`: Reads parameters from a YAML file and updates the internal parameters of the class. If `only_update` is True, only the parameters that exist in the YAML file will be updated.
+    - `_update_parameters(parameters, charge, counts, **kwargs)`: Updates the parameters based on data, such as charge and counts. It performs a Gaussian fit on the data to determine the pedestal and mean values, and updates the corresponding parameters accordingly.
+    - `_get_mean_gaussian_fit(charge, counts, extension, **kwargs)`: Performs a Gaussian fit on the data to determine the pedestal and mean values. It returns the fit coefficients.
+    - `_update_table_from_parameters()`: Updates a result table based on the parameters. It adds columns to the table for each parameter and its corresponding error.
+
+    Attributes:
+    - `_Windows_lenght`: A class attribute that represents the length of the windows used for smoothing the data.
+    - `_Order`: A class attribute that represents the order of the polynomial used for smoothing the data.
+    
+    Members:
+    - `npixels`: A property that returns the number of pixels.
+    - `parameters`: A property that returns a deep copy of the internal parameters of the class.
+    - `_parameters`: A property that returns the internal parameters of the class.
+    """
     _Windows_lenght = 40
     _Order = 2
 
@@ -179,14 +217,39 @@ class FlatFieldSPEMaker(GainMaker) :
 
 
 
+
 class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) : 
-    """class to perform fit of the SPE signal with all free parameters"""
+    """
+    class to perform fit of the SPE signal with all free parameters
+
+    Attributes:
+    - __parameters_file: Private field that stores the name of the parameters file.
+    - __fit_array: Private field that stores the fit instances.
+    - _reduced_name: Protected field that stores the name of the reduced data.
+    - __nproc_default: Private field that stores the default number of processes for multiprocessing.
+    - __chunksize_default: Private field that stores the default chunk size for multiprocessing.
+    
+    Members:
+    - __charge: Private field that stores the charge data.
+    - __counts: Private field that stores the counts data.
+    - __pedestal: Private field that stores the pedestal parameter.
+    - _parameters: Protected field that stores the parameters.
+    - _results: Protected field that stores the fit results.
+
+    Methods:
+    - __init__(self, charge, counts, *args, **kwargs): Constructor method that initializes the instance with the charge and counts data.
+    - create_from_chargeContainer(cls, signal, **kwargs): Class method that creates an instance from a charge container.
+    - create_from_run_number(cls, run_number, **kwargs): Class method that creates an instance from a run number.
+    - make(self, pixels_id=None, multiproc=True, display=True, **kwargs): Method that performs the fit on the specified pixels and returns the fit results.
+    - display(self, pixels_id, **kwargs): Method that plots the fit for the specified pixels.
+    """
 
     __parameters_file = 'parameters_signal.yaml'
     __fit_array = None
     _reduced_name = "FlatFieldSingleSPE"
     __nproc_default = 8
     __chunksize_default = 1
+
 
 #constructors
     def __init__(self,charge,counts,*args,**kwargs) -> None: 
@@ -214,6 +277,10 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
     def create_from_chargeContainer(cls, signal : ChargeContainer,**kwargs) : 
         histo = signal.histo_hg(autoscale = True)
         return cls(charge = histo[1],counts = histo[0],pixels_id = signal.pixels_id,**kwargs)
+
+    @classmethod
+    def create_from_run_number(cls, run_number : int, **kwargs) : 
+        raise NotImplementedError()
     
 #getters and setters
     @property

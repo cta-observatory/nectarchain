@@ -5,8 +5,6 @@ import numpy as np
 from pathlib import Path
 from astropy.table import QTable
 
-import pytest
-
 class GainMakerforTest(GainMaker) : 
     _reduced_name = "test"
     def make() : 
