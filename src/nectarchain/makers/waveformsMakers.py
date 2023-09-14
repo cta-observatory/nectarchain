@@ -1,3 +1,8 @@
+import logging
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger('__main__').handlers
+
 from argparse import ArgumentError
 import numpy as np
 from matplotlib import pyplot as plt
@@ -23,24 +28,17 @@ from ctapipe_io_nectarcam import NectarCAMEventSource
 from ..data import DataManagement
 
 import sys
-import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger('__main__').handlers
 
 from ctapipe.containers import EventType
 from ..data.container import WaveformsContainer
 
-from nectarchain.makers import BaseMaker
+from .core import ArrayDataMaker
 
 __all__ = ["WaveformsMaker"]
 
-class WaveformsMaker(BaseMaker) :
+class WaveformsMaker(ArrayDataMaker) :
     """class use to make the waveform extraction from event read from r0 data
     """
-    TEL_ID = 0
-    CAMERA_NAME = "NectarCam-003"
-    CAMERA = CameraGeometry.from_name(CAMERA_NAME)
 
 #constructors
     def __init__(self,run_number : int,max_events : int = None,run_file = None,*args,**kwargs):
@@ -52,35 +50,14 @@ class WaveformsMaker(BaseMaker) :
             nevents (int, optional) : number of events in run if known (parameter used to save computing time)
             run_file (optional) : if provided, will load this run file
         """
-        super().__init__(*args,**kwargs)
+        super().__init__(run_number,max_events,run_file,*args,**kwargs)
 
-        self.__run_number = run_number
-        self.__run_file = run_file
-        self.__max_events = max_events
-
-        self.__reader = WaveformsMaker.load_run(run_number,max_events,run_file = run_file)
-
-        #from reader members
-        self.__npixels = self.__reader.camera_config.num_pixels
-        self.__nsamples =  self.__reader.camera_config.num_samples
-        self.__geometry = self.__reader.subarray.tel[WaveformsMaker.TEL_ID].camera
-        self.__subarray =  self.__reader.subarray
-        self.__pixels_id = self.__reader.camera_config.expected_pixels_id
-        
-
-        log.info(f"N pixels : {self.npixels}")
-        
-        #data we want to compute
+        self.__geometry = self._reader.subarray.tel[__class__.TEL_ID].camera
+        self.__subarray =  self._reader.subarray
+        self.__nsamples =  self._reader.camera_config.num_samples
+    
         self.__wfs_hg = {}
         self.__wfs_lg = {}
-        self.__ucts_timestamp = {}
-        self.__ucts_busy_counter = {}
-        self.__ucts_event_counter = {}
-        self.__event_type = {}
-        self.__event_id = {}
-        self.__trig_patter_all = {}
-        self.__broken_pixels_hg = {}
-        self.__broken_pixels_lg = {}
 
     @staticmethod
     def create_from_events_list(events_list : list,
@@ -90,105 +67,44 @@ class WaveformsMaker(BaseMaker) :
                                 subarray,
                                 pixels_id : int,
                                 ) : 
-        cls = __class__.__new__()
-
-        cls.__run_number =  run_number
-        cls.__nevents = len(events_list)
-        cls.__npixels = npixels
+        cls = super().create_from_events_list(events_list = events_list,
+                                run_number = run_number,
+                                npixels = npixels,
+                                pixels_id = pixels_id
+                                )
+        
         cls.__nsamples = nsamples
         cls.__subarray = subarray
-        cls.__pixels_id = pixels_id
 
         cls.__wfs_hg = {}
         cls.__wfs_lg = {}
-        cls.__ucts_timestamp = {}
-        cls.__ucts_busy_counter = {}
-        cls.__ucts_event_counter = {}
-        cls.__event_type = {}
-        cls.__event_id = {}
-        cls.__trig_patter_all = {}
-        cls.__broken_pixels_hg = {}
-        cls.__broken_pixels_lg = {}
         
-        cls.__init_trigger_type(None)
-
+        cls._init_trigger_type(None)
+        
         for event in tqdm(events_list):
             cls._make_event(event,None)
 
-        return cls.__make_output_container([None])
+        return cls._make_output_container([None])
 
             
-    def __init_trigger_type(self,trigger_type,**kwargs) : 
-        name = WaveformsMaker.__get_name_trigger(trigger_type)
-        log.info(f"initiamization of the waveformsMaker following trigger type : {name}")
+    def _init_trigger_type(self,trigger_type,**kwargs) : 
+        super()._init_trigger_type(trigger_type,**kwargs)
+        name = __class__._get_name_trigger(trigger_type)
+        log.info(f"initialization of the waveformsMaker following trigger type : {name}")
         self.__wfs_hg[f"{name}"] = []
         self.__wfs_lg[f"{name}"] = []
-        self.__ucts_timestamp[f"{name}"] = []
-        self.__ucts_busy_counter[f"{name}"] = []
-        self.__ucts_event_counter[f"{name}"] = []
-        self.__event_type[f"{name}"] = []
-        self.__event_id[f"{name}"] = []
-        self.__trig_patter_all[f"{name}"] = []
-        self.__broken_pixels_hg[f"{name}"] = []
-        self.__broken_pixels_lg[f"{name}"] = []
 
-    
 
-    def __compute_broken_pixels(self,wfs_hg_event,wfs_lg_event,**kwargs) : 
-        log.warning("computation of broken pixels is not yet implemented")
-        return np.zeros((self.npixels),dtype = bool),np.zeros((self.npixels),dtype = bool)
-    
-    @staticmethod
-    def __get_name_trigger(trigger : EventType) : 
-        if trigger is None : 
-            name = "None"
-        else : 
-            name = trigger.name
-        return name
 
-    def make(self,n_events = np.inf, trigger_type : list = None, restart_from_begining = False):
-        """mathod to extract waveforms data from the EventSource 
-
-        Args:
-            trigger_type (list[EventType], optional): only events with the asked trigger type will be use. Defaults to None.
-            compute_trigger_patern (bool, optional): To recompute on our side the trigger patern. Defaults to False.
-        """
-        if ~np.isfinite(n_events) : 
-            log.warning('no needed events number specified, it may cause a memory error')
-        if isinstance(trigger_type,EventType) or trigger_type is None : 
-            trigger_type = [trigger_type]
-
-        if restart_from_begining : 
-            log.debug('restart from begining : creation of the EventSource reader')
-            self.__reader = WaveformsMaker.load_run(self.__run_number,self.__max_events,run_file = self.__run_file)
-        
-        for _trigger_type in trigger_type :
-            self.__init_trigger_type(_trigger_type) 
-
-        n_traited_events = 0
-        for i,event in enumerate(self.__reader):
-            if i%100 == 0:
-                log.info(f"reading event number {i}")
-            for trigger in trigger_type : 
-                if (trigger is None) or (trigger == event.trigger.event_type) : 
-                    self._make_event(event,trigger)
-                    n_traited_events += 1
-            if n_traited_events >= n_events : 
-                break
-
-        return self.__make_output_container(trigger_type)
+       
 
     def _make_event(self,
                 event,
                 trigger : EventType
                 ) : 
-        name = WaveformsMaker.__get_name_trigger(trigger)
-        self.__event_id[f'{name}'].append(np.uint16(event.index.event_id))
-        self.__ucts_timestamp[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.ucts_timestamp)
-        self.__event_type[f'{name}'].append(event.trigger.event_type.value)
-        self.__ucts_busy_counter[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.ucts_busy_counter)
-        self.__ucts_event_counter[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.ucts_event_counter)
-        self.__trig_patter_all[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.trigger_pattern.T)
+        super()._make_event(event = event,
+                            trigger = trigger)
+        name = __class__._get_name_trigger(trigger)
 
         wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
         wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
@@ -200,11 +116,11 @@ class WaveformsMaker(BaseMaker) :
         self.__wfs_hg[f'{name}'].append(wfs_hg_tmp.tolist())
         self.__wfs_lg[f'{name}'].append(wfs_lg_tmp.tolist())
 
-        broken_pixels_hg,broken_pixels_lg = self.__compute_broken_pixels(wfs_hg_tmp,wfs_lg_tmp)
-        self.__broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
-        self.__broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
+        broken_pixels_hg,broken_pixels_lg = self._compute_broken_pixels(wfs_hg_tmp,wfs_lg_tmp)
+        self._broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
+        self._broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
-    def __make_output_container(self,trigger_type) :
+    def _make_output_container(self,trigger_type) :
         output = []
         for trigger in trigger_type :
             waveformsContainer = WaveformsContainer(
@@ -332,45 +248,12 @@ class WaveformsMaker(BaseMaker) :
         return res
 
 
-    @property 
-    def _run_file(self) : return self.__run_file     
-    @property
-    def _max_events(self) : return self.__max_events
-    @property
-    def reader(self) : return self.__reader
-    @property
-    def npixels(self) : return self.__npixels
     @property
     def nsamples(self) : return self.__nsamples
     @property
     def geometry(self) : return self.__geometry
     @property
     def subarray(self) : return self.__subarray
-    @property
-    def pixels_id(self) : return self.__pixels_id
-    @property
-    def run_number(self) : return self.__run_number
-    def nevents(self,trigger) : return len(self.__event_id[WaveformsMaker.__get_name_trigger(trigger)])
-    def wfs_hg(self,trigger) : return np.array(self.__wfs_hg[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint16)
-    def wfs_lg(self,trigger) : return np.array(self.__wfs_lg[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint16)
-    def broken_pixels_hg(self,trigger) : return np.array(self.__broken_pixels_hg[WaveformsMaker.__get_name_trigger(trigger)],dtype = bool)
-    def broken_pixels_lg(self,trigger) : return np.array(self.__broken_pixels_lg[WaveformsMaker.__get_name_trigger(trigger)],dtype = bool)
-    def ucts_timestamp(self,trigger) : return np.array(self.__ucts_timestamp[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint64)
-    def ucts_busy_counter(self,trigger) : return np.array(self.__ucts_busy_counter[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint32)
-    def ucts_event_counter(self,trigger) : return np.array(self.__ucts_event_counter[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint32)
-    def event_type(self,trigger) : return np.array(self.__event_type[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint8)
-    def event_id(self,trigger) : return np.array(self.__event_id[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint32)
-    def multiplicity(self,trigger) :  
-        tmp = self.trig_pattern(trigger)
-        if len(tmp) == 0 : 
-            return np.array([])
-        else : 
-            return np.uint16(np.count_nonzero(tmp,axis = 1))
-    def trig_pattern(self,trigger) :  
-        tmp = self.trig_pattern_all(trigger)
-        if len(tmp) == 0 : 
-            return np.array([])
-        else : 
-            return tmp.any(axis = 2)
-    def trig_pattern_all(self,trigger) :  return np.array(self.__trig_patter_all[f"{WaveformsMaker.__get_name_trigger(trigger)}"],dtype = bool)
-
+    def wfs_hg(self,trigger) : return np.array(self.__wfs_hg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
+    def wfs_lg(self,trigger) : return np.array(self.__wfs_lg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
+    
