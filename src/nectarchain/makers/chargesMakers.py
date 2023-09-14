@@ -14,14 +14,19 @@ import os
 from ctapipe.instrument import CameraGeometry
 
 from ctapipe_io_nectarcam import constants
+from ctapipe.containers import EventType
+from ctapipe.image import ImageExtractor
+
 
 from astropy.io import fits
 
 from numba import guvectorize, float64, int64, bool_
 
-from ..data.container import WaveformsContainer
+from ..data.container import WaveformsContainer,ChargesContainer
 
 from .core import ArrayDataMaker
+from .extractor.utils import CtapipeExtractor
+
 
 
 
@@ -94,124 +99,181 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         
 
 class ChargeMaker(ArrayDataMaker) : 
-    """
-    class used to compute charge from waveforms container
-
-    Attributes:
-        TEL_ID (int): Telescope ID
-        CAMERA (CameraGeometry): Camera geometry
-
-    Methods:
-        __init__(self, charge_hg, charge_lg, peak_hg, peak_lg, run_number, pixels_id, nevents, npixels, method="FullWaveformSum"): Initializes a ChargeContainer instance
-        from_waveforms(cls, waveformContainer, method="FullWaveformSum", **kwargs): Creates a ChargeContainer instance from a WaveformsContainer
-        write(self, path, **kwargs): Writes the charge data to a FITS file
-        from_file(path, run_number, **kwargs): Loads charge data from a FITS file
-        compute_charge(waveformContainer, channel, method="FullWaveformSum", **kwargs): Computes charge from waveforms
-        histo_hg(self, n_bins=1000, autoscale=True): Computes the histogram of the high-gain (HG) channel charge values
-        histo_lg(self, n_bins=1000, autoscale=True): Computes the histogram of the low-gain (LG) channel charge values
-        select_charge_hg(self, pixel_id): Extracts the high-gain (HG) charge values for the specified pixel IDs
-        select_charge_lg(self, pixel_id): Extracts the low-gain (LG) charge values for the specified pixel IDs
-        sort(self, method='event_id'): Sorts the charge data based on the specified method
-        run_number(self): Returns the run number
-        pixels_id(self): Returns the pixel IDs
-        npixels(self): Returns the number of pixels
-        nevents(self): Returns the number of events
-        method(self): Returns the charge computation method
-        multiplicity(self): Returns the multiplicity of events
-        trig_pattern(self): Returns the trigger pattern
-
-    Example Usage:
-        # Create a ChargeContainer instance from a WaveformsContainer
-        chargeContainer = ChargeContainer.from_waveforms(waveformContainer)
-
-        # Write the charge data to a FITS file
-        chargeContainer.write(path)
-
-        # Load charge data from a FITS file
-        chargeContainer = ChargeContainer.from_file(path, run_number)
-
-        # Compute histograms of the charge values
-        hist_hg = chargeContainer.histo_hg()
-        hist_lg = chargeContainer.histo_lg()
-
-        # Select charge values for specific pixels
-        pixel_ids = [1, 2, 3]
-        charge_hg = chargeContainer.select_charge_hg(pixel_ids)
-        charge_lg = chargeContainer.select_charge_lg(pixel_ids)
-
-        # Sort the charge data based on event ID
-        chargeContainer.sort()
-
-        # Access properties of the ChargeContainer
-        run_number = chargeContainer.run_number
-        pixels_id = chargeContainer.pixels_id
-        npixels = chargeContainer.npixels
-        nevents = chargeContainer.nevents
-        method = chargeContainer.method
-    """
-
-    def __init__(self, charge_hg, charge_lg, peak_hg, peak_lg, run_number, pixels_id, nevents, npixels, method="FullWaveformSum"):
-        """
-        Initializes a ChargeContainer instance with the provided arguments and sets some additional attributes to default values.
+#constructors
+    def __init__(self,run_number : int,max_events : int = None,run_file = None,*args,**kwargs):
+        """construtor
 
         Args:
-            charge_hg (array): The high-gain charge values.
-            charge_lg (array): The low-gain charge values.
-            peak_hg (array): The high-gain peak time values.
-            peak_lg (array): The low-gain peak time values.
-            run_number (int): The run number.
-            pixels_id (array): The pixel IDs.
-            nevents (int): The number of events.
-            npixels (int): The number of pixels.
-            method (str, optional): The charge computation method. Defaults to "FullWaveformSum".
-
-        Returns:
-            None
-
+            run_number (int): id of the run to be loaded
+            maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
+            nevents (int, optional) : number of events in run if known (parameter used to save computing time)
+            run_file (optional) : if provided, will load this run file
         """
-        self.charge_hg = charge_hg
-        self.charge_lg = charge_lg
-        self.peak_hg = peak_hg
-        self.peak_lg = peak_lg
-        self._run_number = run_number
-        self._pixels_id = pixels_id
-        self._method = method
-        self._nevents = nevents
-        self._npixels = npixels
+        super().__init__(run_number,max_events,run_file,*args,**kwargs)
+        self.__charges_hg = {}
+        self.__charges_lg = {}
+        self.__peak_hg = {}
+        self.__peak_lg = {}
+            
+    def _init_trigger_type(self,trigger_type,**kwargs) : 
+        super()._init_trigger_type(trigger_type,**kwargs)
+        name = __class__._get_name_trigger(trigger_type)
+        log.info(f"initialization of the chargeMaker following trigger type : {name}")
+        self.__charges_hg[f"{name}"] = []
+        self.__charges_lg[f"{name}"] = []
+        self.__peak_hg[f"{name}"] = []
+        self.__peak_lg[f"{name}"] = []
 
-        self.ucts_timestamp = np.zeros((self.nevents), dtype=np.uint64)
-        self.ucts_busy_counter = np.zeros((self.nevents), dtype=np.uint16)
-        self.ucts_event_counter = np.zeros((self.nevents), dtype=np.uint16)
-        self.event_type = np.zeros((self.nevents), dtype=np.uint8)
-        self.event_id = np.zeros((self.nevents), dtype=np.uint16)
-        self.trig_pattern_all = np.zeros((self.nevents, self.CAMERA.n_pixels, 4), dtype=bool)
+       
+    def make(self,
+            n_events = np.inf,
+            trigger_type : list = None, 
+            restart_from_begining = False,
+            method: str = "FullWaveformSum",
+            *args,**kwargs):
+        kwargs["method"]=method
+        super().make(n_events=n_events,
+                     trigger_type=trigger_type,
+                     restart_from_begining=restart_from_begining,
+                     *args,**kwargs)
+        
+    def _make_event(self,
+                event,
+                trigger : EventType,
+                method: str = "FullWaveformSum",
+                *args,
+                **kwargs
+                ) : 
+        wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
+        wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
+
+        super()._make_event(event = event,
+                            trigger = trigger,
+                            wfs_hg = wfs_hg_tmp,
+                            wfs_lg = wfs_lg_tmp,
+                            *args,
+                            **kwargs)
+        name = __class__._get_name_trigger(trigger)
+
+        broken_pixels_hg,broken_pixels_lg = __class__._compute_broken_pixels(wfs_hg_tmp,wfs_lg_tmp)
+        self._broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
+        self._broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
 
-    @classmethod
-    def from_waveforms(cls, waveformContainer: WaveformsContainer, method: str = "FullWaveformSum", **kwargs) -> 'ChargeContainer':
-        """Create a new ChargeContainer instance from a WaveformsContainer.
-        Args:
-            waveformContainer (WaveformsContainer): The waveforms container object from which to compute the charge values.
-            method (str, optional): The method to use for charge computation. Defaults to "FullWaveformSum".
-        Returns:
-            ChargeContainer: The created ChargeContainer instance with computed charge values and other attributes.
-        """
+        imageExtractor = __class__._get_imageExtractor(method,self._reader.subarray,**kwargs)
+
+        __image = CtapipeExtractor.get_image_peak_time(imageExtractor(wfs_hg_tmp,__class__.TEL_ID,constants.HIGH_GAIN,broken_pixels_hg))
+        self.__charges_hg[f"{name}"].append(__image[0].tolist())
+        self.__peak_hg[f"{name}"].append(__image[1].tolist())
+
+        __image = CtapipeExtractor.get_image_peak_time(imageExtractor(wfs_lg_tmp,__class__.TEL_ID,constants.LOW_GAIN,broken_pixels_lg))
+        self.__charges_lg[f"{name}"].append(__image[0].tolist())
+        self.__peak_lg[f"{name}"].append(__image[1].tolist())
+
+    @staticmethod
+    def _get_imageExtractor(method,subarray,**kwargs) : 
+        if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
+            raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
+
+        extractor_kwargs = {}
+        for key in eval(method).class_own_traits().keys() :
+            if key in kwargs.keys() :
+                extractor_kwargs[key] = kwargs[key]
+
+        if "apply_integration_correction" in eval(method).class_own_traits().keys() : #to change the default behavior of ctapipe extractor
+            extractor_kwargs["apply_integration_correction"] = kwargs.get("apply_integration_correction",False)
+
+        log.debug(f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}")
+        imageExtractor = eval(method)(subarray,**extractor_kwargs)
+        return imageExtractor
+
+    def _make_output_container(self,trigger_type) :
+        output = []
+        for trigger in trigger_type :
+            chargesContainer = ChargesContainer(
+                run_number = self.run_number,
+                npixels = self.npixels,
+                camera = self.CAMERA_NAME,
+                pixels_id = self.pixels_id,
+                nevents = self.nevents(trigger),
+                charges_hg = self.charges_hg(trigger),
+                charges_lg = self.charges_lg(trigger),
+                peak_hg = self.peak_hg(trigger),
+                peak_lg = self.peak_lg(trigger),
+                broken_pixels_hg = self.broken_pixels_hg(trigger),
+                broken_pixels_lg = self.broken_pixels_lg(trigger),
+                ucts_timestamp = self.ucts_timestamp(trigger),
+                ucts_busy_counter = self.ucts_busy_counter(trigger),
+                ucts_event_counter = self.ucts_event_counter(trigger),
+                event_type = self.event_type(trigger),
+                event_id = self.event_id(trigger),   
+                trig_pattern_all = self.trig_pattern_all(trigger),         
+                trig_pattern = self.trig_pattern(trigger),
+                multiplicity = self.multiplicity(trigger)
+            )
+            output.append(chargesContainer)
+        return output
+
+    @staticmethod
+    def sort(chargesContainer :ChargesContainer, method = 'event_id') : 
+        output = ChargesContainer(
+            run_number = chargesContainer.run_number,
+            npixels = chargesContainer.npixels,
+            camera = chargesContainer.camera,
+            pixels_id = chargesContainer.pixels_id,
+            nevents = chargesContainer.nevents
+        )
+        if method == 'event_id' :
+            index = np.argsort(chargesContainer.event_id)
+            for field in chargesContainer.keys() :
+                if not(field in ["run_number","npixels","camera","pixels_id","nevents"]) : 
+                    output[field] = chargesContainer[field][index]
+        else : 
+            raise ArgumentError(f"{method} is not a valid method for sorting")
+        return output
+    
+
+    @staticmethod
+    def select_charges_hg(chargesContainer :ChargesContainer,pixel_id : np.ndarray) : 
+        res = __class__.select_container_array_field(container = chargesContainer,pixel_id = pixel_id,field = 'charges_hg')
+        res = res.transpose(1,0)
+        return res
+
+
+    @staticmethod
+    def select_charges_lg(chargesContainer : ChargesContainer,pixel_id : np.ndarray) : 
+        res = __class__.select_container_array_field(container = chargesContainer,pixel_id = pixel_id,field = 'charges_lg')
+        res = res.transpose(1,0)
+        return res
+
+
+    def charges_hg(self,trigger) : return np.array(self.__charges_hg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
+    def charges_lg(self,trigger) : return np.array(self.__charges_lg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
+
+    def peak_hg(self,trigger) : return np.array(self.__peak_hg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
+    def peak_lg(self,trigger) : return np.array(self.__peak_lg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
+
+
+    @staticmethod
+    def create_from_waveforms(waveformsContainer: WaveformsContainer, method: str = "FullWaveformSum", **kwargs) -> ChargesContainer:
+        chargesContainer = ChargesContainer()
+
+        for field in waveformsContainer.keys() :
+                if not(field in ["subarray","nsamples","wfs_hg","wfs_lg"]) : 
+                    chargesContainer[field] = waveformsContainer[field]
+                    
         log.info(f"computing hg charge with {method} method")
-        charge_hg, peak_hg = ChargeContainer.compute_charge(waveformContainer, constants.HIGH_GAIN, method, **kwargs)
-        charge_hg = np.array(charge_hg, dtype=np.uint16)
+        charges_hg, peak_hg = __class__.compute_charge(waveformsContainer, constants.HIGH_GAIN, method, **kwargs)
+        charges_hg = np.array(charges_hg, dtype=np.uint16)
         log.info(f"computing lg charge with {method} method")
-        charge_lg, peak_lg = ChargeContainer.compute_charge(waveformContainer, constants.LOW_GAIN, method, **kwargs)
-        charge_lg = np.array(charge_lg, dtype=np.uint16)
-        chargeContainer = cls(charge_hg, charge_lg, peak_hg, peak_lg, waveformContainer.run_number, waveformContainer.pixels_id, waveformContainer.nevents, waveformContainer.npixels, method)
-        chargeContainer.ucts_timestamp = waveformContainer.ucts_timestamp
-        chargeContainer.ucts_busy_counter = waveformContainer.ucts_busy_counter
-        chargeContainer.ucts_event_counter = waveformContainer.ucts_event_counter
-        chargeContainer.event_type = waveformContainer.event_type
-        chargeContainer.event_id = waveformContainer.event_id
-        chargeContainer.trig_pattern_all = waveformContainer.trig_pattern_all
-        return chargeContainer
+        charges_lg, peak_lg = __class__.compute_charge(waveformsContainer, constants.LOW_GAIN, method, **kwargs)
+        charges_lg = np.array(charges_lg, dtype=np.uint16)
+        chargesContainer.charges_hg = charges_hg
+        chargesContainer.charges_lg = charges_lg
+        chargesContainer.peak_hg = peak_hg
+        chargesContainer.peak_lg = peak_lg
 
-
+        return chargesContainer
         
     @staticmethod 
     def compute_charge(waveformContainer : WaveformsContainer,channel : int,method : str = "FullWaveformSum" ,**kwargs) : 
@@ -231,32 +293,35 @@ class ChargeMaker(ArrayDataMaker) :
         """
 
         #import is here for fix issue with pytest (TypeError :  inference is not possible with python <3.9 (Numba conflict bc there is no inference...))
-        from ...makers.extractor.utils import CtapipeExtractor
+        from .extractor.utils import CtapipeExtractor
         
-        if not(method in list_ctapipe_charge_extractor or method in list_nectarchain_charge_extractor) :
-            raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor}")
-
-        extractor_kwargs = {}
-        for key in eval(method).class_own_traits().keys() :
-            if key in kwargs.keys() :
-                extractor_kwargs[key] = kwargs[key]
-
-        if "apply_integration_correction" in eval(method).class_own_traits().keys() : #to change the default behavior of ctapipe extractor
-            extractor_kwargs["apply_integration_correction"] = kwargs.get("apply_integration_correction",False)
-
-        log.debug(f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}")
-        ImageExtractor = eval(method)(waveformContainer.subarray,**extractor_kwargs)
+        imageExtractor = __class__._get_imageExtractor(method = method,subarray = waveformContainer.subarray,**kwargs)
 
         if channel == constants.HIGH_GAIN:
-            out = np.array([CtapipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
+            out = np.array([CtapipeExtractor.get_image_peak_time(imageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
             return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            out = np.array([CtapipeExtractor.get_image_peak_time(ImageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
+            out = np.array([CtapipeExtractor.get_image_peak_time(imageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
             return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
 
-    def histo_hg(self,n_bins : int = 1000,autoscale : bool = True) -> ma.masked_array:
+    @staticmethod
+    def histo_hg(chargesContainer : ChargesContainer,n_bins : int = 1000,autoscale : bool = True) -> ma.masked_array:
+        return __class__._histo(chargesContainer = chargesContainer, 
+                               field = 'charges_hg',
+                               n_bins = n_bins,
+                               autoscale = autoscale) 
+    
+    @staticmethod
+    def histo_lg(chargesContainer : ChargesContainer,n_bins : int = 1000,autoscale : bool = True) -> ma.masked_array:
+        return __class__._histo(chargesContainer = chargesContainer, 
+                               field = 'charges_lg',
+                               n_bins = n_bins,
+                               autoscale = autoscale) 
+    
+    @staticmethod
+    def _histo(chargesContainer : ChargesContainer,field : str, n_bins : int = 1000,autoscale : bool = True) -> ma.masked_array:
         """method to compute histogram of HG channel
         Numba is used to compute histograms in vectorized way
 
@@ -267,18 +332,18 @@ class ChargeMaker(ArrayDataMaker) :
         Returns:
             np.ndarray: masked array of charge histograms (histo,charge)
         """
-        mask_broken_pix = np.array((self.charge_hg == self.charge_hg.mean(axis = 0)).mean(axis=0),dtype = bool)
+        mask_broken_pix = np.array((chargesContainer[field] == chargesContainer[field].mean(axis = 0)).mean(axis=0),dtype = bool)
         log.debug(f"there are {mask_broken_pix.sum()} broken pixels (charge stays at same level for each events)")
         
         if autoscale : 
-            all_range = np.arange(np.uint16(np.min(self.charge_hg.T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(self.charge_hg.T[~mask_broken_pix].T)) + 1.5,1)
-            #hist_ma = ma.masked_array(np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
-            charge_ma = ma.masked_array((all_range.reshape(all_range.shape[0],1) @ np.ones((1,self.charge_hg.shape[1]))).T, mask=np.zeros((self.charge_hg.shape[1],all_range.shape[0]),dtype = bool))
+            all_range = np.arange(np.uint16(np.min(chargesContainer[field].T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(chargesContainer[field].T[~mask_broken_pix].T)) + 1.5,1)
+            #hist_ma = ma.masked_array(np.zeros((self[field].shape[1],all_range.shape[0]),dtype = np.uint16), mask=np.zeros((self[field].shape[1],all_range.shape[0]),dtype = bool))
+            charge_ma = ma.masked_array((all_range.reshape(all_range.shape[0],1) @ np.ones((1,chargesContainer[field].shape[1]))).T, mask=np.zeros((chargesContainer[field].shape[1],all_range.shape[0]),dtype = bool))
 
             broxen_pixels_mask = np.array([mask_broken_pix for i in range(charge_ma.shape[1])]).T
             #hist_ma.mask = new_data_mask.T
             start = time.time()
-            _mask, hist_ma_data = make_histo(self.charge_hg.T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
+            _mask, hist_ma_data = make_histo(chargesContainer[field].T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
             charge_ma.mask = np.logical_or(_mask,broxen_pixels_mask)
             hist_ma =  ma.masked_array(hist_ma_data,mask = charge_ma.mask)
             log.debug(f"histogram hg computation time : {time.time() - start} sec")          
@@ -286,260 +351,9 @@ class ChargeMaker(ArrayDataMaker) :
             return ma.masked_array((hist_ma,charge_ma))
             
         else : 
-            hist = np.array([np.histogram(self.charge_hg.T[i],bins=n_bins)[0] for i in range(self.charge_hg.shape[1])])
-            charge = np.array([np.histogram(self.charge_hg.T[i],bins=n_bins)[1] for i in range(self.charge_hg.shape[1])])
+            hist = np.array([np.histogram(chargesContainer[field].T[i],bins=n_bins)[0] for i in range(chargesContainer[field].shape[1])])
+            charge = np.array([np.histogram(chargesContainer[field].T[i],bins=n_bins)[1] for i in range(chargesContainer[field].shape[1])])
             charge_edges = np.array([np.mean(charge.T[i:i+2],axis = 0) for i in range(charge.shape[1]-1)]).T
             
             return np.array((hist,charge_edges))
 
-    def histo_lg(self,n_bins: int = 1000,autoscale : bool = True) -> np.ndarray:
-        """method to compute histogram of LG channel
-        Numba is used to compute histograms in vectorized way
-
-        Args:
-            n_bins (int, optional): number of bins in charge (ADC counts). Defaults to 1000.
-            autoscale (bool, optional): auto detect number of bins by pixels (bin witdh = 1 ADC). Defaults to True.
-
-        Returns:
-            np.ndarray: masked array of charge histograms (histo,charge)
-        """
-        mask_broken_pix = np.array((self.charge_lg == self.charge_lg.mean(axis = 0)).mean(axis=0),dtype = bool)
-        log.debug(f"there are {mask_broken_pix.sum()} broken pixels (charge stays at same level for each events)")
-        
-        if autoscale : 
-            all_range = np.arange(np.uint16(np.min(self.charge_lg.T[~mask_broken_pix].T)) - 0.5,np.uint16(np.max(self.charge_lg.T[~mask_broken_pix].T)) + 1.5,1)
-            charge_ma = ma.masked_array((all_range.reshape(all_range.shape[0],1) @ np.ones((1,self.charge_lg.shape[1]))).T, mask=np.zeros((self.charge_lg.shape[1],all_range.shape[0]),dtype = bool))
-
-            broxen_pixels_mask = np.array([mask_broken_pix for i in range(charge_ma.shape[1])]).T
-            #hist_ma.mask = new_data_mask.T
-            start = time.time()
-            _mask, hist_ma_data = make_histo(self.charge_lg.T, all_range, mask_broken_pix)#, charge_ma.data, charge_ma.mask, hist_ma.data, hist_ma.mask)
-            charge_ma.mask = np.logical_or(_mask,broxen_pixels_mask)
-            hist_ma =  ma.masked_array(hist_ma_data,mask = charge_ma.mask)
-            log.debug(f"histogram lg computation time : {time.time() - start} sec")  
-
-            return ma.masked_array((hist_ma,charge_ma))
-
-        else : 
-            hist = np.array([np.histogram(self.charge_lg.T[i],bins=n_bins)[0] for i in range(self.charge_lg.shape[1])])
-            charge = np.array([np.histogram(self.charge_lg.T[i],bins=n_bins)[1] for i in range(self.charge_lg.shape[1])])
-            charge_edges = np.array([np.mean(charge.T[i:i+2],axis = 0) for i in range(charge.shape[1]-1)]).T
-
-            return np.array((hist,charge_edges))
-
-    def select_charge_hg(self,pixel_id : np.ndarray) : 
-        """method to extract charge HG from a list of pixel ids 
-        The output is the charge HG with a shape following the size of the input pixel_id argument
-        Pixel in pixel_id which are not present in the ChargeContaineur pixels_id are skipped 
-
-        Args:
-            pixel_id (np.ndarray): array of pixel ids you want to extract the charge 
-
-        Returns:
-            (np.ndarray): charge array in the order of specified pixel_id
-        """
-        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
-        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
-        return np.array([self.charge_hg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
-
-    def select_charge_lg(self,pixel_id : np.ndarray) : 
-        """method to extract charge LG from a list of pixel ids 
-        The output is the charge LG with a shape following the size of the input pixel_id argument
-        Pixel in pixel_id which are not present in the ChargeContaineur pixels_id are skipped 
-
-        Args:
-            pixel_id (np.ndarray): array of pixel ids you want to extract the charge 
-
-        Returns:
-            (np.ndarray): charge array in the order of specified pixel_id
-        """
-        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
-        for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this ChargeContainer, skip this one")
-        return np.array([self.charge_lg.T[np.where(self.pixels_id == pixel)[0][0]] for pixel in pixel_id[mask_contain_pixels_id]]).T
-
-    def sort(self, method = 'event_id') : 
-        if method == 'event_id' :
-            log.info('sorting ChargeContaineur with event_id')
-            index = np.argsort(self.event_id)
-            self.ucts_timestamp = self.ucts_timestamp[index]
-            self.ucts_busy_counter = self.ucts_busy_counter[index]
-            self.ucts_event_counter = self.ucts_event_counter[index]
-            self.event_type = self.event_type[index]
-            self.event_id = self.event_id[index] 
-            self.trig_pattern_all = self.trig_pattern_all[index]
-            self.charge_hg = self.charge_hg[index] 
-            self.charge_lg = self.charge_lg[index] 
-            self.peak_hg = self.peak_hg[index]
-            self.peak_lg = self.peak_lg[index]
-        else : 
-            raise ArgumentError(f"{method} is not a valid method for sorting")
-
-    @property
-    def run_number(self) : return self._run_number
-
-    @property
-    def pixels_id(self) : return self._pixels_id
-
-    @property
-    def npixels(self) : return self._npixels
-
-    @property
-    def nevents(self) : return self._nevents
-
-    @property
-    def method(self) : return self._method
-
-    #physical properties
-    @property
-    def multiplicity(self) :  return np.uint16(np.count_nonzero(self.trig_pattern,axis = 1))
-
-    @property
-    def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 1)
-
-'''
-class ChargeContainers() : 
-    """
-    The `ChargeContainers` class is used to store and manipulate a collection of `ChargeContainer` objects. It provides methods for creating, writing, and merging `ChargeContainer` instances.
-
-    Example Usage:
-        # Create a `ChargeContainers` instance from a `WaveformsContainers` object
-        waveform_containers = WaveformsContainers()
-        charge_containers = ChargeContainers.from_waveforms(waveform_containers)
-
-        # Write the `ChargeContainers` to disk
-        charge_containers.write("path/to/save")
-
-        # Load `ChargeContainers` from a FITS file
-        charge_containers = ChargeContainers.from_file("path/to/file", run_number=123)
-
-        # Merge the `ChargeContainers` into a single `ChargeContainer`
-        merged_charge_container = charge_containers.merge()
-
-    Methods:
-        - `from_waveforms(waveformContainers: WaveformsContainers, **kwargs)`: Creates a `ChargeContainers` instance from a `WaveformsContainers` object.
-        - `write(path: str, **kwargs)`: Writes each `ChargeContainer` in `ChargeContainers` to disk.
-        - `from_file(path: Path, run_number: int, **kwargs)`: Loads `ChargeContainers` from FITS files previously written with `write()` method.
-        - `append(chargeContainer: ChargeContainer)`: Stacks a `ChargeContainer` into the `ChargeContainers` instance.
-        - `merge() -> ChargeContainer`: Merges the `ChargeContainers` into a single `ChargeContainer`.
-
-    Fields:
-        - `chargeContainers`: A list to store `ChargeContainer` objects.
-        - `__nChargeContainer`: The number of `ChargeContainer` objects stored in `chargeContainers`.
-        - `nChargeContainer`: A property that returns the number of `ChargeContainer` objects in `chargeContainers`.
-        - `nevents`: A property that returns the total number of events in all `ChargeContainer` objects in `chargeContainers`.
-    """
-    def __init__(self, *args, **kwargs) : 
-        self.chargeContainers = []
-        self.__nChargeContainer = 0
-    @classmethod
-    def from_waveforms(cls,waveformContainers : WaveformsContainers,**kwargs) : 
-        """create ChargeContainers from waveformContainers
-
-        Args:
-            waveformContainers (WaveformsContainers)
-
-        Returns:
-            chargeContainers (ChargeContainers)
-        """
-        chargeContainers = cls()
-        for i in range(waveformContainers.nWaveformsContainer) : 
-            chargeContainers.append(ChargeContainer.from_waveforms(waveformContainers.waveformsContainer[i],**kwargs))
-        return chargeContainers
-
-    def write(self,path : str, **kwargs) : 
-        """write each ChargeContainer in ChargeContainers on disk 
-
-        Args:
-            path (str): path where data are saved
-        """
-        for i in range(self.__nChargeContainer) : 
-            self.chargeContainers[i].write(path,suffix = f"{i:04d}" ,**kwargs)
-
-    @staticmethod
-    def from_file(path : Path,run_number : int,**kwargs) :
-        """load ChargeContainers from FITS file previously written with ChargeContainers.write() method 
-        This method will search all the fits files corresponding to {path}/charge_run{run_number}_*.fits scheme
-        
-        Args:
-            path (str): path with name of the FITS file without .fits extension
-            run_number (int) : the run number
-
-        Returns:
-            ChargeContainers: ChargeContainers instance
-        """
-        log.info(f"loading from {path}/charge_run{run_number}_*.fits")
-        files = glob.glob(f"{path}/charge_run{run_number}_*.fits")
-        if len(files) == 0 : 
-            e = FileNotFoundError(f"no files found corresponding to {path}_*.fits")
-            log.error(e)
-            raise e
-        else : 
-            cls = ChargeContainers.__new__(ChargeContainers)
-            cls.chargeContainers = []
-            cls.__nChargeContainer = len(files)
-            for file in files : 
-                cls.chargeContainers.append(ChargeContainer.from_file(path,run_number,explicit_filename = file))
-            return cls
-
-    @property
-    def nChargeContainer(self) : 
-        """getter giving the number of chargeContainer into the ChargeContainers instance
-
-        Returns:
-            int: the number of chargeContainer
-        """
-        return self.__nChargeContainer
-
-    @property
-    def nevents(self) : 
-        """number of events into the whole ChargesContainers
-
-        Returns:
-            int: number of events
-        """
-        return np.sum([self.chargeContainers[i].nevents for i in range(self.__nChargeContainer)])
-
-    def append(self,chargeContainer : ChargeContainer) :
-        """method to stack a ChargeContainer into the ChargeContainers
-
-        Args:
-            chargeContainer (ChargeContainer): the data to be stacked into
-        """
-        self.chargeContainers.append(chargeContainer)
-        self.__nChargeContainer += 1
-
-
-    def merge(self) -> ChargeContainer : 
-        """method to merge a ChargeContainers into one single ChargeContainer
-
-        Returns:
-            ChargeContainer: the merged object
-        """
-        cls  = ChargeContainer.__new__(ChargeContainer)
-        cls.charge_hg = np.concatenate([chargecontainer.charge_hg for chargecontainer in self.chargeContainers],axis = 0) 
-        cls.charge_lg = np.concatenate([chargecontainer.charge_lg for chargecontainer in self.chargeContainers],axis = 0) 
-        cls.peak_hg = np.concatenate([chargecontainer.peak_hg for chargecontainer in self.chargeContainers],axis = 0) 
-        cls.peak_lg = np.concatenate([chargecontainer.peak_lg for chargecontainer in self.chargeContainers],axis = 0) 
-
-        if np.all([chargecontainer.run_number == self.chargeContainers[0].run_number for chargecontainer in self.chargeContainers]) : 
-            cls._run_number = self.chargeContainers[0].run_number
-        if np.all([chargecontainer.pixels_id == self.chargeContainers[0].pixels_id for chargecontainer in self.chargeContainers]) : 
-            cls._pixels_id = self.chargeContainers[0].pixels_id
-        if np.all([chargecontainer.method == self.chargeContainers[0].method for chargecontainer in self.chargeContainers]):
-            cls._method = self.chargeContainers[0].method
-        cls._nevents = np.sum([chargecontainer.nevents for chargecontainer in self.chargeContainers])
-        if np.all([chargecontainer.npixels == self.chargeContainers[0].npixels for chargecontainer in self.chargeContainers]):
-            cls._npixels = self.chargeContainers[0].npixels
-
-
-        cls.ucts_timestamp = np.concatenate([chargecontainer.ucts_timestamp for chargecontainer in self.chargeContainers ])
-        cls.ucts_busy_counter = np.concatenate([chargecontainer.ucts_busy_counter for chargecontainer in self.chargeContainers ])
-        cls.ucts_event_counter = np.concatenate([chargecontainer.ucts_event_counter for chargecontainer in self.chargeContainers ])
-        cls.event_type = np.concatenate([chargecontainer.event_type for chargecontainer in self.chargeContainers ])
-        cls.event_id = np.concatenate([chargecontainer.event_id for chargecontainer in self.chargeContainers ])
-        cls.trig_pattern_all = np.concatenate([chargecontainer.trig_pattern_all for chargecontainer in self.chargeContainers ],axis = 0)
-        
-        cls.sort()
-
-        return cls
-'''

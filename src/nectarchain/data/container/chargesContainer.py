@@ -10,12 +10,12 @@ from .core import ArrayDataContainer
 
 class ChargesContainer(ArrayDataContainer):
 
-    charge_hg = Field( 
+    charges_hg = Field( 
         type = np.ndarray,
-        description = 'The high gain charge')
-    charge_lg = Field( 
+        description = 'The high gain charges')
+    charges_lg = Field( 
         type = np.ndarray,
-        description = 'The low gain charge')
+        description = 'The low gain charges')
     peak_hg = Field( 
         type = np.ndarray,
         description = 'The high gain peak time')
