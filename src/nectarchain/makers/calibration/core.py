@@ -12,11 +12,11 @@ from copy import copy
 from datetime import date
 from collections.abc import Iterable
 
-from ..core import GeneralMaker
+from ..core import BaseMaker
 
 
 __all__ = [""]
-class CalibrationMaker(GeneralMaker):
+class CalibrationMaker(BaseMaker):
     """
     Mother class for all calibration makers that can be defined to compute calibration coefficients from data.
 

@@ -19,11 +19,11 @@ from astropy.io import fits
 
 from numba import guvectorize, float64, int64, bool_
 
-from .waveforms import WaveformsContainer,WaveformsContainers
+from .waveformsContainer import WaveformsContainer
 
 
 
-__all__ = ['ChargeContainer','ChargeContainers']
+__all__ = ['ChargeContainer']
 
 list_ctapipe_charge_extractor = ["FullWaveformSum",
                         "FixedWindowSum",
@@ -504,7 +504,7 @@ class ChargeContainer() :
     @property
     def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 1)
 
-
+'''
 class ChargeContainers() : 
     """
     The `ChargeContainers` class is used to store and manipulate a collection of `ChargeContainer` objects. It provides methods for creating, writing, and merging `ChargeContainer` instances.
@@ -650,3 +650,4 @@ class ChargeContainers() :
         cls.sort()
 
         return cls
+'''

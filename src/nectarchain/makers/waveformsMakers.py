@@ -8,6 +8,8 @@ from pathlib import Path
 
 from enum import Enum
 
+from tqdm import tqdm
+
 from astropy.io import fits
 from astropy.table import QTable,Column,Table
 import astropy.units as u
@@ -18,7 +20,7 @@ from ctapipe.instrument import CameraGeometry,SubarrayDescription,TelescopeDescr
 
 from ctapipe_io_nectarcam import NectarCAMEventSource
 
-from ..management import DataManagement
+from ..data import DataManagement
 
 import sys
 import logging
@@ -26,82 +28,59 @@ logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
-__all__ = ["WaveformsContainer","WaveformsContainers"]
-        
+from ctapipe.containers import EventType
+from ..data.container import WaveformsContainer
 
-class WaveformsContainer() :
-    """class used to load run and load waveforms from r0 data
+from nectarchain.makers import BaseMaker
+
+__all__ = ["WaveformsMaker"]
+
+class WaveformsMaker(BaseMaker) :
+    """class use to make the waveform extraction from event read from r0 data
     """
     TEL_ID = 0
-    CAMERA = CameraGeometry.from_name("NectarCam-003")
-    def __new__(cls,*args,**kwargs) : 
-        obj = object.__new__(cls)
-        return obj
+    CAMERA_NAME = "NectarCam-003"
+    CAMERA = CameraGeometry.from_name(CAMERA_NAME)
 
-    def __init__(self,run_number : int,max_events : int = None,nevents : int = -1,run_file = None, init_arrays : bool = False):
+#constructors
+    def __init__(self,run_number : int,max_events : int = None,run_file = None,*args,**kwargs):
         """construtor
 
         Args:
             run_number (int): id of the run to be loaded
             maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
             nevents (int, optional) : number of events in run if known (parameter used to save computing time)
-            merge_file (optional) : if True will load all fits.fz files of the run, else merge_file can be integer to select the run fits.fz file according to this number
-            
+            run_file (optional) : if provided, will load this run file
         """
+        super().__init__(*args,**kwargs)
 
         self.__run_number = run_number
         self.__run_file = run_file
         self.__max_events = max_events
 
-        self.__reader = WaveformsContainer.load_run(run_number,max_events,run_file = run_file)
+        self.__reader = WaveformsMaker.load_run(run_number,max_events,run_file = run_file)
 
         #from reader members
         self.__npixels = self.__reader.camera_config.num_pixels
         self.__nsamples =  self.__reader.camera_config.num_samples
-        self.__geometry = self.__reader.subarray.tel[WaveformsContainer.TEL_ID].camera
+        self.__geometry = self.__reader.subarray.tel[WaveformsMaker.TEL_ID].camera
         self.__subarray =  self.__reader.subarray
         self.__pixels_id = self.__reader.camera_config.expected_pixels_id
         
-        #set camera properties
+
         log.info(f"N pixels : {self.npixels}")
-
-        #run properties
-        if nevents != -1 :
-            self.__nevents = nevents if max_events is None else min(max_events,nevents) #self.check_events()
-            self.__reader = None
-        else :
-            self.__nevents = self.check_events()
-            
-        log.info(f"N_events : {self.nevents}")
-
-        if init_arrays : 
-            self.__init_arrays()
-            
-    def __init_arrays(self,**kwargs) : 
-        log.debug('creation of the EventSource reader')
-        self.__reader = WaveformsContainer.load_run(self.__run_number,self.__max_events,run_file = self.__run_file)
         
-        log.debug("create wfs, ucts, event properties and triger pattern arrays")
-        #define zeros members which will be filled therafter
-        self.wfs_hg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
-        self.wfs_lg = np.zeros((self.nevents,self.npixels,self.nsamples),dtype = np.uint16)
-        self.ucts_timestamp = np.zeros((self.nevents),dtype = np.uint64)
-        self.ucts_busy_counter = np.zeros((self.nevents),dtype = np.uint32)
-        self.ucts_event_counter = np.zeros((self.nevents),dtype = np.uint32)
-        self.event_type = np.zeros((self.nevents),dtype = np.uint8)
-        self.event_id = np.zeros((self.nevents),dtype = np.uint32)
-        self.trig_pattern_all = np.zeros((self.nevents,self.CAMERA.n_pixels,4),dtype = bool)
-        #self.trig_pattern = np.zeros((self.nevents,self.npixels),dtype = bool)
-        #self.multiplicity = np.zeros((self.nevents,self.npixels),dtype = np.uint16)
-
-        self.__broken_pixels_hg = np.zeros((self.npixels),dtype = bool)
-        self.__broken_pixels_lg = np.zeros((self.npixels),dtype = bool)
-
-
-    def __compute_broken_pixels(self,**kwargs) : 
-        log.warning("computation of broken pixels is not yet implemented")
-        self.__broken_pixels_hg = np.zeros((self.npixels),dtype = bool)
-        self.__broken_pixels_lg = np.zeros((self.npixels),dtype = bool)
+        #data we want to compute
+        self.__wfs_hg = {}
+        self.__wfs_lg = {}
+        self.__ucts_timestamp = {}
+        self.__ucts_busy_counter = {}
+        self.__ucts_event_counter = {}
+        self.__event_type = {}
+        self.__event_id = {}
+        self.__trig_patter_all = {}
+        self.__broken_pixels_hg = {}
+        self.__broken_pixels_lg = {}
 
     @staticmethod
     def create_from_events_list(events_list : list,
@@ -111,7 +90,7 @@ class WaveformsContainer() :
                                 subarray,
                                 pixels_id : int,
                                 ) : 
-        cls = WaveformsContainer.__new__(WaveformsContainer)
+        cls = __class__.__new__()
 
         cls.__run_number =  run_number
         cls.__nevents = len(events_list)
@@ -120,232 +99,171 @@ class WaveformsContainer() :
         cls.__subarray = subarray
         cls.__pixels_id = pixels_id
 
-
-        wfs_hg_tmp=np.zeros((npixels,nsamples),dtype = np.uint16)
-        wfs_lg_tmp=np.zeros((npixels,nsamples),dtype = np.uint16)
+        cls.__wfs_hg = {}
+        cls.__wfs_lg = {}
+        cls.__ucts_timestamp = {}
+        cls.__ucts_busy_counter = {}
+        cls.__ucts_event_counter = {}
+        cls.__event_type = {}
+        cls.__event_id = {}
+        cls.__trig_patter_all = {}
+        cls.__broken_pixels_hg = {}
+        cls.__broken_pixels_lg = {}
         
-        for i, event in enumerate(events_list):
-            cls.fill_wfs_from_event(event,i,wfs_hg_tmp,wfs_lg_tmp)
+        cls.__init_trigger_type(None)
 
-        cls.__compute_broken_pixels()
+        for event in tqdm(events_list):
+            cls._make_event(event,None)
 
+        return cls.__make_output_container([None])
 
+            
+    def __init_trigger_type(self,trigger_type,**kwargs) : 
+        name = WaveformsMaker.__get_name_trigger(trigger_type)
+        log.info(f"initiamization of the waveformsMaker following trigger type : {name}")
+        self.__wfs_hg[f"{name}"] = []
+        self.__wfs_lg[f"{name}"] = []
+        self.__ucts_timestamp[f"{name}"] = []
+        self.__ucts_busy_counter[f"{name}"] = []
+        self.__ucts_event_counter[f"{name}"] = []
+        self.__event_type[f"{name}"] = []
+        self.__event_id[f"{name}"] = []
+        self.__trig_patter_all[f"{name}"] = []
+        self.__broken_pixels_hg[f"{name}"] = []
+        self.__broken_pixels_lg[f"{name}"] = []
 
+    
+
+    def __compute_broken_pixels(self,wfs_hg_event,wfs_lg_event,**kwargs) : 
+        log.warning("computation of broken pixels is not yet implemented")
+        return np.zeros((self.npixels),dtype = bool),np.zeros((self.npixels),dtype = bool)
+    
     @staticmethod
-    def load_run(run_number : int,max_events : int = None, run_file = None) : 
-        """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
+    def __get_name_trigger(trigger : EventType) : 
+        if trigger is None : 
+            name = "None"
+        else : 
+            name = trigger.name
+        return name
 
-        Args:self.__run_number = run_number
-            run_number (int): run_id
-            maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
-            merge_file (optional) : if True will load all fits.fz files of the run, else merge_file can be integer to select the run fits.fz file according to this number
-        Returns:
-            List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for each run files
-        """
-        if run_file is None : 
-            generic_filename,_ = DataManagement.findrun(run_number)
-            log.info(f"{str(generic_filename)} will be loaded")
-            eventsource = NectarCAMEventSource(input_url=generic_filename,max_events=max_events)
-        else :  
-            log.info(f"{run_file} will be loaded")
-            eventsource = NectarCAMEventSource(input_url=run_file,max_events=max_events)
-        return eventsource
-        
-    def check_events(self):
-        """method to check triggertype of events and counting number of events in all readers
-            it prints the trigger type when trigger type change over events (to not write one line by events)
-
-        Returns:
-            int : number of events
-        """
-        log.info("checking trigger type")
-        has_changed = True
-        previous_trigger = None
-        n_events = 0
-        for i,event in enumerate(self.__reader):
-            log.debug(f"events i has ID : {np.uint16(event.index.event_id)}")
-            if previous_trigger is not None :
-                has_changed = (previous_trigger.value != event.trigger.event_type.value)
-            previous_trigger = event.trigger.event_type
-            if has_changed : 
-                log.info(f"event {i} is {previous_trigger} : {previous_trigger.value} trigger type")
-            n_events+=1
-        return n_events
-
-
-
-    def load_wfs(self,compute_trigger_patern = False):
+    def make(self,n_events = np.inf, trigger_type : list = None, restart_from_begining = False):
         """mathod to extract waveforms data from the EventSource 
 
         Args:
+            trigger_type (list[EventType], optional): only events with the asked trigger type will be use. Defaults to None.
             compute_trigger_patern (bool, optional): To recompute on our side the trigger patern. Defaults to False.
         """
-        if not(hasattr(self, "wfs_hg")) : 
-            self.__init_arrays()
+        if ~np.isfinite(n_events) : 
+            log.warning('no needed events number specified, it may cause a memory error')
+        if isinstance(trigger_type,EventType) or trigger_type is None : 
+            trigger_type = [trigger_type]
 
-        wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
-        wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
+        if restart_from_begining : 
+            log.debug('restart from begining : creation of the EventSource reader')
+            self.__reader = WaveformsMaker.load_run(self.__run_number,self.__max_events,run_file = self.__run_file)
+        
+        for _trigger_type in trigger_type :
+            self.__init_trigger_type(_trigger_type) 
 
         n_traited_events = 0
         for i,event in enumerate(self.__reader):
             if i%100 == 0:
                 log.info(f"reading event number {i}")
-            self.fill_wfs_from_event(event,i,wfs_hg_tmp,wfs_lg_tmp)
+            for trigger in trigger_type : 
+                if (trigger is None) or (trigger == event.trigger.event_type) : 
+                    self._make_event(event,trigger)
+                    n_traited_events += 1
+            if n_traited_events >= n_events : 
+                break
 
-        self.__compute_broken_pixels()
+        return self.__make_output_container(trigger_type)
 
-        #if compute_trigger_patern and np.max(self.trig_pattern) == 0:
-        #    self.compute_trigger_patern()
+    def _make_event(self,
+                event,
+                trigger : EventType
+                ) : 
+        name = WaveformsMaker.__get_name_trigger(trigger)
+        self.__event_id[f'{name}'].append(np.uint16(event.index.event_id))
+        self.__ucts_timestamp[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.ucts_timestamp)
+        self.__event_type[f'{name}'].append(event.trigger.event_type.value)
+        self.__ucts_busy_counter[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.ucts_busy_counter)
+        self.__ucts_event_counter[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.ucts_event_counter)
+        self.__trig_patter_all[f'{name}'].append(event.nectarcam.tel[WaveformsMaker.TEL_ID].evt.trigger_pattern.T)
 
-    def fill_wfs_from_event(self,
-                            event,
-                            i : int,
-                            wfs_hg_tmp : np.ndarray,
-                            wfs_lg_tmp : np.ndarray
-                            ) : 
-        self.event_id[i] = np.uint16(event.index.event_id)
-        self.ucts_timestamp[i]=event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_timestamp
-        self.event_type[i]=event.trigger.event_type.value
-        self.ucts_busy_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_busy_counter
-        self.ucts_event_counter[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.ucts_event_counter
-        self.trig_pattern_all[i] = event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.trigger_pattern.T
+        wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
+        wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
 
         for pix in range(self.npixels):
             wfs_lg_tmp[pix]=event.r0.tel[0].waveform[1,self.pixels_id[pix]]
             wfs_hg_tmp[pix]=event.r0.tel[0].waveform[0,self.pixels_id[pix]]
 
-        self.wfs_hg[i] = wfs_hg_tmp
-        self.wfs_lg[i] = wfs_lg_tmp
+        self.__wfs_hg[f'{name}'].append(wfs_hg_tmp.tolist())
+        self.__wfs_lg[f'{name}'].append(wfs_lg_tmp.tolist())
 
-    def write(self,path : str, **kwargs) : 
-        """method to write in an output FITS file the WaveformsContainer. Two files are created, one FITS representing the data
-        and one HDF5 file representing the subarray configuration
+        broken_pixels_hg,broken_pixels_lg = self.__compute_broken_pixels(wfs_hg_tmp,wfs_lg_tmp)
+        self.__broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
+        self.__broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
-        Args:
-            path (str): the directory where you want to save data
-        """
-        suffix = kwargs.get("suffix","")
-        if suffix != "" : suffix = f"_{suffix}"
-
-        log.info(f"saving in {path}")
-        os.makedirs(path,exist_ok = True)
-
-        hdr = fits.Header()
-        hdr['RUN'] = self.__run_number
-        hdr['NEVENTS'] = self.nevents
-        hdr['NPIXELS'] = self.npixels
-        hdr['NSAMPLES'] = self.nsamples
-        hdr['SUBARRAY'] = self.subarray.name
-
-        self.subarray.to_hdf(f"{Path(path)}/subarray_run{self.run_number}{suffix}.hdf5",overwrite=kwargs.get('overwrite',False))
-
-
-
-        hdr['COMMENT'] = f"The waveforms containeur for run {self.__run_number} : primary is the pixels id, 2nd HDU : high gain waveforms, 3rd HDU : low gain waveforms, 4th HDU :  event properties and 5th HDU trigger paterns."
-
-        primary_hdu = fits.PrimaryHDU(self.pixels_id,header=hdr)
-
-        wfs_hg_hdu = fits.ImageHDU(self.wfs_hg,name = "HG Waveforms")
-        wfs_lg_hdu = fits.ImageHDU(self.wfs_lg,name = "LG Waveforms")
-
-
-        col1 = fits.Column(array = self.event_id, name = "event_id", format = '1J')
-        col2 = fits.Column(array = self.event_type, name = "event_type", format = '1I')
-        col3 = fits.Column(array = self.ucts_timestamp, name = "ucts_timestamp", format = '1K')
-        col4 = fits.Column(array = self.ucts_busy_counter, name = "ucts_busy_counter", format = '1J')
-        col5 = fits.Column(array = self.ucts_event_counter, name = "ucts_event_counter", format = '1J')
-        col6 = fits.Column(array = self.multiplicity, name = "multiplicity", format = '1I')
-
-        coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
-        event_properties = fits.BinTableHDU.from_columns(coldefs,name = 'event properties')
-
-        col1 = fits.Column(array = self.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * self.CAMERA.n_pixels}L',dim = f'({self.CAMERA.n_pixels},4)')
-        col2 = fits.Column(array = self.trig_pattern, name = "trig_pattern", format = f'{self.CAMERA.n_pixels}L')
-        coldefs = fits.ColDefs([col1, col2])
-        trigger_patern = fits.BinTableHDU.from_columns(coldefs,name = 'trigger patern')
-
-        hdul = fits.HDUList([primary_hdu, wfs_hg_hdu, wfs_lg_hdu,event_properties,trigger_patern])
-        try : 
-            hdul.writeto(Path(path)/f"waveforms_run{self.run_number}{suffix}.fits",overwrite=kwargs.get('overwrite',False))
-            log.info(f"run saved in {Path(path)}/waveforms_run{self.run_number}{suffix}.fits")
-        except OSError as e : 
-            log.warning(e)
-        except Exception as e :
-            log.error(e,exc_info = True)
-            raise e
-
-
+    def __make_output_container(self,trigger_type) :
+        output = []
+        for trigger in trigger_type :
+            waveformsContainer = WaveformsContainer(
+                run_number = self.run_number,
+                npixels = self.npixels,
+                nsamples = self.nsamples,
+                subarray = self.subarray,
+                camera = self.CAMERA_NAME,
+                pixels_id = self.pixels_id,
+                nevents = self.nevents(trigger),
+                wfs_hg = self.wfs_hg(trigger),
+                wfs_lg = self.wfs_lg(trigger),
+                broken_pixels_hg = self.broken_pixels_hg(trigger),
+                broken_pixels_lg = self.broken_pixels_lg(trigger),
+                ucts_timestamp = self.ucts_timestamp(trigger),
+                ucts_busy_counter = self.ucts_busy_counter(trigger),
+                ucts_event_counter = self.ucts_event_counter(trigger),
+                event_type = self.event_type(trigger),
+                event_id = self.event_id(trigger),   
+                trig_pattern_all = self.trig_pattern_all(trigger),         
+                trig_pattern = self.trig_pattern(trigger),
+                multiplicity = self.multiplicity(trigger)
+            )
+            output.append(waveformsContainer)
+        return output
 
     @staticmethod
-    def load(path : str) : 
-        """load WaveformsContainer from FITS file previously written with WaveformsContainer.write() method
-        Note : 2 files are loaded, the FITS one representing the waveforms data and a HDF5 file representing the subarray configuration. 
-        This second file has to be next to the FITS file.  
-        
-        Args:
-            path (str): path of the FITS file
-
-        Returns:
-            WaveformsContainer: WaveformsContainer instance
-        """
-        log.info(f"loading from {path}")
-        with fits.open(Path(path)) as hdul : 
-            cls = WaveformsContainer.__new__(WaveformsContainer)
-
-            cls.__run_number = hdul[0].header['RUN'] 
-            cls.__nevents = hdul[0].header['NEVENTS'] 
-            cls.__npixels = hdul[0].header['NPIXELS'] 
-            cls.__nsamples = hdul[0].header['NSAMPLES'] 
-
-            cls.__subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
-
-
-            cls.__pixels_id = hdul[0].data
-            cls.wfs_hg = hdul[1].data
-            cls.wfs_lg = hdul[2].data
-
-            table_prop = hdul[3].data
-            cls.event_id = table_prop["event_id"]
-            cls.event_type = table_prop["event_type"]
-            cls.ucts_timestamp = table_prop["ucts_timestamp"]
-            cls.ucts_busy_counter = table_prop["ucts_busy_counter"]
-            cls.ucts_event_counter = table_prop["ucts_event_counter"]
-
-            table_trigger = hdul[4].data
-            cls.trig_pattern_all = table_trigger["trig_pattern_all"]
-
-        cls.__compute_broken_pixels()
-
-        return cls
-
-    
-
-    
-    def sort(self, method = 'event_id') : 
+    def sort(waveformsContainer, method = 'event_id') : 
+        output = WaveformsContainer(
+            run_number = waveformsContainer.run_number,
+            npixels = waveformsContainer.npixels,
+            nsamples = waveformsContainer.nsamples,
+            subarray = waveformsContainer.subarray,
+            camera = waveformsContainer.camera,
+            pixels_id = waveformsContainer.pixels_id,
+            nevents = waveformsContainer.nevents
+        )
         if method == 'event_id' :
-            index = np.argsort(self.event_id)
-            self.ucts_timestamp = self.ucts_timestamp[index]
-            self.ucts_busy_counter = self.ucts_busy_counter[index]
-            self.ucts_event_counter = self.ucts_event_counter[index]
-            self.event_type = self.event_type[index]
-            self.event_id = self.event_id[index] 
-            self.trig_pattern_all = self.trig_pattern_all[index]
-            self.wfs_hg = self.wfs_hg[index]
-            self.wfs_lg = self.wfs_lg[index]
+            index = np.argsort(waveformsContainer.event_id)
+            output.ucts_timestamp = waveformsContainer.ucts_timestamp[index]
+            output.ucts_busy_counter = waveformsContainer.ucts_busy_counter[index]
+            output.ucts_event_counter = waveformsContainer.ucts_event_counter[index]
+            output.event_type = waveformsContainer.event_type[index]
+            output.event_id = waveformsContainer.event_id[index] 
+            output.trig_pattern_all = waveformsContainer.trig_pattern_all[index]
+            output.trig_pattern = waveformsContainer.trig_pattern[index]
+            output.multiplicity = waveformsContainer.multiplicity[index]
+
+            output.wfs_hg = waveformsContainer.wfs_hg[index]
+            output.wfs_lg = waveformsContainer.wfs_lg[index]
+            output.broken_pixels_hg = waveformsContainer.broken_pixels_hg[index]
+            output.broken_pixels_lg = waveformsContainer.broken_pixels_lg[index]
         else : 
             raise ArgumentError(f"{method} is not a valid method for sorting")
-
-    def compute_trigger_patern(self) : 
-        """(preliminary) function to compute the trigger patern
-        """
-        #mean.shape nevents * npixels
-        mean,std =np.mean(self.wfs_hg,axis = 2),np.std(self.wfs_hg,axis = 2)
-        self.trig_pattern = self.wfs_hg.max(axis = 2) > (mean + 3 * std)
-
-
-
+        return output
+    
+    @staticmethod
     ##methods used to display
-    def display(self,evt,cmap = 'gnuplot2') : 
+    def display(waveformsContainer,evt,geometry, cmap = 'gnuplot2') : 
         """plot camera display
 
         Args:
@@ -355,12 +273,13 @@ class WaveformsContainer() :
         Returns:
             CameraDisplay: thoe cameraDisplay plot
         """
-        image = self.wfs_hg.sum(axis=2)
-        disp = CameraDisplay(geometry=WaveformsContainer.CAMERA, image=image[evt], cmap=cmap)
+        image = waveformsContainer.wfs_hg.sum(axis=2)
+        disp = CameraDisplay(geometry=geometry, image=image[evt], cmap=cmap)
         disp.add_colorbar()
         return disp
 
-    def plot_waveform_hg(self,evt,**kwargs) :
+    @staticmethod
+    def plot_waveform_hg(waveformsContainer,evt,**kwargs) :
         """plot the waveform of the evt
 
         Args:
@@ -374,11 +293,11 @@ class WaveformsContainer() :
             ax = kwargs.get('ax')
         else : 
             fig,ax = plt.subplots(1,1)
-        ax.plot(self.wfs_hg[evt].T)
+        ax.plot(waveformsContainer.wfs_hg[evt].T)
         return fig,ax
 
-
-    def select_waveforms_hg(self,pixel_id : np.ndarray) : 
+    @staticmethod
+    def select_waveforms_hg(waveformsContainer,pixel_id : np.ndarray) : 
         """method to extract waveforms HG from a list of pixel ids 
         The output is the waveforms HG with a shape following the size of the input pixel_id argument
         Pixel in pixel_id which are not present in the WaveformsContaineur pixels_id are skipped 
@@ -387,14 +306,15 @@ class WaveformsContainer() :
         Returns:
             (np.ndarray): waveforms array in the order of specified pixel_id
         """
-        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        mask_contain_pixels_id = np.array([pixel in waveformsContainer.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
-        res = np.array([self.wfs_hg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
-        res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
+        res = np.array([waveformsContainer.wfs_hg[:,np.where(waveformsContainer.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
+        res = res.transpose(1,0,2)
+        ####could be nice to return np.ma.masked_array(data = res, mask = waveformsContainer.broken_pixels_hg.transpose(res.shape[1],res.shape[0],res.shape[2]))
         return res
 
-
-    def select_waveforms_lg(self,pixel_id : np.ndarray) : 
+    @staticmethod
+    def select_waveforms_lg(waveformsContainer,pixel_id : np.ndarray) : 
         """method to extract waveforms LG from a list of pixel ids 
         The output is the waveforms LG with a shape following the size of the input pixel_id argument
         Pixel in pixel_id which are not present in the WaveformsContaineur pixels_id are skipped 
@@ -405,183 +325,52 @@ class WaveformsContainer() :
         Returns:
             (np.ndarray): waveforms array in the order of specified pixel_id
         """
-        mask_contain_pixels_id = np.array([pixel in self.pixels_id for pixel in pixel_id],dtype = bool)
+        mask_contain_pixels_id = np.array([pixel in waveformsContainer.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this WaveformsContainer, skip this one")
-        res =  np.array([self.wfs_lg[:,np.where(self.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
-        res = res.transpose(res.shape[1],res.shape[0],res.shape[2])
+        res =  np.array([waveformsContainer.wfs_lg[:,np.where(waveformsContainer.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
+        res = res.transpose(1,0,2)
         return res
 
 
     @property 
-    def _run_file(self) : return self.__run_file 
-
+    def _run_file(self) : return self.__run_file     
     @property
     def _max_events(self) : return self.__max_events
-
     @property
     def reader(self) : return self.__reader
-
     @property
     def npixels(self) : return self.__npixels
-
     @property
     def nsamples(self) : return self.__nsamples
-
     @property
     def geometry(self) : return self.__geometry
-
     @property
     def subarray(self) : return self.__subarray
-
     @property
     def pixels_id(self) : return self.__pixels_id
-
-    @property
-    def nevents(self) : return self.__nevents
-
     @property
     def run_number(self) : return self.__run_number
-
-    @property
-    def broken_pixels_hg(self) : return self.__broken_pixels_hg
-
-    @property
-    def broken_pixels_lg(self) : return self.__broken_pixels_lg
-    
-    #physical properties
-    @property
-    def multiplicity(self) :  return np.uint16(np.count_nonzero(self.trig_pattern,axis = 1))
-
-    @property
-    def trig_pattern(self) :  return self.trig_pattern_all.any(axis = 1)
-
-
-
-
-
-
-
-class WaveformsContainers() : 
-    """This class is to be used for computing waveforms of a run treating run files one by one
-    """
-    def __new__(cls,*args,**kwargs) : 
-        """base class constructor
-
-        Returns:
-            WaveformsContainers : the new object
-        """
-        obj = object.__new__(cls)
-        return obj
-    
-    def __init__(self,run_number : int,max_events : int = None, init_arrays : bool = False) :
-        """initialize the waveformsContainer list inside the main object
-
-        Args:
-            run_number (int): the run number
-            max_events (int, optional): max events we want to read. Defaults to None.
-        """
-        log.info('Initialization of WaveformsContainers') 
-        _,filenames = DataManagement.findrun(run_number)
-        self.waveformsContainer = []
-        self.__nWaveformsContainer = 0
-        for i,file in enumerate(filenames) : 
-            self.waveformsContainer.append(WaveformsContainer(run_number,max_events=max_events,run_file=file, init_arrays= init_arrays))
-            self.__nWaveformsContainer += 1
-            if not(max_events is None) : max_events -= self.waveformsContainer[i].nevents
-            log.info(f'WaveformsContainer number {i} is created')
-            if not(max_events is None) and max_events <= 0 : break
-
-    def load_wfs(self,compute_trigger_patern = False,index : int = None) : 
-        """load waveforms from the Eventsource reader
-
-        Args:
-            compute_trigger_patern (bool, optional): to compute manually the trigger patern. Defaults to False.
-            index (int, optional): to only load waveforms from EventSource for the waveformsContainer at index, this parameters
-            can be used to load, write or perform some work step by step. Thus all the event are not nessessary loaded at the same time 
-            In such case memory can be saved. Defaults to None.
-
-        Raises:
-            IndexError: the index is > nWaveformsContainer or < 0
-        """
-        if index is None : 
-            for i in range(self.__nWaveformsContainer) : 
-                self.waveformsContainer[i].load_wfs(compute_trigger_patern = compute_trigger_patern)
+    def nevents(self,trigger) : return len(self.__event_id[WaveformsMaker.__get_name_trigger(trigger)])
+    def wfs_hg(self,trigger) : return np.array(self.__wfs_hg[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint16)
+    def wfs_lg(self,trigger) : return np.array(self.__wfs_lg[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint16)
+    def broken_pixels_hg(self,trigger) : return np.array(self.__broken_pixels_hg[WaveformsMaker.__get_name_trigger(trigger)],dtype = bool)
+    def broken_pixels_lg(self,trigger) : return np.array(self.__broken_pixels_lg[WaveformsMaker.__get_name_trigger(trigger)],dtype = bool)
+    def ucts_timestamp(self,trigger) : return np.array(self.__ucts_timestamp[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint64)
+    def ucts_busy_counter(self,trigger) : return np.array(self.__ucts_busy_counter[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint32)
+    def ucts_event_counter(self,trigger) : return np.array(self.__ucts_event_counter[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint32)
+    def event_type(self,trigger) : return np.array(self.__event_type[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint8)
+    def event_id(self,trigger) : return np.array(self.__event_id[WaveformsMaker.__get_name_trigger(trigger)],dtype = np.uint32)
+    def multiplicity(self,trigger) :  
+        tmp = self.trig_pattern(trigger)
+        if len(tmp) == 0 : 
+            return np.array([])
         else : 
-            if index < self.__nWaveformsContainer and index >= 0 : 
-                self.waveformsContainer[index].load_wfs(compute_trigger_patern = compute_trigger_patern)
-            else : 
-                raise IndexError(f"index must be >= 0 and < {self.__nWaveformsContainer}")
-
-
-    def write(self,path : str, index : int = None, **kwargs) : 
-        """method to write on disk all the waveformsContainer in the list
-
-        Args:
-            path (str): path where to save the waveforms
-            index (int, optional): index of the waveforms list you want to write. Defaults to None.
-
-        Raises:
-            IndexError: the index is > nWaveformsContainer or < 0
-        """
-        if index is None : 
-            for i in range(self.__nWaveformsContainer) : 
-                self.waveformsContainer[i].write(path,suffix = f"{i:04d}" ,**kwargs)
+            return np.uint16(np.count_nonzero(tmp,axis = 1))
+    def trig_pattern(self,trigger) :  
+        tmp = self.trig_pattern_all(trigger)
+        if len(tmp) == 0 : 
+            return np.array([])
         else : 
-            if index < self.__nWaveformsContainer and index >= 0 : 
-                self.waveformsContainer[index].write(path,suffix = f"{index:04d}" ,**kwargs)
-            else : 
-                raise IndexError(f"index must be >= 0 and < {self.__nWaveformsContainer}")
+            return tmp.any(axis = 2)
+    def trig_pattern_all(self,trigger) :  return np.array(self.__trig_patter_all[f"{WaveformsMaker.__get_name_trigger(trigger)}"],dtype = bool)
 
-    @staticmethod
-    def load(path : str) :
-        """method to load the waveforms list from splited fits files
-
-        Args:
-            path (str): path where data should be, it contain filename without extension
-
-        Raises:
-            e: File not found
-
-        Returns:
-            WaveformsContainers:
-        """
-        log.info(f"loading from {path}")
-        files = glob.glob(f"{path}_*.fits")
-        if len(files) == 0 : 
-            e = FileNotFoundError(f"no files found corresponding to {path}_*.fits")
-            log.error(e)
-            raise e
-        else : 
-            cls = WaveformsContainers.__new__(WaveformsContainers)
-            cls.waveformsContainer = []
-            cls.__nWaveformsContainer = len(files)
-            for file in files : 
-                cls.waveformsContainer.append(WaveformsContainer.load(file))
-            return cls
-
-
-
-
-        
-    @property
-    def nWaveformsContainer(self) : 
-        """getter giving the number of waveformsContainer into the waveformsContainers instance
-
-        Returns:
-            int: the number of waveformsContainer
-        """
-        return self.__nWaveformsContainer
-
-    @property
-    def nevents(self) : 
-        """getter giving the number of events in the waveformsContainers instance"""
-        return np.sum([self.waveformsContainer[i].nevents for i in range(self.__nWaveformsContainer)])
-
-    def append(self,waveformsContainer : WaveformsContainer) : 
-        """method to append WaveformsContainer to the waveforms list
-
-        Args:
-            waveformsContainer (WaveformsContainer): the waveformsContainer to stack
-        """
-        self.waveformsContainer.append(waveformsContainer)
-        self.__nWaveformsContainer += 1
