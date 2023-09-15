@@ -7,6 +7,7 @@ log.handlers = logging.getLogger('__main__').handlers
 from ctapipe.containers import Container,Field
 import numpy as np
 
+__all__= ["ArrayDataContainer"]
 
 class ArrayDataContainer(Container):
     """

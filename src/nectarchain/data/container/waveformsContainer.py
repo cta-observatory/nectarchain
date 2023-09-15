@@ -26,7 +26,7 @@ class WaveformsContainer(ArrayDataContainer):
     """
     A container that holds information about waveforms from a specific run.
 
-    Attributes:
+    Fields:
         nsamples (int): The number of samples in the waveforms.
         subarray (SubarrayDescription): The subarray description instance.
         wfs_hg (np.ndarray): An array of high gain waveforms.
@@ -51,15 +51,55 @@ class WaveformsContainer(ArrayDataContainer):
     )
 
     
+
 class WaveformsContainerIO(ABC) : 
+    """
+    The `WaveformsContainerIO` class provides methods for writing and loading `WaveformsContainer` instances to/from FITS files. It also includes a method for writing the subarray configuration to an HDF5 file.
+
+    Example Usage:
+        # Writing a WaveformsContainer instance to a FITS file
+        container = WaveformsContainer()
+        # ... populate the container with data ...
+        WaveformsContainerIO.write('/path/to/output', container)
+
+        # Loading a WaveformsContainer instance from a FITS file
+        container = WaveformsContainerIO.load('/path/to/input.fits')
+
+    Main functionalities:
+    - Writing a `WaveformsContainer` instance to a FITS file, including the waveforms data and metadata.
+    - Loading a `WaveformsContainer` instance from a FITS file, including the waveforms data and metadata.
+    - Writing the subarray configuration to an HDF5 file.
+
+    Methods:
+    - `write(path: str, containers: WaveformsContainer, **kwargs) -> None`: Writes a `WaveformsContainer` instance to a FITS file. The method also creates an HDF5 file representing the subarray configuration.
+    - `load(path: str) -> WaveformsContainer`: Loads a `WaveformsContainer` instance from a FITS file. The method also loads the subarray configuration from the corresponding HDF5 file.
+
+    Fields:
+    None.
+    """
 
     @staticmethod
-    def write(path : str, containers : WaveformsContainer, **kwargs):
-        '''method to write in an output FITS file the WaveformsContainer. Two files are created, one FITS representing the data
-        and one HDF5 file representing the subarray configuration
+    def write(path : str, containers : WaveformsContainer, **kwargs) -> None:
+        '''Write the WaveformsContainer data to an output FITS file.
+
+        This method creates two files: one FITS file representing the waveform data and one HDF5 file representing the subarray configuration.
 
         Args:
-            path (str): the directory where you want to save data
+            path (str): The directory where you want to save the data.
+            containers (WaveformsContainer): The WaveformsContainer instance containing the data to be saved.
+            **kwargs: Additional keyword arguments for customization (optional).
+
+        Keyword Args:
+            suffix (str, optional): A suffix to append to the output file names (default is '').
+            overwrite (bool, optional): If True, overwrite the output files if they already exist (default is False).
+        Returns:
+            None: This method does not return any value.
+        Raises:
+            OSError: If there is an error while writing the FITS file.
+            Exception: If there is any other exception during the writing process.
+        Example:
+            waveformsContainer = WaveformsContainer()
+            WaveformsContainerIO.write(path, waveformsContainer, suffix="v1", overwrite=True)
         '''
         suffix = kwargs.get("suffix","")
         if suffix != "" : suffix = f"_{suffix}"
@@ -118,16 +158,20 @@ class WaveformsContainerIO(ABC) :
             raise e
         
     @staticmethod
-    def load(path : str) : 
-        '''load WaveformsContainer from FITS file previously written with WaveformsContainer.write() method
-        Note : 2 files are loaded, the FITS one representing the waveforms data and a HDF5 file representing the subarray configuration. 
-        This second file has to be next to the FITS file.  
-        
+    def load(path : str) -> WaveformsContainer: 
+        '''Load a WaveformsContainer from a FITS file previously written with WaveformsContainerIO.write() method.
+
+        Note: Two files are loaded—the FITS file representing the waveform data and an HDF5 file representing the subarray configuration. 
+        The HDF5 file should be located next to the FITS file.
+
         Args:
-            path (str): path of the FITS file
+            path (str): The path to the FITS file containing the waveform data.
 
         Returns:
-            WaveformsContainer: WaveformsContainer instance
+            WaveformsContainer: A WaveformsContainer instance loaded from the specified file.
+        Example:
+            waveformsContainer = WaveformsContainerIO.load(path, run_number)
+        """
         '''
         log.info(f"loading from {path}")
         with fits.open(Path(path)) as hdul : 
