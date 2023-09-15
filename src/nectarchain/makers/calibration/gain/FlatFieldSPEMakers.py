@@ -33,7 +33,9 @@ from inspect import signature
 
 from .gainMakers import GainMaker
 
-from ....data.container import ChargeContainer
+from ....data.container import ChargesContainer
+
+from ...chargesMakers import ChargesMaker
 
 from .parameters import Parameter, Parameters
 
@@ -280,13 +282,13 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker) :
         self._results.add_column(Column(np.zeros((self.npixels),dtype = np.float64),"pvalue",unit = u.dimensionless_unscaled))
 
     @classmethod
-    def create_from_chargeContainer(cls, signal : ChargeContainer,**kwargs) : 
-        histo = signal.histo_hg(autoscale = True)
+    def create_from_chargesContainer(cls, signal : ChargesContainer,**kwargs) : 
+        histo = ChargesMaker.histo_hg(signal,autoscale = True)
         return cls(charge = histo[1],counts = histo[0],pixels_id = signal.pixels_id,**kwargs)
 
     @classmethod
     def create_from_run_number(cls, run_number : int, **kwargs) : 
-        raise NotImplementedError()
+        raise NotImplementedError("Need to implement here the use of the WaveformsMaker and ChargesMaker to produce the chargesContainer to be pass into the __ini__")
     
 #getters and setters
     @property

@@ -18,7 +18,9 @@ import copy
 
 from ctapipe_io_nectarcam import constants
 
-from ....data.container import ChargeContainer
+from ....data.container import ChargesContainer,ChargesContainerIO
+
+from ...chargesMakers import ChargesMaker
 
 from .gainMakers import GainMaker
 
@@ -64,8 +66,8 @@ class PhotoStatisticMaker(GainMaker):
 
     @classmethod
     def create_from_chargeContainer(cls, 
-                                    FFcharge : ChargeContainer, 
-                                    Pedcharge : ChargeContainer, 
+                                    FFcharge : ChargesContainer, 
+                                    Pedcharge : ChargesContainer, 
                                     coefCharge_FF_Ped, 
                                     SPE_resolution, 
                                     **kwargs) : 
@@ -99,7 +101,7 @@ class PhotoStatisticMaker(GainMaker):
         return table['resolution'][table['is_valid']].value,table['pixels_id'][table['is_valid']].value
 
     @staticmethod
-    def __get_charges_FF_Ped_reshaped( FFcharge : ChargeContainer, Pedcharge : ChargeContainer, SPE_resolution, SPE_pixels_id) : 
+    def __get_charges_FF_Ped_reshaped( FFcharge : ChargesContainer, Pedcharge : ChargesContainer, SPE_resolution, SPE_pixels_id) : 
         log.info("reshape of SPE, Ped and FF data with intersection of pixel ids")
         out = {}
 
@@ -110,10 +112,10 @@ class PhotoStatisticMaker(GainMaker):
             out["SPE_resolution"] = SPE_resolution[mask_SPE]
 
         out["pixels_id"] = SPEFFPed_intersection
-        out["FFcharge_hg"] = FFcharge.select_charge_hg(SPEFFPed_intersection)
-        out["FFcharge_lg"] = FFcharge.select_charge_lg(SPEFFPed_intersection)
-        out["Pedcharge_hg"] = Pedcharge.select_charge_hg(SPEFFPed_intersection)
-        out["Pedcharge_lg"] = Pedcharge.select_charge_lg(SPEFFPed_intersection)
+        out["FFcharge_hg"] = ChargesMaker.select_charges_hg(FFcharge,SPEFFPed_intersection)
+        out["FFcharge_lg"] = ChargesMaker.select_charges_lg(FFcharge,SPEFFPed_intersection)
+        out["Pedcharge_hg"] = ChargesMaker.select_charges_hg(Pedcharge,SPEFFPed_intersection)
+        out["Pedcharge_lg"] = ChargesMaker.select_charges_lg(Pedcharge,SPEFFPed_intersection)
         
         log.info(f"data have {len(SPEFFPed_intersection)} pixels in common")
         return out
@@ -134,7 +136,7 @@ class PhotoStatisticMaker(GainMaker):
             coefCharge_FF_Ped = 1
         if isinstance(FFRun,int) : 
             try : 
-                FFcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",FFRun)
+                FFcharge = ChargesContainerIO.load(f"{os.environ['NECTARCAMDATA']}/charges/{method}",FFRun)
                 log.info(f'charges have ever been computed for FF run {FFRun}')
             except Exception as e : 
                 log.error("charge have not been yet computed")
@@ -151,7 +153,7 @@ class PhotoStatisticMaker(GainMaker):
         method = 'FullWaveformSum'#kwargs.get('method','std')
         if isinstance(PedRun,int) : 
             try : 
-                Pedcharge = ChargeContainer.from_file(f"{os.environ['NECTARCAMDATA']}/charges/{method}",PedRun)
+                Pedcharge = ChargesContainerIO.load(f"{os.environ['NECTARCAMDATA']}/charges/{method}",PedRun)
                 log.info(f'charges have ever been computed for Ped run {PedRun}')
             except Exception as e : 
                 log.error("charge have not been yet computed")

@@ -18,7 +18,7 @@ from ctapipe_io_nectarcam import constants
 from ..data import DataManagement
 from ..data.container.core import ArrayDataContainer
 
-__all__ = ["BaseMaker"]
+__all__ = ["ArrayDataMaker"]
 
 class BaseMaker(ABC):
     """Mother class for all the makers, the role of makers is to do computation on the data. 
