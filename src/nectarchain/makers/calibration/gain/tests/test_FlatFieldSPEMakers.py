@@ -2,7 +2,7 @@ from nectarchain.makers.calibration.gain.FlatFieldSPEMakers import FlatFieldSPEM
 from nectarchain.makers.calibration.gain.parameters import Parameter,Parameters
 from nectarchain.makers.calibration.gain import FlatFieldSingleHHVSPEMaker,FlatFieldSingleHHVStdSPEMaker
 import astropy.units as u
-from nectarchain.data.container import ChargeContainer
+from nectarchain.data.container import ChargesContainer
 import numpy as np
 
 import pytest
@@ -16,14 +16,14 @@ def create_fake_chargeContainer() :
     nevents = 40
     npixels = 10
     rng = np.random.default_rng()
-    charge_hg = rng.integers(low=0, high=1000, size= (nevents,npixels))
-    charge_lg = rng.integers(low=0, high=1000, size= (nevents,npixels))
+    charges_hg = rng.integers(low=0, high=1000, size= (nevents,npixels))
+    charges_lg = rng.integers(low=0, high=1000, size= (nevents,npixels))
     peak_hg = rng.integers(low=0, high=60, size= (nevents,npixels))
     peak_lg = rng.integers(low=0, high=60, size= (nevents,npixels))
     run_number = 1234
-    return ChargeContainer(
-        charge_hg = charge_hg ,
-        charge_lg = charge_lg,
+    return ChargesContainer(
+        charges_hg = charges_hg ,
+        charges_lg = charges_lg,
         peak_hg = peak_hg,
         peak_lg = peak_lg,
         run_number = run_number,
@@ -100,7 +100,7 @@ class TestFlatFieldSingleHHVSPEMaker:
     # Tests that calling create_from_chargeContainer method with valid input parameters is successful
     def test_create_from_ChargeContainer_valid_input(self):
         chargeContainer = create_fake_chargeContainer()
-        maker = FlatFieldSingleHHVSPEMaker.create_from_chargeContainer(chargeContainer)
+        maker = FlatFieldSingleHHVSPEMaker.create_from_chargesContainer(chargeContainer)
         assert isinstance(maker, FlatFieldSingleHHVSPEMaker)
 
 

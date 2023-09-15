@@ -1,13 +1,15 @@
-from ..waveformsContainer import WaveformsContainer,WaveformsContainerIO
-from ....makers import WaveformsMaker
+from nectarchain.data.container import WaveformsContainer,WaveformsContainerIO
+from nectarchain.makers import WaveformsMaker
+from ctapipe.instrument import SubarrayDescription
 import glob
 import numpy as np
 
 def create_fake_waveformsContainer() : 
-    nevents = TestWaveformsContainer.nevents,
-    npixels = TestWaveformsContainer.npixels,
-    nsamples = TestWaveformsContainer.nsamples,
-    rng = np.random.default_rng(),
+    nevents = TestWaveformsContainer.nevents
+    npixels = TestWaveformsContainer.npixels
+    nsamples = TestWaveformsContainer.nsamples
+    rng = np.random.default_rng()
+    faked_subarray = SubarrayDescription(name = 'TEST')
 
     return WaveformsContainer(
         pixels_id = np.array([2,4,3,8,6,9,7,1,5,10]),
@@ -17,6 +19,7 @@ def create_fake_waveformsContainer() :
         wfs_lg = rng.integers(low=0, high=1000, size= (nevents,npixels,nsamples)),
         run_number = TestWaveformsContainer.run_number,
         camera = 'TEST',
+        subarray = faked_subarray,
         broken_pixels_hg = rng.integers(low=0, high=1, size= (nevents,npixels)),
         broken_pixels_lg = rng.integers(low=0, high=1, size= (nevents,npixels)),
         ucts_timestamp =rng.integers(low=0, high=100, size= (nevents)),
@@ -43,7 +46,7 @@ class TestWaveformsContainer:
     # Tests that the ChargeContainer object can be written to a file and the file is created.
     def test_write_waveform_container(self, tmp_path = "/tmp"):
         waveform_container = create_fake_waveformsContainer()
-        tmp_path += f"/{np.random.randn(1)}"
+        tmp_path += f"/{np.random.randn(1)[0]}"
     
         WaveformsContainerIO.write(tmp_path,waveform_container)
     
@@ -52,15 +55,15 @@ class TestWaveformsContainer:
     # Tests that a ChargeContainer object can be loaded from a file and the object is correctly initialized.
     def test_load_waveform_container(self, tmp_path = "/tmp"):
         waveform_container = create_fake_waveformsContainer()
-        tmp_path += f"/{np.random.randn(1)}"
+        tmp_path += f"/{np.random.randn(1)[0]}"
     
         WaveformsContainerIO.write(tmp_path,waveform_container)
     
-        loaded_waveform_container = WaveformsContainerIO.load(tmp_path,TestWaveformsContainer.run_number )
+        loaded_waveform_container = WaveformsContainerIO.load(tmp_path,TestWaveformsContainer.run_number)
     
         assert isinstance(loaded_waveform_container, WaveformsContainer)
-        assert np.allclose(loaded_waveform_container.wfs_hg,waveform_container.charges_hg)
-        assert np.allclose(loaded_waveform_container.wfs_lg,waveform_container.charges_lg)
+        assert np.allclose(loaded_waveform_container.wfs_hg,waveform_container.wfs_hg)
+        assert np.allclose(loaded_waveform_container.wfs_lg,waveform_container.wfs_lg)
         assert loaded_waveform_container.run_number == waveform_container.run_number
         assert loaded_waveform_container.pixels_id.tolist() == waveform_container.pixels_id.tolist()
         assert loaded_waveform_container.nevents == waveform_container.nevents
@@ -74,3 +77,6 @@ class TestWaveformsContainer:
         sorted_waveform_container = WaveformsMaker.sort(waveform_container)
     
         assert sorted_waveform_container.event_id.tolist() == sorted(waveform_container.event_id.tolist())
+
+if __name__ == "__main__" : 
+    TestWaveformsContainer().test_create_waveform_container()

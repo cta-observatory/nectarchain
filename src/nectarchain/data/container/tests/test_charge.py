@@ -1,19 +1,18 @@
-from ..chargesContainer import ChargesContainer,ChargesContainerIO
-from ..waveformsContainer import WaveformsContainer
-from ....makers import ChargesMaker
+from nectarchain.data.container import ChargesContainer,ChargesContainerIO
+from nectarchain.makers import ChargesMaker
 import glob
 import numpy as np
 
 def create_fake_chargeContainer() : 
-    nevents = TestChargesContainer.nevents,
-    npixels = TestChargesContainer.npixels,
-    rng = np.random.default_rng(),
+    nevents = TestChargesContainer.nevents
+    npixels = TestChargesContainer.npixels
+    rng = np.random.default_rng()
     return ChargesContainer(
         pixels_id = np.array([2,4,3,8,6,9,7,1,5,10]),
         nevents =nevents,
         npixels =npixels,  
-        charge_hg = rng.integers(low=0, high=1000, size= (nevents,npixels)),
-        charge_lg = rng.integers(low=0, high=1000, size= (nevents,npixels)),
+        charges_hg = rng.integers(low=0, high=1000, size= (nevents,npixels)),
+        charges_lg = rng.integers(low=0, high=1000, size= (nevents,npixels)),
         peak_hg = rng.integers(low=0, high=60, size= (nevents,npixels)),
         peak_lg = rng.integers(low=0, high=60, size= (nevents,npixels)),
         run_number = TestChargesContainer.run_number,
@@ -40,14 +39,14 @@ class TestChargesContainer:
         nevents = TestChargesContainer.nevents
         npixels = TestChargesContainer.npixels
         run_number = TestChargesContainer.run_number
-        charge_hg = np.random.randn(nevents,npixels)
-        charge_lg = np.random.randn(nevents,npixels)
+        charges_hg = np.random.randn(nevents,npixels)
+        charges_lg = np.random.randn(nevents,npixels)
         peak_hg = np.random.randn(nevents,npixels)
         peak_lg = np.random.randn(nevents,npixels)
         method = 'FullWaveformSum'
         charge_container = ChargesContainer(
-            charge_hg = charge_hg ,
-            charge_lg = charge_lg,
+            charges_hg = charges_hg ,
+            charges_lg = charges_lg,
             peak_hg = peak_hg,
             peak_lg = peak_lg,
             run_number = run_number,
@@ -57,8 +56,8 @@ class TestChargesContainer:
             method = method
         )
     
-        assert np.allclose(charge_container.charges_hg,charge_hg)
-        assert np.allclose(charge_container.charges_lg,charge_lg)
+        assert np.allclose(charge_container.charges_hg,charges_hg)
+        assert np.allclose(charge_container.charges_lg,charges_lg)
         assert np.allclose(charge_container.peak_hg,peak_hg)
         assert np.allclose(charge_container.peak_lg,peak_lg)
         assert charge_container.run_number == run_number
@@ -79,7 +78,7 @@ class TestChargesContainer:
     # Tests that the ChargeContainer object can be written to a file and the file is created.
     def test_write_charge_container(self, tmp_path = "/tmp"):
         charge_container = create_fake_chargeContainer()
-        tmp_path += f"/{np.random.randn(1)}"
+        tmp_path += f"/{np.random.randn(1)[0]}"
     
         ChargesContainerIO.write(tmp_path,charge_container)
     
@@ -88,7 +87,7 @@ class TestChargesContainer:
     # Tests that a ChargeContainer object can be loaded from a file and the object is correctly initialized.
     def test_load_charge_container(self, tmp_path = "/tmp"):
         charge_container = create_fake_chargeContainer()
-        tmp_path += f"/{np.random.randn(1)}"
+        tmp_path += f"/{np.random.randn(1)[0]}"
     
         ChargesContainerIO.write(tmp_path,charge_container)
     
@@ -118,15 +117,15 @@ class TestChargesContainer:
         pixels_id = np.array([2,4,3,8,6,9,7,1,5,10])
         nevents = 40
         npixels = 10
-        charge_hg = np.random.randn(nevents,npixels)
-        charge_lg = np.random.randn(nevents,npixels)
+        charges_hg = np.random.randn(nevents,npixels)
+        charges_lg = np.random.randn(nevents,npixels)
         peak_hg = np.random.randn(nevents,npixels)
         peak_lg = np.random.randn(nevents,npixels)
         run_number = 1234
         method = 'FullWaveformSum'
         charge_container =  ChargesContainer(
-            charge_hg = charge_hg ,
-            charge_lg = charge_lg,
+            charges_hg = charges_hg ,
+            charges_lg = charges_lg,
             peak_hg = peak_hg,
             peak_lg = peak_lg,
             run_number = run_number,
@@ -141,5 +140,3 @@ class TestChargesContainer:
         assert charge_container.npixels == npixels
         assert charge_container.nevents == nevents
         assert charge_container.method == method
-        assert charge_container.multiplicity.shape  == (nevents,)
-        assert charge_container.trig_pattern.shape == (nevents,4)

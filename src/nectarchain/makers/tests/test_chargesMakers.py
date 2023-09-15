@@ -117,7 +117,7 @@ class TestChargesMaker:
                                 max_events = TestChargesMaker.max_events)
         chargesContainer_list = chargesMaker.make()
         ChargesContainerIO.write("/tmp/test_charge_container/",chargesContainer_list[0],overwrite = True)
-        loaded_charge = ChargesContainerIO.load(f"/tmp/test_charge_container/",run_number = TestChargesMaker.run_number)
+        loaded_charge = ChargesContainerIO.load(f"/tmp/test_charge_container",run_number = TestChargesMaker.run_number)
         assert np.array_equal(chargesContainer_list[0].charges_hg,loaded_charge.charges_hg)
 
 if __name__ == '__main__' : 

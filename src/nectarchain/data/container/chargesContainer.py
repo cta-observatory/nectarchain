@@ -4,7 +4,7 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger('__main__').handlers
 
 import numpy as np
-from ctapipe.container import Field
+from ctapipe.containers import Field
 from abc import ABC
 import os
 from pathlib import Path
@@ -25,7 +25,7 @@ class ChargesContainer(ArrayDataContainer):
     """
 
     charges_hg = Field(
-        type=np.ndarray(),
+        type=np.ndarray,
         description='The high gain charges'
     )
     charges_lg = Field(

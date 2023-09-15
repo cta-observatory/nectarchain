@@ -81,7 +81,7 @@ class TestWaveformsMaker:
                                 max_events = TestWaveformsMaker.max_events)
         waveformsContainer_list = waveformsMaker.make()
         WaveformsContainerIO.write("/tmp/test_wfs_container/",waveformsContainer_list[0],overwrite = True)
-        loaded_wfs = WaveformsContainerIO.load(f"/tmp/test_wfs_container/waveforms_run{TestWaveformsMaker.run_number}.fits")
+        loaded_wfs = WaveformsContainerIO.load(f"/tmp/test_wfs_container",TestWaveformsMaker.run_number)
         assert np.array_equal(waveformsContainer_list[0].wfs_hg,loaded_wfs.wfs_hg)
 
     def test_create_from_events_list(self) : 

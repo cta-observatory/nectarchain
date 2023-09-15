@@ -158,7 +158,7 @@ class WaveformsContainerIO(ABC) :
             raise e
         
     @staticmethod
-    def load(path : str) -> WaveformsContainer: 
+    def load(path : str, run_number : int, **kwargs) -> WaveformsContainer: 
         '''Load a WaveformsContainer from a FITS file previously written with WaveformsContainerIO.write() method.
 
         Note: Two files are loaded—the FITS file representing the waveform data and an HDF5 file representing the subarray configuration. 
@@ -166,15 +166,22 @@ class WaveformsContainerIO(ABC) :
 
         Args:
             path (str): The path to the FITS file containing the waveform data.
-
+            **kwargs: Additional keyword arguments.
+                explicit_filename (str): If provided, the explicit filename to load.
         Returns:
             WaveformsContainer: A WaveformsContainer instance loaded from the specified file.
         Example:
             waveformsContainer = WaveformsContainerIO.load(path, run_number)
-        """
         '''
+        if kwargs.get("explicit_filename", False):
+            filename = kwargs.get("explicit_filename")
+            log.info(f"Loading {filename}")
+        else:
+            log.info(f"Loading in {path} run number {run_number}")
+            filename = Path(path) / f"waveforms_run{run_number}.fits"
+
         log.info(f"loading from {path}")
-        with fits.open(Path(path)) as hdul : 
+        with fits.open(filename) as hdul : 
             containers = WaveformsContainer()
 
             containers.run_number = hdul[0].header['RUN'] 
@@ -184,7 +191,7 @@ class WaveformsContainerIO(ABC) :
             containers.camera = hdul[0].header['CAMERA'] 
 
 
-            containers.subarray = SubarrayDescription.from_hdf(Path(path.replace('waveforms_','subarray_').replace('fits','hdf5')))
+            containers.subarray = SubarrayDescription.from_hdf(Path(filename._str.replace('waveforms_','subarray_').replace('fits','hdf5')))
 
 
             containers.pixels_id = hdul[0].data

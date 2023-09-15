@@ -1,6 +1,5 @@
-from nectarchain.makers import ChargesMaker,WaveformsMaker
+from nectarchain.makers import ChargesMaker,WaveformsMaker,ArrayDataMaker
 from nectarchain.data.container import ChargesContainer
-from ..core import ArrayDataMaker
 import logging
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s',level = logging.DEBUG)
 log = logging.getLogger(__name__)
