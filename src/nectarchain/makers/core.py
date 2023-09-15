@@ -7,17 +7,16 @@ from abc import ABC, abstractmethod
 
 from ctapipe_io_nectarcam import NectarCAMEventSource
 import numpy as np
-from ctapipe.containers import EventType
-from ctapipe.visualization import CameraDisplay
-from ctapipe.coordinates import CameraFrame,EngineeringCameraFrame
-from ctapipe.instrument import CameraGeometry,SubarrayDescription,TelescopeDescription
-from ctapipe_io_nectarcam import constants
-
-import tqdm
 import copy
 
+from ctapipe.containers import EventType
+from ctapipe.instrument import CameraGeometry
+from ctapipe_io_nectarcam import constants
+
+
+
 from ..data import DataManagement
-from..data.container import ArrayDataContainer
+from ..data.container.core import ArrayDataContainer
 
 __all__ = ["BaseMaker"]
 
@@ -100,6 +99,12 @@ class LoopEventsMaker(BaseMaker):
     def _max_events(self) : return self.__max_events
     @property
     def _reader(self) : return self.__reader
+    @_reader.setter
+    def _reader(self,value) : 
+        if isinstance(value,NectarCAMEventSource) : 
+            self.__reader = value
+        else : 
+            raise TypeError("The reader must be a NectarCAMEventSource")
     @property
     def _npixels(self) : return self.__npixels
     @property
@@ -131,6 +136,7 @@ class ArrayDataMaker(LoopEventsMaker) :
             run_file (optional) : if provided, will load this run file
         """
         super().__init__(run_number,max_events,run_file,*args,**kwargs)
+        self.__nsamples =  self._reader.camera_config.num_samples
         
         #data we want to compute
         self.__ucts_timestamp = {}
@@ -154,14 +160,14 @@ class ArrayDataMaker(LoopEventsMaker) :
         self.__broken_pixels_lg[f"{name}"] = []
 
     @staticmethod
-    def _compute_broken_pixels(wfs_hg_event,wfs_lg_event,**kwargs) : 
+    def _compute_broken_pixels(wfs_hg,wfs_lg,**kwargs) : 
         log.warning("computation of broken pixels is not yet implemented")
-        return np.zeros((wfs_hg_event.shape[0]),dtype = bool),np.zeros((wfs_hg_event.shape[0]),dtype = bool)
+        return np.zeros((wfs_hg.shape[:-1]),dtype = bool),np.zeros((wfs_hg.shape[:-1]),dtype = bool)
 
     @staticmethod
-    def _compute_broken_pixels_event(event : EventType,pixels_id : np.ndarray,**kwargs) : 
+    def _compute_broken_pixels_event(event : EventType,pixels_id,**kwargs) : 
         log.warning("computation of broken pixels is not yet implemented")
-        return np.zeros((event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id]),dtype = bool),np.zeros((event.r0.tel[0].waveform[constants.LOW_GAIN][pixels_id]),dtype = bool)
+        return np.zeros((len(pixels_id)),dtype = bool),np.zeros((len(pixels_id)),dtype = bool)
     
     @staticmethod
     def _get_name_trigger(trigger : EventType) : 
@@ -187,10 +193,10 @@ class ArrayDataMaker(LoopEventsMaker) :
 
         if restart_from_begining : 
             log.debug('restart from begining : creation of the EventSource reader')
-            self.__reader = __class__.load_run(self.__run_number,self.__max_events,run_file = self.__run_file)
+            self._reader = __class__.load_run(self._run_number,self._max_events,run_file = self._run_file)
 
         n_traited_events = 0
-        for i,event in enumerate(self.__reader):
+        for i,event in enumerate(self._reader):
             if i%100 == 0:
                 log.info(f"reading event number {i}")
             for trigger in trigger_type : 
@@ -200,7 +206,7 @@ class ArrayDataMaker(LoopEventsMaker) :
             if n_traited_events >= n_events : 
                 break
 
-        return self._make_output_container(trigger_type)
+        return self._make_output_container(trigger_type,*args,**kwargs)
 
 
     def _make_event(self,event,trigger,*args,**kwargs) : 
@@ -211,20 +217,11 @@ class ArrayDataMaker(LoopEventsMaker) :
         self.__ucts_busy_counter[f'{name}'].append(event.nectarcam.tel[__class__.TEL_ID].evt.ucts_busy_counter)
         self.__ucts_event_counter[f'{name}'].append(event.nectarcam.tel[__class__.TEL_ID].evt.ucts_event_counter)
         self.__trig_patter_all[f'{name}'].append(event.nectarcam.tel[__class__.TEL_ID].evt.trigger_pattern.T)
-
-        broken_pixels_hg,broken_pixels_lg = __class__._compute_broken_pixels()
-        self.__broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
-        self.__broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
         
-        get_wfs_hg = kwargs.get("wfs_hg",False)
-        get_wfs_lg = kwargs.get("wfs_lg",False)
-
-        if get_wfs_hg or get_wfs_lg : 
-            for pix in range(self.npixels):
-                if get_wfs_hg : 
-                    get_wfs_hg[pix]=event.r0.tel[0].waveform[constants.HIGH_GAIN,self.pixels_id[pix]]
-                if get_wfs_lg : 
-                    get_wfs_lg[pix]=event.r0.tel[0].waveform[constants.LOW_GAIN,self.pixels_id[pix]]
+        if kwargs.get("return_wfs",False) : 
+            get_wfs_hg=event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id]
+            get_wfs_lg=event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id]
+            return get_wfs_hg,get_wfs_lg
 
 
     @abstractmethod
@@ -232,17 +229,9 @@ class ArrayDataMaker(LoopEventsMaker) :
 
     @staticmethod
     def select_container_array_field(container :ArrayDataContainer,pixel_id : np.ndarray,field : str) : 
-        """method to extract waveforms HG from a list of pixel ids 
-        The output is the waveforms HG with a shape following the size of the input pixel_id argument
-        Pixel in pixel_id which are not present in the WaveformsContaineur pixels_id are skipped 
-        Args:
-            pixel_id (np.ndarray): array of pixel ids you want to extract the waveforms
-        Returns:
-            (np.ndarray): waveforms array in the order of specified pixel_id
-        """
         mask_contain_pixels_id = np.array([pixel in container.pixels_id for pixel in pixel_id],dtype = bool)
         for pixel in pixel_id[~mask_contain_pixels_id] : log.warning(f"You asked for pixel_id {pixel} but it is not present in this container, skip this one")
-        res = np.array([container[field][:,np.where(container.pixels_id == pixel)[0][0],:] for pixel in pixel_id[mask_contain_pixels_id]])
+        res = np.array([np.take(container[field],np.where(container.pixels_id == pixel)[0][0],axis = 1) for pixel in pixel_id[mask_contain_pixels_id]])
         ####could be nice to return np.ma.masked_array(data = res, mask = container.broken_pixels_hg.transpose(res.shape[1],res.shape[0],res.shape[2]))
         return res
 
@@ -255,35 +244,33 @@ class ArrayDataMaker(LoopEventsMaker) :
         Returns:
             ArrayDataContainer: the merged object
         """
-        cls  = ChargeContainer.__new__(ChargeContainer)
-        cls.charge_hg = np.concatenate([chargecontainer.charge_hg for chargecontainer in self.chargeContainers],axis = 0) 
-        cls.charge_lg = np.concatenate([chargecontainer.charge_lg for chargecontainer in self.chargeContainers],axis = 0) 
-        cls.peak_hg = np.concatenate([chargecontainer.peak_hg for chargecontainer in self.chargeContainers],axis = 0) 
-        cls.peak_lg = np.concatenate([chargecontainer.peak_lg for chargecontainer in self.chargeContainers],axis = 0) 
+        if type(container_a) != type(container_b) : 
+            raise Exception("The containers have to be instnace of the same class")
 
-        if np.all([chargecontainer.run_number == self.chargeContainers[0].run_number for chargecontainer in self.chargeContainers]) : 
-            cls._run_number = self.chargeContainers[0].run_number
-        if np.all([chargecontainer.pixels_id == self.chargeContainers[0].pixels_id for chargecontainer in self.chargeContainers]) : 
-            cls._pixels_id = self.chargeContainers[0].pixels_id
-        if np.all([chargecontainer.method == self.chargeContainers[0].method for chargecontainer in self.chargeContainers]):
-            cls._method = self.chargeContainers[0].method
-        cls._nevents = np.sum([chargecontainer.nevents for chargecontainer in self.chargeContainers])
-        if np.all([chargecontainer.npixels == self.chargeContainers[0].npixels for chargecontainer in self.chargeContainers]):
-            cls._npixels = self.chargeContainers[0].npixels
-
-
-        cls.ucts_timestamp = np.concatenate([chargecontainer.ucts_timestamp for chargecontainer in self.chargeContainers ])
-        cls.ucts_busy_counter = np.concatenate([chargecontainer.ucts_busy_counter for chargecontainer in self.chargeContainers ])
-        cls.ucts_event_counter = np.concatenate([chargecontainer.ucts_event_counter for chargecontainer in self.chargeContainers ])
-        cls.event_type = np.concatenate([chargecontainer.event_type for chargecontainer in self.chargeContainers ])
-        cls.event_id = np.concatenate([chargecontainer.event_id for chargecontainer in self.chargeContainers ])
-        cls.trig_pattern_all = np.concatenate([chargecontainer.trig_pattern_all for chargecontainer in self.chargeContainers ],axis = 0)
+        if np.array_equal(container_a.pixels_id,container_b.pixels_id) : 
+            raise Exception("The containers have not the same pixels ids")
         
-        cls.sort()
+        merged_container = container_a.__class__.__new__()
 
-        return cls
+        for field in container_a.keys() : 
+            if ~isinstance(container_a[field],np.ndarray) : 
+                if container_a[field] != container_b[field] : 
+                    raise Exception(f"merge impossible because of {field} filed (values are {container_a[field]} and {container_b[field]}")
+        
+        for field in container_a.keys() : 
+            if isinstance(container_a[field],np.ndarray) : 
+                merged_container[field] = np.concatenate(container_a[field],container_a[field],axis = 0)
+            else : 
+                merged_container[field] = container_a[field]
+
+        return merged_container
 
 
+    
+    @property
+    def nsamples(self) : return copy.deepcopy(self.__nsamples)
+    @property
+    def _nsamples(self) : return self.__nsamples
     def nevents(self,trigger) : return len(self.__event_id[__class__._get_name_trigger(trigger)])
     @property
     def _broken_pixels_hg(self) : return self.__broken_pixels_hg

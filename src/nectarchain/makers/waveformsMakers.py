@@ -5,35 +5,14 @@ log.handlers = logging.getLogger('__main__').handlers
 
 from argparse import ArgumentError
 import numpy as np
-from matplotlib import pyplot as plt
-import copy
-import os
-import glob
-from pathlib import Path
-
-from enum import Enum
-
 from tqdm import tqdm
+import copy
 
-from astropy.io import fits
-from astropy.table import QTable,Column,Table
-import astropy.units as u
-
-from ctapipe.visualization import CameraDisplay
-from ctapipe.coordinates import CameraFrame,EngineeringCameraFrame
-from ctapipe.instrument import CameraGeometry,SubarrayDescription,TelescopeDescription
-
-from ctapipe_io_nectarcam import NectarCAMEventSource
+from ctapipe.instrument import SubarrayDescription
 from ctapipe_io_nectarcam import constants
-
-
-from ..data import DataManagement
-
-import sys
-
 from ctapipe.containers import EventType
-from ..data.container import WaveformsContainer
 
+from ..data.container import WaveformsContainer
 from .core import ArrayDataMaker
 
 __all__ = ["WaveformsMaker"]
@@ -56,7 +35,6 @@ class WaveformsMaker(ArrayDataMaker) :
 
         self.__geometry = self._reader.subarray.tel[__class__.TEL_ID].camera
         self.__subarray =  self._reader.subarray
-        self.__nsamples =  self._reader.camera_config.num_samples
     
         self.__wfs_hg = {}
         self.__wfs_lg = {}
@@ -69,13 +47,14 @@ class WaveformsMaker(ArrayDataMaker) :
                                 subarray : SubarrayDescription,
                                 pixels_id : int,
                                 ) : 
-        container = WaveformsContainer()
-        container.run_number = run_number
-        container.npixels = npixels
-        container.nsamples = nsamples
-        container.subarray = subarray
-        container.camera = __class__.CAMERA_NAME
-        container.pixels_id = pixels_id
+        container = WaveformsContainer(
+            run_number = run_number,
+            npixels = npixels,
+            nsamples = nsamples,
+            subarray = subarray,
+            camera = __class__.CAMERA_NAME,
+            pixels_id = pixels_id,
+        )
 
         ucts_timestamp = []
         ucts_busy_counter = []
@@ -87,14 +66,12 @@ class WaveformsMaker(ArrayDataMaker) :
         wfs_lg = []
 
         for event in tqdm(events_list) : 
-            ucts_timestamp.append(event.ucts_timestamp)
-            ucts_busy_counter.append(event.ucts_busy_counter)
-            ucts_event_counter.append(event.ucts_event_counter)
-            event_type.append(event.event_type)
-            event_id.append(event.event_id)
-            trig_pattern_all.append(event.trig_pattern_all) 
-            broken_pixels = __class__._compute_broken_pixels_event(event,pixels_id)
-
+            ucts_timestamp.append(event.nectarcam.tel[__class__.TEL_ID].evt.ucts_timestamp)
+            ucts_busy_counter.append(event.nectarcam.tel[__class__.TEL_ID].evt.ucts_busy_counter)
+            ucts_event_counter.append(event.nectarcam.tel[__class__.TEL_ID].evt.ucts_event_counter)
+            event_type.append(event.trigger.event_type.value)
+            event_id.append(event.index.event_id)
+            trig_pattern_all.append(event.nectarcam.tel[__class__.TEL_ID].evt.trigger_pattern.T) 
             wfs_hg.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id])
             wfs_lg.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id])
 
@@ -110,7 +87,7 @@ class WaveformsMaker(ArrayDataMaker) :
         container.trig_pattern = container.trig_pattern_all.any(axis = 2)
         container.multiplicity = np.uint16(np.count_nonzero(container.trig_pattern,axis = 1))
 
-        broken_pixels = __class__._compute_broken_pixels()
+        broken_pixels = __class__._compute_broken_pixels(container.wfs_hg,container.wfs_lg)
         container.broken_pixels_hg = broken_pixels[0]         
         container.broken_pixels_lg = broken_pixels[1]
         return container
@@ -133,16 +110,16 @@ class WaveformsMaker(ArrayDataMaker) :
         wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
         wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
 
-        super()._make_event(event = event,
-                            trigger = trigger,
-                            wfs_hg = wfs_hg_tmp,
-                            wfs_lg = wfs_lg_tmp)
+        wfs_hg_tmp,wfs_lg_tmp = super()._make_event(event = event,
+                                                    trigger = trigger,
+                                                    return_wfs = True,
+                                                    *args,**kwargs)
         name = __class__._get_name_trigger(trigger)
 
         self.__wfs_hg[f'{name}'].append(wfs_hg_tmp.tolist())
         self.__wfs_lg[f'{name}'].append(wfs_lg_tmp.tolist())
 
-        broken_pixels_hg,broken_pixels_lg = __class__._compute_broken_pixels(wfs_hg_tmp,wfs_lg_tmp)
+        broken_pixels_hg,broken_pixels_lg = __class__._compute_broken_pixels_event(event,self._pixels_id)
         self._broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
         self._broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
@@ -150,12 +127,12 @@ class WaveformsMaker(ArrayDataMaker) :
         output = []
         for trigger in trigger_type :
             waveformsContainer = WaveformsContainer(
-                run_number = self.run_number,
-                npixels = self.npixels,
-                nsamples = self.nsamples,
-                subarray = self.subarray,
+                run_number = self._run_number,
+                npixels = self._npixels,
+                nsamples = self._nsamples,
+                subarray = self._subarray,
                 camera = self.CAMERA_NAME,
-                pixels_id = self.pixels_id,
+                pixels_id = self._pixels_id,
                 nevents = self.nevents(trigger),
                 wfs_hg = self.wfs_hg(trigger),
                 wfs_lg = self.wfs_lg(trigger),
@@ -186,21 +163,9 @@ class WaveformsMaker(ArrayDataMaker) :
         )
         if method == 'event_id' :
             index = np.argsort(waveformsContainer.event_id)
-            for field in waveformsContainer() :
+            for field in waveformsContainer.keys() :
                 if not(field in ["run_number","npixels","nsamples","subarray","camera","pixels_id","nevents"]) : 
                     output[field] = waveformsContainer[field][index]
-            #output.ucts_busy_counter = waveformsContainer.ucts_busy_counter[index]
-            #output.ucts_event_counter = waveformsContainer.ucts_event_counter[index]
-            #output.event_type = waveformsContainer.event_type[index]
-            #output.event_id = waveformsContainer.event_id[index] 
-            #output.trig_pattern_all = waveformsContainer.trig_pattern_all[index]
-            #output.trig_pattern = waveformsContainer.trig_pattern[index]
-            #output.multiplicity = waveformsContainer.multiplicity[index]
-#
-            #output.wfs_hg = waveformsContainer.wfs_hg[index]
-            #output.wfs_lg = waveformsContainer.wfs_lg[index]
-            #output.broken_pixels_hg = waveformsContainer.broken_pixels_hg[index]
-            #output.broken_pixels_lg = waveformsContainer.broken_pixels_lg[index]
         else : 
             raise ArgumentError(f"{method} is not a valid method for sorting")
         return output
@@ -218,12 +183,15 @@ class WaveformsMaker(ArrayDataMaker) :
         return res
 
 
+
     @property
-    def nsamples(self) : return self.__nsamples
+    def _geometry(self) : return self.__geometry
     @property
-    def geometry(self) : return self.__geometry
+    def _subarray(self) : return self.__subarray
     @property
-    def subarray(self) : return self.__subarray
+    def geometry(self) : return copy.deepcopy(self.__geometry)
+    @property
+    def subarray(self) : return copy.deepcopy(self.__subarray)
     def wfs_hg(self,trigger) : return np.array(self.__wfs_hg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
     def wfs_lg(self,trigger) : return np.array(self.__wfs_lg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
     

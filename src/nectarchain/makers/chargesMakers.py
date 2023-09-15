@@ -6,19 +6,19 @@ log.handlers = logging.getLogger('__main__').handlers
 from argparse import ArgumentError
 import numpy as np
 import numpy.ma as ma
-from pathlib import Path
-import glob
 import time
-import os
-
-from ctapipe.instrument import CameraGeometry
 
 from ctapipe_io_nectarcam import constants
 from ctapipe.containers import EventType
-from ctapipe.image import ImageExtractor
+from ctapipe.image.extractor import (FullWaveformSum,
+                                    FixedWindowSum,
+                                    GlobalPeakWindowSum,
+                                    LocalPeakWindowSum,
+                                    SlidingWindowMaxSum,
+                                    NeighborPeakWindowSum,
+                                    BaselineSubtractedNeighborPeakWindowSum,
+                                    TwoPassWindowSum)
 
-
-from astropy.io import fits
 
 from numba import guvectorize, float64, int64, bool_
 
@@ -28,9 +28,7 @@ from .core import ArrayDataMaker
 from .extractor.utils import CtapipeExtractor
 
 
-
-
-__all__ = ['ChargeContainer']
+__all__ = ['ChargesMaker']
 
 list_ctapipe_charge_extractor = ["FullWaveformSum",
                         "FixedWindowSum",
@@ -98,7 +96,7 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         pass
         
 
-class ChargeMaker(ArrayDataMaker) : 
+class ChargesMaker(ArrayDataMaker) : 
 #constructors
     def __init__(self,run_number : int,max_events : int = None,run_file = None,*args,**kwargs):
         """construtor
@@ -118,7 +116,7 @@ class ChargeMaker(ArrayDataMaker) :
     def _init_trigger_type(self,trigger_type,**kwargs) : 
         super()._init_trigger_type(trigger_type,**kwargs)
         name = __class__._get_name_trigger(trigger_type)
-        log.info(f"initialization of the chargeMaker following trigger type : {name}")
+        log.info(f"initialization of the ChargesMaker following trigger type : {name}")
         self.__charges_hg[f"{name}"] = []
         self.__charges_lg[f"{name}"] = []
         self.__peak_hg[f"{name}"] = []
@@ -132,7 +130,7 @@ class ChargeMaker(ArrayDataMaker) :
             method: str = "FullWaveformSum",
             *args,**kwargs):
         kwargs["method"]=method
-        super().make(n_events=n_events,
+        return super().make(n_events=n_events,
                      trigger_type=trigger_type,
                      restart_from_begining=restart_from_begining,
                      *args,**kwargs)
@@ -144,18 +142,14 @@ class ChargeMaker(ArrayDataMaker) :
                 *args,
                 **kwargs
                 ) : 
-        wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
-        wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
 
-        super()._make_event(event = event,
-                            trigger = trigger,
-                            wfs_hg = wfs_hg_tmp,
-                            wfs_lg = wfs_lg_tmp,
-                            *args,
-                            **kwargs)
+        wfs_hg_tmp,wfs_lg_tmp = super()._make_event(event = event,
+                                                    trigger = trigger,
+                                                    return_wfs = True,
+                                                    *args,**kwargs)
         name = __class__._get_name_trigger(trigger)
 
-        broken_pixels_hg,broken_pixels_lg = __class__._compute_broken_pixels(wfs_hg_tmp,wfs_lg_tmp)
+        broken_pixels_hg,broken_pixels_lg = __class__._compute_broken_pixels_event(event,self._pixels_id)
         self._broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
         self._broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
@@ -187,14 +181,15 @@ class ChargeMaker(ArrayDataMaker) :
         imageExtractor = eval(method)(subarray,**extractor_kwargs)
         return imageExtractor
 
-    def _make_output_container(self,trigger_type) :
+    def _make_output_container(self,trigger_type,method : str) :
         output = []
         for trigger in trigger_type :
             chargesContainer = ChargesContainer(
-                run_number = self.run_number,
-                npixels = self.npixels,
+                run_number = self._run_number,
+                npixels = self._npixels,
                 camera = self.CAMERA_NAME,
-                pixels_id = self.pixels_id,
+                pixels_id = self._pixels_id,
+                method = method,
                 nevents = self.nevents(trigger),
                 charges_hg = self.charges_hg(trigger),
                 charges_lg = self.charges_lg(trigger),
@@ -221,7 +216,9 @@ class ChargeMaker(ArrayDataMaker) :
             npixels = chargesContainer.npixels,
             camera = chargesContainer.camera,
             pixels_id = chargesContainer.pixels_id,
-            nevents = chargesContainer.nevents
+            nevents = chargesContainer.nevents,
+            method = chargesContainer.method
+
         )
         if method == 'event_id' :
             index = np.argsort(chargesContainer.event_id)
@@ -261,7 +258,7 @@ class ChargeMaker(ArrayDataMaker) :
         for field in waveformsContainer.keys() :
                 if not(field in ["subarray","nsamples","wfs_hg","wfs_lg"]) : 
                     chargesContainer[field] = waveformsContainer[field]
-                    
+
         log.info(f"computing hg charge with {method} method")
         charges_hg, peak_hg = __class__.compute_charge(waveformsContainer, constants.HIGH_GAIN, method, **kwargs)
         charges_hg = np.array(charges_hg, dtype=np.uint16)
@@ -272,6 +269,7 @@ class ChargeMaker(ArrayDataMaker) :
         chargesContainer.charges_lg = charges_lg
         chargesContainer.peak_hg = peak_hg
         chargesContainer.peak_lg = peak_lg
+        chargesContainer.method = method
 
         return chargesContainer
         
@@ -298,10 +296,10 @@ class ChargeMaker(ArrayDataMaker) :
         imageExtractor = __class__._get_imageExtractor(method = method,subarray = waveformContainer.subarray,**kwargs)
 
         if channel == constants.HIGH_GAIN:
-            out = np.array([CtapipeExtractor.get_image_peak_time(imageExtractor(waveformContainer.wfs_hg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
+            out = np.array([CtapipeExtractor.get_image_peak_time(imageExtractor(waveformContainer.wfs_hg[i],__class__.TEL_ID,channel,waveformContainer.broken_pixels_hg)) for i in range(len(waveformContainer.wfs_hg))]).transpose(1,0,2)
             return out[0],out[1]
         elif channel == constants.LOW_GAIN:
-            out = np.array([CtapipeExtractor.get_image_peak_time(imageExtractor(waveformContainer.wfs_lg[i],waveformContainer.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
+            out = np.array([CtapipeExtractor.get_image_peak_time(imageExtractor(waveformContainer.wfs_lg[i],__class__.TEL_ID,channel,waveformContainer.broken_pixels_lg)) for i in range(len(waveformContainer.wfs_lg))]).transpose(1,0,2)
             return out[0],out[1]
         else :
             raise ArgumentError(f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}")
