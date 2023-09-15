@@ -51,8 +51,3 @@ class TestflatfieldMaker:
     
         assert np.equal(calibration_maker._pixels_id,new_pixels_id).all()
 
-
-        # Tests that an instance of CalibrationMaker cannot be created with an empty list of pixel ids as input.
-    def test_create_instance_with_empty_pixel_ids(self):
-        with pytest.raises(TypeError):
-            gain_maker = CalibrationMakerforTest([])

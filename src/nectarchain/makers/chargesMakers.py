@@ -181,7 +181,7 @@ class ChargesMaker(ArrayDataMaker) :
         imageExtractor = eval(method)(subarray,**extractor_kwargs)
         return imageExtractor
 
-    def _make_output_container(self,trigger_type,method : str) :
+    def _make_output_container(self,trigger_type,method : str,*args,**kwargs) :
         output = []
         for trigger in trigger_type :
             chargesContainer = ChargesContainer(
@@ -223,7 +223,7 @@ class ChargesMaker(ArrayDataMaker) :
         if method == 'event_id' :
             index = np.argsort(chargesContainer.event_id)
             for field in chargesContainer.keys() :
-                if not(field in ["run_number","npixels","camera","pixels_id","nevents"]) : 
+                if not(field in ["run_number","npixels","camera","pixels_id","nevents","method"]) : 
                     output[field] = chargesContainer[field][index]
         else : 
             raise ArgumentError(f"{method} is not a valid method for sorting")

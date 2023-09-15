@@ -123,7 +123,7 @@ class WaveformsMaker(ArrayDataMaker) :
         self._broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
         self._broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
-    def _make_output_container(self,trigger_type) :
+    def _make_output_container(self,trigger_type,*args,**kwargs) :
         output = []
         for trigger in trigger_type :
             waveformsContainer = WaveformsContainer(
