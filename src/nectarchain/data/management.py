@@ -12,7 +12,6 @@ from typing import List, Tuple
 import browser_cookie3
 import mechanize
 import requests
-from DIRAC.Interfaces.API.Dirac import Dirac
 
 __all__ = ["DataManagement"]
 
@@ -68,6 +67,7 @@ class DataManagement:
         Args:
             lfns (list): list of lfns path
         """
+        from DIRAC.Interfaces.API.Dirac import Dirac
 
         dirac = Dirac()
         for lfn in lfns:
@@ -96,14 +96,14 @@ class DataManagement:
 
         url = "http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?cmd=Find"
 
-        url_run = f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?mode=full&reverse=0&reverse=1&npp=20&subtext=%23{run_number}"
+        # url_run = f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?mode=full&reverse=0&reverse=1&npp=20&subtext=%23{run_number}"
 
         if not (username is None or password is None):
             log.debug("log to Elog with username and password")
             # log to Elog
             br = mechanize.Browser()
             br.open(url)
-            form = br.select_form("form1")
+            # form = br.select_form("form1")
             for i in range(4):
                 log.debug(br.form.find_control(nr=i).name)
             br.form["uname"] = username
@@ -148,6 +148,8 @@ class DataManagement:
             lfns = []
             try:
                 # Dirac
+                from DIRAC.Interfaces.API.Dirac import Dirac
+
                 dirac = Dirac()
                 loc = f"/vo.cta.in2p3.fr/nectarcam/{url_data.split('/')[-2]}/{url_data.split('/')[-1]}"
                 log.debug(f"searching in Dirac filecatalog at {loc}")
