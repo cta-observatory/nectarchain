@@ -1,26 +1,25 @@
-import sys
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
+import sys
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger('__main__').handlers
+log.handlers = logging.getLogger("__main__").handlers
 
 import os
-
-from ctapipe.instrument.subarray import SubarrayDescription
-import numpy as np
-
+from abc import ABC
+from enum import Enum
 from pathlib import Path
 
-from enum import Enum
-
-from tqdm import tqdm
-from ctapipe.containers import Field
-from astropy.io import fits
-from astropy.table import QTable,Column,Table
 import astropy.units as u
-from abc import ABC
+import numpy as np
+from astropy.io import fits
+from astropy.table import Column, QTable, Table
+from ctapipe.containers import Field
+from ctapipe.instrument.subarray import SubarrayDescription
+from tqdm import tqdm
 
 from .core import ArrayDataContainer
+
 
 class WaveformsContainer(ArrayDataContainer):
     """
@@ -37,22 +36,12 @@ class WaveformsContainer(ArrayDataContainer):
         type=int,
         description="number of samples in the waveforms",
     )
-    subarray = Field(
-        type=SubarrayDescription,
-        description="The subarray  description"
-    )
-    wfs_hg = Field(
-        type=np.ndarray,
-        description="high gain waveforms"
-    )
-    wfs_lg = Field(
-        type=np.ndarray,
-        description="low gain waveforms"
-    )
+    subarray = Field(type=SubarrayDescription, description="The subarray  description")
+    wfs_hg = Field(type=np.ndarray, description="high gain waveforms")
+    wfs_lg = Field(type=np.ndarray, description="low gain waveforms")
 
-    
 
-class WaveformsContainerIO(ABC) : 
+class WaveformsContainerIO(ABC):
     """
     The `WaveformsContainerIO` class provides methods for writing and loading `WaveformsContainer` instances to/from FITS files. It also includes a method for writing the subarray configuration to an HDF5 file.
 
@@ -79,8 +68,8 @@ class WaveformsContainerIO(ABC) :
     """
 
     @staticmethod
-    def write(path : str, containers : WaveformsContainer, **kwargs) -> None:
-        '''Write the WaveformsContainer data to an output FITS file.
+    def write(path: str, containers: WaveformsContainer, **kwargs) -> None:
+        """Write the WaveformsContainer data to an output FITS file.
 
         This method creates two files: one FITS file representing the waveform data and one HDF5 file representing the subarray configuration.
 
@@ -100,68 +89,112 @@ class WaveformsContainerIO(ABC) :
         Example:
             waveformsContainer = WaveformsContainer()
             WaveformsContainerIO.write(path, waveformsContainer, suffix="v1", overwrite=True)
-        '''
-        suffix = kwargs.get("suffix","")
-        if suffix != "" : suffix = f"_{suffix}"
+        """
+        suffix = kwargs.get("suffix", "")
+        if suffix != "":
+            suffix = f"_{suffix}"
 
         log.info(f"saving in {path}")
-        os.makedirs(path,exist_ok = True)
+        os.makedirs(path, exist_ok=True)
 
         hdr = fits.Header()
-        hdr['RUN'] = containers.run_number
-        hdr['NEVENTS'] = containers.nevents
-        hdr['NPIXELS'] = containers.npixels
-        hdr['NSAMPLES'] = containers.nsamples
-        hdr['SUBARRAY'] = containers.subarray.name
-        hdr['CAMERA'] = containers.camera
+        hdr["RUN"] = containers.run_number
+        hdr["NEVENTS"] = containers.nevents
+        hdr["NPIXELS"] = containers.npixels
+        hdr["NSAMPLES"] = containers.nsamples
+        hdr["SUBARRAY"] = containers.subarray.name
+        hdr["CAMERA"] = containers.camera
 
+        containers.subarray.to_hdf(
+            f"{Path(path)}/subarray_run{containers.run_number}{suffix}.hdf5",
+            overwrite=kwargs.get("overwrite", False),
+        )
 
-        containers.subarray.to_hdf(f"{Path(path)}/subarray_run{containers.run_number}{suffix}.hdf5",overwrite=kwargs.get('overwrite',False))
+        hdr[
+            "COMMENT"
+        ] = f"The waveforms containeur for run {containers.run_number} : primary is the pixels id, 2nd HDU : high gain waveforms, 3rd HDU : low gain waveforms, 4th HDU :  event properties and 5th HDU trigger paterns."
 
+        primary_hdu = fits.PrimaryHDU(containers.pixels_id, header=hdr)
 
+        wfs_hg_hdu = fits.ImageHDU(containers.wfs_hg, name="HG Waveforms")
+        wfs_lg_hdu = fits.ImageHDU(containers.wfs_lg, name="LG Waveforms")
 
-        hdr['COMMENT'] = f"The waveforms containeur for run {containers.run_number} : primary is the pixels id, 2nd HDU : high gain waveforms, 3rd HDU : low gain waveforms, 4th HDU :  event properties and 5th HDU trigger paterns."
-
-        primary_hdu = fits.PrimaryHDU(containers.pixels_id,header=hdr)
-
-        wfs_hg_hdu = fits.ImageHDU(containers.wfs_hg,name = "HG Waveforms")
-        wfs_lg_hdu = fits.ImageHDU(containers.wfs_lg,name = "LG Waveforms")
-
-        col1 = fits.Column(array = containers.broken_pixels_hg, name = "HG broken pixels", format = f'{containers.broken_pixels_hg.shape[1]}L')
-        col2 = fits.Column(array = containers.broken_pixels_lg, name = "LG broken pixels", format = f'{containers.broken_pixels_lg.shape[1]}L')
+        col1 = fits.Column(
+            array=containers.broken_pixels_hg,
+            name="HG broken pixels",
+            format=f"{containers.broken_pixels_hg.shape[1]}L",
+        )
+        col2 = fits.Column(
+            array=containers.broken_pixels_lg,
+            name="LG broken pixels",
+            format=f"{containers.broken_pixels_lg.shape[1]}L",
+        )
         coldefs = fits.ColDefs([col1, col2])
-        broken_pixels = fits.BinTableHDU.from_columns(coldefs,name = 'trigger patern')
+        broken_pixels = fits.BinTableHDU.from_columns(coldefs, name="trigger patern")
 
-        col1 = fits.Column(array = containers.event_id, name = "event_id", format = '1J')
-        col2 = fits.Column(array = containers.event_type, name = "event_type", format = '1I')
-        col3 = fits.Column(array = containers.ucts_timestamp, name = "ucts_timestamp", format = '1K')
-        col4 = fits.Column(array = containers.ucts_busy_counter, name = "ucts_busy_counter", format = '1J')
-        col5 = fits.Column(array = containers.ucts_event_counter, name = "ucts_event_counter", format = '1J')
-        col6 = fits.Column(array = containers.multiplicity, name = "multiplicity", format = '1I')
+        col1 = fits.Column(array=containers.event_id, name="event_id", format="1J")
+        col2 = fits.Column(array=containers.event_type, name="event_type", format="1I")
+        col3 = fits.Column(
+            array=containers.ucts_timestamp, name="ucts_timestamp", format="1K"
+        )
+        col4 = fits.Column(
+            array=containers.ucts_busy_counter, name="ucts_busy_counter", format="1J"
+        )
+        col5 = fits.Column(
+            array=containers.ucts_event_counter, name="ucts_event_counter", format="1J"
+        )
+        col6 = fits.Column(
+            array=containers.multiplicity, name="multiplicity", format="1I"
+        )
 
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
-        event_properties = fits.BinTableHDU.from_columns(coldefs,name = 'event properties')
+        event_properties = fits.BinTableHDU.from_columns(
+            coldefs, name="event properties"
+        )
 
-        col1 = fits.Column(array = containers.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * containers.trig_pattern_all.shape[1]}L',dim = f'({containers.trig_pattern_all.shape[1]},4)')
-        col2 = fits.Column(array = containers.trig_pattern, name = "trig_pattern", format = f'{containers.trig_pattern_all.shape[1]}L')
+        col1 = fits.Column(
+            array=containers.trig_pattern_all,
+            name="trig_pattern_all",
+            format=f"{4 * containers.trig_pattern_all.shape[1]}L",
+            dim=f"({containers.trig_pattern_all.shape[1]},4)",
+        )
+        col2 = fits.Column(
+            array=containers.trig_pattern,
+            name="trig_pattern",
+            format=f"{containers.trig_pattern_all.shape[1]}L",
+        )
         coldefs = fits.ColDefs([col1, col2])
-        trigger_patern = fits.BinTableHDU.from_columns(coldefs,name = 'trigger patern')
+        trigger_patern = fits.BinTableHDU.from_columns(coldefs, name="trigger patern")
 
-        hdul = fits.HDUList([primary_hdu, wfs_hg_hdu, wfs_lg_hdu,broken_pixels,event_properties,trigger_patern])
-        try : 
-            hdul.writeto(Path(path)/f"waveforms_run{containers.run_number}{suffix}.fits",overwrite=kwargs.get('overwrite',False))
-            log.info(f"run saved in {Path(path)}/waveforms_run{containers.run_number}{suffix}.fits")
-        except OSError as e : 
+        hdul = fits.HDUList(
+            [
+                primary_hdu,
+                wfs_hg_hdu,
+                wfs_lg_hdu,
+                broken_pixels,
+                event_properties,
+                trigger_patern,
+            ]
+        )
+        try:
+            hdul.writeto(
+                Path(path) / f"waveforms_run{containers.run_number}{suffix}.fits",
+                overwrite=kwargs.get("overwrite", False),
+            )
+            log.info(
+                f"run saved in {Path(path)}/waveforms_run{containers.run_number}{suffix}.fits"
+            )
+        except OSError as e:
             log.warning(e)
-        except Exception as e :
-            log.error(e,exc_info = True)
+        except Exception as e:
+            log.error(e, exc_info=True)
             raise e
-        
-    @staticmethod
-    def load(path : str, run_number : int, **kwargs) -> WaveformsContainer: 
-        '''Load a WaveformsContainer from a FITS file previously written with WaveformsContainerIO.write() method.
 
-        Note: Two files are loaded—the FITS file representing the waveform data and an HDF5 file representing the subarray configuration. 
+    @staticmethod
+    def load(path: str, run_number: int, **kwargs) -> WaveformsContainer:
+        """Load a WaveformsContainer from a FITS file previously written with WaveformsContainerIO.write() method.
+
+        Note: Two files are loaded—the FITS file representing the waveform data and an HDF5 file representing the subarray configuration.
         The HDF5 file should be located next to the FITS file.
 
         Args:
@@ -172,7 +205,7 @@ class WaveformsContainerIO(ABC) :
             WaveformsContainer: A WaveformsContainer instance loaded from the specified file.
         Example:
             waveformsContainer = WaveformsContainerIO.load(path, run_number)
-        '''
+        """
         if kwargs.get("explicit_filename", False):
             filename = kwargs.get("explicit_filename")
             log.info(f"Loading {filename}")
@@ -181,28 +214,30 @@ class WaveformsContainerIO(ABC) :
             filename = Path(path) / f"waveforms_run{run_number}.fits"
 
         log.info(f"loading from {path}")
-        with fits.open(filename) as hdul : 
+        with fits.open(filename) as hdul:
             containers = WaveformsContainer()
 
-            containers.run_number = hdul[0].header['RUN'] 
-            containers.nevents = hdul[0].header['NEVENTS'] 
-            containers.npixels = hdul[0].header['NPIXELS'] 
-            containers.nsamples = hdul[0].header['NSAMPLES'] 
-            containers.camera = hdul[0].header['CAMERA'] 
+            containers.run_number = hdul[0].header["RUN"]
+            containers.nevents = hdul[0].header["NEVENTS"]
+            containers.npixels = hdul[0].header["NPIXELS"]
+            containers.nsamples = hdul[0].header["NSAMPLES"]
+            containers.camera = hdul[0].header["CAMERA"]
 
-
-            containers.subarray = SubarrayDescription.from_hdf(Path(filename._str.replace('waveforms_','subarray_').replace('fits','hdf5')))
-
+            containers.subarray = SubarrayDescription.from_hdf(
+                Path(
+                    filename._str.replace("waveforms_", "subarray_").replace(
+                        "fits", "hdf5"
+                    )
+                )
+            )
 
             containers.pixels_id = hdul[0].data
             containers.wfs_hg = hdul[1].data
             containers.wfs_lg = hdul[2].data
-            
+
             broken_pixels = hdul[3].data
             containers.broken_pixels_hg = broken_pixels["HG broken pixels"]
             containers.broken_pixels_lg = broken_pixels["LG broken pixels"]
-
-
 
             table_prop = hdul[4].data
             containers.event_id = table_prop["event_id"]

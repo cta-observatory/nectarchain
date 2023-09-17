@@ -1,16 +1,19 @@
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger('__main__').handlers
+log.handlers = logging.getLogger("__main__").handlers
+
+import os
+from abc import ABC
+from pathlib import Path
 
 import numpy as np
-from ctapipe.containers import Field
-from abc import ABC
-import os
-from pathlib import Path
 from astropy.io import fits
+from ctapipe.containers import Field
 
 from .core import ArrayDataContainer
+
 
 class ChargesContainer(ArrayDataContainer):
     """
@@ -24,28 +27,14 @@ class ChargesContainer(ArrayDataContainer):
       method (str): The charge extraction method used.
     """
 
-    charges_hg = Field(
-        type=np.ndarray,
-        description='The high gain charges'
-    )
-    charges_lg = Field(
-        type=np.ndarray,
-        description='The low gain charges'
-    )
-    peak_hg = Field(
-        type=np.ndarray,
-        description='The high gain peak time'
-    )
-    peak_lg = Field(
-        type=np.ndarray,
-        description='The low gain peak time'
-    )
-    method = Field(
-        type=str,
-        description='The charge extraction method used'
-    )
+    charges_hg = Field(type=np.ndarray, description="The high gain charges")
+    charges_lg = Field(type=np.ndarray, description="The low gain charges")
+    peak_hg = Field(type=np.ndarray, description="The high gain peak time")
+    peak_lg = Field(type=np.ndarray, description="The low gain peak time")
+    method = Field(type=str, description="The charge extraction method used")
 
-class ChargesContainerIO(ABC) : 
+
+class ChargesContainerIO(ABC):
     """
     The `ChargesContainerIO` class provides methods for writing and loading `ChargesContainer` instances to/from FITS files.
 
@@ -68,8 +57,9 @@ class ChargesContainerIO(ABC) :
     Fields:
     The `ChargesContainerIO` class does not have any fields.
     """
+
     @staticmethod
-    def write(path : Path, container : ChargesContainer,**kwargs) -> None: 
+    def write(path: Path, container: ChargesContainer, **kwargs) -> None:
         """Write a ChargesContainer instance to a FITS file.
         Args:
             path (str): The directory where the FITS file will be saved.
@@ -87,51 +77,97 @@ class ChargesContainerIO(ABC) :
             chargesContainer = ChargesContainer()
             ChargesContainerIO.write(path, chargesContainer, suffix="v1", overwrite=True)
         """
-        suffix = kwargs.get("suffix","")
-        if suffix != "" : suffix = f"_{suffix}"
+        suffix = kwargs.get("suffix", "")
+        if suffix != "":
+            suffix = f"_{suffix}"
         log.info(f"saving in {path}")
-        os.makedirs(path,exist_ok = True)
+        os.makedirs(path, exist_ok=True)
         hdr = fits.Header()
-        hdr['RUN'] = container.run_number
-        hdr['NEVENTS'] = container.nevents
-        hdr['NPIXELS'] = container.npixels
-        hdr['METHOD'] = container.method
-        hdr['CAMERA'] = container.camera
-        hdr['COMMENT'] = f"The charge containeur for run {container.run_number} with {container.method} method : primary is the pixels id, then you can find HG charge, LG charge, HG peak and LG peak, 2 last HDU are composed of event properties and trigger patern"
-        
-        primary_hdu = fits.PrimaryHDU(container.pixels_id,header=hdr)
-        charge_hg_hdu = fits.ImageHDU(container.charges_hg,name = "HG charge")
-        charge_lg_hdu = fits.ImageHDU(container.charges_lg,name = "LG charge")
-        peak_hg_hdu = fits.ImageHDU(container.peak_hg, name = 'HG peak time')
-        peak_lg_hdu = fits.ImageHDU(container.peak_lg, name = 'LG peak time')
+        hdr["RUN"] = container.run_number
+        hdr["NEVENTS"] = container.nevents
+        hdr["NPIXELS"] = container.npixels
+        hdr["METHOD"] = container.method
+        hdr["CAMERA"] = container.camera
+        hdr[
+            "COMMENT"
+        ] = f"The charge containeur for run {container.run_number} with {container.method} method : primary is the pixels id, then you can find HG charge, LG charge, HG peak and LG peak, 2 last HDU are composed of event properties and trigger patern"
 
-        col1 = fits.Column(array = container.broken_pixels_hg, name = "HG broken pixels", format = f'{container.broken_pixels_hg.shape[1]}L')
-        col2 = fits.Column(array = container.broken_pixels_lg, name = "LG broken pixels", format = f'{container.broken_pixels_lg.shape[1]}L')
+        primary_hdu = fits.PrimaryHDU(container.pixels_id, header=hdr)
+        charge_hg_hdu = fits.ImageHDU(container.charges_hg, name="HG charge")
+        charge_lg_hdu = fits.ImageHDU(container.charges_lg, name="LG charge")
+        peak_hg_hdu = fits.ImageHDU(container.peak_hg, name="HG peak time")
+        peak_lg_hdu = fits.ImageHDU(container.peak_lg, name="LG peak time")
+
+        col1 = fits.Column(
+            array=container.broken_pixels_hg,
+            name="HG broken pixels",
+            format=f"{container.broken_pixels_hg.shape[1]}L",
+        )
+        col2 = fits.Column(
+            array=container.broken_pixels_lg,
+            name="LG broken pixels",
+            format=f"{container.broken_pixels_lg.shape[1]}L",
+        )
         coldefs = fits.ColDefs([col1, col2])
-        broken_pixels = fits.BinTableHDU.from_columns(coldefs,name = 'trigger patern')
+        broken_pixels = fits.BinTableHDU.from_columns(coldefs, name="trigger patern")
 
-        col1 = fits.Column(array = container.event_id, name = "event_id", format = '1I')
-        col2 = fits.Column(array = container.event_type, name = "event_type", format = '1I')
-        col3 = fits.Column(array = container.ucts_timestamp, name = "ucts_timestamp", format = '1K')
-        col4 = fits.Column(array = container.ucts_busy_counter, name = "ucts_busy_counter", format = '1I')
-        col5 = fits.Column(array = container.ucts_event_counter, name = "ucts_event_counter", format = '1I')
-        col6 = fits.Column(array = container.multiplicity, name = "multiplicity", format = '1I')
+        col1 = fits.Column(array=container.event_id, name="event_id", format="1I")
+        col2 = fits.Column(array=container.event_type, name="event_type", format="1I")
+        col3 = fits.Column(
+            array=container.ucts_timestamp, name="ucts_timestamp", format="1K"
+        )
+        col4 = fits.Column(
+            array=container.ucts_busy_counter, name="ucts_busy_counter", format="1I"
+        )
+        col5 = fits.Column(
+            array=container.ucts_event_counter, name="ucts_event_counter", format="1I"
+        )
+        col6 = fits.Column(
+            array=container.multiplicity, name="multiplicity", format="1I"
+        )
         coldefs = fits.ColDefs([col1, col2, col3, col4, col5, col6])
-        event_properties = fits.BinTableHDU.from_columns(coldefs, name = 'event properties')
-        
-        col1 = fits.Column(array = container.trig_pattern_all, name = "trig_pattern_all", format = f'{4 * container.trig_pattern_all.shape[1]}L',dim = f'({ container.trig_pattern_all.shape[1]},4)')
-        col2 = fits.Column(array = container.trig_pattern, name = "trig_pattern", format = f'{container.trig_pattern_all.shape[1]}L')
+        event_properties = fits.BinTableHDU.from_columns(
+            coldefs, name="event properties"
+        )
+
+        col1 = fits.Column(
+            array=container.trig_pattern_all,
+            name="trig_pattern_all",
+            format=f"{4 * container.trig_pattern_all.shape[1]}L",
+            dim=f"({ container.trig_pattern_all.shape[1]},4)",
+        )
+        col2 = fits.Column(
+            array=container.trig_pattern,
+            name="trig_pattern",
+            format=f"{container.trig_pattern_all.shape[1]}L",
+        )
         coldefs = fits.ColDefs([col1, col2])
-        trigger_patern = fits.BinTableHDU.from_columns(coldefs, name = 'trigger patern')
-        
-        hdul = fits.HDUList([primary_hdu, charge_hg_hdu, charge_lg_hdu,peak_hg_hdu,peak_lg_hdu,broken_pixels,event_properties,trigger_patern])
-        try : 
-            hdul.writeto(Path(path)/f"charge_run{container.run_number}{suffix}.fits",overwrite=kwargs.get('overwrite',False))
-            log.info(f"charge saved in {Path(path)}/charge_run{container.run_number}{suffix}.fits")
-        except OSError as e : 
+        trigger_patern = fits.BinTableHDU.from_columns(coldefs, name="trigger patern")
+
+        hdul = fits.HDUList(
+            [
+                primary_hdu,
+                charge_hg_hdu,
+                charge_lg_hdu,
+                peak_hg_hdu,
+                peak_lg_hdu,
+                broken_pixels,
+                event_properties,
+                trigger_patern,
+            ]
+        )
+        try:
+            hdul.writeto(
+                Path(path) / f"charge_run{container.run_number}{suffix}.fits",
+                overwrite=kwargs.get("overwrite", False),
+            )
+            log.info(
+                f"charge saved in {Path(path)}/charge_run{container.run_number}{suffix}.fits"
+            )
+        except OSError as e:
             log.warning(e)
-        except Exception as e :
-            log.error(e,exc_info = True)
+        except Exception as e:
+            log.error(e, exc_info=True)
             raise e
 
     @staticmethod
@@ -158,11 +194,11 @@ class ChargesContainerIO(ABC) :
 
         with fits.open(filename) as hdul:
             container = ChargesContainer()
-            container.run_number = hdul[0].header['RUN']
-            container.nevents = hdul[0].header['NEVENTS']
-            container.npixels = hdul[0].header['NPIXELS']
-            container.method = hdul[0].header['METHOD']
-            container.camera = hdul[0].header['CAMERA']
+            container.run_number = hdul[0].header["RUN"]
+            container.nevents = hdul[0].header["NEVENTS"]
+            container.npixels = hdul[0].header["NPIXELS"]
+            container.method = hdul[0].header["METHOD"]
+            container.camera = hdul[0].header["CAMERA"]
             container.pixels_id = hdul[0].data
             container.charges_hg = hdul[1].data
             container.charges_lg = hdul[2].data

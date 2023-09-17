@@ -1,29 +1,27 @@
-import sys
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
+import sys
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger('__main__').handlers
+log.handlers = logging.getLogger("__main__").handlers
 
 
-import numpy as np
-from scipy.stats import linregress
-from matplotlib import pyplot as plt
-import astropy.units as u
-from astropy.visualization import quantity_support
-from astropy.table import QTable,Column
+import copy
 import os
 from datetime import date
 from pathlib import Path
-import copy
 
+import astropy.units as u
+import numpy as np
+from astropy.table import Column, QTable
+from astropy.visualization import quantity_support
 from ctapipe_io_nectarcam import constants
+from matplotlib import pyplot as plt
+from scipy.stats import linregress
 
-from ....data.container import ChargesContainer,ChargesContainerIO
-
+from ....data.container import ChargesContainer, ChargesContainerIO
 from ...chargesMakers import ChargesMaker
-
 from .gainMakers import GainMaker
-
 
 __all__ = ["PhotoStatisticMaker"]
 
@@ -76,19 +74,21 @@ class PhotoStatisticMaker(GainMaker):
         - `BLG`: Property to calculate the BLG value.
         - `gainLG`: Property to calculate the gain for low gain.
     """
+
     _reduced_name = "PhotoStatistic"
 
-#constructors
-    def __init__(self,
-                 FFcharge_hg : np.ndarray,
-                 FFcharge_lg : np.ndarray,
-                 Pedcharge_hg: np.ndarray,
-                 Pedcharge_lg: np.ndarray,
-                 coefCharge_FF_Ped : float,
-                 SPE_resolution,
-                 *args,
-                 **kwargs
-                 ) -> None:
+    # constructors
+    def __init__(
+        self,
+        FFcharge_hg: np.ndarray,
+        FFcharge_lg: np.ndarray,
+        Pedcharge_hg: np.ndarray,
+        Pedcharge_lg: np.ndarray,
+        coefCharge_FF_Ped: float,
+        SPE_resolution,
+        *args,
+        **kwargs,
+    ) -> None:
         """
         Initializes the instance of the PhotoStatisticMaker class with charge data and other parameters.
 
@@ -106,73 +106,80 @@ class PhotoStatisticMaker(GainMaker):
         Returns:
             None
         """
-        super().__init__(*args,**kwargs)
+        super().__init__(*args, **kwargs)
 
         self.__coefCharge_FF_Ped = coefCharge_FF_Ped
-    
+
         self.__FFcharge_hg = FFcharge_hg
         self.__FFcharge_lg = FFcharge_lg
 
         self.__Pedcharge_hg = Pedcharge_hg
         self.__Pedcharge_lg = Pedcharge_lg
 
-        if isinstance(SPE_resolution,np.ndarray) and len(SPE_resolution) == self.npixels : 
+        if (
+            isinstance(SPE_resolution, np.ndarray)
+            and len(SPE_resolution) == self.npixels
+        ):
             self.__SPE_resolution = SPE_resolution
-        elif isinstance(SPE_resolution,list) and len(SPE_resolution) == self.npixels : 
+        elif isinstance(SPE_resolution, list) and len(SPE_resolution) == self.npixels:
             self.__SPE_resolution = np.array(SPE_resolution)
-        elif isinstance(SPE_resolution,float) :
-            self.__SPE_resolution = SPE_resolution * np.ones((self.npixels)) 
-        else : 
-            e = TypeError("SPE_resolution must be a float, a numpy.ndarray or list instance")
+        elif isinstance(SPE_resolution, float):
+            self.__SPE_resolution = SPE_resolution * np.ones((self.npixels))
+        else:
+            e = TypeError(
+                "SPE_resolution must be a float, a numpy.ndarray or list instance"
+            )
             raise e
 
         self.__check_shape()
 
-
     @classmethod
-    def create_from_chargeContainer(cls, 
-                                    FFcharge : ChargesContainer, 
-                                    Pedcharge : ChargesContainer, 
-                                    coefCharge_FF_Ped : float, 
-                                    SPE_result, 
-                                    **kwargs) : 
+    def create_from_chargeContainer(
+        cls,
+        FFcharge: ChargesContainer,
+        Pedcharge: ChargesContainer,
+        coefCharge_FF_Ped: float,
+        SPE_result,
+        **kwargs,
+    ):
         """
         Create an instance of the PhotoStatisticMaker class from Pedestal and Flatfield runs stored in ChargesContainer.
-    
+
         Args:
             FFcharge (ChargesContainer): Array of charge data for the FF image.
             Pedcharge (ChargesContainer): Array of charge data for the Ped image.
             coefCharge_FF_Ped (float): Coefficient to convert FF charge to Ped charge.
             SPE_result (str or Path): Path to the SPE result file (optional).
             **kwargs: Additional keyword arguments for initializing the PhotoStatisticMaker instance.
-        
+
         Returns:
             PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created from the ChargesContainer instances.
         """
-        if isinstance(SPE_result , str) or isinstance(SPE_result , Path) : 
-            SPE_resolution,SPE_pixels_id = __class__.__readSPE(SPE_result)
-        else : 
+        if isinstance(SPE_result, str) or isinstance(SPE_result, Path):
+            SPE_resolution, SPE_pixels_id = __class__.__readSPE(SPE_result)
+        else:
             SPE_pixels_id = None
 
-        kwargs_init =  __class__.__get_charges_FF_Ped_reshaped(FFcharge,
-                                                            Pedcharge,
-                                                            SPE_resolution,
-                                                            SPE_pixels_id)
+        kwargs_init = __class__.__get_charges_FF_Ped_reshaped(
+            FFcharge, Pedcharge, SPE_resolution, SPE_pixels_id
+        )
 
         kwargs.update(kwargs_init)
-        return cls(coefCharge_FF_Ped = coefCharge_FF_Ped, **kwargs)
+        return cls(coefCharge_FF_Ped=coefCharge_FF_Ped, **kwargs)
 
     @classmethod
-    def create_from_run_numbers(cls, FFrun: int, Pedrun: int, SPE_result: str, **kwargs):
+    def create_from_run_numbers(
+        cls, FFrun: int, Pedrun: int, SPE_result: str, **kwargs
+    ):
         """
         Create an instance of the PhotoStatisticMaker class by reading the FF (Flat Field) and Ped (Pedestal) charge data from run numbers.
-    
+
         Args:
             FFrun (int): The run number for the FF charge data.
             Pedrun (int): The run number for the Ped charge data.
             SPE_result (str): The path to the SPE result file.
             **kwargs: Additional keyword arguments.
-        
+
         Returns:
             PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created from the FF and Ped charge data and the SPE result file.
         """
@@ -182,9 +189,9 @@ class PhotoStatisticMaker(GainMaker):
         kwargs.update(Pedkwargs)
         return cls.create_from_chargeContainer(SPE_result=SPE_result, **kwargs)
 
-#methods
+    # methods
     @staticmethod
-    def __readSPE(SPEresults) -> tuple: 
+    def __readSPE(SPEresults) -> tuple:
         """
         Reads the SPE resolution from a file and returns the resolution values and corresponding pixel IDs.
 
@@ -194,13 +201,21 @@ class PhotoStatisticMaker(GainMaker):
         Returns:
             tuple: A tuple containing the SPE resolution values and corresponding pixel IDs.
         """
-        log.info(f'reading SPE resolution from {SPEresults}')
+        log.info(f"reading SPE resolution from {SPEresults}")
         table = QTable.read(SPEresults)
-        table.sort('pixels_id')
-        return table['resolution'][table['is_valid']].value,table['pixels_id'][table['is_valid']].value
+        table.sort("pixels_id")
+        return (
+            table["resolution"][table["is_valid"]].value,
+            table["pixels_id"][table["is_valid"]].value,
+        )
 
     @staticmethod
-    def __get_charges_FF_Ped_reshaped( FFcharge : ChargesContainer, Pedcharge : ChargesContainer, SPE_resolution : np.ndarray, SPE_pixels_id: np.ndarray)-> dict : 
+    def __get_charges_FF_Ped_reshaped(
+        FFcharge: ChargesContainer,
+        Pedcharge: ChargesContainer,
+        SPE_resolution: np.ndarray,
+        SPE_pixels_id: np.ndarray,
+    ) -> dict:
         """
         Reshapes the FF (Flat Field) and Ped (Pedestal) charges based on the intersection of pixel IDs between the two charges.
         Selects the charges for the high-gain and low-gain channels and returns them along with the common pixel IDs.
@@ -217,18 +232,32 @@ class PhotoStatisticMaker(GainMaker):
         log.info("reshape of SPE, Ped and FF data with intersection of pixel ids")
         out = {}
 
-        FFped_intersection =  np.intersect1d(Pedcharge.pixels_id,FFcharge.pixels_id)
-        if not(SPE_pixels_id is None) : 
-            SPEFFPed_intersection = np.intersect1d(FFped_intersection,SPE_pixels_id)
-            mask_SPE = np.array([SPE_pixels_id[i] in SPEFFPed_intersection for i in range(len(SPE_pixels_id))],dtype = bool)
+        FFped_intersection = np.intersect1d(Pedcharge.pixels_id, FFcharge.pixels_id)
+        if not (SPE_pixels_id is None):
+            SPEFFPed_intersection = np.intersect1d(FFped_intersection, SPE_pixels_id)
+            mask_SPE = np.array(
+                [
+                    SPE_pixels_id[i] in SPEFFPed_intersection
+                    for i in range(len(SPE_pixels_id))
+                ],
+                dtype=bool,
+            )
             out["SPE_resolution"] = SPE_resolution[mask_SPE]
 
         out["pixels_id"] = SPEFFPed_intersection
-        out["FFcharge_hg"] = ChargesMaker.select_charges_hg(FFcharge,SPEFFPed_intersection)
-        out["FFcharge_lg"] = ChargesMaker.select_charges_lg(FFcharge,SPEFFPed_intersection)
-        out["Pedcharge_hg"] = ChargesMaker.select_charges_hg(Pedcharge,SPEFFPed_intersection)
-        out["Pedcharge_lg"] = ChargesMaker.select_charges_lg(Pedcharge,SPEFFPed_intersection)
-        
+        out["FFcharge_hg"] = ChargesMaker.select_charges_hg(
+            FFcharge, SPEFFPed_intersection
+        )
+        out["FFcharge_lg"] = ChargesMaker.select_charges_lg(
+            FFcharge, SPEFFPed_intersection
+        )
+        out["Pedcharge_hg"] = ChargesMaker.select_charges_hg(
+            Pedcharge, SPEFFPed_intersection
+        )
+        out["Pedcharge_lg"] = ChargesMaker.select_charges_lg(
+            Pedcharge, SPEFFPed_intersection
+        )
+
         log.info(f"data have {len(SPEFFPed_intersection)} pixels in common")
         return out
 
@@ -242,12 +271,16 @@ class PhotoStatisticMaker(GainMaker):
         Returns:
         - dict: A dictionary containing the FF charge data (`FFcharge`) and the coefficient for the FF charge (`coefCharge_FF_Ped`).
         """
-        log.info('reading FF data')
-        method = kwargs.get('method', 'FullWaveformSum')
-        FFchargeExtractorWindowLength = kwargs.get('FFchargeExtractorWindowLength', None)
-        if method != 'FullWaveformSum':
+        log.info("reading FF data")
+        method = kwargs.get("method", "FullWaveformSum")
+        FFchargeExtractorWindowLength = kwargs.get(
+            "FFchargeExtractorWindowLength", None
+        )
+        if method != "FullWaveformSum":
             if FFchargeExtractorWindowLength is None:
-                e = Exception(f"we have to specify FFchargeExtractorWindowLength argument if charge extractor method is not FullwaveformSum")
+                e = Exception(
+                    f"we have to specify FFchargeExtractorWindowLength argument if charge extractor method is not FullwaveformSum"
+                )
                 log.error(e, exc_info=True)
                 raise e
             else:
@@ -256,8 +289,10 @@ class PhotoStatisticMaker(GainMaker):
             coefCharge_FF_Ped = 1
         if isinstance(FFRun, int):
             try:
-                FFcharge = ChargesContainerIO.load(f"{os.environ['NECTARCAMDATA']}/charges/{method}", FFRun)
-                log.info(f'charges have ever been computed for FF run {FFRun}')
+                FFcharge = ChargesContainerIO.load(
+                    f"{os.environ['NECTARCAMDATA']}/charges/{method}", FFRun
+                )
+                log.info(f"charges have ever been computed for FF run {FFRun}")
             except Exception as e:
                 log.error("charge have not been yet computed")
                 raise e
@@ -266,6 +301,7 @@ class PhotoStatisticMaker(GainMaker):
             log.error(e, exc_info=True)
             raise e
         return {"FFcharge": FFcharge, "coefCharge_FF_Ped": coefCharge_FF_Ped}
+
     @staticmethod
     def __readPed(PedRun: int, **kwargs) -> dict:
         """
@@ -276,12 +312,14 @@ class PhotoStatisticMaker(GainMaker):
         Returns:
         - dict: A dictionary containing the Ped charge data (`Pedcharge`).
         """
-        log.info('reading Ped data')
-        method = 'FullWaveformSum'  # kwargs.get('method','std')
+        log.info("reading Ped data")
+        method = "FullWaveformSum"  # kwargs.get('method','std')
         if isinstance(PedRun, int):
             try:
-                Pedcharge = ChargesContainerIO.load(f"{os.environ['NECTARCAMDATA']}/charges/{method}", PedRun)
-                log.info(f'charges have ever been computed for Ped run {PedRun}')
+                Pedcharge = ChargesContainerIO.load(
+                    f"{os.environ['NECTARCAMDATA']}/charges/{method}", PedRun
+                )
+                log.info(f"charges have ever been computed for Ped run {PedRun}")
             except Exception as e:
                 log.error("charge have not been yet computed")
                 raise e
@@ -291,14 +329,16 @@ class PhotoStatisticMaker(GainMaker):
             raise e
         return {"Pedcharge": Pedcharge}
 
-    def __check_shape(self) -> None: 
+    def __check_shape(self) -> None:
         """
         Checks the shape of certain attributes and raises an exception if the shape is not as expected.
         """
-        try : 
-            self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[0] * self.__Pedcharge_lg[0] * self.__SPE_resolution * self._pixels_id
-        except Exception as e : 
-            log.error(e,exc_info = True)
+        try:
+            self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[
+                0
+            ] * self.__Pedcharge_lg[0] * self.__SPE_resolution * self._pixels_id
+        except Exception as e:
+            log.error(e, exc_info=True)
             raise e
 
     def make(self, **kwargs) -> None:
@@ -311,13 +351,14 @@ class PhotoStatisticMaker(GainMaker):
         Returns:
             None
         """
-        log.info('running photo statistic method')
+        log.info("running photo statistic method")
         self._results["high_gain"] = self.gainHG
         self._results["low_gain"] = self.gainLG
         # self._results["is_valid"] = self._SPEvalid
 
-
-    def plot_correlation(photoStat_gain: np.ndarray, SPE_gain: np.ndarray) -> plt.Figure:
+    def plot_correlation(
+        photoStat_gain: np.ndarray, SPE_gain: np.ndarray
+    ) -> plt.Figure:
         """
         Plot the correlation between the photo statistic gain and the single photoelectron (SPE) gain.
 
@@ -333,7 +374,9 @@ class PhotoStatisticMaker(GainMaker):
         mask = (photoStat_gain > 20) * (SPE_gain > 0) * (photoStat_gain < 80)
 
         # Perform a linear regression analysis on the filtered data points
-        a, b, r, p_value, std_err = linregress(photoStat_gain[mask], SPE_gain[mask], 'greater')
+        a, b, r, p_value, std_err = linregress(
+            photoStat_gain[mask], SPE_gain[mask], "greater"
+        )
 
         # Generate a range of x-values for the linear fit line
         x = np.linspace(photoStat_gain[mask].min(), photoStat_gain[mask].max(), 1000)
@@ -347,17 +390,22 @@ class PhotoStatisticMaker(GainMaker):
             ax.scatter(photoStat_gain[mask], SPE_gain[mask], marker=".")
 
             # Plot the linear fit line using the x-values and the lambda function
-            ax.plot(x, y(x), color='red',
-                    label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}")
+            ax.plot(
+                x,
+                y(x),
+                color="red",
+                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
+            )
 
             # Plot the line y = x
-            ax.plot(x, x, color='black', label="y = x")
+            ax.plot(x, x, color="black", label="y = x")
 
             ax.set_xlabel("Gain Photo stat (ADC)", size=15)
             ax.set_ylabel("Gain SPE fit (ADC)", size=15)
             ax.legend(fontsize=15)
 
         return fig
+
 
 @property
 def SPE_resolution(self) -> float:
@@ -423,7 +471,14 @@ def BHG(self) -> float:
         float: The BHG value.
     """
     min_events = np.min((self.__FFcharge_hg.shape[0], self.__Pedcharge_hg.shape[0]))
-    upper = (np.power(self.__FFcharge_hg.mean(axis=1)[:min_events] - self.__Pedcharge_hg.mean(axis=1)[:min_events] * self.__coefCharge_FF_Ped - self.meanChargeHG.mean(), 2)).mean(axis=0)
+    upper = (
+        np.power(
+            self.__FFcharge_hg.mean(axis=1)[:min_events]
+            - self.__Pedcharge_hg.mean(axis=1)[:min_events] * self.__coefCharge_FF_Ped
+            - self.meanChargeHG.mean(),
+            2,
+        )
+    ).mean(axis=0)
     lower = np.power(self.meanChargeHG.mean(), 2)
     return np.sqrt(upper / lower)
 
@@ -436,8 +491,11 @@ def gainHG(self) -> float:
     Returns:
         float: The gain for high gain charge data.
     """
-    return ((np.power(self.sigmaChargeHG, 2) - np.power(self.sigmaPedHG, 2) - np.power(self.BHG * self.meanChargeHG, 2))
-            / (self.meanChargeHG * (1 + np.power(self.SPE_resolution, 2))))
+    return (
+        np.power(self.sigmaChargeHG, 2)
+        - np.power(self.sigmaPedHG, 2)
+        - np.power(self.BHG * self.meanChargeHG, 2)
+    ) / (self.meanChargeHG * (1 + np.power(self.SPE_resolution, 2)))
 
 
 @property
@@ -493,7 +551,14 @@ def BLG(self) -> float:
         float: The BLG value.
     """
     min_events = np.min((self.__FFcharge_lg.shape[0], self.__Pedcharge_lg.shape[0]))
-    upper = (np.power(self.__FFcharge_lg.mean(axis=1)[:min_events] - self.__Pedcharge_lg.mean(axis=1)[:min_events] * self.__coefCharge_FF_Ped - self.meanChargeLG.mean(), 2)).mean(axis=0)
+    upper = (
+        np.power(
+            self.__FFcharge_lg.mean(axis=1)[:min_events]
+            - self.__Pedcharge_lg.mean(axis=1)[:min_events] * self.__coefCharge_FF_Ped
+            - self.meanChargeLG.mean(),
+            2,
+        )
+    ).mean(axis=0)
     lower = np.power(self.meanChargeLG.mean(), 2)
     return np.sqrt(upper / lower)
 
@@ -506,6 +571,8 @@ def gainLG(self) -> float:
     Returns:
         float: The gain for low gain charge data.
     """
-    return ((np.power(self.sigmaChargeLG, 2) - np.power(self.sigmaPedLG, 2) - np.power(self.BLG * self.meanChargeLG, 2))
-            / (self.meanChargeLG * (1 + np.power(self.SPE_resolution, 2))))
-
+    return (
+        np.power(self.sigmaChargeLG, 2)
+        - np.power(self.sigmaPedLG, 2)
+        - np.power(self.BLG * self.meanChargeLG, 2)
+    ) / (self.meanChargeLG * (1 + np.power(self.SPE_resolution, 2)))

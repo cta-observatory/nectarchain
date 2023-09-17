@@ -1,13 +1,15 @@
-import sys
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s')
+import sys
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger('__main__').handlers
+log.handlers = logging.getLogger("__main__").handlers
 
-from ctapipe.containers import Container,Field
 import numpy as np
+from ctapipe.containers import Container, Field
 
-__all__= ["ArrayDataContainer"]
+__all__ = ["ArrayDataContainer"]
+
 
 class ArrayDataContainer(Container):
     """
@@ -43,51 +45,18 @@ class ArrayDataContainer(Container):
         type=int,
         description="number of effective pixels",
     )
-    pixels_id = Field(
-        type=np.ndarray,
-        description="pixel ids"
-    )
-    broken_pixels_hg = Field(
-        type=np.ndarray,
-        description="high gain broken pixels"
-    )
-    broken_pixels_lg = Field(
-        type=np.ndarray,
-        description="low gain broken pixels"
-    )
+    pixels_id = Field(type=np.ndarray, description="pixel ids")
+    broken_pixels_hg = Field(type=np.ndarray, description="high gain broken pixels")
+    broken_pixels_lg = Field(type=np.ndarray, description="low gain broken pixels")
     camera = Field(
         type=str,
         description="camera name",
     )
-    ucts_timestamp = Field(
-        type=np.ndarray,
-        description="events ucts timestamp"
-    )
-    ucts_busy_counter = Field(
-        type=np.ndarray,
-        description="ucts busy counter"
-    )
-    ucts_event_counter = Field(
-        type=np.ndarray,
-        description="ucts event counter"
-    )
-    event_type = Field(
-        type=np.ndarray,
-        description="trigger event type"
-    )
-    event_id = Field(
-        type=np.ndarray,
-        description="event ids"
-    )
-    trig_pattern_all = Field(
-        type=np.ndarray,
-        description="trigger pattern"
-    )
-    trig_pattern = Field(
-        type=np.ndarray,
-        description="reduced trigger pattern"
-    )
-    multiplicity = Field(
-        type=np.ndarray,
-        description="events multiplicity"
-    )
+    ucts_timestamp = Field(type=np.ndarray, description="events ucts timestamp")
+    ucts_busy_counter = Field(type=np.ndarray, description="ucts busy counter")
+    ucts_event_counter = Field(type=np.ndarray, description="ucts event counter")
+    event_type = Field(type=np.ndarray, description="trigger event type")
+    event_id = Field(type=np.ndarray, description="event ids")
+    trig_pattern_all = Field(type=np.ndarray, description="trigger pattern")
+    trig_pattern = Field(type=np.ndarray, description="reduced trigger pattern")
+    multiplicity = Field(type=np.ndarray, description="events multiplicity")
