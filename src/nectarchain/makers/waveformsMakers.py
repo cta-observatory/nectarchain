@@ -11,6 +11,8 @@ import copy
 from ctapipe.instrument import SubarrayDescription
 from ctapipe_io_nectarcam import constants
 from ctapipe.containers import EventType
+from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+
 
 from ..data.container import WaveformsContainer
 from .core import ArrayDataMaker
@@ -47,6 +49,19 @@ class WaveformsMaker(ArrayDataMaker) :
                                 subarray : SubarrayDescription,
                                 pixels_id : int,
                                 ) : 
+        """Create a container for the extracted waveforms from a list of events.
+
+        Args:
+            events_list (list[NectarCAMDataContainer]): A list of events to extract waveforms from.
+            run_number (int): The ID of the run to be loaded.
+            npixels (int): The number of pixels in the waveforms.
+            nsamples (int): The number of samples in the waveforms.
+            subarray (SubarrayDescription): The subarray description instance.
+            pixels_id (int): The ID of the pixels to extract waveforms from.
+
+        Returns:
+            WaveformsContainer: A container object that contains the extracted waveforms and other relevant information.
+        """
         container = WaveformsContainer(
             run_number = run_number,
             npixels = npixels,
@@ -93,7 +108,13 @@ class WaveformsMaker(ArrayDataMaker) :
         return container
 
             
-    def _init_trigger_type(self,trigger_type,**kwargs) : 
+    def _init_trigger_type(self,trigger_type : EventType,**kwargs) : 
+        """Initialize the waveformsMaker following the trigger type.
+
+        Args:
+            trigger_type: The type of trigger.
+
+        """
         super()._init_trigger_type(trigger_type,**kwargs)
         name = __class__._get_name_trigger(trigger_type)
         log.info(f"initialization of the waveformsMaker following trigger type : {name}")
@@ -102,11 +123,18 @@ class WaveformsMaker(ArrayDataMaker) :
        
 
     def _make_event(self,
-                event,
+                event : NectarCAMDataContainer,
                 trigger : EventType,
                 *args,
                 **kwargs
                 ) : 
+        """Process an event and extract waveforms.
+
+        Args:
+            event (NectarCAMDataContainer): The event to process and extract waveforms from.
+            trigger (EventType): The type of trigger for the event.
+
+        """
         wfs_hg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
         wfs_lg_tmp=np.zeros((self.npixels,self.nsamples),dtype = np.uint16)
 
@@ -123,7 +151,15 @@ class WaveformsMaker(ArrayDataMaker) :
         self._broken_pixels_hg[f'{name}'].append(broken_pixels_hg.tolist())
         self._broken_pixels_lg[f'{name}'].append(broken_pixels_lg.tolist())
 
-    def _make_output_container(self,trigger_type,*args,**kwargs) :
+    def _make_output_container(self,trigger_type : EventType,*args,**kwargs) :
+        """Make the output container for the selected trigger types.
+
+        Args:
+            trigger_type (EventType): The selected trigger types.
+
+        Returns:
+            list[WaveformsContainer]: A list of output containers for the selected trigger types.
+        """
         output = []
         for trigger in trigger_type :
             waveformsContainer = WaveformsContainer(
@@ -151,7 +187,16 @@ class WaveformsMaker(ArrayDataMaker) :
         return output
 
     @staticmethod
-    def sort(waveformsContainer :WaveformsContainer, method = 'event_id') : 
+    def sort(waveformsContainer :WaveformsContainer, method : str = 'event_id') : 
+        """Sort the waveformsContainer based on a specified method.
+
+        Args:
+            waveformsContainer (WaveformsContainer): The waveformsContainer to be sorted.
+            method (str, optional): The sorting method. Defaults to 'event_id'.
+
+        Returns:
+            WaveformsContainer: The sorted waveformsContainer.
+        """
         output = WaveformsContainer(
             run_number = waveformsContainer.run_number,
             npixels = waveformsContainer.npixels,
@@ -171,13 +216,31 @@ class WaveformsMaker(ArrayDataMaker) :
         return output
 
     @staticmethod
-    def select_waveforms_hg(waveformsContainer:WaveformsContainer,pixel_id : np.ndarray) : 
+    def select_waveforms_hg(waveformsContainer:WaveformsContainer,pixel_id : np.ndarray) :
+        """Select HIGH GAIN waveforms from the container.
+
+        Args:
+            waveformsContainer (WaveformsContainer): The container object that contains the waveforms.
+            pixel_id (np.ndarray): An array of pixel IDs to select specific waveforms from the container.
+
+        Returns:
+            np.ndarray: An array of selected waveforms from the container.
+        """ 
         res = __class__.select_container_array_field(container = waveformsContainer,pixel_id = pixel_id,field = 'wfs_lg')
         res = res.transpose(1,0,2)
         return res
 
     @staticmethod
     def select_waveforms_lg(waveformsContainer:WaveformsContainer,pixel_id : np.ndarray) : 
+        """Select LOW GAIN waveforms from the container.
+
+        Args:
+            waveformsContainer (WaveformsContainer): The container object that contains the waveforms.
+            pixel_id (np.ndarray): An array of pixel IDs to select specific waveforms from the container.
+
+        Returns:
+            np.ndarray: An array of selected waveforms from the container.
+        """ 
         res = __class__.select_container_array_field(container = waveformsContainer,pixel_id = pixel_id,field = 'wfs_hg')
         res = res.transpose(1,0,2)
         return res
@@ -185,13 +248,62 @@ class WaveformsMaker(ArrayDataMaker) :
 
 
     @property
-    def _geometry(self) : return self.__geometry
+    def _geometry(self):
+        """
+        Returns the private __geometry attribute of the WaveformsMaker class.
+
+        :return: The value of the private __geometry attribute.
+        """
+        return self.__geometry
+
     @property
-    def _subarray(self) : return self.__subarray
+    def _subarray(self):
+        """
+        Returns the private __subarray attribute of the WaveformsMaker class.
+
+        :return: The value of the private __subarray attribute.
+        """
+        return self.__subarray
     @property
-    def geometry(self) : return copy.deepcopy(self.__geometry)
+    def geometry(self):
+        """
+        Returns a deep copy of the geometry attribute.
+
+        Returns:
+            A deep copy of the geometry attribute.
+        """
+        return copy.deepcopy(self.__geometry)
+
     @property
-    def subarray(self) : return copy.deepcopy(self.__subarray)
-    def wfs_hg(self,trigger) : return np.array(self.__wfs_hg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
-    def wfs_lg(self,trigger) : return np.array(self.__wfs_lg[__class__._get_name_trigger(trigger)],dtype = np.uint16)
-    
+    def subarray(self):
+        """
+        Returns a deep copy of the subarray attribute.
+
+        Returns:
+            A deep copy of the subarray attribute.
+        """
+        return copy.deepcopy(self.__subarray)
+
+    def wfs_hg(self, trigger: EventType):
+        """
+        Returns the waveform data for the specified trigger type.
+
+        Args:
+            trigger (EventType): The type of trigger for which the waveform data is requested.
+
+        Returns:
+            An array of waveform data for the specified trigger type.
+        """
+        return np.array(self.__wfs_hg[__class__._get_name_trigger(trigger)], dtype=np.uint16)
+
+    def wfs_lg(self, trigger: EventType):
+        """
+        Returns the waveform data for the specified trigger type in the low gain channel.
+
+        Args:
+            trigger (EventType): The type of trigger for which the waveform data is requested.
+
+        Returns:
+            An array of waveform data for the specified trigger type in the low gain channel.
+        """
+        return np.array(self.__wfs_lg[__class__._get_name_trigger(trigger)], dtype=np.uint16)

@@ -11,7 +11,7 @@ __all__ = ["Parameter","Parameters"]
 
 class Parameter() :
     def __init__(self, 
-                    name, 
+                    name:str, 
                     value, 
                     min = np.nan, 
                     max = np.nan, 
@@ -38,7 +38,7 @@ class Parameter() :
     @property
     def name(self) : return self.__name
     @name.setter
-    def name(self,value) : self.__name = value
+    def name(self,value: str) : self.__name = value
 
     @property
     def value(self) : return self.__value
@@ -58,7 +58,7 @@ class Parameter() :
     @property
     def unit(self) : return self.__unit
     @unit.setter
-    def unit(self,value) : self.__unit = value
+    def unit(self,value:u.Unit) : self.__unit = value
 
     @property
     def error(self) : return self.__error
@@ -78,7 +78,7 @@ class Parameters() :
     def append(self,parameter : Parameter) -> None:
         self.__parameters.append(parameter)
 
-    def __getitem__(self,key) : 
+    def __getitem__(self,key:str) : 
         for parameter in self.__parameters : 
             if parameter.name == key : 
                 return parameter
