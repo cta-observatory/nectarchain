@@ -15,30 +15,20 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from tqdm import tqdm
 
 from ..data.container import WaveformsContainer
-from .core import ArrayDataMaker
+from .core import ArrayDataNectarCAMCalibrationTool
 
-__all__ = ["WaveformsMaker"]
+__all__ = ["WaveformsNectarCAMCalibrationTool"]
 
 
-class WaveformsMaker(ArrayDataMaker):
+class WaveformsNectarCAMCalibrationTool(ArrayDataNectarCAMCalibrationTool):
     """class use to make the waveform extraction from event read from r0 data"""
 
     # constructors
-    def __init__(
-        self, run_number: int, max_events: int = None, run_file=None, *args, **kwargs
-    ):
-        """construtor
+    def setup(self, *args, **kwargs):
+        super().setup(*args, **kwargs)
 
-        Args:
-            run_number (int): id of the run to be loaded
-            maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
-            nevents (int, optional) : number of events in run if known (parameter used to save computing time)
-            run_file (optional) : if provided, will load this run file
-        """
-        super().__init__(run_number, max_events, run_file, *args, **kwargs)
-
-        self.__geometry = self._reader.subarray.tel[__class__.TEL_ID].camera
-        self.__subarray = self._reader.subarray
+        self.__geometry = self._event_source.subarray.tel[__class__.TEL_ID].camera
+        self.__subarray = self._event_source.subarray
 
         self.__wfs_hg = {}
         self.__wfs_lg = {}
@@ -51,7 +41,7 @@ class WaveformsMaker(ArrayDataMaker):
         nsamples: int,
         subarray: SubarrayDescription,
         pixels_id: int,
-    ):
+    ) -> WaveformsContainer:
         """Create a container for the extracted waveforms from a list of events.
 
         Args:
@@ -176,7 +166,7 @@ class WaveformsMaker(ArrayDataMaker):
         output = []
         for trigger in trigger_type:
             waveformsContainer = WaveformsContainer(
-                run_number=self._run_number,
+                run_number=self.run_number,
                 npixels=self._npixels,
                 nsamples=self._nsamples,
                 subarray=self._subarray,

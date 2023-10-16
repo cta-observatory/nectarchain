@@ -9,10 +9,6 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
-import browser_cookie3
-import mechanize
-import requests
-
 __all__ = ["DataManagement"]
 
 
@@ -93,6 +89,9 @@ class DataManagement:
         Returns:
             _type_: _description_
         """
+        import browser_cookie3
+        import mechanize
+        import requests
 
         url = "http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?cmd=Find"
 

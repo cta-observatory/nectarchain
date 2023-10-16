@@ -5,44 +5,48 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 import copy
+import pathlib
 from abc import ABC, abstractmethod
 
 import numpy as np
 from ctapipe.containers import EventType
+from ctapipe.core import Tool
+from ctapipe.core.traits import Bool, Integer, Path, classes_with_traits, flag
 from ctapipe.instrument import CameraGeometry
+from ctapipe.io import HDF5TableWriter
+from ctapipe.io.datawriter import DATA_MODEL_VERSION
 from ctapipe_io_nectarcam import NectarCAMEventSource, constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+from tqdm.auto import tqdm
 
 from ..data import DataManagement
 from ..data.container.core import ArrayDataContainer
 
-__all__ = ["ArrayDataMaker"]
+__all__ = ["ArrayDataNectarCAMCalibrationTool"]
 
 """The code snippet is a part of a class hierarchy for data processing. 
 It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and `ArrayDataMaker` subclasses. 
 These classes are used to perform computations on data from a specific run."""
 
 
-class BaseMaker(ABC):
+class BaseNectarCAMCalibrationTool(Tool):
     """Mother class for all the makers, the role of makers is to do computation on the data."""
 
-    @abstractmethod
-    def make(self, *args, **kwargs):
-        """
-        Abstract method that needs to be implemented by subclasses.
-        This method is the main one, which computes and does the work.
-        """
-        pass
+    name = "BaseNectarCAMCalibration"
+
+    progress_bar = Bool(
+        help="show progress bar during processing", default_value=False
+    ).tag(config=True)
 
     @staticmethod
     def load_run(
-        run_number: int, max_events: int = None, run_file=None
+        run_number: int, max_events: int = None, run_file: str = None
     ) -> NectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
 
         Args:self.__run_number = run_number
             run_number (int): run_id
-            maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
+            maxevents (int, optional): max of events to be loaded. Defaults to -1, to load everythings.
             run_file (optional) : if provided, will load this run file
         Returns:
             List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for each run files
@@ -62,7 +66,7 @@ class BaseMaker(ABC):
         return eventsource
 
 
-class EventsLoopMaker(BaseMaker):
+class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     """
     A class for data processing and computation on events from a specific run.
 
@@ -74,57 +78,97 @@ class EventsLoopMaker(BaseMaker):
     Example Usage:
         maker = EventsLoopMaker(run_number=1234, max_events=1000)
         maker.make(n_events=500)
+
+
     """
 
-    def __init__(
-        self, run_number: int, max_events: int = None, run_file=None, *args, **kwargs
-    ):
-        """
-        Constructor method that initializes the EventsLoopMaker object.
+    name = "EventsLoopNectarCAMCalibration"
 
-        Args:
-            run_number (int): The ID of the run to be loaded.
-            max_events (int, optional): The maximum number of events to be loaded. Defaults to None.
-            run_file (optional): The specific run file to be loaded.
-        """
-        super().__init__(*args, **kwargs)
+    description = (
+        __doc__ + f" This currently uses data model version {DATA_MODEL_VERSION}"
+    )
+    examples = """To be implemented"""
 
-        self.__run_number = run_number
-        self.__run_file = run_file
-        self.__max_events = max_events
+    aliases = {
+        ("i", "input"): "EventsLoopNectarCAMCalibrationTool.run_file",
+        ("r", "run-number"): "EventsLoopNectarCAMCalibrationTool.run_number",
+        ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
+    }
 
-        self.__reader = __class__.load_run(run_number, max_events, run_file=run_file)
+    flags = {
+        "overwrite": (
+            {"HDF5TableWriter": {"overwrite": True}},
+            "Overwrite output file if it exists",
+        ),
+        **flag(
+            "progress",
+            "ProcessorTool.progress_bar",
+            "show a progress bar during event processing",
+            "don't show a progress bar during event processing",
+        ),
+    }
 
-        # from reader members
-        self.__npixels = self.__reader.camera_config.num_pixels
-        self.__pixels_id = self.__reader.camera_config.expected_pixels_id
+    classes = classes_with_traits(NectarCAMEventSource)
 
-        log.info(f"N pixels : {self.npixels}")
+    run_number = Integer(help="run number to be treated", default_value=-1).tag(
+        config=True
+    )
 
-    def make(
-        self, n_events=np.inf, restart_from_beginning: bool = False, *args, **kwargs
-    ):
-        """
-        Method to iterate over the events and perform computations on each event.
+    max_events = Integer(
+        help="maximum number of events to be loaded",
+        default_value=None,
+        allow_none=True,
+    ).tag(config=True)
 
-        Args:
-            n_events (int, optional): The number of events to process. Defaults to np.inf.
-            restart_from_beginning (bool, optional): Whether to restart from the beginning of the run. Defaults to False.
-        """
+    run_file = Path(
+        help="file name to be loaded",
+        default_value=None,
+        allow_none=True,
+    ).tag(config=True)
+
+    def _load_eventsource(self):
+        self.event_source = self.enter_context(
+            self.load_run(self.run_number, self.max_events, run_file=self.run_file)
+        )
+
+    def setup(self, *args, **kwargs):
+        if self.run_number == -1:
+            raise Exception("run_number need to be set up")
+        self._load_eventsource()
+        self.__npixels = self._event_source.camera_config.num_pixels
+        self.__pixels_id = self._event_source.camera_config.expected_pixels_id
+
+        # self.comp = MyComponent(parent=self)
+        # self.comp2 = SecondaryMyComponent(parent=self)
+        # self.comp3 = TelescopeWiseComponent(parent=self, subarray=subarray)
+        # self.advanced = AdvancedComponent(parent=self)
+
+    """
+    def start(self, n_events=np.inf, restart_from_beginning: bool = False,*args,**kwargs):
         if restart_from_beginning:
-            log.debug("restart from beginning : creation of the EventSource reader")
-            self.__reader = __class__.load_run(
-                self.__run_number, self.__max_events, run_file=self.__run_file
-            )
+            self.log.debug("restart from beginning : creation of the EventSource reader")
+            self._load_eventsource()
+
+        #self.event_source.subarray.info(printer=self.log.info)
 
         n_traited_events = 0
-        for i, event in enumerate(self.__reader):
+        for i,event in enumerate(tqdm(
+            self._event_source,
+            desc=self._event_source.__class__.__name__,
+            total=min(self._event_source.max_events,n_events),
+            unit="ev",
+            disable=not self.progress_bar,
+        )):
             if i % 100 == 0:
-                log.info(f"reading event number {i}")
+                self.log.info(f"reading event number {i}")
             self._make_event(event, *args, **kwargs)
             n_traited_events += 1
             if n_traited_events >= n_events:
                 break
+    """
+
+    def finish(self):
+        self.log.warning("Shutting down.")
 
     @abstractmethod
     def _make_event(self, event: NectarCAMDataContainer):
@@ -138,28 +182,14 @@ class EventsLoopMaker(BaseMaker):
         pass
 
     @property
-    def _run_file(self):
+    def event_source(self):
         """
-        Getter method for the _run_file attribute.
+        Getter method for the _event_source attribute.
         """
-        return self.__run_file
+        return copy.deepcopy(self._event_source)
 
-    @property
-    def _max_events(self):
-        """
-        Getter method for the _max_events attribute.
-        """
-        return self.__max_events
-
-    @property
-    def _reader(self):
-        """
-        Getter method for the _reader attribute.
-        """
-        return self.__reader
-
-    @_reader.setter
-    def _reader(self, value):
+    @event_source.setter
+    def event_source(self, value):
         """
         Setter method to set a new NectarCAMEventSource to the _reader attribute.
 
@@ -167,7 +197,7 @@ class EventsLoopMaker(BaseMaker):
             value: a NectarCAMEventSource instance.
         """
         if isinstance(value, NectarCAMEventSource):
-            self.__reader = value
+            self._event_source = value
         else:
             raise TypeError("The reader must be a NectarCAMEventSource")
 
@@ -186,20 +216,6 @@ class EventsLoopMaker(BaseMaker):
         return self.__pixels_id
 
     @property
-    def _run_number(self):
-        """
-        Getter method for the _run_number attribute.
-        """
-        return self.__run_number
-
-    @property
-    def reader(self):
-        """
-        Getter method for the reader attribute.
-        """
-        return copy.deepcopy(self.__reader)
-
-    @property
     def npixels(self):
         """
         Getter method for the npixels attribute.
@@ -213,62 +229,51 @@ class EventsLoopMaker(BaseMaker):
         """
         return copy.deepcopy(self.__pixels_id)
 
-    @property
-    def run_number(self):
-        """
-        Getter method for the run_number attribute.
-        """
-        return copy.deepcopy(self.__run_number)
+
+def main():
+    """run the tool"""
+    tool = EventsLoopNectarCAMCalibrationTool()
+    tool.run()
 
 
-class ArrayDataMaker(EventsLoopMaker):
-    """
-    Class used to loop over the events of a run and to extract informations that are stored in arrays.
-    Example Usage:
-    - Create an instance of the ArrayDataMaker class
-    maker = ArrayDataMaker(run_number=1234, max_events=1000)
+if __name__ == "__main__":
+    main()
 
-    - Perform data processing on the specified run
-    maker.make(n_events=500, trigger_type=[EventType.SKY])
 
-    - Access the computed data
-    ucts_timestamp = maker.ucts_timestamp(EventType.SKY)
-    event_type = maker.event_type(EventType.SKY)
+class ArrayDataNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
+    name = "ArrayDataNectarCAMCalibration"
 
-    Inputs:
-    - run_number (int): The ID of the run to be processed.
-    - max_events (int, optional): The maximum number of events to be loaded. Defaults to None, which loads all events.
-    - run_file (optional): The specific run file to be loaded.
+    # description = (
+    #    __doc__ + f" This currently uses data model version {DATA_MODEL_VERSION}"
+    # )
+    examples = """To be implemented"""
 
-    Flow:
-    1. The ArrayDataMaker class is initialized with the run number, maximum events, or a run file.
-    2. The make method is called to perform data processing on the specified run.
-    3. The _make_event method is called for each event in the run to extract and store relevant data.
-    4. The computed data is stored in instance variables.
-    5. The computed data can be accessed using getter methods.
+    aliases = super(
+        EventsLoopNectarCAMCalibrationTool, EventsLoopNectarCAMCalibrationTool
+    ).aliases
+    aliases.update(
+        {
+            ("o", "output"): "HDF5TableWriter.output_path",
+        }
+    )
 
-    Outputs:
-    - Computed data such as UCTS timestamps, event types, and event IDs can be accessed using getter methods provided by the ArrayDataMaker class.
-    """
+    classes = super(
+        EventsLoopNectarCAMCalibrationTool, EventsLoopNectarCAMCalibrationTool
+    ).classes + (
+        [
+            HDF5TableWriter,
+        ]
+    )
 
-    TEL_ID = 0
-    CAMERA_NAME = "NectarCam-003"
+    TEL_ID = int(0)
+
+    CAMERA_NAME = str("NectarCam-003")
+
     CAMERA = CameraGeometry.from_name(CAMERA_NAME)
 
-    def __init__(
-        self, run_number: int, max_events: int = None, run_file=None, *args, **kwargs
-    ):
-        """construtor
-
-        Args:
-            run_number (int): id of the run to be loaded
-            maxevents (int, optional): max of events to be loaded. Defaults to 0, to load everythings.
-            nevents (int, optional) : number of events in run if known (parameter used to save computing time)
-            run_file (optional) : if provided, will load this run file
-        """
-        super().__init__(run_number, max_events, run_file, *args, **kwargs)
-        self.__nsamples = self._reader.camera_config.num_samples
-
+    def setup(self, *args, **kwargs):
+        super().setup(*args, **kwargs)
+        self.__nsamples = self._event_source.camera_config.num_samples
         # data we want to compute
         self.__ucts_timestamp = {}
         self.__ucts_busy_counter = {}
@@ -348,7 +353,7 @@ class ArrayDataMaker(EventsLoopMaker):
             name = trigger.name
         return name
 
-    def make(
+    def start(
         self,
         n_events=np.inf,
         trigger_type: list = None,
@@ -370,7 +375,7 @@ class ArrayDataMaker(EventsLoopMaker):
             The output container created by the _make_output_container method.
         """
         if ~np.isfinite(n_events):
-            log.warning(
+            self.log.warning(
                 "no needed events number specified, it may cause a memory error"
             )
         if isinstance(trigger_type, EventType) or trigger_type is None:
@@ -379,23 +384,27 @@ class ArrayDataMaker(EventsLoopMaker):
             self._init_trigger_type(_trigger_type)
 
         if restart_from_begining:
-            log.debug("restart from begining : creation of the EventSource reader")
-            self._reader = __class__.load_run(
-                self._run_number, self._max_events, run_file=self._run_file
-            )
+            self.log.debug("restart from begining : creation of the EventSource reader")
+            self._load_eventsource()
 
         n_traited_events = 0
-        for i, event in enumerate(self._reader):
+        for i, event in enumerate(
+            tqdm(
+                self._event_source,
+                desc=self._event_source.__class__.__name__,
+                total=min(self._event_source.max_events, n_events),
+                unit="ev",
+                disable=not self.progress_bar,
+            )
+        ):
             if i % 100 == 0:
-                log.info(f"reading event number {i}")
+                self.log.info(f"reading event number {i}")
             for trigger in trigger_type:
                 if (trigger is None) or (trigger == event.trigger.event_type):
                     self._make_event(event, trigger, *args, **kwargs)
                     n_traited_events += 1
             if n_traited_events >= n_events:
                 break
-
-        return self._make_output_container(trigger_type, *args, **kwargs)
 
     def _make_event(
         self, event: NectarCAMDataContainer, trigger: EventType, *args, **kwargs
@@ -432,6 +441,16 @@ class ArrayDataMaker(EventsLoopMaker):
             get_wfs_hg = event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id]
             get_wfs_lg = event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id]
             return get_wfs_hg, get_wfs_lg
+
+    def finish(self, trigger_type: list = None, *args, **kwargs):
+        # self.write = self.enter_context(
+        #    HDF5TableWriter(filename=filename, parent=self)
+        # )
+        if isinstance(trigger_type, EventType) or trigger_type is None:
+            trigger_type = [trigger_type]
+        output_container = self._make_output_container(trigger_type, *args, **kwargs)
+        self.log.info(f"{output_container}")
+        super().finish()
 
     @abstractmethod
     def _make_output_container(self):
