@@ -183,11 +183,14 @@ class ChargeContainer:
 
         return chargeContainer
 
-    def write(self, path: Path, bloc, start, end, **kwargs):
+    def write(self, path: Path, start=None, end=None, block=None, **kwargs):
         """method to write in an output FITS file the ChargeContainer.
 
         Args:
             path (str): the directory where you want to save data
+            start (int): Start of event_id. Default is None.
+            end (int): End of event_id. Default is None.
+            block (int): Block number of SPE-WT scan. Default is None.
         """
         suffix = kwargs.get("suffix", "")
         if suffix != "":
@@ -282,7 +285,7 @@ class ChargeContainer:
         )
         try:
             hdul.writeto(
-                Path(path) / f"charge_run{self.run_number}{suffix}_bloc_{bloc}.fits",
+                Path(path) / f"charge_run{self.run_number}{suffix}_bloc_{block}.fits",
                 overwrite=kwargs.get("overwrite", False),
             )
             log.info(

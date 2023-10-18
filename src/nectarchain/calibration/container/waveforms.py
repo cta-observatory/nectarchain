@@ -169,7 +169,7 @@ class WaveformsContainer:
             n_events += 1
         return n_events
 
-    def load_wfs(self, start, end, compute_trigger_patern=False):
+    def load_wfs(self, start=None, end=None, compute_trigger_patern=False):
         """mathod to extract waveforms data from the EventSource
 
         Args:
@@ -184,7 +184,7 @@ class WaveformsContainer:
 
         # n_traited_events = 0
         event_start, event_end = start, end
-        print(event_start, event_end)
+        log.info(f" Loading Events ID from {event_start} to {event_end}")
 
         for i, event in enumerate(self.__reader):
             if i % 5000 == 0:
@@ -194,7 +194,7 @@ class WaveformsContainer:
                 event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.event_id
                 >= event_start
                 and event.nectarcam.tel[WaveformsContainer.TEL_ID].evt.event_id
-                <= event_end
+                < event_end
             ):
                 self.event_id[i] = np.uint16(event.index.event_id)
                 self.ucts_timestamp[i] = event.nectarcam.tel[
@@ -224,7 +224,7 @@ class WaveformsContainer:
         # if compute_trigger_patern and np.max(self.trig_pattern) == 0:
         #    self.compute_trigger_patern()
 
-    def write(self, start, end, bloc, path: str, **kwargs):
+    def write(self, path: str, start=None, end=None, block=None, **kwargs):
         """method to write in an output FITS file the
         WaveformsContainer. Two files are created, one FITS
         representing the data and one HDF5 file representing
@@ -232,6 +232,9 @@ class WaveformsContainer:
 
         Args:
             path (str): the directory where you want to save data
+            start (int): Start of event_id. Default is None
+            end (int): End of event_is. Default is None
+            block (int): Block number of SPE-WT scan. Default is None
         """
         suffix = kwargs.get("suffix", "")
         if suffix != "":
@@ -309,7 +312,8 @@ class WaveformsContainer:
         )
         try:
             hdul.writeto(
-                Path(path) / f"waveforms_run{self.run_number}{suffix}_bloc_{bloc}.fits",
+                Path(path)
+                / f"waveforms_run{self.run_number}{suffix}_bloc_{block}.fits",
                 overwrite=kwargs.get("overwrite", False),
             )
             log.info(
