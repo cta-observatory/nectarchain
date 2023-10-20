@@ -60,14 +60,14 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         if noped:
             ped = np.mean(waveform[:, 20])
             w_noped = waveform - ped
-            output = self.integrator(w_noped,0,np.zeros(self.Chan, dtype = int), self.pixelBAD)
+            output = self.integrator(w_noped,0,np.zeros(self.Pix, dtype = int), self.pixelBAD)
             image = output.image
             peakpos = output.peak_time
             image = image[pixels]
             peakpos = peakpos[pixels]
 
         else:
-            output = self.integrator(waveform,0,np.zeros(self.Chan, dtype = int), self.pixelBAD)
+            output = self.integrator(waveform,0,np.zeros(self.Pix, dtype = int), self.pixelBAD)
             image = output.image
             peakpos = output.peak_time
             image = image[pixels]
