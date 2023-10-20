@@ -6,24 +6,23 @@ from ctapipe.coordinates import EngineeringCameraFrame
 import numpy as np
 
 
-
 class MeanCameraDisplay_HighLowGain(dqm_summary):
     def __init__(self, gaink):
         self.k = gaink
         return None
 
-    def ConfigureForRun(self, path, Chan, Samp, Reader1):
-        # define number of channels and samples
-        self.Chan = Chan
+    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+        # define number of pixels and samples
+        self.Pix = Pix
         self.Samp = Samp
 
-        self.CameraAverage = np.zeros((self.Chan))
-        self.CameraAverage_ped = np.zeros((self.Chan))
+        self.CameraAverage = np.zeros(self.Pix)
+        self.CameraAverage_ped = np.zeros(self.Pix)
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam-003")
-        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam-003")
+        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
+        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
 
         self.cmap = "gnuplot2"
         self.cmap2 = "gnuplot2"
@@ -35,12 +34,14 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        pixel21 = np.arange(0,21,1,dtype = int)
-        pixel = list(pixel)
-        pixel21 = list(pixel21)
-        pixels = np.concatenate([pixel21,pixel])
+        if len(pixel) < self.Pix:
+            pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
+            pixel = list(pixel)
+            pixels = np.concatenate([pixel21, pixel])
+        else: 
+            pixels = pixel
 
-        if evt.trigger.event_type.value == 32: #count peds 
+        if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
             self.CameraAverage_ped1 = (
                 evt.r0.tel[0].waveform[self.k].sum(axis=1))
