@@ -6,12 +6,15 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 import numpy as np
-from ctapipe.containers import Container, Field
-
-__all__ = ["ArrayDataContainer"]
+from ctapipe.containers import Field,Container,partial,Map
 
 
-class ArrayDataContainer(Container):
+__all__ = ["ArrayDataContainer","TriggerMapContainer"]
+
+class NectarCAMContainer(Container) : 
+    """base class for the NectarCAM containers. This contaner cannot berecursive, to be directly written with a HDF5TableWriter """
+
+class ArrayDataContainer(NectarCAMContainer):
     """
     A container that holds information about waveforms from a specific run.
 
@@ -45,18 +48,23 @@ class ArrayDataContainer(Container):
         type=int,
         description="number of effective pixels",
     )
-    pixels_id = Field(type=np.ndarray, description="pixel ids")
-    broken_pixels_hg = Field(type=np.ndarray, description="high gain broken pixels")
-    broken_pixels_lg = Field(type=np.ndarray, description="low gain broken pixels")
+    pixels_id = Field(type=np.ndarray, dtype = np.uint16, ndim = 1,description="pixel ids")
+    broken_pixels_hg = Field(type=np.ndarray, dtype = bool, ndim = 2, description="high gain broken pixels")
+    broken_pixels_lg = Field(type=np.ndarray, dtype = bool, ndim = 2, description="low gain broken pixels")
     camera = Field(
         type=str,
         description="camera name",
     )
-    ucts_timestamp = Field(type=np.ndarray, description="events ucts timestamp")
-    ucts_busy_counter = Field(type=np.ndarray, description="ucts busy counter")
-    ucts_event_counter = Field(type=np.ndarray, description="ucts event counter")
-    event_type = Field(type=np.ndarray, description="trigger event type")
-    event_id = Field(type=np.ndarray, description="event ids")
-    trig_pattern_all = Field(type=np.ndarray, description="trigger pattern")
-    trig_pattern = Field(type=np.ndarray, description="reduced trigger pattern")
-    multiplicity = Field(type=np.ndarray, description="events multiplicity")
+    ucts_timestamp = Field(type=np.ndarray, dtype = np.uint64, ndim = 1, description="events ucts timestamp")
+    ucts_busy_counter = Field(type=np.ndarray, dtype = np.uint32, ndim = 1, description="ucts busy counter")
+    ucts_event_counter = Field(type=np.ndarray, dtype = np.uint32, ndim = 1, description="ucts event counter")
+    event_type = Field(type=np.ndarray, dtype = np.uint8, ndim = 1, description="trigger event type")
+    event_id = Field(type=np.ndarray, dtype = np.uint32, ndim = 1, description="event ids")
+    trig_pattern_all = Field(type=np.ndarray, dtype = bool, ndim = 3, description="trigger pattern")
+    trig_pattern = Field(type=np.ndarray, dtype = bool, ndim = 2, description="reduced trigger pattern")
+    multiplicity = Field(type=np.ndarray, dtype = np.uint16, ndim = 1, description="events multiplicity")
+
+class TriggerMapContainer(Container) : 
+    containers = Field(default_factory=partial(Map, Container),
+                       description = "trigger mapping of Container"
+                       )
