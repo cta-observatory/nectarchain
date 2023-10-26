@@ -10,7 +10,7 @@ from time import sleep
 from astropy import time
 
 # nectarchain imports
-from nectarchain.calibration.container.utils import DataManagement as dm
+from nectarchain.data.container.utils import DataManagement as dm
 
 # DIRAC imports
 from DIRAC.Interfaces.API.Dirac import Dirac

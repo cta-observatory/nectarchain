@@ -52,7 +52,7 @@ print("Output path:", output_path)
 
 if args.runnb is not None:
     # Grab runs automatically from DIRAC is the -r option is provided
-    from nectarchain.calibration.container import utils
+    from nectarchain.data.container import utils
     dm = utils.DataManagement()
     _, filelist = dm.findrun(args.runnb)
     args.input_files = [s.name for s in filelist]
