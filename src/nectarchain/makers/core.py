@@ -1,40 +1,45 @@
+import copy
 import logging
+import pathlib
+
+import numpy as np
+from ctapipe.core import Component, Tool
+from ctapipe.core.traits import (
+    Bool,
+    ComponentNameList,
+    Integer,
+    Path,
+    classes_with_traits,
+    flag,
+)
+from ctapipe.io import HDF5TableWriter
+from ctapipe.io.datawriter import DATA_MODEL_VERSION
+from ctapipe_io_nectarcam import NectarCAMEventSource
+from tqdm.auto import tqdm
+
+from ..data import DataManagement
+from ..data.container.core import NectarCAMContainer, TriggerMapContainer
+from .component.core import (
+    NectarCAMComponent,
+    get_configurable_traits,
+    get_valid_component,
+)
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import copy
-import pathlib
-from abc import ABC, abstractmethod
-
-import numpy as np
-from ctapipe.containers import EventType
-from ctapipe.core import Tool,Component
-from ctapipe.core.traits import Bool, Integer, Path, classes_with_traits, flag, ComponentNameList
-from ctapipe.instrument import CameraGeometry
-from ctapipe.io import HDF5TableWriter
-from ctapipe.io.datawriter import DATA_MODEL_VERSION
-from ctapipe_io_nectarcam import NectarCAMEventSource, constants
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-
-
-
-from tqdm.auto import tqdm
-
-from ..data import DataManagement
-from ..data.container.core import ArrayDataContainer,NectarCAMContainer,TriggerMapContainer
-from .component import *
-
 __all__ = ["EventsLoopNectarCAMCalibrationTool"]
 
-"""The code snippet is a part of a class hierarchy for data processing. 
-It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and `ArrayDataMaker` subclasses. 
+"""The code snippet is a part of a class hierarchy for data processing.
+It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and
+`ArrayDataMaker` subclasses.
 These classes are used to perform computations on data from a specific run."""
 
 
 class BaseNectarCAMCalibrationTool(Tool):
-    """Mother class for all the makers, the role of makers is to do computation on the data."""
+    """Mother class for all the makers, the role of makers is to do computation on
+    the data."""
 
     name = "BaseNectarCAMCalibration"
 
@@ -46,14 +51,17 @@ class BaseNectarCAMCalibrationTool(Tool):
     def load_run(
         run_number: int, max_events: int = None, run_file: str = None
     ) -> NectarCAMEventSource:
-        """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
+        """Static method to load from $NECTARCAMDATA directory data
+        for specified run with max_events.
 
         Args:self.__run_number = run_number
             run_number (int): run_id
-            maxevents (int, optional): max of events to be loaded. Defaults to -1, to load everythings.
+            maxevents (int, optional): max of events to be loaded. Defaults to -1,
+            to load everything.
             run_file (optional) : if provided, will load this run file
         Returns:
-            List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for each run files
+            List[ctapipe_io_nectarcam.NectarCAMEventSource]: List of EventSource for
+            each run files
         """
         # Load the data from the run file.
         if run_file is None:
@@ -76,7 +84,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     Args:
         run_number (int): The ID of the run to be processed.
-        max_events (int, optional): The maximum number of events to be loaded. Defaults to None.
+        max_events (int, optional): The maximum number of events to be loaded.
+        Defaults to None.
         run_file (optional): The specific run file to be loaded.
 
     Example Usage:
@@ -92,7 +101,6 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         __doc__ + f" This currently uses data model version {DATA_MODEL_VERSION}"
     )
     examples = """To be implemented"""
-
 
     aliases = {
         ("i", "input"): "EventsLoopNectarCAMCalibrationTool.run_file",
@@ -117,15 +125,14 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     classes = (
         [
             HDF5TableWriter,
-        ] 
+        ]
         + classes_with_traits(NectarCAMEventSource)
         + classes_with_traits(NectarCAMComponent)
-
     )
 
-
     output_path = Path(
-        help="output filename", default_value=pathlib.Path("/tmp/EventsLoopNectarCAMCalibrationTool.h5")
+        help="output filename",
+        default_value=pathlib.Path("/tmp/EventsLoopNectarCAMCalibrationTool.h5"),
     ).tag(config=True)
 
     run_number = Integer(help="run number to be treated", default_value=-1).tag(
@@ -144,21 +151,31 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         allow_none=True,
     ).tag(config=True)
 
-    componentsList = ComponentNameList(NectarCAMComponent,
-        help="List of Component names to be apply, the order will be respected"
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def __new__(cls,*args,**kwargs) : 
-        """This method is used to pass to the current instance of Tool the traits defined 
-        in the components provided in the componentsList trait. 
-        WARNING : This method is maybe not the best way to do it, need to discuss with ctapipe developpers. 
+    def __new__(cls, *args, **kwargs):
+        """This method is used to pass to the current instance of Tool the traits
+        defined in the components provided in the componentsList trait.
+        WARNING : This method is maybe not the best way to do it, need to discuss
+        with ctapipe developers.
         """
-        _cls = super(EventsLoopNectarCAMCalibrationTool,cls).__new__(cls,*args,**kwargs)
-        log.warning("the componentName in componentsList must be defined in the nectarchain.makers.component module, otherwise the import of the componentName will raise an error")
-        for componentName in _cls.componentsList : 
+        _cls = super(EventsLoopNectarCAMCalibrationTool, cls).__new__(
+            cls, *args, **kwargs
+        )
+        log.warning(
+            "the componentName in componentsList must be defined in the "
+            "nectarchain.makers.component module, otherwise the import of the "
+            "componentName will raise an error"
+        )
+        for componentName in _cls.componentsList:
             configurable_traits = get_configurable_traits(eval(componentName))
             _cls.add_traits(**configurable_traits)
-            _cls.aliases.update({key : f"{componentName}.{key}" for key in configurable_traits.keys()})
+            _cls.aliases.update(
+                {key: f"{componentName}.{key}" for key in configurable_traits.keys()}
+            )
         return _cls
 
     def _load_eventsource(self):
@@ -166,12 +183,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self.load_run(self.run_number, self.max_events, run_file=self.run_file)
         )
 
-    def _get_provided_component_kwargs(self,componentName : str) : 
+    def _get_provided_component_kwargs(self, componentName: str):
         component_kwargs = get_configurable_traits(eval(componentName))
         output_component_kwargs = {}
-        for key in component_kwargs.keys() : 
-            if hasattr(self,key) : 
-                output_component_kwargs[key] = getattr(self,key)
+        for key in component_kwargs.keys():
+            if hasattr(self, key):
+                output_component_kwargs[key] = getattr(self, key)
         return output_component_kwargs
 
     def setup(self, *args, **kwargs):
@@ -182,38 +199,40 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         self.__pixels_id = self._event_source.camera_config.expected_pixels_id
 
         self.components = []
-        for componentName in self.componentsList : 
+        for componentName in self.componentsList:
             if componentName in get_valid_component():
                 component_kwargs = self._get_provided_component_kwargs(componentName)
                 self.components.append(
-                #    self.add_component(
-                        Component.from_name(
-                            componentName,
-                            subarray = self.event_source.subarray, 
-                            parent=self,
-                            **component_kwargs,
-                            )
-                    #    )
+                    #    self.add_component(
+                    Component.from_name(
+                        componentName,
+                        subarray=self.event_source.subarray,
+                        parent=self,
+                        **component_kwargs,
                     )
-            
+                    #    )
+                )
+
         self.writer = self.enter_context(
             HDF5TableWriter(
-                filename = pathlib.Path(f"{self.output_path.parent}/{self.output_path.stem}_{self.run_number}{self.output_path.suffix}"),
-                parent = self,
-                group_name = "data"
-                )
+                filename=pathlib.Path(
+                    f"{self.output_path.parent}/{self.output_path.stem}"
+                    f"_{self.run_number}{self.output_path.suffix}"
+                ),
+                parent=self,
+                group_name="data",
             )
+        )
 
         # self.comp = MyComponent(parent=self)
         # self.comp2 = SecondaryMyComponent(parent=self)
         # self.comp3 = TelescopeWiseComponent(parent=self, subarray=subarray)
         # self.advanced = AdvancedComponent(parent=self)
 
-
     def start(
         self,
         n_events=np.inf,
-        #trigger_type: list = None,
+        # trigger_type: list = None,
         restart_from_begining: bool = False,
         *args,
         **kwargs,
@@ -222,8 +241,10 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         Method to extract data from the EventSource.
 
         Args:
-            n_events (int, optional): The maximum number of events to process. Default is np.inf.
-            restart_from_begining (bool, optional): Whether to restart the event source reader. Default is False.
+            n_events (int, optional): The maximum number of events to process.
+            Default is np.inf.
+            restart_from_begining (bool, optional): Whether to restart the event
+            source reader. Default is False.
             *args: Additional arguments that can be passed to the method.
             **kwargs: Additional keyword arguments that can be passed to the method.
 
@@ -234,9 +255,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self.log.warning(
                 "no needed events number specified, it may cause a memory error"
             )
-        #if isinstance(trigger_type, EventType) or trigger_type is None:
+        # if isinstance(trigger_type, EventType) or trigger_type is None:
         #    trigger_type = [trigger_type]
-        #for _trigger_type in trigger_type:
+        # for _trigger_type in trigger_type:
         #    self._init_trigger_type(_trigger_type)
 
         if restart_from_begining:
@@ -255,8 +276,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         ):
             if i % 100 == 0:
                 self.log.info(f"reading event number {i}")
-            for component in self.components : 
-                component(event,*args,**kwargs)
+            for component in self.components:
+                component(event, *args, **kwargs)
                 n_traited_events += 1
             if n_traited_events >= n_events:
                 break
@@ -266,21 +287,27 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         #    HDF5TableWriter(filename=filename, parent=self)
         # )
         output = []
-        for component in self.components : 
-            output.append(component.finish(*args,**kwargs))
+        for component in self.components:
+            output.append(component.finish(*args, **kwargs))
         log.info(output)
-        for _output in output : 
-            if isinstance(_output,NectarCAMContainer) : 
-                self.writer.write(table_name = str(_output.__class__.__name__),
-                                  containers = _output,
+        for _output in output:
+            if isinstance(_output, NectarCAMContainer):
+                self.writer.write(
+                    table_name=str(_output.__class__.__name__),
+                    containers=_output,
                 )
-            elif isinstance(_output,TriggerMapContainer) : 
-                for i,key in enumerate(_output.containers.keys()) : 
-                    self.writer.write(table_name = f"{_output.containers[key].__class__.__name__}_{i}/{key.name}",
-                                      containers = _output.containers[key],
+            elif isinstance(_output, TriggerMapContainer):
+                for i, key in enumerate(_output.containers.keys()):
+                    self.writer.write(
+                        table_name=f"{_output.containers[key].__class__.__name__}_"
+                        f"{i}/ {key.name}",
+                        containers=_output.containers[key],
                     )
-            else : 
-                raise TypeError("component output must be an instance of TriggerMapContainer or NectarCAMContainer")
+            else:
+                raise TypeError(
+                    "component output must be an instance of TriggerMapContainer or "
+                    "NectarCAMContainer"
+                )
 
         self.writer.close()
         super().finish()

@@ -3,12 +3,8 @@ import logging
 import numpy as np
 from ctapipe.containers import EventType
 
-from nectarchain.data.container import (
-    ArrayDataContainer,
-    WaveformsContainer,
-    WaveformsContainerIO,
-)
-from nectarchain.makers.waveformsMakers import WaveformsMaker
+from nectarchain.data.container import WaveformsContainer, WaveformsContainerIO
+from nectarchain.makers.waveforms_makers import WaveformsMaker
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s", level=logging.DEBUG
@@ -134,7 +130,7 @@ class TestWaveformsMaker:
             "/tmp/test_wfs_container/", waveformsContainer_list[0], overwrite=True
         )
         loaded_wfs = WaveformsContainerIO.load(
-            f"/tmp/test_wfs_container", TestWaveformsMaker.run_number
+            "/tmp/test_wfs_container", TestWaveformsMaker.run_number
         )
         assert np.array_equal(waveformsContainer_list[0].wfs_hg, loaded_wfs.wfs_hg)
 

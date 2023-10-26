@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 from astropy.table import QTable
 
-from nectarchain.makers.calibration.gain.gainMakers import GainMaker
+from nectarchain.makers.calibration.gain.gain_makers import GainMaker
 
 
 class GainMakerforTest(GainMaker):
@@ -15,7 +15,8 @@ class GainMakerforTest(GainMaker):
 
 
 class TestGainMaker:
-    # Tests that an instance of GainMaker can be created with a list of pixel ids as input.
+    # Tests that an instance of GainMaker can be created with a list of pixel ids as
+    # input.
     def test_create_instance_with_pixel_ids(self):
         pixel_ids = [1, 2, 3, 4, 5]
         gain_maker = GainMakerforTest(pixel_ids)

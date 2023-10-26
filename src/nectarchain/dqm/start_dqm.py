@@ -1,9 +1,6 @@
 import argparse
 import os
 import sys
-
-from matplotlib import pyplot as plt
-import argparse
 import time
 
 from camera_monitoring import CameraMonitoring
@@ -120,10 +117,10 @@ ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
 
 # LIST OF PROCESSES TO RUN
-#######################################################################################################################
+########################################################################################
 a = TriggerStatistics(HIGH_GAIN)
-b = MeanWaveForms_HighLowGain(HIGH_GAIN)
-c = MeanWaveForms_HighLowGain(LOW_GAIN)
+b = MeanWaveFormsHighLowGain(HIGH_GAIN)
+c = MeanWaveFormsHighLowGain(LOW_GAIN)
 d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
 e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
 f = ChargeIntegrationHighLowGain(HIGH_GAIN)

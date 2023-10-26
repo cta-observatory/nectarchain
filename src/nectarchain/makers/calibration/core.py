@@ -1,9 +1,4 @@
 import logging
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-import os
 from collections.abc import Iterable
 from copy import copy
 from datetime import date
@@ -15,17 +10,24 @@ from astropy.table import Column, QTable
 
 from ..core import BaseMaker
 
-__all__ = [""]
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
+__all__ = ["CalibrationMaker"]
 
 
 class CalibrationMaker(BaseMaker):
     """
-    Mother class for all calibration makers that can be defined to compute calibration coefficients from data.
+    Mother class for all calibration makers that can be defined to compute
+    calibration coefficients from data.
 
     Attributes:
         _reduced_name (str): A string representing the name of the calibration.
-        PIXELS_ID_COLUMN (str): A string representing the name of the column in the result table that stores the pixels id.
-        NP_PIXELS (str): A string representing the key in the metadata that stores the number of pixels.
+        PIXELS_ID_COLUMN (str): A string representing the name of the column in the
+        result table that stores the pixels id.
+        NP_PIXELS (str): A string representing the key in the metadata that stores
+        the number of pixels.
 
     Members:
         _pixels_id (ndarray): A private property that stores the pixels id.
@@ -65,9 +67,10 @@ class CalibrationMaker(BaseMaker):
             )
         )
         self.__results.meta[__class__.NP_PIXELS] = self.npixels
-        self.__results.meta[
-            "comments"
-        ] = f'Produced with NectarChain, Credit : CTA NectarCam {date.today().strftime("%B %d, %Y")}'
+        self.__results.meta["comments"] = (
+            f"Produced with NectarChain, Credit : CTA NectarCam"
+            f' {date.today().strftime("%B %d, %Y")}'
+        )
 
     def save(self, path, **kwargs):
         """

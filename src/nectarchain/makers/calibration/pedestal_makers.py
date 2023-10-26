@@ -1,19 +1,20 @@
 import logging
 
+from .core import CalibrationMaker
+
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-from .gainMakers import GainMaker
-
-__all__ = ["FlatfieldMaker"]
+__all__ = ["PedestalMaker"]
 
 
-class WhiteTargetSPEMaker(GainMaker):
+class PedestalMaker(CalibrationMaker):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def make(self):
         raise NotImplementedError(
-            "The computation of the white target calibration is not yet implemented, feel free to contribute !:)"
+            "The computation of the pedestal calibration is not yet implemented, "
+            "feel free to contribute !:)"
         )

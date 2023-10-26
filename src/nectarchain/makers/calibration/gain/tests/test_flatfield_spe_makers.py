@@ -7,7 +7,7 @@ from nectarchain.makers.calibration.gain import (
     FlatFieldSingleHHVSPEMaker,
     FlatFieldSingleHHVStdSPEMaker,
 )
-from nectarchain.makers.calibration.gain.FlatFieldSPEMakers import FlatFieldSPEMaker
+from nectarchain.makers.calibration.gain.flatfield_spe_makers import FlatFieldSPEMaker
 from nectarchain.makers.calibration.gain.parameters import Parameter, Parameters
 
 
@@ -68,11 +68,6 @@ class TestFlatFieldSPEMaker:
         pixels_id = [2]
         flat_field_spe_maker = FlatFieldSPEMakerforTest(pixels_id)
         flat_field_spe_maker.read_param_from_yaml("parameters_signal.yaml")
-        updated_parameters = flat_field_spe_maker._update_parameters(
-            flat_field_spe_maker.parameters,
-            charge=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            counts=[1, 3, 9, 5, 3, 5, 6, 3, 2, 1],
-        )
 
     # Tests that the table can be updated from parameters
     def test_update_table_from_parameters(self):
@@ -94,7 +89,8 @@ class TestFlatFieldSPEMaker:
 
 
 class TestFlatFieldSingleHHVSPEMaker:
-    # Tests that creating an instance of FlatFieldSingleHHVSPEMaker with valid input parameters is successful
+    # Tests that creating an instance of FlatFieldSingleHHVSPEMaker with valid input
+    # parameters is successful
     def test_create_instance_valid_input(self):
         charge = [1, 2, 3]
         counts = [10, 20, 30]
@@ -102,7 +98,8 @@ class TestFlatFieldSingleHHVSPEMaker:
         maker = FlatFieldSingleHHVSPEMaker(charge, counts, pixels_id)
         assert isinstance(maker, FlatFieldSingleHHVSPEMaker)
 
-    # Tests that creating an instance of FlatFieldSingleHHVSPEMaker with invalid input parameters raises an error
+    # Tests that creating an instance of FlatFieldSingleHHVSPEMaker with invalid
+    # input parameters raises an error
     def test_create_instance_invalid_input(self):
         charge = [1, 2, 3]
         counts = [10, 20]  # Invalid input, counts and charge must have the same length
@@ -111,7 +108,8 @@ class TestFlatFieldSingleHHVSPEMaker:
         with pytest.raises(Exception):
             FlatFieldSingleHHVSPEMaker(charge, counts, pixels_id)
 
-    # Tests that calling create_from_chargeContainer method with valid input parameters is successful
+    # Tests that calling create_from_chargeContainer method with valid input
+    # parameters is successful
     def test_create_from_ChargeContainer_valid_input(self):
         chargeContainer = create_fake_chargeContainer()
         maker = FlatFieldSingleHHVSPEMaker.create_from_chargesContainer(chargeContainer)

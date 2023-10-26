@@ -13,7 +13,7 @@ import argparse
 
 # import seaborn as sns
 from nectarchain.data.container import ChargeContainer
-from nectarchain.makers.calibration.gain.FlatFieldSPEMakers import (
+from nectarchain.makers.calibration.gain.flatfield_spe_makers import (
     FlatFieldSingleNominalSPEMaker,
 )
 

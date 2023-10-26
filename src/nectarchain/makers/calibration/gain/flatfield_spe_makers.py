@@ -1,11 +1,5 @@
-import logging
-import sys
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import copy
+import logging
 import os
 import time
 from inspect import signature
@@ -25,17 +19,14 @@ from scipy.signal import find_peaks, savgol_filter
 from scipy.special import gammainc
 
 from ....data.container import ChargesContainer
-from ...chargesMakers import ChargesMaker
-from .gainMakers import GainMaker
+from ...charges_makers import ChargesMaker
+from .gain_makers import GainMaker
 from .parameters import Parameter, Parameters
-from .utils import (
-    MPE2,
-    MeanValueError,
-    PedestalValueError,
-    Statistics,
-    UtilsMinuit,
-    weight_gaussian,
-)
+from .utils import MPE2, MeanValueError, Statistics, UtilsMinuit, weight_gaussian
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["FlatFieldSingleHHVSPEMaker", "FlatFieldSingleHHVStdSPEMaker"]
 
@@ -43,7 +34,9 @@ __all__ = ["FlatFieldSingleHHVSPEMaker", "FlatFieldSingleHHVStdSPEMaker"]
 class FlatFieldSPEMaker(GainMaker):
 
     """
-    The `FlatFieldSPEMaker` class is used for flat field single photoelectron (SPE) calibration calculations on data. It inherits from the `GainMaker` class and adds functionality specific to flat field SPE calibration.
+    The `FlatFieldSPEMaker` class is used for flat field single photoelectron (SPE)
+    calibration calculations on data. It inherits from the `GainMaker` class and adds
+    functionality specific to flat field SPE calibration.
 
     Example Usage:
         # Create an instance of the FlatFieldSPEMaker class
@@ -59,28 +52,42 @@ class FlatFieldSPEMaker(GainMaker):
         flat_field_maker._update_table_from_parameters()
 
     Main functionalities:
-    - Inherits from the `GainMaker` class and adds functionality specific to flat field SPE calibration.
-    - Reads parameters from a YAML file and updates the internal parameters of the class.
+    - Inherits from the `GainMaker` class and adds functionality specific to flat
+    field SPE calibration.
+    - Reads parameters from a YAML file and updates the internal parameters of the
+    class.
     - Updates the parameters based on data, such as charge and counts.
     - Updates a result table based on the parameters.
 
     Methods:
-    - `read_param_from_yaml(parameters_file, only_update)`: Reads parameters from a YAML file and updates the internal parameters of the class. If `only_update` is True, only the parameters that exist in the YAML file will be updated.
-    - `_update_parameters(parameters, charge, counts, **kwargs)`: Updates the parameters based on data, such as charge and counts. It performs a Gaussian fit on the data to determine the pedestal and mean values, and updates the corresponding parameters accordingly.
-    - `_get_mean_gaussian_fit(charge, counts, extension, **kwargs)`: Performs a Gaussian fit on the data to determine the pedestal and mean values. It returns the fit coefficients.
-    - `_update_table_from_parameters()`: Updates a result table based on the parameters. It adds columns to the table for each parameter and its corresponding error.
+    - `read_param_from_yaml(parameters_file, only_update)`: Reads parameters from a
+    YAML file and updates the internal parameters of the class. If `only_update` is
+    True, only the parameters that exist in the YAML file will be updated.
+    - `_update_parameters(parameters, charge, counts, **kwargs)`: Updates the
+    parameters based on data, such as charge and counts. It performs a Gaussian fit
+    on the data to determine the pedestal and mean values, and updates the
+    corresponding parameters accordingly.
+    - `_get_mean_gaussian_fit(charge, counts, extension, **kwargs)`: Performs a
+    Gaussian fit on the data to determine the pedestal and mean values. It returns
+    the fit coefficients.
+    - `_update_table_from_parameters()`: Updates a result table based on the parameters.
+                                         It adds columns to the table for each
+                                         parameter and its corresponding error.
 
     Attributes:
-    - `_Windows_lenght`: A class attribute that represents the length of the windows used for smoothing the data.
-    - `_Order`: A class attribute that represents the order of the polynomial used for smoothing the data.
+    - `_Windows_length`: A class attribute that represents the length of the windows
+    used for smoothing the data.
+    - `_Order`: A class attribute that represents the order of the polynomial used
+    for smoothing the data.
 
     Members:
     - `npixels`: A property that returns the number of pixels.
-    - `parameters`: A property that returns a deep copy of the internal parameters of the class.
+    - `parameters`: A property that returns a deep copy of the internal parameters
+                    of the class.
     - `_parameters`: A property that returns the internal parameters of the class.
     """
 
-    _Windows_lenght = 40
+    _Windows_length = 40
     _Order = 2
 
     # constructors
@@ -131,11 +138,13 @@ class FlatFieldSPEMaker(GainMaker):
     # methods
     def read_param_from_yaml(self, parameters_file, only_update=False) -> None:
         """
-        Reads parameters from a YAML file and updates the internal parameters of the FlatFieldSPEMaker class.
+        Reads parameters from a YAML file and updates the internal parameters of the
+        FlatFieldSPEMaker class.
 
         Args:
             parameters_file (str): The name of the YAML file containing the parameters.
-            only_update (bool, optional): If True, only the parameters that exist in the YAML file will be updated. Default is False.
+            only_update (bool, optional): If True, only the parameters that exist in
+            the YAML file will be updated. Default is False.
 
         Returns:
             None
@@ -171,16 +180,19 @@ class FlatFieldSPEMaker(GainMaker):
         parameters: Parameters, charge: np.ndarray, counts: np.ndarray, **kwargs
     ) -> Parameters:
         """
-        Update the parameters of the FlatFieldSPEMaker class based on the input charge and counts data.
+        Update the parameters of the FlatFieldSPEMaker class based on the input
+        charge and counts data.
 
         Args:
-            parameters (Parameters): An instance of the Parameters class that holds the internal parameters of the FlatFieldSPEMaker class.
+            parameters (Parameters): An instance of the Parameters class that holds
+            the internal parameters of the FlatFieldSPEMaker class.
             charge (np.ndarray): An array of charge values.
             counts (np.ndarray): An array of corresponding counts values.
             **kwargs: Additional keyword arguments.
 
         Returns:
-            Parameters: The updated parameters object with the pedestal and mean values and their corresponding limits.
+            Parameters: The updated parameters object with the pedestal and mean
+            values and their corresponding limits.
         """
         try:
             coeff_ped, coeff_mean = __class__._get_mean_gaussian_fit(
@@ -229,7 +241,8 @@ class FlatFieldSPEMaker(GainMaker):
             **kwargs: Additional keyword arguments.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: A tuple of fit coefficients for the pedestal and mean.
+            Tuple[np.ndarray, np.ndarray]: A tuple of fit coefficients for the
+            pedestal and mean.
 
         Example Usage:
             flat_field_maker = FlatFieldSPEMaker()
@@ -239,9 +252,9 @@ class FlatFieldSPEMaker(GainMaker):
             print(coeff)  # Output: [norm,peak_value, peak_width]
             print(coeff_mean)  # Output: [norm,peak_value_mean, peak_width_mean]
         """
-        windows_lenght = __class__._Windows_lenght
+        windows_length = __class__._Windows_length
         order = __class__._Order
-        histo_smoothed = savgol_filter(counts, windows_lenght, order)
+        histo_smoothed = savgol_filter(counts, windows_length, order)
         peaks = find_peaks(histo_smoothed, 10)
         peak_max = np.argmax(histo_smoothed[peaks[0]])
         peak_pos, peak_value = charge[peaks[0][peak_max]], counts[peaks[0][peak_max]]
@@ -260,7 +273,8 @@ class FlatFieldSPEMaker(GainMaker):
             ax.plot(
                 charge,
                 histo_smoothed,
-                label=f"smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})",
+                label=f"smoothed data with savgol filter (windows length :"
+                f" {windows_length}, order : {order})",
             )
             ax.plot(
                 charge,
@@ -291,7 +305,9 @@ class FlatFieldSPEMaker(GainMaker):
                 exist_ok=True,
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_pedestal_pixel{extension}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG')}/"
+                f"{os.getpid()}/figures/initialization_pedestal_pixel{extension}_"
+                f"{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -321,7 +337,8 @@ class FlatFieldSPEMaker(GainMaker):
             ax.plot(
                 charge,
                 histo_smoothed,
-                label=f"smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})",
+                label=f"smoothed data with savgol filter (windows length :"
+                f" {windows_length}, order : {order})",
             )
             ax.plot(
                 charge,
@@ -352,7 +369,9 @@ class FlatFieldSPEMaker(GainMaker):
                 exist_ok=True,
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG')}/"
+                f"{os.getpid()}/figures/initialization_mean_pixel{extension}_"
+                f"{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -362,7 +381,8 @@ class FlatFieldSPEMaker(GainMaker):
     def _update_table_from_parameters(self) -> None:
         """
         Update the result table based on the parameters of the FlatFieldSPEMaker class.
-        This method adds columns to the table for each parameter and its corresponding error.
+        This method adds columns to the table for each parameter and its
+        corresponding error.
         """
 
         for param in self._parameters.parameters:
@@ -401,10 +421,14 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
         _results (Table): Table of results.
     Methods:
     __init__: Initializes the FlatFieldSingleHHVSPEMaker object.
-    create_from_chargesContainer: Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts data from a ChargesContainer object.
-    create_from_run_number(cls, run_number, **kwargs): Class method that creates an instance from a run number.
-    make(self, pixels_id=None, multiproc=True, display=True, **kwargs): Method that performs the fit on the specified pixels and returns the fit results.
-    display(self, pixels_id, **kwargs): Method that plots the fit for the specified pixels.
+    create_from_chargesContainer: Creates an instance of FlatFieldSingleHHVSPEMaker
+    using charge and counts data from a ChargesContainer object.
+    create_from_run_number(cls, run_number, **kwargs): Class method that creates an
+    instance from a run number.
+    make(self, pixels_id=None, multiproc=True, display=True, **kwargs): Method that
+    performs the fit on the specified pixels and returns the fit results.
+    display(self, pixels_id, **kwargs): Method that plots the fit for the specified
+    pixels.
     """
 
     __parameters_file = "parameters_signal.yaml"
@@ -464,7 +488,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
     @classmethod
     def create_from_chargesContainer(cls, signal: ChargesContainer, **kwargs):
         """
-        Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts data from a ChargesContainer object.
+        Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts
+        data from a ChargesContainer object.
         Args:
             signal (ChargesContainer): The ChargesContainer object.
             **kwargs: Additional keyword arguments.
@@ -479,7 +504,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
     @classmethod
     def create_from_run_number(cls, run_number: int, **kwargs):
         raise NotImplementedError(
-            "Need to implement here the use of the WaveformsMaker and ChargesMaker to produce the chargesContainer to be pass into the __ini__"
+            "Need to implement here the use of the WaveformsMaker and ChargesMaker to "
+            "produce the chargesContainer to be pass into the __ini__"
         )
 
     # getters and setters
@@ -514,7 +540,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
     # methods
     def _fill_results_table_from_dict(self, dico: dict, pixels_id: np.ndarray) -> None:
         """
-        Populates the results table with fit values and errors for each pixel based on the dictionary provided as input.
+        Populates the results table with fit values and errors for each pixel based
+        on the dictionary provided as input.
 
         Args:
             dico (dict): A dictionary containing fit values and errors for each pixel.
@@ -531,7 +558,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
                 index = np.argmax(self._results["pixels_id"] == pixels_id[i])
                 if len(values) != len(chi2_sig.parameters):
                     e = Exception(
-                        "the size out the minuit output parameters values array does not fit the signature of the minimized cost function"
+                        "the size out the minuit output parameters values array does "
+                        "not fit the signature of the minimized cost function"
                     )
                     log.error(e, exc_info=True)
                     raise e
@@ -540,11 +568,11 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
                     self._results[f"{key}_error"][index] = errors[j]
                     if key == "mean":
                         self._high_gain[index] = values[j]
-                        self._results[f"high_gain_error"][index] = [
+                        self._results["high_gain_error"][index] = [
                             errors[j],
                             errors[j],
                         ]
-                        self._results[f"high_gain"][index] = values[j]
+                        self._results["high_gain"][index] = values[j]
                 self._results["is_valid"][index] = True
                 self._results["likelihood"][index] = __class__.__fit_array[i].fcn(
                     __class__.__fit_array[i].values
@@ -599,7 +627,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
     @staticmethod
     def cost(charge: np.ndarray, counts: np.ndarray):
         """
-        Defines a function called Chi2 that calculates the chi-square value using the _NG_Likelihood_Chi2 method.
+        Defines a function called Chi2 that calculates the chi-square value using
+        the _NG_Likelihood_Chi2 method.
         Parameters:
         charge (np.ndarray): An array of charge values.
         counts (np.ndarray): An array of count values.
@@ -616,7 +645,9 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
             n: float,
             pedestalWidth: float,
         ):
-            # assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or np.isnan(luminosity))
+            # assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or
+            # np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or
+            # np.isnan(luminosity))
             for i in range(1000):
                 if gammainc(i + 1, luminosity) < 1e-5:
                     ntotalPE = i
@@ -637,15 +668,17 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
 
         return Chi2
 
-    # @njit(parallel=True,nopython = True)
+    # @njit(parallel=True, nopython=True)
     def _make_fit_array_from_parameters(
         self, pixels_id: np.ndarray = None, **kwargs
     ) -> np.ndarray:
         """
-        Create an array of Minuit fit instances based on the parameters and data for each pixel.
+        Create an array of Minuit fit instances based on the parameters and data for
+        each pixel.
 
         Args:
-            pixels_id (optional): An array of pixel IDs. If not provided, all pixels will be used.
+            pixels_id (optional): An array of pixel IDs. If not provided, all pixels
+            will be used.
 
         Returns:
             np.ndarray: An array of Minuit fit instances, one for each pixel.
@@ -704,8 +737,10 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
             i (int): The index of the pixel to perform the fit on.
 
         Returns:
-            dict: A dictionary containing the fit values and errors for the specified pixel.
-                  The keys are "values_i" and "errors_i", where "i" is the index of the pixel.
+            dict: A dictionary containing the fit values and errors for
+                  the specified pixel.
+                  The keys are "values_i" and "errors_i", where "i" is the index of
+                  the pixel.
         """
         log.info("Starting")
         __class__.__fit_array[i].migrad()
@@ -726,9 +761,13 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
         Perform a fit on specified pixels and return the fit results.
 
         Args:
-            pixels_id (np.ndarray, optional): An array of pixel IDs to perform the fit on. If not provided, the fit will be performed on all pixels. Default is None.
-            multiproc (bool, optional): A boolean indicating whether to use multiprocessing for the fit. Default is True.
-            display (bool, optional): A boolean indicating whether to display the fit results. Default is True.
+            pixels_id (np.ndarray, optional): An array of pixel IDs to perform the
+            fit on. If not provided, the fit will be performed on all pixels.
+            Default is None.
+            multiproc (bool, optional): A boolean indicating whether to use
+            multiprocessing for the fit. Default is True.
+            display (bool, optional): A boolean indicating whether to display
+            the fit results. Default is True.
             **kwargs (optional): Additional keyword arguments.
 
         Returns:
@@ -791,7 +830,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
                     raise e
                 log.debug(res)
                 log.info(
-                    f"time for multiproc with starmap_async execution is {time.time() - t:.2e} sec"
+                    f"time for multiproc with starmap_async execution is"
+                    f" {time.time() - t:.2e} sec"
                 )
             else:
                 log.info("running in mono-cpu")
@@ -832,7 +872,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
         Args:
             pixel_id (int): The ID of the pixel for which the plot is generated.
             charge (np.ndarray): An array of charge values.
-            counts (np.ndarray): An array of event counts corresponding to the charge values.
+            counts (np.ndarray): An array of event counts corresponding to the
+            charge values.
             pp (float): The value of the `pp` parameter.
             resolution (float): The value of the `resolution` parameter.
             gain (float): The value of the `gain` parameter.
@@ -844,7 +885,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
             likelihood (float): The value of the `likelihood` parameter.
 
         Returns:
-            tuple: A tuple containing the generated plot figure and the axes of the plot.
+            tuple: A tuple containing the generated plot figure and the axes of the
+            plot.
         """
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         ax.errorbar(charge, counts, np.sqrt(counts), zorder=0, fmt=".", label="data")
@@ -863,7 +905,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
             ),
             zorder=1,
             linewidth=2,
-            label=f"SPE model fit \n gain : {gain - gain_error:.2f} < {gain:.2f} < {gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
+            label=f"SPE model fit \n gain : {gain - gain_error:.2f} < {gain:.2f} <"
+            f" {gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
         )
         ax.set_xlabel("Charge (ADC)", size=15)
         ax.set_ylabel("Events", size=15)
@@ -879,7 +922,8 @@ class FlatFieldSingleHHVSPEMaker(FlatFieldSPEMaker):
         Args:
             pixels_id (np.ndarray): An array of pixel IDs.
             **kwargs: Additional keyword arguments.
-                figpath (str): The path to save the generated plot figures. Defaults to "/tmp/NectarGain_pid{os.getpid()}".
+                figpath (str): The path to save the generated plot figures. Defaults
+                to "/tmp/NectarGain_pid{os.getpid()}".
         """
         figpath = kwargs.get("figpath", f"/tmp/NectarGain_pid{os.getpid()}")
         os.makedirs(figpath, exist_ok=True)
@@ -926,7 +970,8 @@ class FlatFieldSingleHHVStdSPEMaker(FlatFieldSingleHHVSPEMaker):
 
     def __fix_parameters(self) -> None:
         """
-        Fixes the values of the n and pp parameters by setting their frozen attribute to True.
+        Fixes the values of the n and pp parameters by setting their frozen attribute
+        to True.
         """
         log.info("updating parameters by fixing pp and n")
         pp = self._parameters["pp"]
@@ -937,7 +982,8 @@ class FlatFieldSingleHHVStdSPEMaker(FlatFieldSingleHHVSPEMaker):
 
 class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
     """
-    A class to perform a fit of the single photoelectron (SPE) signal at nominal voltage using fitted data obtained from a 1400V run.
+    A class to perform a fit of the single photoelectron (SPE) signal at nominal
+    voltage using fitted data obtained from a 1400V run.
     Inherits from FlatFieldSingleHHVSPEMaker.
     Fixes the parameters n, pp, and res.
     Optionally fixes the luminosity parameter.
@@ -945,20 +991,26 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
     Args:
         charge (np.ndarray): The charge values.
         counts (np.ndarray): The counts values.
-        nectarGainSPEresult (str): The path to the fitted data obtained from a 1400V run.
-        same_luminosity (bool, optional): Whether to fix the luminosity parameter. Defaults to False.
+        nectarGainSPEresult (str): The path to the fitted data obtained from a 1400V
+        run.
+        same_luminosity (bool, optional): Whether to fix the luminosity parameter.
+        Defaults to False.
         *args: Variable length argument list.
         **kwargs: Arbitrary keyword arguments.
 
     Attributes:
-        __parameters_file (str): The path to the parameters file for the fit at nominal voltage.
-        _reduced_name (str): The name of the reduced data for the fit at nominal voltage.
+        __parameters_file (str): The path to the parameters file for the fit at
+        nominal voltage.
+        _reduced_name (str): The name of the reduced data for the fit at nominal
+        voltage.
         __same_luminosity (bool): Whether the luminosity parameter should be fixed.
-        __nectarGainSPEresult (QTable): The fitted data obtained from a 1400V run, filtered for valid pixels.
+        __nectarGainSPEresult (QTable): The fitted data obtained from a 1400V run,
+        filtered for valid pixels.
 
     Example Usage:
         # Create an instance of FlatFieldSingleNominalSPEMaker
-        maker = FlatFieldSingleNominalSPEMaker(charge, counts, nectarGainSPEresult='fit_result.txt', same_luminosity=True)
+        maker = FlatFieldSingleNominalSPEMaker(charge, counts,
+        nectarGainSPEresult='fit_result.txt', same_luminosity=True)
 
         # Perform the fit on the specified pixels and return the fit results
         results = maker.make(pixels_id=[1, 2, 3])
@@ -985,8 +1037,10 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         Args:
             charge (np.ndarray): The charge values.
             counts (np.ndarray): The counts values.
-            nectarGainSPEresult (str): The path to the fitted data obtained from a 1400V run.
-            same_luminosity (bool, optional): Whether to fix the luminosity parameter. Defaults to False.
+            nectarGainSPEresult (str): The path to the fitted data obtained from a
+            1400V run.
+            same_luminosity (bool, optional): Whether to fix the luminosity
+            parameter. Defaults to False.
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments.
         """
@@ -996,7 +1050,8 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         self.__nectarGainSPEresult = self._read_SPEresult(nectarGainSPEresult)
         if len(self.__nectarGainSPEresult) == 0:
             log.warning(
-                "The intersection between pixels id from the data and those valid from the SPE fit result is empty"
+                "The intersection between pixels id from the data and those valid "
+                "from the SPE fit result is empty"
             )
 
     @property
@@ -1015,10 +1070,12 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
 
     def _read_SPEresult(self, nectarGainSPEresult: str):
         """
-        Reads the fitted data obtained from a 1400V run and returns a filtered table of valid pixels.
+        Reads the fitted data obtained from a 1400V run and returns a filtered table
+        of valid pixels.
 
         Args:
-            nectarGainSPEresult (str): The path to the fitted data obtained from a 1400V run.
+            nectarGainSPEresult (str): The path to the fitted data obtained from a
+            1400V run.
 
         Returns:
             QTable: The filtered table of valid pixels.
@@ -1057,10 +1114,12 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
 
     def _make_fit_array_from_parameters(self, pixels_id=None, **kwargs):
         """
-        Generates the fit array from the fixed parameters and the fitted data obtained from a 1400V run.
+        Generates the fit array from the fixed parameters and the fitted data
+        obtained from a 1400V run.
 
         Args:
-            pixels_id (array-like, optional): The pixels to generate the fit array for. Defaults to None.
+            pixels_id (array-like, optional): The pixels to generate the fit array
+            for. Defaults to None.
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
@@ -1082,7 +1141,8 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         **kwargs,
     ):
         """
-        Updates the parameters with the fixed values from the fitted data obtained from a 1400V run.
+        Updates the parameters with the fixed values from the fitted data obtained
+        from a 1400V run.
 
         Args:
             parameters (Parameters): The parameters to update.
