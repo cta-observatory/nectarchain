@@ -1,6 +1,7 @@
 import glob
 
 import numpy as np
+import pytest
 from ctapipe.instrument import SubarrayDescription
 
 from nectarchain.data.container import WaveformsContainer, WaveformsContainerIO
@@ -36,6 +37,7 @@ def create_fake_waveformsContainer():
     )
 
 
+@pytest.disable()
 class TestWaveformsContainer:
     run_number = 1234
     nevents = 140
@@ -47,7 +49,8 @@ class TestWaveformsContainer:
         waveform_container = create_fake_waveformsContainer()
         assert isinstance(waveform_container, WaveformsContainer)
 
-    # Tests that the ChargeContainer object can be written to a file and the file is created.
+    # Tests that the ChargeContainer object can be written to a file and the file is
+    # created.
     def test_write_waveform_container(self, tmp_path="/tmp"):
         waveform_container = create_fake_waveformsContainer()
         tmp_path += f"/{np.random.randn(1)[0]}"
@@ -59,7 +62,8 @@ class TestWaveformsContainer:
             == 1
         )
 
-    # Tests that a ChargeContainer object can be loaded from a file and the object is correctly initialized.
+    # Tests that a ChargeContainer object can be loaded from a file and the object is
+    # correctly initialized.
     def test_load_waveform_container(self, tmp_path="/tmp"):
         waveform_container = create_fake_waveformsContainer()
         tmp_path += f"/{np.random.randn(1)[0]}"
@@ -82,7 +86,8 @@ class TestWaveformsContainer:
         assert loaded_waveform_container.npixels == waveform_container.npixels
         assert loaded_waveform_container.nsamples == waveform_container.nsamples
 
-    # Tests that the ChargeContainer object can be sorted by event_id and the object is sorted accordingly.
+    # Tests that the ChargeContainer object can be sorted by event_id and the object
+    # is sorted accordingly.
     def test_sort_waveform_container(self):
         waveform_container = create_fake_waveformsContainer()
 

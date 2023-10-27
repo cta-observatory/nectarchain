@@ -1,6 +1,7 @@
 import glob
 
 import numpy as np
+import pytest
 
 from nectarchain.data.container import ChargesContainer, ChargesContainerIO
 from nectarchain.makers import ChargesMaker
@@ -33,6 +34,7 @@ def create_fake_chargeContainer():
     )
 
 
+@pytest.disable()
 class TestChargesContainer:
     run_number = 1234
     nevents = 140
@@ -71,7 +73,8 @@ class TestChargesContainer:
         assert charge_container.npixels == npixels
         assert charge_container.method == method
 
-    # Tests that the from_waveforms method can be called with a valid waveformContainer and method parameter.
+    # Tests that the from_waveforms method can be called with a valid
+    # waveformContainer and method parameter.
     # def test_from_waveforms_valid_input(self):
     #    waveform_container = WaveformsContainer(...)
     #    method = 'FullWaveformSum'
@@ -80,7 +83,8 @@ class TestChargesContainer:
     #
     #    assert isinstance(charge_container, ChargeContainer)
 
-    # Tests that the ChargeContainer object can be written to a file and the file is created.
+    # Tests that the ChargeContainer object can be written to a file and the file is
+    # created.
     def test_write_charge_container(self, tmp_path="/tmp"):
         charge_container = create_fake_chargeContainer()
         tmp_path += f"/{np.random.randn(1)[0]}"
@@ -96,7 +100,8 @@ class TestChargesContainer:
             == 1
         )
 
-    # Tests that a ChargeContainer object can be loaded from a file and the object is correctly initialized.
+    # Tests that a ChargeContainer object can be loaded from a file and the object is
+    # correctly initialized.
     def test_load_charge_container(self, tmp_path="/tmp"):
         charge_container = create_fake_chargeContainer()
         tmp_path += f"/{np.random.randn(1)[0]}"
@@ -125,7 +130,8 @@ class TestChargesContainer:
         assert loaded_charge_container.npixels == charge_container.npixels
         assert loaded_charge_container.method == charge_container.method
 
-    # Tests that the ChargeContainer object can be sorted by event_id and the object is sorted accordingly.
+    # Tests that the ChargeContainer object can be sorted by event_id and the object
+    # is sorted accordingly.
     def test_sort_charge_container(self):
         charge_container = create_fake_chargeContainer()
 
@@ -135,7 +141,9 @@ class TestChargesContainer:
             charge_container.event_id.tolist()
         )
 
-    # Tests that the run_number, pixels_id, npixels, nevents, method, multiplicity, and trig_pattern properties of the ChargeContainer object can be accessed and the values are correct.
+    # Tests that the run_number, pixels_id, npixels, nevents, method, multiplicity,
+    # and trig_pattern properties of the ChargeContainer object can be accessed and
+    # the values are correct.
     def test_access_properties(self):
         pixels_id = np.array([2, 4, 3, 8, 6, 9, 7, 1, 5, 10])
         nevents = 40

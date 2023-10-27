@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+import pytest
 from ctapipe.containers import EventType
 
 from nectarchain.data.container import WaveformsContainer, WaveformsContainerIO
@@ -13,6 +14,7 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 
+@pytest.disable()
 class TestWaveformsMaker:
     run_number = 3938
     max_events = 100

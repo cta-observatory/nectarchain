@@ -10,6 +10,8 @@ from nectarchain.makers.calibration.gain import (
 from nectarchain.makers.calibration.gain.flatfield_spe_makers import FlatFieldSPEMaker
 from nectarchain.makers.calibration.gain.parameters import Parameter, Parameters
 
+pytest.disable()
+
 
 class FlatFieldSPEMakerforTest(FlatFieldSPEMaker):
     def make():

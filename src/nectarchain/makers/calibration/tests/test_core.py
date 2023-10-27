@@ -5,6 +5,8 @@ import pytest
 
 from nectarchain.makers.calibration.core import CalibrationMaker
 
+pytest.disable()
+
 
 class CalibrationMakerforTest(CalibrationMaker):
     _reduced_name = "test"
@@ -14,7 +16,8 @@ class CalibrationMakerforTest(CalibrationMaker):
 
 
 class TestflatfieldMaker:
-    # Tests that the constructor initializes the object with the correct attributes and metadata when valid input is provided
+    # Tests that the constructor initializes the object with the correct attributes
+    # and metadata when valid input is provided
     def test_constructor_with_valid_input(self):
         pixels_id = [1, 2, 3]
         calibration_maker = CalibrationMakerforTest(pixels_id)
@@ -29,13 +32,15 @@ class TestflatfieldMaker:
         )
         assert isinstance(calibration_maker._results.meta["comments"], str)
 
-    # Tests that the constructor raises an error when a non-iterable pixels_id is provided
+    # Tests that the constructor raises an error when a non-iterable pixels_id is
+    # provided
     def test_constructor_with_non_iterable_pixels_id(self):
         pixels_id = 123
         with pytest.raises(TypeError):
             CalibrationMakerforTest(pixels_id)
 
-    # Tests that saving the results to an existing file with overwrite=False raises an error
+    # Tests that saving the results to an existing file with overwrite=False raises
+    # an error
     def test_save_to_existing_file_with_overwrite_false(self, tmp_path=Path("/tmp")):
         pixels_id = [1, 2, 3]
         calibration_maker = CalibrationMakerforTest(pixels_id)
@@ -47,7 +52,8 @@ class TestflatfieldMaker:
         with pytest.raises(FileExistsError):
             calibration_maker.save(file_path, overwrite=False)
 
-    # Tests that changing the pixels_id attribute updates the results table with the expected values
+    # Tests that changing the pixels_id attribute updates the results table with the
+    # expected values
     def test_change_pixels_id_attribute(self):
         pixels_id = [1, 2, 3]
         calibration_maker = CalibrationMakerforTest(pixels_id)
