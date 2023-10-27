@@ -1,109 +1,120 @@
+import copy
 import logging
+from abc import abstractmethod
+
+import numpy as np
+from ctapipe.containers import EventType
+from ctapipe.core import Component, TelescopeComponent
+from ctapipe.core.traits import Integer, Unicode
+from ctapipe.instrument import CameraGeometry
+from ctapipe_io_nectarcam import constants
+from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+
+from ...data.container.core import ArrayDataContainer
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import numpy as np
-from abc import ABC, abstractmethod
-import copy
-
-from ctapipe.core import Component,TelescopeComponent
-from ctapipe.instrument import CameraGeometry
-from ctapipe.containers import EventType
-from ctapipe.core.traits import Unicode,Integer
-
-
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe_io_nectarcam import NectarCAMEventSource, constants
-
-from ...data.container.core import ArrayDataContainer
+__all__ = [
+    "ArrayDataComponent",
+    "NectarCAMComponent",
+    "get_valid_component",
+    "get_specific_traits",
+    "get_configurable_traits",
+]
 
 
-__all__ = ["ArrayDataComponent",
-           "NectarCAMComponent",
-           "get_valid_component",
-           "get_specific_traits",
-           "get_configurable_traits",
-           ]
-
-def get_valid_component() : 
+def get_valid_component():
     return NectarCAMComponent.non_abstract_subclasses()
 
-def get_specific_traits(component : Component) : 
+
+def get_specific_traits(component: Component):
     traits_dict = component.class_traits()
-    traits_dict.pop("config",True)
-    traits_dict.pop("parent",True)
+    traits_dict.pop("config", True)
+    traits_dict.pop("parent", True)
     return traits_dict
 
-def get_configurable_traits(component : Component) : 
+
+def get_configurable_traits(component: Component):
     traits_dict = get_specific_traits(component)
     output_traits_dict = traits_dict.copy()
-    for key,item in traits_dict.items() : 
-        if item.read_only : 
+    for key, item in traits_dict.items():
+        if item.read_only:
             output_traits_dict.pop(key)
     return output_traits_dict
-            
-class NectarCAMComponent(TelescopeComponent) : 
+
+
+class NectarCAMComponent(TelescopeComponent):
     """The base class for NectarCAM components"""
-    def __init__(self, subarray, config=None, parent=None,*args, **kwargs):
-        super().__init__(subarray = subarray, config = config, parent = parent, *args,**kwargs)
+
+    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        super().__init__(
+            subarray=subarray, config=config, parent=parent, *args, **kwargs
+        )
         self.__pixels_id = parent._event_source.camera_config.expected_pixels_id
         self.__run_number = parent.run_number
-        self.__npixels=parent.npixels
+        self.__npixels = parent.npixels
+
     @abstractmethod
-    def __call__(
-            self, event: NectarCAMDataContainer, *args, **kwargs
-        ):
+    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         pass
 
     @property
-    def _pixels_id(self) : return self.__pixels_id
+    def _pixels_id(self):
+        return self.__pixels_id
+
     @property
-    def pixels_id(self) : return copy.deepcopy(self.__pixels_id)
+    def pixels_id(self):
+        return copy.deepcopy(self.__pixels_id)
+
     @property
-    def _run_number(self) :
+    def _run_number(self):
         return self.__run_number
+
     @property
-    def run_number(self) :
+    def run_number(self):
         return copy.deepcopy(self.__run_number)
+
     @property
-    def _npixels(self) :
+    def _npixels(self):
         return self.__npixels
+
     @property
-    def npixels(self) :
+    def npixels(self):
         return copy.deepcopy(self.__npixels)
 
 
-#class NectarCAMTelescopeComponent(TelescopeComponent) : 
+# class NectarCAMTelescopeComponent(TelescopeComponent) :
 #    """The base class for NectarCAM telescope component"""
 #    pass
 
 
-class ArrayDataComponent(NectarCAMComponent) :
-    TEL_ID = Integer(default_value = 0,
-                     help = "The telescope ID",
-                     read_only = True,
-                     ).tag(config = True)
+class ArrayDataComponent(NectarCAMComponent):
+    TEL_ID = Integer(
+        default_value=0,
+        help="The telescope ID",
+        read_only=True,
+    ).tag(config=True)
 
-    CAMERA_NAME = Unicode(default_value = "NectarCam-003",
-                     help = "The camera name",
-                     read_only = True,
-                     ).tag(config = True)
+    CAMERA_NAME = Unicode(
+        default_value="NectarCam-003",
+        help="The camera name",
+        read_only=True,
+    ).tag(config=True)
 
     CAMERA = CameraGeometry.from_name(CAMERA_NAME.default_value)
 
-    #trigger_list = List(
+    # trigger_list = List(
     #    help="List of trigger(EventType) inside the instance",
     #    default_value=[],
-    #).tag(config=True)
+    # ).tag(config=True)
 
-
-
-    def __init__(self, subarray, config=None, parent=None,*args, **kwargs):
-        super().__init__(subarray = subarray,config = config, parent = parent,*args, **kwargs)
+    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        super().__init__(
+            subarray=subarray, config=config, parent=parent, *args, **kwargs
+        )
         self.__nsamples = parent._event_source.camera_config.num_samples
-
 
         self.trigger_list = []
 
@@ -122,7 +133,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Initializes empty lists for different trigger types in the ArrayDataMaker class.
 
         Args:
-            trigger (EventType): The trigger type for which the lists are being initialized.
+            trigger (EventType): The trigger type for which the lists are being
+            initialized.
 
         Returns:
             None. The method only initializes the empty lists for the trigger type.
@@ -147,7 +159,8 @@ class ArrayDataComponent(NectarCAMComponent) :
             wfs_lg (ndarray): Low gain waveforms.
             **kwargs: Additional keyword arguments.
         Returns:
-            tuple: Two arrays of zeros with the same shape as `wfs_hg` (or `wfs_lg`) but without the last dimension.
+            tuple: Two arrays of zeros with the same shape as `wfs_hg` (or `wfs_lg`)
+            but without the last dimension.
         """
         log.warning("computation of broken pixels is not yet implemented")
         return np.zeros((wfs_hg.shape[:-1]), dtype=bool), np.zeros(
@@ -187,9 +200,7 @@ class ArrayDataComponent(NectarCAMComponent) :
             name = trigger.name
         return name
 
-    def __call__(
-        self, event: NectarCAMDataContainer, *args, **kwargs
-    ):
+    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         """
         Method to extract data from the event.
 
@@ -200,11 +211,12 @@ class ArrayDataComponent(NectarCAMComponent) :
             **kwargs: Additional keyword arguments that can be passed to the method.
 
         Returns:
-            If the return_wfs keyword argument is True, the method returns the high and low gain waveforms from the event.
+            If the return_wfs keyword argument is True, the method returns the high
+            and low gain waveforms from the event.
         """
         name = __class__._get_name_trigger(event.trigger.event_type)
 
-        if not(name in self.__event_id.keys()) : 
+        if not (name in self.__event_id.keys()):
             self._init_trigger_type(event.trigger.event_type)
 
         self.__event_id[f"{name}"].append(np.uint32(event.index.event_id))
@@ -227,8 +239,6 @@ class ArrayDataComponent(NectarCAMComponent) :
             get_wfs_lg = event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id]
             return get_wfs_hg, get_wfs_lg
 
-    
-
     @abstractmethod
     def finish(self):
         pass
@@ -238,11 +248,14 @@ class ArrayDataComponent(NectarCAMComponent) :
         container: ArrayDataContainer, pixel_id: np.ndarray, field: str
     ) -> np.ndarray:
         """
-        Selects specific fields from an ArrayDataContainer object based on a given list of pixel IDs.
+        Selects specific fields from an ArrayDataContainer object based on a given
+        list of pixel IDs.
 
         Args:
-            container (ArrayDataContainer): An object of type ArrayDataContainer that contains the data.
-            pixel_id (ndarray): An array of pixel IDs for which the data needs to be selected.
+            container (ArrayDataContainer): An object of type ArrayDataContainer that
+            contains the data.
+            pixel_id (ndarray): An array of pixel IDs for which the data needs to be
+            selected.
             field (str): The name of the field to be selected from the container.
 
         Returns:
@@ -253,7 +266,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         )
         for pixel in pixel_id[~mask_contain_pixels_id]:
             log.warning(
-                f"You asked for pixel_id {pixel} but it is not present in this container, skip this one"
+                f"You asked for pixel_id {pixel} but it is not present in this "
+                f"container, skip this one"
             )
         res = np.array(
             [
@@ -265,7 +279,8 @@ class ArrayDataComponent(NectarCAMComponent) :
                 for pixel in pixel_id[mask_contain_pixels_id]
             ]
         )
-        ####could be nice to return np.ma.masked_array(data = res, mask = container.broken_pixels_hg.transpose(res.shape[1],res.shape[0],res.shape[2]))
+        # could be nice to return np.ma.masked_array(data = res, mask =
+        # container.broken_pixels_hg.transpose(res.shape[1],res.shape[0],res.shape[2]))
         return res
 
     @staticmethod
@@ -289,7 +304,8 @@ class ArrayDataComponent(NectarCAMComponent) :
             if ~isinstance(container_a[field], np.ndarray):
                 if container_a[field] != container_b[field]:
                     raise Exception(
-                        f"merge impossible because of {field} filed (values are {container_a[field]} and {container_b[field]}"
+                        f"merge impossible because of {field} field (values are"
+                        f" {container_a[field]} and {container_b[field]}"
                     )
 
         for field in container_a.keys():
@@ -321,14 +337,14 @@ class ArrayDataComponent(NectarCAMComponent) :
             np.ndarray: The nsamples attribute.
         """
         return self.__nsamples
-    
 
     def nevents(self, trigger: EventType):
         """
         Returns the number of events for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the number of events is requested.
+            trigger (EventType): The trigger type for which the number of events is
+            requested.
 
         Returns:
             int: The number of events for the specified trigger type.
@@ -350,10 +366,12 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of broken pixels for high gain for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the broken pixels for high gain are requested.
+            trigger (EventType): The trigger type for which the broken pixels for
+            high gain are requested.
 
         Returns:
-            np.ndarray: An array of broken pixels for high gain for the specified trigger type.
+            np.ndarray: An array of broken pixels for high gain for the specified
+            trigger type.
         """
         return np.array(
             self.__broken_pixels_hg[__class__._get_name_trigger(trigger)], dtype=bool
@@ -374,10 +392,12 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of broken pixels for low gain for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the broken pixels for low gain are requested.
+            trigger (EventType): The trigger type for which the broken pixels for low
+            gain are requested.
 
         Returns:
-            np.ndarray: An array of broken pixels for low gain for the specified trigger type.
+            np.ndarray: An array of broken pixels for low gain for the specified
+            trigger type.
         """
         return np.array(
             self.__broken_pixels_lg[__class__._get_name_trigger(trigger)], dtype=bool
@@ -388,7 +408,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of UCTS timestamps for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the UCTS timestamps are requested.
+            trigger (EventType): The trigger type for which the UCTS timestamps are
+            requested.
 
         Returns:
             np.ndarray: An array of UCTS timestamps for the specified trigger type.
@@ -402,7 +423,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of UCTS busy counters for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the UCTS busy counters are requested.
+            trigger (EventType): The trigger type for which the UCTS busy counters
+            are requested.
 
         Returns:
             np.ndarray: An array of UCTS busy counters for the specified trigger type.
@@ -417,7 +439,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of UCTS event counters for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the UCTS event counters are requested.
+            trigger (EventType): The trigger type for which the UCTS event counters
+            are requested.
 
         Returns:
             np.ndarray: An array of UCTS event counters for the specified trigger type.
@@ -432,7 +455,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of event types for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the event types are requested.
+            trigger (EventType): The trigger type for which the event types are
+            requested.
 
         Returns:
             np.ndarray: An array of event types for the specified trigger type.
@@ -460,7 +484,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of multiplicities for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the multiplicities are requested.
+            trigger (EventType): The trigger type for which the multiplicities are
+            requested.
 
         Returns:
             np.ndarray: An array of multiplicities for the specified trigger type.
@@ -476,7 +501,8 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns an array of trigger patterns for the specified trigger type.
 
         Args:
-            trigger (EventType): The trigger type for which the trigger patterns are requested.
+            trigger (EventType): The trigger type for which the trigger patterns are
+            requested.
 
         Returns:
             np.ndarray: An array of trigger patterns for the specified trigger type.
@@ -489,17 +515,18 @@ class ArrayDataComponent(NectarCAMComponent) :
 
     def trig_pattern_all(self, trigger: EventType):
         """
-        Returns an array of trigger patterns for all events for the specified trigger type.
+        Returns an array of trigger patterns for all events for the specified trigger
+        type.
 
         Args:
-            trigger (EventType): The trigger type for which the trigger patterns for all events are requested.
+            trigger (EventType): The trigger type for which the trigger patterns for all
+            events are requested.
 
         Returns:
-            np.ndarray: An array of trigger patterns for all events for the specified trigger type.
+            np.ndarray: An array of trigger patterns for all events for the specified
+            trigger type.
         """
         return np.array(
             self.__trig_patter_all[f"{__class__._get_name_trigger(trigger)}"],
             dtype=bool,
         )
-
-    

@@ -56,7 +56,8 @@ class UtilsMinuit:
 
         Args:
             m (Minuit): a Minuit instance
-            parameters (dict): dict containing parameters names, limits errors and values
+            parameters (dict): dict containing parameters names, limits errors
+                and values
         """
         for name in parameters["names"]:
             m.limits[name] = parameters[f"limit_{name}"]
@@ -65,7 +66,7 @@ class UtilsMinuit:
                 m.fixed[name] = True
 
 
-# Usefull fucntions for the fit
+# Useful functions for the fit
 def gaussian(x, mu, sig):
     # return (1./(sig*np.sqrt(2*math.pi)))*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     return norm.pdf(x, loc=mu, scale=sig)

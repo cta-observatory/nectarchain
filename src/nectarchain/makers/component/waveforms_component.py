@@ -1,38 +1,29 @@
+import copy
 import logging
+from argparse import ArgumentError
+
+import numpy as np
+import tqdm
+from ctapipe.containers import EventType
+from ctapipe.instrument import SubarrayDescription
+from ctapipe_io_nectarcam import constants
+from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+
+from ...data.container import WaveformsContainer, WaveformsContainers
+from .core import ArrayDataComponent
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-
-import numpy as np
-from abc import ABC, abstractmethod
-import copy
-import tqdm
-from argparse import ArgumentError
-
-
-from ctapipe.core import Component,TelescopeComponent
-from ctapipe.instrument import CameraGeometry
-from ctapipe.containers import EventType
-from ctapipe.core.traits import List
-from ctapipe.instrument import SubarrayDescription
-
-
-
-
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe_io_nectarcam import NectarCAMEventSource, constants
-
-from .core import ArrayDataComponent
-from ...data.container import WaveformsContainer,WaveformsContainers
-
 __all__ = ["WaveformsComponent"]
 
-class WaveformsComponent(ArrayDataComponent) : 
 
-    def __init__(self, subarray, config=None, parent=None,*args, **kwargs):
-        super().__init__(subarray = subarray, config = config, parent = parent, *args,**kwargs)
+class WaveformsComponent(ArrayDataComponent):
+    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        super().__init__(
+            subarray=subarray, config=config, parent=parent, *args, **kwargs
+        )
 
         self.__geometry = subarray.tel[self.TEL_ID].camera
         self.__wfs_hg = {}
@@ -46,12 +37,13 @@ class WaveformsComponent(ArrayDataComponent) :
         nsamples: int,
         subarray: SubarrayDescription,
         pixels_id: int,
-        tel_id : int = None,
+        tel_id: int = None,
     ) -> WaveformsContainer:
         """Create a container for the extracted waveforms from a list of events.
 
         Args:
-            events_list (list[NectarCAMDataContainer]): A list of events to extract waveforms from.
+            events_list (list[NectarCAMDataContainer]): A list of events to extract
+            waveforms from.
             run_number (int): The ID of the run to be loaded.
             npixels (int): The number of pixels in the waveforms.
             nsamples (int): The number of samples in the waveforms.
@@ -59,9 +51,10 @@ class WaveformsComponent(ArrayDataComponent) :
             pixels_id (int): The ID of the pixels to extract waveforms from.
 
         Returns:
-            WaveformsContainer: A container object that contains the extracted waveforms and other relevant information.
+            WaveformsContainer: A container object that contains the extracted
+            waveforms and other relevant information.
         """
-        if tel_id is None : 
+        if tel_id is None:
             tel_id = __class__.TEL_ID.default_value
 
         container = WaveformsContainer(
@@ -83,20 +76,14 @@ class WaveformsComponent(ArrayDataComponent) :
         wfs_lg = []
 
         for event in tqdm(events_list):
-            ucts_timestamp.append(
-                event.nectarcam.tel[tel_id].evt.ucts_timestamp
-            )
-            ucts_busy_counter.append(
-                event.nectarcam.tel[tel_id].evt.ucts_busy_counter
-            )
+            ucts_timestamp.append(event.nectarcam.tel[tel_id].evt.ucts_timestamp)
+            ucts_busy_counter.append(event.nectarcam.tel[tel_id].evt.ucts_busy_counter)
             ucts_event_counter.append(
                 event.nectarcam.tel[tel_id].evt.ucts_event_counter
             )
             event_type.append(event.trigger.event_type.value)
             event_id.append(event.index.event_id)
-            trig_pattern_all.append(
-                event.nectarcam.tel[tel_id].evt.trigger_pattern.T
-            )
+            trig_pattern_all.append(event.nectarcam.tel[tel_id].evt.trigger_pattern.T)
             wfs_hg.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id])
             wfs_lg.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id])
 
@@ -136,20 +123,19 @@ class WaveformsComponent(ArrayDataComponent) :
         self.__wfs_hg[f"{name}"] = []
         self.__wfs_lg[f"{name}"] = []
 
-    def __call__(
-        self, event: NectarCAMDataContainer, *args, **kwargs
-    ):
+    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         """Process an event and extract waveforms.
 
         Args:
-            event (NectarCAMDataContainer): The event to process and extract waveforms from.
+            event (NectarCAMDataContainer): The event from which to process and extract
+            waveforms.
             trigger (EventType): The type of trigger for the event.
 
         """
         wfs_hg_tmp = np.zeros((self.npixels, self.nsamples), dtype=np.uint16)
         wfs_lg_tmp = np.zeros((self.npixels, self.nsamples), dtype=np.uint16)
 
-        wfs_hg_tmp, wfs_lg_tmp = super(WaveformsComponent,self).__call__(
+        wfs_hg_tmp, wfs_lg_tmp = super(WaveformsComponent, self).__call__(
             event=event, return_wfs=True, *args, **kwargs
         )
         name = __class__._get_name_trigger(event.trigger.event_type)
@@ -170,15 +156,16 @@ class WaveformsComponent(ArrayDataComponent) :
             trigger_type (EventType): The selected trigger types.
 
         Returns:
-            list[WaveformsContainer]: A list of output containers for the selected trigger types.
+            list[WaveformsContainer]: A list of output containers for the selected
+            trigger types.
         """
         output = WaveformsContainers()
-        for i,trigger in enumerate(self.trigger_list):
+        for i, trigger in enumerate(self.trigger_list):
             waveformsContainer = WaveformsContainer(
                 run_number=self._run_number,
                 npixels=self._npixels,
                 nsamples=self._nsamples,
-                #subarray=self.subarray,
+                # subarray=self.subarray,
                 camera=self.CAMERA_NAME,
                 pixels_id=self._pixels_id,
                 nevents=self.nevents(trigger),
@@ -203,7 +190,8 @@ class WaveformsComponent(ArrayDataComponent) :
         """Sort the waveformsContainer based on a specified method.
 
         Args:
-            waveformsContainer (WaveformsContainer): The waveformsContainer to be sorted.
+            waveformsContainer (WaveformsContainer): The waveformsContainer to be
+            sorted.
             method (str, optional): The sorting method. Defaults to 'event_id'.
 
         Returns:
@@ -245,8 +233,10 @@ class WaveformsComponent(ArrayDataComponent) :
         """Select HIGH GAIN waveforms from the container.
 
         Args:
-            waveformsContainer (WaveformsContainer): The container object that contains the waveforms.
-            pixel_id (np.ndarray): An array of pixel IDs to select specific waveforms from the container.
+            waveformsContainer (WaveformsContainer): The container object that
+            contains the waveforms.
+            pixel_id (np.ndarray): An array of pixel IDs to select specific waveforms
+            from the container.
 
         Returns:
             np.ndarray: An array of selected waveforms from the container.
@@ -264,8 +254,10 @@ class WaveformsComponent(ArrayDataComponent) :
         """Select LOW GAIN waveforms from the container.
 
         Args:
-            waveformsContainer (WaveformsContainer): The container object that contains the waveforms.
-            pixel_id (np.ndarray): An array of pixel IDs to select specific waveforms from the container.
+            waveformsContainer (WaveformsContainer): The container object that
+            contains the waveforms.
+            pixel_id (np.ndarray): An array of pixel IDs to select specific waveforms
+            from the container.
 
         Returns:
             np.ndarray: An array of selected waveforms from the container.
@@ -285,7 +277,6 @@ class WaveformsComponent(ArrayDataComponent) :
         """
         return self.__geometry
 
-
     @property
     def geometry(self):
         """
@@ -296,13 +287,13 @@ class WaveformsComponent(ArrayDataComponent) :
         """
         return copy.deepcopy(self.__geometry)
 
-
     def wfs_hg(self, trigger: EventType):
         """
         Returns the waveform data for the specified trigger type.
 
         Args:
-            trigger (EventType): The type of trigger for which the waveform data is requested.
+            trigger (EventType): The type of trigger for which the waveform data is
+            requested.
 
         Returns:
             An array of waveform data for the specified trigger type.
@@ -313,13 +304,16 @@ class WaveformsComponent(ArrayDataComponent) :
 
     def wfs_lg(self, trigger: EventType):
         """
-        Returns the waveform data for the specified trigger type in the low gain channel.
+        Returns the waveform data for the specified trigger type in the low gain
+        channel.
 
         Args:
-            trigger (EventType): The type of trigger for which the waveform data is requested.
+            trigger (EventType): The type of trigger for which the waveform data is
+            requested.
 
         Returns:
-            An array of waveform data for the specified trigger type in the low gain channel.
+            An array of waveform data for the specified trigger type in the low gain
+            channel.
         """
         return np.array(
             self.__wfs_lg[__class__._get_name_trigger(trigger)], dtype=np.uint16

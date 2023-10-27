@@ -12,6 +12,9 @@
 #     name: python3
 # ---
 
+# %%
+# %matplotlib inline
+
 import time
 
 # %%
@@ -39,7 +42,6 @@ seeker = EventSeeker(reader)
 
 # %%
 evt = seeker.get_event_index(25)
-
 adcsum = evt.r0.tel[0].waveform[0].sum(axis=1)
 
 camera = CameraGeometry.from_name("NectarCam-003")
@@ -128,8 +130,8 @@ disp = CameraDisplay(geometry=camera, image=charges, cmap="gnuplot2")
 disp.cmap = cmap
 disp.add_colorbar()
 
-# Comment: if this cell says that "charges" is not defined it's because the event type
-# is not 1. Re-run it.
+# Comment: if this cell says that "charges" is not defined it's because the event
+# type is not 1. Re-run it.
 
 # %% [markdown]
 # ## Hillas cleaning

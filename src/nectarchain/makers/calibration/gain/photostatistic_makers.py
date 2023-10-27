@@ -1,34 +1,32 @@
-import logging
-import sys
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
-
 import copy
+import logging
 import os
-from datetime import date
 from pathlib import Path
 
-import astropy.units as u
 import numpy as np
-from astropy.table import Column, QTable
+from astropy.table import QTable
 from astropy.visualization import quantity_support
 from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
 from scipy.stats import linregress
 
 from ....data.container import ChargesContainer, ChargesContainerIO
-from ...chargesMakers import ChargesMaker
-from .gainMakers import GainMaker
+from ...charges_makers import ChargesMaker
+from .gain_makers import GainMaker
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["PhotoStatisticMaker"]
 
 
 class PhotoStatisticMaker(GainMaker):
     """
-    The `PhotoStatisticMaker` class is a subclass of `GainMaker` and is used to calculate photo statistics for a given set of charge data. It provides methods to create an instance from charge containers or run numbers, as well as methods to calculate various statistics such as gain and standard deviation.
+    The `PhotoStatisticMaker` class is a subclass of `GainMaker` and is used to
+    calculate photo statistics for a given set of charge data. It provides methods to
+    create an instance from charge containers or run numbers, as well as methods to
+    calculate various statistics such as gain and standard deviation.
 
     Example Usage:
         # Create an instance of PhotoStatisticMaker using charge containers
@@ -36,7 +34,8 @@ class PhotoStatisticMaker(GainMaker):
         Pedcharge = ChargesContainer(...)
         coefCharge_FF_Ped = 0.5
         SPE_result = "path/to/SPE_results"
-        photo_stat = PhotoStatisticMaker.create_from_chargeContainer(FFcharge, Pedcharge, coefCharge_FF_Ped, SPE_result)
+        photo_stat = PhotoStatisticMaker.create_from_chargeContainer(FFcharge,
+        Pedcharge, coefCharge_FF_Ped, SPE_result)
 
         # Calculate and retrieve the gain values
         gain_hg = photo_stat.gainHG
@@ -48,27 +47,43 @@ class PhotoStatisticMaker(GainMaker):
         fig = PhotoStatisticMaker.plot_correlation(photo_stat_gain, SPE_gain)
 
     Methods:
-        - `__init__(self, FFcharge_hg, FFcharge_lg, Pedcharge_hg, Pedcharge_lg, coefCharge_FF_Ped, SPE_resolution, *args, **kwargs)`: Constructor method to initialize the `PhotoStatisticMaker` instance with charge data and other parameters.
-        - `create_from_chargeContainer(cls, FFcharge, Pedcharge, coefCharge_FF_Ped, SPE_result, **kwargs)`: Class method to create an instance of `PhotoStatisticMaker` from charge containers.
-        - `create_from_run_numbers(cls, FFrun, Pedrun, SPE_result, **kwargs)`: Class method to create an instance of `PhotoStatisticMaker` from run numbers.
-        - `__readSPE(SPEresults) -> tuple`: Static method to read SPE resolution from a file and return the resolution and pixel IDs.
-        - `__get_charges_FF_Ped_reshaped(FFcharge, Pedcharge, SPE_resolution, SPE_pixels_id) -> dict`: Static method to reshape the charge data based on the intersection of pixel IDs and return a dictionary of reshaped data.
-        - `__readFF(FFRun, **kwargs) -> dict`: Static method to read FF data from a file and return the FF charge data and coefficient.
-        - `__readPed(PedRun, **kwargs) -> dict`: Static method to read Ped data from a file and return the Ped charge data.
-        - `__check_shape(self) -> None`: Method to check the shape of the charge data arrays.
-        - `make(self, **kwargs) -> None`: Method to run the photo statistic method and store the results.
-        - `plot_correlation(photoStat_gain, SPE_gain) -> fig`: Static method to plot the correlation between photo statistic gain and SPE gain.
+        - `__init__(self, FFcharge_hg, FFcharge_lg, Pedcharge_hg, Pedcharge_lg,
+        coefCharge_FF_Ped, SPE_resolution, *args, **kwargs)`: Constructor method to
+        initialize the `PhotoStatisticMaker` instance with charge data and other
+        parameters.
+        - `create_from_chargeContainer(cls, FFcharge, Pedcharge, coefCharge_FF_Ped,
+        SPE_result, **kwargs)`: Class method to create an instance of
+        `PhotoStatisticMaker` from charge containers.
+        - `create_from_run_numbers(cls, FFrun, Pedrun, SPE_result, **kwargs)`: Class
+        method to create an instance of `PhotoStatisticMaker` from run numbers.
+        - `__readSPE(SPEresults) -> tuple`: Static method to read SPE resolution from a
+        file and return the resolution and pixel IDs.
+        - `__get_charges_FF_Ped_reshaped(FFcharge, Pedcharge, SPE_resolution,
+        SPE_pixels_id) -> dict`: Static method to reshape the charge data based on
+        the intersection of pixel IDs and return a dictionary of reshaped data.
+        - `__readFF(FFRun, **kwargs) -> dict`: Static method to read FF data from a
+        file and return the FF charge data and coefficient.
+        - `__readPed(PedRun, **kwargs) -> dict`: Static method to read Ped data from
+        a file and return the Ped charge data.
+        - `__check_shape(self) -> None`: Method to check the shape of the
+        charge data arrays.
+        - `make(self, **kwargs) -> None`: Method to run the photo statistic method
+        and store the results.
+        - `plot_correlation(photoStat_gain, SPE_gain) -> fig`: Static method to plot
+        the correlation between photo statistic gain and SPE gain.
 
     Fields:
         - `SPE_resolution`: Property to get the SPE resolution.
         - `sigmaPedHG`: Property to get the standard deviation of Pedcharge_hg.
-        - `sigmaChargeHG`: Property to get the standard deviation of FFcharge_hg - meanPedHG.
+        - `sigmaChargeHG`: Property to get the standard deviation of FFcharge_hg -
+        meanPedHG.
         - `meanPedHG`: Property to get the mean of Pedcharge_hg.
         - `meanChargeHG`: Property to get the mean of FFcharge_hg - meanPedHG.
         - `BHG`: Property to calculate the BHG value.
         - `gainHG`: Property to calculate the gain for high gain.
         - `sigmaPedLG`: Property to get the standard deviation of Pedcharge_lg.
-        - `sigmaChargeLG`: Property to get the standard deviation of FFcharge_lg - meanPedLG.
+        - `sigmaChargeLG`: Property to get the standard deviation of FFcharge_lg -
+        meanPedLG.
         - `meanPedLG`: Property to get the mean of Pedcharge_lg.
         - `meanChargeLG`: Property to get the mean of FFcharge_lg - meanPedLG.
         - `BLG`: Property to calculate the BLG value.
@@ -90,15 +105,20 @@ class PhotoStatisticMaker(GainMaker):
         **kwargs,
     ) -> None:
         """
-        Initializes the instance of the PhotoStatisticMaker class with charge data and other parameters.
+        Initializes the instance of the PhotoStatisticMaker class with charge data
+        and other parameters.
 
         Args:
-            FFcharge_hg (np.ndarray): Array of charge data for high gain in the FF (Flat Field) image.
+            FFcharge_hg (np.ndarray): Array of charge data for high gain in the FF (
+            Flat Field) image.
             FFcharge_lg (np.ndarray): Array of charge data for low gain in the FF image.
-            Pedcharge_hg (np.ndarray): Array of charge data for high gain in the Ped (Pedestal) image.
-            Pedcharge_lg (np.ndarray): Array of charge data for low gain in the Ped image.
+            Pedcharge_hg (np.ndarray): Array of charge data for high gain in the Ped
+            (Pedestal) image.
+            Pedcharge_lg (np.ndarray): Array of charge data for low gain in the Ped
+            image.
             coefCharge_FF_Ped (float): Coefficient to convert FF charge to Ped charge.
-            SPE_resolution: Array-like of single photoelectron (SPE) resolutions for each pixel, or single value to use the same for each pixel.
+            SPE_resolution: Array-like of single photoelectron (SPE) resolutions for
+            each pixel, or single value to use the same for each pixel.
 
         Raises:
             TypeError: If SPE_resolution is not provided in a valid format.
@@ -143,17 +163,20 @@ class PhotoStatisticMaker(GainMaker):
         **kwargs,
     ):
         """
-        Create an instance of the PhotoStatisticMaker class from Pedestal and Flatfield runs stored in ChargesContainer.
+        Create an instance of the PhotoStatisticMaker class from Pedestal and
+        Flatfield runs stored in ChargesContainer.
 
         Args:
             FFcharge (ChargesContainer): Array of charge data for the FF image.
             Pedcharge (ChargesContainer): Array of charge data for the Ped image.
             coefCharge_FF_Ped (float): Coefficient to convert FF charge to Ped charge.
             SPE_result (str or Path): Path to the SPE result file (optional).
-            **kwargs: Additional keyword arguments for initializing the PhotoStatisticMaker instance.
+            **kwargs: Additional keyword arguments for initializing the
+            PhotoStatisticMaker instance.
 
         Returns:
-            PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created from the ChargesContainer instances.
+            PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created
+            from the ChargesContainer instances.
         """
         if isinstance(SPE_result, str) or isinstance(SPE_result, Path):
             SPE_resolution, SPE_pixels_id = __class__.__readSPE(SPE_result)
@@ -172,7 +195,8 @@ class PhotoStatisticMaker(GainMaker):
         cls, FFrun: int, Pedrun: int, SPE_result: str, **kwargs
     ):
         """
-        Create an instance of the PhotoStatisticMaker class by reading the FF (Flat Field) and Ped (Pedestal) charge data from run numbers.
+        Create an instance of the PhotoStatisticMaker class by reading the FF (Flat
+        Field) and Ped (Pedestal) charge data from run numbers.
 
         Args:
             FFrun (int): The run number for the FF charge data.
@@ -181,7 +205,8 @@ class PhotoStatisticMaker(GainMaker):
             **kwargs: Additional keyword arguments.
 
         Returns:
-            PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created from the FF and Ped charge data and the SPE result file.
+            PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created
+            from the FF and Ped charge data and the SPE result file.
         """
         FFkwargs = __class__.__readFF(FFrun, **kwargs)
         Pedkwargs = __class__.__readPed(Pedrun, **kwargs)
@@ -193,13 +218,15 @@ class PhotoStatisticMaker(GainMaker):
     @staticmethod
     def __readSPE(SPEresults) -> tuple:
         """
-        Reads the SPE resolution from a file and returns the resolution values and corresponding pixel IDs.
+        Reads the SPE resolution from a file and returns the resolution values and
+        corresponding pixel IDs.
 
         Args:
             SPEresults (str): The file path to the SPE results file.
 
         Returns:
-            tuple: A tuple containing the SPE resolution values and corresponding pixel IDs.
+            tuple: A tuple containing the SPE resolution values and corresponding
+            pixel IDs.
         """
         log.info(f"reading SPE resolution from {SPEresults}")
         table = QTable.read(SPEresults)
@@ -217,17 +244,22 @@ class PhotoStatisticMaker(GainMaker):
         SPE_pixels_id: np.ndarray,
     ) -> dict:
         """
-        Reshapes the FF (Flat Field) and Ped (Pedestal) charges based on the intersection of pixel IDs between the two charges.
-        Selects the charges for the high-gain and low-gain channels and returns them along with the common pixel IDs.
+        Reshapes the FF (Flat Field) and Ped (Pedestal) charges based on the
+        intersection of pixel IDs between the two charges.
+        Selects the charges for the high-gain and low-gain channels and returns them
+        along with the common pixel IDs.
 
         Args:
             FFcharge (ChargesContainer): The charges container for the Flat Field data.
             Pedcharge (ChargesContainer): The charges container for the Pedestal data.
             SPE_resolution (np.ndarray): An array containing the SPE resolutions.
-            SPE_pixels_id (np.ndarray): An array containing the pixel IDs for the SPE data.
+            SPE_pixels_id (np.ndarray): An array containing the pixel IDs for the SPE
+            data.
 
         Returns:
-            dict: A dictionary containing the reshaped data, including the common pixel IDs, SPE resolution (if provided), and selected charges for the high-gain and low-gain channels.
+            dict: A dictionary containing the reshaped data, including the common
+            pixel IDs, SPE resolution (if provided), and selected charges for the
+            high-gain and low-gain channels.
         """
         log.info("reshape of SPE, Ped and FF data with intersection of pixel ids")
         out = {}
@@ -269,7 +301,8 @@ class PhotoStatisticMaker(GainMaker):
         - FFRun (int): The run number for the FF data.
         - kwargs (optional): Additional keyword arguments.
         Returns:
-        - dict: A dictionary containing the FF charge data (`FFcharge`) and the coefficient for the FF charge (`coefCharge_FF_Ped`).
+        - dict: A dictionary containing the FF charge data (`FFcharge`) and the
+        coefficient for the FF charge (`coefCharge_FF_Ped`).
         """
         log.info("reading FF data")
         method = kwargs.get("method", "FullWaveformSum")
@@ -279,7 +312,8 @@ class PhotoStatisticMaker(GainMaker):
         if method != "FullWaveformSum":
             if FFchargeExtractorWindowLength is None:
                 e = Exception(
-                    f"we have to specify FFchargeExtractorWindowLength argument if charge extractor method is not FullwaveformSum"
+                    "we have to specify FFchargeExtractorWindowLength argument if "
+                    "charge extractor method is not FullwaveformSum"
                 )
                 log.error(e, exc_info=True)
                 raise e
@@ -331,7 +365,8 @@ class PhotoStatisticMaker(GainMaker):
 
     def __check_shape(self) -> None:
         """
-        Checks the shape of certain attributes and raises an exception if the shape is not as expected.
+        Checks the shape of certain attributes and raises an exception if the shape
+        is not as expected.
         """
         try:
             self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[
@@ -343,7 +378,8 @@ class PhotoStatisticMaker(GainMaker):
 
     def make(self, **kwargs) -> None:
         """
-        Runs the photo statistic method and assigns values to the high_gain and low_gain keys in the _results dictionary.
+        Runs the photo statistic method and assigns values to the high_gain and
+        low_gain keys in the _results dictionary.
 
         Args:
             **kwargs: Additional keyword arguments (not used in this method).
@@ -360,14 +396,16 @@ class PhotoStatisticMaker(GainMaker):
         photoStat_gain: np.ndarray, SPE_gain: np.ndarray
     ) -> plt.Figure:
         """
-        Plot the correlation between the photo statistic gain and the single photoelectron (SPE) gain.
+        Plot the correlation between the photo statistic gain and the single
+        photoelectron (SPE) gain.
 
         Args:
             photoStat_gain (np.ndarray): Array of photo statistic gain values.
             SPE_gain (np.ndarray): Array of SPE gain values.
 
         Returns:
-            fig (plt.Figure): The figure object containing the scatter plot and the linear fit line.
+            fig (plt.Figure): The figure object containing the scatter plot and the
+            linear fit line.
         """
 
         # Create a mask to filter the data points based on certain criteria
@@ -382,7 +420,8 @@ class PhotoStatisticMaker(GainMaker):
         x = np.linspace(photoStat_gain[mask].min(), photoStat_gain[mask].max(), 1000)
 
         # Define a lambda function for the linear fit line
-        y = lambda x: a * x + b
+        def y(x):
+            return a * x + b
 
         with quantity_support():
             # Create a scatter plot of the filtered data points
@@ -394,7 +433,8 @@ class PhotoStatisticMaker(GainMaker):
                 x,
                 y(x),
                 color="red",
-                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
+                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},"
+                f"\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
             )
 
             # Plot the line y = x
@@ -421,7 +461,8 @@ def SPE_resolution(self) -> float:
 @property
 def sigmaPedHG(self) -> float:
     """
-    Calculates and returns the standard deviation of Pedcharge_hg multiplied by the square root of coefCharge_FF_Ped.
+    Calculates and returns the standard deviation of Pedcharge_hg multiplied by the
+    square root of coefCharge_FF_Ped.
 
     Returns:
         float: The standard deviation of Pedcharge_hg.
@@ -501,7 +542,8 @@ def gainHG(self) -> float:
 @property
 def sigmaPedLG(self) -> float:
     """
-    Calculates and returns the standard deviation of Pedcharge_lg multiplied by the square root of coefCharge_FF_Ped.
+    Calculates and returns the standard deviation of Pedcharge_lg multiplied by the
+    square root of coefCharge_FF_Ped.
 
     Returns:
         float: The standard deviation of Pedcharge_lg.

@@ -5,11 +5,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.6
 #   kernelspec:
-#     display_name: Python (nectar-dev)
+#     display_name: nectarchain-ctapipe0.19
 #     language: python
-#     name: nectar-dev
+#     name: nectarchain-ctapipe0.19
 # ---
 
 # %% [markdown]
@@ -18,23 +18,22 @@
 # In this short notebook, we will see how to access data stored on the grid using the
 # DIRAC API, without the hassle of first manually downloading them locally.
 #
-# In order to achieve this, you will obviously need a `conda` environment in which all
-# relevant code is installed, such as `ctapipe`, `nectarchain`, but also `CTADIRAC`
-# itself. Please refer to the `nectarchain` installation procedure at
-# <https://github.com/cta-observatory/nectarchain> and follow the instructions to enable
-# DIRAC support.
+# In order to achieve this, you will obviously need a `conda` environment in which
+# all relevant code is installed, such as `ctapipe`, `nectarchain`, but also
+# `CTADIRAC` itself. Please refer to the `nectarchain` installation procedure at
+# <https://github.com/cta-observatory/nectarchain> and follow the instructions to
+# enable DIRAC support.
 #
 # You will also need to have an active proxy for EGI, initialized e.g. with:
 #
 # ```
-# dirac-proxy-init -U -M -g cta_nectarcam
+# dirac-proxy-init -M -g cta_nectarcam
 # ```
 #
 # You can also check whether you currently have an active proxy with the command
 # `dirac-proxy-info`.
 
 # %%
-# %matplotlib inline
 import os
 from glob import glob
 
@@ -42,13 +41,16 @@ from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.io import EventSeeker, EventSource
 from ctapipe.visualization import CameraDisplay
+
+# %%
+# %matplotlib inline
 from DIRAC.Interfaces.API.Dirac import Dirac
 
 # %%
 dirac = Dirac()
 
 # %%
-# ?dirac.getFile
+# dirac.getFile?
 
 # %%
 lfns = [

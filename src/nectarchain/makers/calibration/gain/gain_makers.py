@@ -1,9 +1,4 @@
 import logging
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 from copy import copy
 
 import astropy.units as u
@@ -12,6 +7,10 @@ from astropy.table import Column
 
 from ..core import CalibrationMaker
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 __all__ = ["GainMaker"]
 
 
@@ -19,14 +18,17 @@ class GainMaker(CalibrationMaker):
     """
     A class for gain calibration calculations on data.
 
-    Inherits from the `CalibrationMaker` class and adds functionality specific to gain calibration.
+    Inherits from the `CalibrationMaker` class and adds functionality specific to
+    gain calibration.
 
     Members:
         __high_gain (ndarray): Private field to store the high gain values.
         __low_gain (ndarray): Private field to store the low gain values.
 
     Methods:
-        __init__(self, *args, **kwargs): Initializes the `GainMaker` object and sets up the result table with columns for high gain, high gain error, low gain, low gain error, and validity flag.
+        __init__(self, *args, **kwargs): Initializes the `GainMaker` object and sets
+        up the result table with columns for high gain, high gain error, low gain,
+        low gain error, and validity flag.
         _high_gain.setter: Sets the high gain values.
         high_gain(self): Returns a copy of the high gain values.
         _low_gain.setter: Sets the low gain values.
@@ -35,7 +37,8 @@ class GainMaker(CalibrationMaker):
 
     def __init__(self, *args, **kwargs):
         """
-        Initializes the `GainMaker` object and sets up the result table with columns for high gain, high gain error, low gain, low gain error, and validity flag.
+        Initializes the `GainMaker` object and sets up the result table with columns
+        for high gain, high gain error, low gain, low gain error, and validity flag.
 
         Args:
             *args: Variable length argument list.

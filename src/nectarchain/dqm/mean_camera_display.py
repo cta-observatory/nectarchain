@@ -1,12 +1,11 @@
-from dqm_summary_processor import dqm_summary
-from matplotlib import pyplot as plt
-from ctapipe.visualization import CameraDisplay
-from ctapipe.instrument import CameraGeometry
-from ctapipe.coordinates import EngineeringCameraFrame
 import numpy as np
+from ctapipe.coordinates import EngineeringCameraFrame
+from ctapipe.visualization import CameraDisplay
+from dqm_summary_processor import DQMSummary
+from matplotlib import pyplot as plt
 
 
-class MeanCameraDisplay_HighLowGain(dqm_summary):
+class MeanCameraDisplay_HighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
         return None
@@ -21,15 +20,14 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
-        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
+        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+            EngineeringCameraFrame()
+        )
 
         self.cmap = "gnuplot2"
-        self.cmap2 = "gnuplot2"
 
         self.CameraAverage = []
         self.CameraAverage_ped = []
-
 
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
@@ -38,36 +36,34 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
             pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
             pixels = np.concatenate([pixel21, pixel])
-        else: 
+        else:
             pixels = pixel
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            self.CameraAverage_ped1 = (
-                evt.r0.tel[0].waveform[self.k].sum(axis=1))
+            self.CameraAverage_ped1 = evt.r0.tel[0].waveform[self.k].sum(axis=1)
             self.CameraAverage_ped.append(self.CameraAverage_ped1[pixels])
 
         else:
             self.counter_evt += 1
-            self.CameraAverage1 = (
-                evt.r0.tel[0].waveform[self.k].sum(axis=1))
+            self.CameraAverage1 = evt.r0.tel[0].waveform[self.k].sum(axis=1)
             self.CameraAverage.append(self.CameraAverage1[pixels])
-            
+
         return None
 
     def FinishRun(self):
         if self.counter_evt > 0:
             self.CameraAverage = np.array(self.CameraAverage)
-            self.CameraAverage = self.CameraAverage.sum(axis = 0)
-            self.CameraAverage_overEvents = (self.CameraAverage / self.counter_evt)
-        
+            self.CameraAverage = self.CameraAverage.sum(axis=0)
+            self.CameraAverage_overEvents = self.CameraAverage / self.counter_evt
+
             self.CameraAverage_overEvents_overSamp = (
                 self.CameraAverage_overEvents / self.Samp
             )
 
         if self.counter_ped > 0:
             self.CameraAverage_ped = np.array(self.CameraAverage_ped)
-            self.CameraAverage_ped = self.CameraAverage_ped.sum(axis = 0)
+            self.CameraAverage_ped = self.CameraAverage_ped.sum(axis=0)
             self.CameraAverage_ped_overEvents = (
                 self.CameraAverage_ped / self.counter_ped
             )
@@ -81,7 +77,6 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
-
             if self.counter_evt > 0:
                 # self.MeanCameraDisplay_Results_Dict[
                 # "CAMERA-AVERAGE-OverEVENTS-HIGH-GAIN"
@@ -132,10 +127,8 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
             self.disp1 = CameraDisplay(
                 geometry=self.camera[~self.pixelBAD[0]],
                 image=self.CameraAverage_overEvents_overSamp[~self.pixelBAD[0]],
-                cmap=self.cmap,
+                cmap=plt.cm.coolwarm,
             )
-            self.disp1.cmap = self.cmap
-            self.disp1.cmap = plt.cm.coolwarm
             self.disp1.add_colorbar()
             self.disp1.axes.text(2.0, 0, "Charge (DC)", rotation=90)
             plt.title("Camera average %s gain (ALL)" % gain_c)
@@ -153,12 +146,10 @@ class MeanCameraDisplay_HighLowGain(dqm_summary):
         if self.counter_ped > 0:
             fig2, self.disp2 = plt.subplots()
             self.disp2 = CameraDisplay(
-                geometry=self.camera2[~self.pixelBAD[0]],
+                geometry=self.camera[~self.pixelBAD[0]],
                 image=self.CameraAverage_ped_overEvents_overSamp[~self.pixelBAD[0]],
-                cmap=self.cmap2,
+                cmap=plt.cm.coolwarm,
             )
-            self.disp2.cmap = self.cmap2
-            self.disp2.cmap = plt.cm.coolwarm
             self.disp2.add_colorbar()
             self.disp2.axes.text(2.0, 0, "Charge (DC)", rotation=90)
             plt.title("Camera average %s gain (PED)" % gain_c)

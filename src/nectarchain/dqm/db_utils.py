@@ -1,13 +1,13 @@
-from ZODB import DB
-from ZEO import ClientStorage
 import transaction
+from ZEO import ClientStorage
+from ZODB import DB
+
+__all__ = ["DQMDB"]
 
 
-__all__ = ['DQMDB']
-
-class DQMDB():
+class DQMDB:
     def __init__(self, read_only=True):
-        self.server = 'localhost'
+        self.server = "localhost"
         addr = self.server, 8100
         zeo = ClientStorage.ClientStorage(addr, read_only=read_only)
         self.db = DB(zeo)
