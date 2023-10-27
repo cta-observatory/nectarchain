@@ -4,9 +4,14 @@ import sys
 import time
 
 from camera_monitoring import CameraMonitoring
+<<<<<<< HEAD:src/nectarchain/dqm/start_dqm.py
 from charge_integration import ChargeIntegrationHighLowGain
 from ctapipe.io import EventSeeker, EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
+=======
+from pixel_participation import PixelParticipation_HighLowGain
+
+>>>>>>> b92cee1 (Adding a new class: pixel_participation):src/nectarchain/dqm/start_calib.py
 from db_utils import DQMDB
 from matplotlib import pyplot as plt
 from mean_camera_display import MeanCameraDisplay_HighLowGain
@@ -126,6 +131,8 @@ e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
 f = ChargeIntegrationHighLowGain(HIGH_GAIN)
 g = ChargeIntegrationHighLowGain(LOW_GAIN)
 h = CameraMonitoring(HIGH_GAIN)
+e = PixelParticipation_HighLowGain(HIGH_GAIN)
+f = PixelParticipation_HighLowGain(LOW_GAIN)
 
 processors = list()
 
@@ -137,6 +144,8 @@ processors.append(e)
 processors.append(f)
 processors.append(g)
 processors.append(h)
+processors.append(e)
+processors.append(f)
 
 
 # LIST OF DICT RESULTS
@@ -148,6 +157,8 @@ Results_ChargeIntegration_HighGain = {}
 Results_ChargeIntegration_LowGain = {}
 Results_TriggerStatistics = {}
 Results_CameraMonitoring = {}
+Results_PixelParticipation_HighGain = {}
+Results_PixelParticipation_LowGain = {}
 
 NESTED_DICT = {}  # The final results dictionary
 NESTED_DICT_KEYS = [
@@ -159,6 +170,8 @@ NESTED_DICT_KEYS = [
     "Results_ChargeIntegration_HighGain",
     "Results_ChargeIntegration_LowGain",
     "Results_CameraMonitoring",
+    "Results_PixelParticipation_HighGain",
+    "Results_PixelParticipation_LowGain",
 ]
 # NESTED_DICT_KEYS = ["Results_CameraMonitoring"]
 
