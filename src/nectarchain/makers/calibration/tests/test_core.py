@@ -5,7 +5,11 @@ import pytest
 
 from nectarchain.makers.calibration.core import CalibrationMaker
 
-pytest.disable()
+pytest.skip(
+    "Some classes to be imported here were dropped from nectarchain,"
+    "skipping all these tests entirely",
+    allow_module_level=True,
+)
 
 
 class CalibrationMakerforTest(CalibrationMaker):

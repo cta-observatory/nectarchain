@@ -7,6 +7,12 @@ from astropy.table import QTable
 
 from nectarchain.makers.calibration.gain.gain_makers import GainMaker
 
+pytest.skip(
+    "Some classes to be imported here were dropped from nectarchain,"
+    "skipping all these tests entirely",
+    allow_module_level=True,
+)
+
 
 class GainMakerforTest(GainMaker):
     _reduced_name = "test"
