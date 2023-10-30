@@ -10,6 +10,7 @@ from ctapipe.io import EventSeeker, EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
 =======
 from pixel_participation import PixelParticipation_HighLowGain
+from pixel_timeline import PixelTimeline_HighLowGain
 
 >>>>>>> b92cee1 (Adding a new class: pixel_participation):src/nectarchain/dqm/start_calib.py
 from db_utils import DQMDB
@@ -131,8 +132,10 @@ e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
 f = ChargeIntegrationHighLowGain(HIGH_GAIN)
 g = ChargeIntegrationHighLowGain(LOW_GAIN)
 h = CameraMonitoring(HIGH_GAIN)
-e = PixelParticipation_HighLowGain(HIGH_GAIN)
-f = PixelParticipation_HighLowGain(LOW_GAIN)
+i = PixelParticipation_HighLowGain(HIGH_GAIN)
+j = PixelParticipation_HighLowGain(LOW_GAIN)
+k = PixelTimeline_HighLowGain(HIGH_GAIN)
+l = PixelTimeline_HighLowGain(LOW_GAIN)
 
 processors = list()
 
@@ -144,23 +147,28 @@ processors.append(e)
 processors.append(f)
 processors.append(g)
 processors.append(h)
-processors.append(e)
-processors.append(f)
+processors.append(i)
+processors.append(j)
+processors.append(k)
+processors.append(l)
 
 
 # LIST OF DICT RESULTS
+Results_TriggerStatistics = {}
 Results_MeanWaveForms_HighGain = {}
 Results_MeanWaveForms_LowGain = {}
 Results_MeanCameraDisplay_HighGain = {}
 Results_MeanCameraDisplay_LowGain = {}
 Results_ChargeIntegration_HighGain = {}
 Results_ChargeIntegration_LowGain = {}
-Results_TriggerStatistics = {}
 Results_CameraMonitoring = {}
 Results_PixelParticipation_HighGain = {}
 Results_PixelParticipation_LowGain = {}
+Results_PixelTimeline_HighGain = {}
+Results_PixelTimeline_LowGain = {}
 
 NESTED_DICT = {}  # The final results dictionary
+
 NESTED_DICT_KEYS = [
     "Results_TriggerStatistics",
     "Results_MeanWaveForms_HighGain",
@@ -172,8 +180,11 @@ NESTED_DICT_KEYS = [
     "Results_CameraMonitoring",
     "Results_PixelParticipation_HighGain",
     "Results_PixelParticipation_LowGain",
+    "Results_PixelTimeline_HighGain",
+    "Results_PixelTimeline_LowGain",
 ]
-# NESTED_DICT_KEYS = ["Results_CameraMonitoring"]
+
+#NESTED_DICT_KEYS = ["Results_PixelParticipation_HighGain", "Results_PixelTimeline_HighGain"]
 
 # START
 for p in processors:

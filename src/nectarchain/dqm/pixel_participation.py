@@ -16,8 +16,6 @@ class PixelParticipation_HighLowGain(dqm_summary):
         self.Pix = Pix
         self.Samp = Samp
 
-        self.CameraAverage = np.zeros(self.Pix)
-        self.CameraAverage_ped = np.zeros(self.Pix)
         self.counter_evt = 0
         self.counter_ped = 0
 
@@ -27,8 +25,6 @@ class PixelParticipation_HighLowGain(dqm_summary):
         self.cmap = "gnuplot2"
         self.cmap2 = "gnuplot2"
 
-        self.CameraAverage = []
-        self.CameraAverage_ped = []
 
         self.BadPixels_ped = np.zeros(self.Pix)
         self.BadPixels =  np.zeros(self.Pix)
@@ -45,12 +41,12 @@ class PixelParticipation_HighLowGain(dqm_summary):
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            BadPixels_ped1 = list(map(int, pixelBAD))
+            BadPixels_ped1 = list(map(int, pixelBAD[pixels]))
             self.BadPixels_ped += BadPixels_ped1
 
         else:
             self.counter_evt += 1
-            BadPixels1 = list(map(int, pixelBAD))
+            BadPixels1 = list(map(int, pixelBAD[pixels]))
             self.BadPixels += BadPixels1
         return None
 

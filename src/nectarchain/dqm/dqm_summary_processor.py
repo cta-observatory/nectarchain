@@ -36,11 +36,12 @@ class DQMSummary:
     def WriteAllResults(self, path, DICT):
         data2 = Table()
         data1 = Table()
+        data0 = Table()
         data = Table()
         hdu, hdu1, hdu2 = None, None, None
         hdulist = fits.HDUList()
         for i, j in DICT.items():
-            if i == "Results_TriggerStatistics":
+            if (i == "Results_TriggerStatistics"):
                 for n2, m2 in j.items():
                     data2[n2] = m2
                 hdu2 = fits.BinTableHDU(data2)
@@ -52,7 +53,13 @@ class DQMSummary:
                 for n1, m1 in j.items():
                     data1[n1] = m1
                 hdu1 = fits.BinTableHDU(data1)
-                hdu1.name = "MWF"
+                hdu1.name = "MWF"    
+
+            elif (i == "Results_PixelTimeline_HighGain") or (i == "Results_PixelTimeline_LowGain"):
+                for n0, m0 in j.items():
+                    data0[n0] = m0 
+                hdu0 = fits.BinTableHDU(data0)
+                hdu0.name = "BPX"
 
             else:
                 for n, m in j.items():
@@ -67,11 +74,25 @@ class DQMSummary:
             hdulist.append(hdu1)
         else:
             print("No MWF studies requests")
+<<<<<<< HEAD
         if hdu:
+=======
+        try:
+            hdulist.append(hdu0)
+        except:
+            print("No Pixel Timeline studies requests")
+        try:
+>>>>>>> cc29b1f (Adding BPX timeline module)
             hdulist.append(hdu)
         else:
             print("No Camera studies requests")
+<<<<<<< HEAD
         FileName = path + "_Results.fits"
+=======
+
+        
+        FileName = path + '_Results.fits'
+>>>>>>> cc29b1f (Adding BPX timeline module)
         print(FileName)
         hdulist.writeto(FileName, overwrite=True)
         return None
