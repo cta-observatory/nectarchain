@@ -4,16 +4,13 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-from .core import CalibrationMaker
+from .core import NectarCAMCalibrationTool
 
-__all__ = ["PedestalMaker"]
+__all__ = ["PedestalNectarCAMCalibrationTool"]
 
 
-class PedestalMaker(CalibrationMaker):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-    def make(self):
+class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
+    def start(self):
         raise NotImplementedError(
             "The computation of the pedestal calibration is not yet implemented, feel free to contribute !:)"
         )
