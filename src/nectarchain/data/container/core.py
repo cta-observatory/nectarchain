@@ -1,16 +1,22 @@
 import logging
 
-import numpy as np
-from ctapipe.containers import Container, Field, Map, partial
-
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+import copy
+import numpy as np
+from ctapipe.containers import Field,Container,partial,Map
+from ctapipe.core.container import FieldValidationError
 
-__all__ = ["ArrayDataContainer", "TriggerMapContainer"]
 
-
+__all__ = ["ArrayDataContainer","TriggerMapContainer","get_array_keys","merge_map_ArrayDataContainer"]
+def get_array_keys(container : Container) : 
+        keys = []
+        for field in container.fields : 
+            if field.type == np.ndarray : 
+                keys.append(field.key)
+        return keys
 class NectarCAMContainer(Container):
     """base class for the NectarCAM containers. This contaner cannot berecursive,
     to be directly written with a HDF5TableWriter"""
@@ -39,15 +45,15 @@ class ArrayDataContainer(NectarCAMContainer):
     """
 
     run_number = Field(
-        type=int,
+        type=np.uint16,
         description="run number associated to the waveforms",
     )
     nevents = Field(
-        type=int,
+        type=np.uint64,
         description="number of events",
     )
     npixels = Field(
-        type=int,
+        type=np.uint16,
         description="number of effective pixels",
     )
     pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
@@ -84,9 +90,38 @@ class ArrayDataContainer(NectarCAMContainer):
         type=np.ndarray, dtype=np.uint16, ndim=1, description="events multiplicity"
     )
 
+    
 
-class TriggerMapContainer(Container):
-    containers = Field(
-        default_factory=partial(Map, Container),
-        description="trigger mapping of Container",
-    )
+class TriggerMapContainer(Container) : 
+    containers = Field(default_factory=partial(Map, Container),
+                       description = "trigger mapping of Container"
+                       )
+
+    def validate(self) : 
+        super().validate()
+        for i,container in enumerate(self.containers) : 
+            if i==0 :
+                container_type = type(container)
+            else : 
+                if not(isinstance(container,container_type)) : 
+                    raise FieldValidationError("all the containers mapped must have the same type to be merged ")
+
+def merge_map_ArrayDataContainer(triggerMapContainer : TriggerMapContainer) : 
+    triggerMapContainer.validate()
+    keys = list(triggerMapContainer.containers.keys())
+    output_container = copy.deepcopy(triggerMapContainer.containers[keys[0]])
+    for key in keys[1:] : 
+        for field in get_array_keys(triggerMapContainer.containers[key]):
+            output_container[field] = np.concatenate((output_container[field],triggerMapContainer.containers[key][field]),axis = 0)
+        if "nevents" in output_container.fields : 
+            output_container.nevents += triggerMapContainer.containers[key].nevents
+    return output_container
+
+#class TriggerMapArrayDataContainer(TriggerMapContainer):
+#    containers = Field(default_factory=partial(Map, ArrayDataContainer),
+#                       description = "trigger mapping of arrayDataContainer"
+#                       )
+
+
+
+
