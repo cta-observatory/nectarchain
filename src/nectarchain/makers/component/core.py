@@ -7,50 +7,56 @@ log.handlers = logging.getLogger("__main__").handlers
 import numpy as np
 from abc import ABC, abstractmethod
 import copy
+from tables.exceptions import NoSuchNodeError
+from pathlib import Path
 
 from ctapipe.core import Component,TelescopeComponent
 from ctapipe.instrument import CameraGeometry
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Unicode,Integer
+from ctapipe.core.traits import Unicode,Integer,ComponentNameList
 
 
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from ctapipe_io_nectarcam import NectarCAMEventSource, constants
+from ctapipe.containers import EventType,Container
+from ctapipe.io import HDF5TableReader
+
 
 from ...data.container.core import ArrayDataContainer
-
+from ...data.container import (ChargesContainer,
+                               ChargesContainers,
+                               TriggerMapContainer,
+                               ArrayDataContainer,
+                               WaveformsContainer,
+                               WaveformsContainers
+                               )
 
 __all__ = ["ArrayDataComponent",
            "NectarCAMComponent",
            "get_valid_component",
-           "get_specific_traits",
-           "get_configurable_traits",
            ]
 
 def get_valid_component() : 
     return NectarCAMComponent.non_abstract_subclasses()
 
-def get_specific_traits(component : Component) : 
-    traits_dict = component.class_traits()
-    traits_dict.pop("config",True)
-    traits_dict.pop("parent",True)
-    return traits_dict
 
-def get_configurable_traits(component : Component) : 
-    traits_dict = get_specific_traits(component)
-    output_traits_dict = traits_dict.copy()
-    for key,item in traits_dict.items() : 
-        if item.read_only : 
-            output_traits_dict.pop(key)
-    return output_traits_dict
             
 class NectarCAMComponent(TelescopeComponent) : 
     """The base class for NectarCAM components"""
+    SubComponents = ComponentNameList(
+        Component,
+        default_value = None,
+        allow_none = True,
+        read_only = True,                           
+        help="List of Component names that are used insite current component, this is used to resolve recusively the configurable traits defined in sub-components"
+    ).tag(config=True)
+
     def __init__(self, subarray, config=None, parent=None,*args, **kwargs):
         super().__init__(subarray = subarray, config = config, parent = parent, *args,**kwargs)
         self.__pixels_id = parent._event_source.camera_config.expected_pixels_id
         self.__run_number = parent.run_number
         self.__npixels=parent.npixels
+    
     @abstractmethod
     def __call__(
             self, event: NectarCAMDataContainer, *args, **kwargs
@@ -73,12 +79,6 @@ class NectarCAMComponent(TelescopeComponent) :
     @property
     def npixels(self) :
         return copy.deepcopy(self.__npixels)
-
-
-#class NectarCAMTelescopeComponent(TelescopeComponent) : 
-#    """The base class for NectarCAM telescope component"""
-#    pass
-
 
 class ArrayDataComponent(NectarCAMComponent) :
     TEL_ID = Integer(default_value = 0,
@@ -269,6 +269,21 @@ class ArrayDataComponent(NectarCAMComponent) :
         return res
 
     @staticmethod
+    def merge_along_slices(
+        containers: TriggerMapContainer
+        ) -> ArrayDataContainer:
+        keys_list = list(containers.containers.keys())
+        merged_containers = containers.containers[keys_list[0]]
+        for trigger in merged_containers.containers.keys() : 
+            for key in keys_list[1:] : 
+                if trigger in containers.containers[key].containers.keys() :
+                    merged_containers.containers[trigger] =  __class__.merge(merged_containers.containers[trigger],containers.containers[key].containers[trigger])
+                for new_trigger in containers.containers[key].containers.keys() : 
+                    if not(new_trigger in merged_containers.containers.keys()) : 
+                        merged_containers.containers[new_trigger] = containers.containers[key].containers[new_trigger]
+        return merged_containers
+
+    @staticmethod
     def merge(
         container_a: ArrayDataContainer, container_b: ArrayDataContainer
     ) -> ArrayDataContainer:
@@ -280,27 +295,82 @@ class ArrayDataComponent(NectarCAMComponent) :
         if type(container_a) != type(container_b):
             raise Exception("The containers have to be instnace of the same class")
 
-        if np.array_equal(container_a.pixels_id, container_b.pixels_id):
+        if not(np.array_equal(container_a.pixels_id, container_b.pixels_id)):
             raise Exception("The containers have not the same pixels ids")
 
-        merged_container = container_a.__class__.__new__()
+        merged_container = container_a.__class__()
 
         for field in container_a.keys():
-            if ~isinstance(container_a[field], np.ndarray):
-                if container_a[field] != container_b[field]:
+            if not(isinstance(container_a[field], np.ndarray)):
+                if field!="nevents" and (container_a[field] != container_b[field]):
                     raise Exception(
                         f"merge impossible because of {field} filed (values are {container_a[field]} and {container_b[field]}"
                     )
 
         for field in container_a.keys():
             if isinstance(container_a[field], np.ndarray):
-                merged_container[field] = np.concatenate(
-                    container_a[field], container_a[field], axis=0
-                )
+                if field!="pixels_id" : 
+                    merged_container[field] = np.concatenate(
+                        (container_a[field], container_b[field]), axis=0
+                    )
+                else : 
+                    merged_container[field] = container_a[field]
             else:
-                merged_container[field] = container_a[field]
+                if field=="nevents" : 
+                    merged_container[field] = container_a[field] + container_b[field]
+                else : 
+                    merged_container[field] = container_a[field]
 
         return merged_container
+    
+
+
+    @staticmethod
+    def _container_from_hdf5(path,slice_index = None,container_class = ArrayDataContainer) : 
+        if isinstance(path,str) : 
+            path = Path(path)
+        
+        container = eval(f"{container_class.__name__}s")()
+        
+
+        with HDF5TableReader(path) as reader : 
+            if slice_index is None or len(reader._h5file.root.__members__) > 1 : 
+                for data in reader._h5file.root.__members__ : 
+                    container.containers[data] = eval(f"{container_class.__name__}s")()
+                    for key,trigger in EventType.__members__.items() : 
+                        try : 
+                            waveforms_data = eval(f"reader._h5file.root.{data}.__members__") 
+                            _mask = [container_class.__name__ in _word for _word in waveforms_data] 
+                            _waveforms_data = np.array(waveforms_data)[_mask]
+                            if len(_waveforms_data) == 1 : 
+                                tableReader = reader.read(table_name = f"/{data}/{_waveforms_data[0]}/{trigger.name}", containers = container_class)
+                                container.containers[data].containers[trigger] = next(tableReader)
+                            else : 
+                                log.info(f"there is {len(_waveforms_data)} entry corresponding to a {container_class} table save, unable to load")
+                        except NoSuchNodeError as err:
+                            log.warning(err)
+                        except Exception as err:
+                            log.error(err,exc_info = True)
+                            raise err
+            else : 
+                data = "data" if slice_index is None else f"data_{slice_index}"
+                for key,trigger in EventType.__members__.items() : 
+                    try : 
+                        container_data = eval(f"reader._h5file.root.{data}.__members__") 
+                        _mask = [container_class.__name__ in _word for _word in container_data] 
+                        _container_data = container_data[_mask]
+                        if len(_container_data) == 1 : 
+                            tableReader = reader.read(table_name = f"/{data}/{_container_data[0]}/{trigger.name}", containers = container_class)
+                            container.containers[trigger] = next(tableReader)
+                        else : 
+                            log.info(f"there is {len(_container_data)} entry corresponding to a {container_class} table save, unable to load")
+                    except NoSuchNodeError as err:
+                        log.warning(err)
+                    except Exception as err:
+                        log.error(err,exc_info = True)
+                        raise err
+        return container
+
 
     @property
     def nsamples(self):
@@ -333,7 +403,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns:
             int: The number of events for the specified trigger type.
         """
-        return len(self.__event_id[__class__._get_name_trigger(trigger)])
+        return ArrayDataContainer.fields['nevents'].type(len(self.__event_id[__class__._get_name_trigger(trigger)]))
 
     @property
     def _broken_pixels_hg(self):
@@ -356,7 +426,7 @@ class ArrayDataComponent(NectarCAMComponent) :
             np.ndarray: An array of broken pixels for high gain for the specified trigger type.
         """
         return np.array(
-            self.__broken_pixels_hg[__class__._get_name_trigger(trigger)], dtype=bool
+            self.__broken_pixels_hg[__class__._get_name_trigger(trigger)], dtype=ArrayDataContainer.fields['broken_pixels_hg'].dtype
         )
 
     @property
@@ -380,7 +450,7 @@ class ArrayDataComponent(NectarCAMComponent) :
             np.ndarray: An array of broken pixels for low gain for the specified trigger type.
         """
         return np.array(
-            self.__broken_pixels_lg[__class__._get_name_trigger(trigger)], dtype=bool
+            self.__broken_pixels_lg[__class__._get_name_trigger(trigger)], dtype=ArrayDataContainer.fields['broken_pixels_lg'].dtype
         )
 
     def ucts_timestamp(self, trigger: EventType):
@@ -394,7 +464,7 @@ class ArrayDataComponent(NectarCAMComponent) :
             np.ndarray: An array of UCTS timestamps for the specified trigger type.
         """
         return np.array(
-            self.__ucts_timestamp[__class__._get_name_trigger(trigger)], dtype=np.uint64
+            self.__ucts_timestamp[__class__._get_name_trigger(trigger)], dtype=ArrayDataContainer.fields['ucts_timestamp'].dtype
         )
 
     def ucts_busy_counter(self, trigger: EventType):
@@ -409,7 +479,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         """
         return np.array(
             self.__ucts_busy_counter[__class__._get_name_trigger(trigger)],
-            dtype=np.uint32,
+            dtype=ArrayDataContainer.fields['ucts_busy_counter'].dtype,
         )
 
     def ucts_event_counter(self, trigger: EventType):
@@ -424,7 +494,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         """
         return np.array(
             self.__ucts_event_counter[__class__._get_name_trigger(trigger)],
-            dtype=np.uint32,
+            dtype=ArrayDataContainer.fields['ucts_event_counter'].dtype,
         )
 
     def event_type(self, trigger: EventType):
@@ -438,7 +508,7 @@ class ArrayDataComponent(NectarCAMComponent) :
             np.ndarray: An array of event types for the specified trigger type.
         """
         return np.array(
-            self.__event_type[__class__._get_name_trigger(trigger)], dtype=np.uint8
+            self.__event_type[__class__._get_name_trigger(trigger)], dtype=ArrayDataContainer.fields['event_type'].dtype
         )
 
     def event_id(self, trigger: EventType):
@@ -452,7 +522,7 @@ class ArrayDataComponent(NectarCAMComponent) :
             np.ndarray: An array of event IDs for the specified trigger type.
         """
         return np.array(
-            self.__event_id[__class__._get_name_trigger(trigger)], dtype=np.uint32
+            self.__event_id[__class__._get_name_trigger(trigger)], dtype=ArrayDataContainer.fields['event_id'].dtype
         )
 
     def multiplicity(self, trigger: EventType):
@@ -469,7 +539,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         if len(tmp) == 0:
             return np.array([])
         else:
-            return np.uint16(np.count_nonzero(tmp, axis=1))
+            return ArrayDataContainer.fields['multiplicity'].dtype.type(np.count_nonzero(tmp, axis=1))
 
     def trig_pattern(self, trigger: EventType):
         """
@@ -499,7 +569,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         """
         return np.array(
             self.__trig_patter_all[f"{__class__._get_name_trigger(trigger)}"],
-            dtype=bool,
+            dtype=ArrayDataContainer.fields['trig_pattern_all'].dtype,
         )
 
     

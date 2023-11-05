@@ -10,15 +10,16 @@ from abc import ABC, abstractmethod
 import copy
 import tqdm
 from argparse import ArgumentError
-
+from pathlib import Path
 
 from ctapipe.core import Component,TelescopeComponent
 from ctapipe.instrument import CameraGeometry
 from ctapipe.containers import EventType
 from ctapipe.core.traits import List
 from ctapipe.instrument import SubarrayDescription
+from ctapipe.io import HDF5TableReader
 
-
+from tables.exceptions import NoSuchNodeError
 
 
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
@@ -30,6 +31,8 @@ from ...data.container import WaveformsContainer,WaveformsContainers
 __all__ = ["WaveformsComponent"]
 
 class WaveformsComponent(ArrayDataComponent) : 
+    SubComponents = copy.deepcopy(ArrayDataComponent.SubComponents)
+    SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None,*args, **kwargs):
         super().__init__(subarray = subarray, config = config, parent = parent, *args,**kwargs)
@@ -41,9 +44,9 @@ class WaveformsComponent(ArrayDataComponent) :
     @staticmethod
     def create_from_events_list(
         events_list: list,
-        run_number: int,
-        npixels: int,
-        nsamples: int,
+        run_number: np.uint16,
+        npixels: np.uint16,
+        nsamples: np.uint8,
         subarray: SubarrayDescription,
         pixels_id: int,
         tel_id : int = None,
@@ -175,12 +178,12 @@ class WaveformsComponent(ArrayDataComponent) :
         output = WaveformsContainers()
         for i,trigger in enumerate(self.trigger_list):
             waveformsContainer = WaveformsContainer(
-                run_number=self._run_number,
-                npixels=self._npixels,
-                nsamples=self._nsamples,
+                run_number=WaveformsContainer.fields['run_number'].type(self._run_number),
+                npixels=WaveformsContainer.fields['npixels'].type(self._npixels),
+                nsamples=WaveformsContainer.fields['nsamples'].type(self._nsamples),
                 #subarray=self.subarray,
                 camera=self.CAMERA_NAME,
-                pixels_id=self._pixels_id,
+                pixels_id=WaveformsContainer.fields['pixels_id'].dtype.type(self._pixels_id),
                 nevents=self.nevents(trigger),
                 wfs_hg=self.wfs_hg(trigger),
                 wfs_lg=self.wfs_lg(trigger),
@@ -197,6 +200,10 @@ class WaveformsComponent(ArrayDataComponent) :
             )
             output.containers[trigger] = waveformsContainer
         return output
+    
+    @staticmethod
+    def waveformsContainer_from_hdf5(path,slice_index = None) : 
+        return super(__class__,__class__)._container_from_hdf5(path,slice_index=slice_index,container_class=WaveformsContainer)
 
     @staticmethod
     def sort(waveformsContainer: WaveformsContainer, method: str = "event_id"):
@@ -213,7 +220,6 @@ class WaveformsComponent(ArrayDataComponent) :
             run_number=waveformsContainer.run_number,
             npixels=waveformsContainer.npixels,
             nsamples=waveformsContainer.nsamples,
-            subarray=waveformsContainer.subarray,
             camera=waveformsContainer.camera,
             pixels_id=waveformsContainer.pixels_id,
             nevents=waveformsContainer.nevents,
@@ -226,7 +232,6 @@ class WaveformsComponent(ArrayDataComponent) :
                     in [
                         "run_number",
                         "npixels",
-                        "nsamples",
                         "subarray",
                         "camera",
                         "pixels_id",
@@ -308,7 +313,7 @@ class WaveformsComponent(ArrayDataComponent) :
             An array of waveform data for the specified trigger type.
         """
         return np.array(
-            self.__wfs_hg[__class__._get_name_trigger(trigger)], dtype=np.uint16
+            self.__wfs_hg[__class__._get_name_trigger(trigger)], dtype=WaveformsContainer.fields['wfs_hg'].dtype
         )
 
     def wfs_lg(self, trigger: EventType):
@@ -322,5 +327,5 @@ class WaveformsComponent(ArrayDataComponent) :
             An array of waveform data for the specified trigger type in the low gain channel.
         """
         return np.array(
-            self.__wfs_lg[__class__._get_name_trigger(trigger)], dtype=np.uint16
+            self.__wfs_lg[__class__._get_name_trigger(trigger)], dtype=WaveformsContainer.fields['wfs_lg'].dtype
         )
