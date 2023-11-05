@@ -33,7 +33,7 @@ class WaveformsContainer(ArrayDataContainer):
     """
 
     nsamples = Field(
-        type=int,
+        type=np.uint8,
         description="number of samples in the waveforms",
     )
     #subarray = Field(type=SubarrayDescription, description="The subarray  description")
