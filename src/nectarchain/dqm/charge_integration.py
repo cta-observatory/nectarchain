@@ -1,31 +1,30 @@
-from dqm_summary_processor import dqm_summary
-from matplotlib import pyplot as plt
-import numpy as np
-from ctapipe.visualization import CameraDisplay
-from ctapipe.instrument import CameraGeometry
-from ctapipe.coordinates import EngineeringCameraFrame
-from traitlets.config.loader import Config
 import ctapipe.instrument.camera.readout
+import numpy as np
+from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image import LocalPeakWindowSum
+from ctapipe.visualization import CameraDisplay
+from dqm_summary_processor import DQMSummary
+from matplotlib import pyplot as plt
+from traitlets.config.loader import Config
 
 
-class ChargeIntegration_HighLowGain(dqm_summary):
+class ChargeIntegrationHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
-        return None
 
-    def ConfigureForRun(self, path, Chan, Samp, Reader1):
-        # define number of channels and samples
-        self.Chan = Chan
+    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+        # define number of pixels and samples
+        self.Pix = Pix
         self.Samp = Samp
 
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())#CameraGeometry.from_name("NectarCam", 3)
+        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(
+            EngineeringCameraFrame()
+        )
         self.cmap = "gnuplot2"
 
-        # reader1=EventSource(input_url=path, max_events = 1)
         self.subarray = Reader1.subarray
         subarray = Reader1.subarray
         subarray.tel[
@@ -33,9 +32,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         ].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name(
             "NectarCam"
         )
-        config = Config(
-            {"LocalPeakWindowSum": {"window_shift": 4, "window_width": 12}}
-        )
+        config = Config({"LocalPeakWindowSum": {"window_shift": 4, "window_width": 12}})
 
         self.integrator = LocalPeakWindowSum(subarray, config=config)
 
@@ -45,31 +42,35 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         self.image_ped = []
         self.peakpos_ped = []
 
-        
-
-
     def ProcessEvent(self, evt, noped):
-        #print("test", evt.r0.tel[0].waveform[0])
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        pixel21 = np.arange(0, 21, 1, dtype=int)
-        pixel = list(pixel)
-        pixel21 = list(pixel21)
-        pixels = np.concatenate([pixel21, pixel])
+        if len(pixel) < self.Pix:
+            pixel_masked_shutter = list(
+                np.arange(0, self.Pix - len(pixel), 1, dtype=int)
+            )
+            pixel = list(pixel)
+            pixels = np.concatenate([pixel_masked_shutter, pixel])
+        else:
+            pixels = pixel
 
-        waveform=evt.r0.tel[0].waveform[self.k]
+        waveform = evt.r0.tel[0].waveform[self.k]
 
         if noped:
             ped = np.mean(waveform[:, 20])
             w_noped = waveform - ped
-            output = self.integrator(w_noped,0,np.zeros(self.Chan, dtype = int), self.pixelBAD)
+            output = self.integrator(
+                w_noped, 0, np.zeros(self.Pix, dtype=int), self.pixelBAD
+            )
             image = output.image
             peakpos = output.peak_time
             image = image[pixels]
             peakpos = peakpos[pixels]
 
         else:
-            output = self.integrator(waveform,0,np.zeros(self.Chan, dtype = int), self.pixelBAD)
+            output = self.integrator(
+                waveform, 0, np.zeros(self.Pix, dtype=int), self.pixelBAD
+            )
             image = output.image
             peakpos = output.peak_time
             image = image[pixels]
@@ -398,7 +399,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
         # Charge integration SPECTRUM
         if self.counter_evt > 0:
             fig9, disp = plt.subplots()
-            for i in range(self.Chan):
+            for i in range(self.Pix):
                 plt.hist(
                     self.image_all[:, i],
                     100,
@@ -435,7 +436,7 @@ class ChargeIntegration_HighLowGain(dqm_summary):
 
         if self.counter_ped > 0:
             fig10, disp = plt.subplots()
-            for i in range(self.Chan):
+            for i in range(self.Pix):
                 plt.hist(
                     self.image_ped[:, i],
                     100,

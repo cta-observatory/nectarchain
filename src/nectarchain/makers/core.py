@@ -93,7 +93,6 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     )
     examples = """To be implemented"""
 
-
     aliases = {
         ("i", "input"): "EventsLoopNectarCAMCalibrationTool.run_file",
         ("r", "run-number"): "EventsLoopNectarCAMCalibrationTool.run_number",

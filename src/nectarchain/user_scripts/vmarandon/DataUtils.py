@@ -108,7 +108,8 @@ def GetLongRunTimeEdges(run,path=None,event_type=None,delta_t_second=10.):
     #print(nEvents)
 
     data = DataReader(run,path=path)
-    data.Connect("trigger")
+    if not data.Connect("trigger"):
+        data = GetNectarCamEvents(run=run,path=path,applycalib=False)
 
     times_edges = list()
 
@@ -119,26 +120,27 @@ def GetLongRunTimeEdges(run,path=None,event_type=None,delta_t_second=10.):
 
     # if there is a time gap of more than delta_t seconds, then we consider that this is the end of a data block
     delta_t = TimeDelta(delta_t_second,format="sec")
-
-    for evt in tqdm(data,total=nEvents):
-        current_time = data.trigger.time
-        
-        if time_start is None:
-            time_start = current_time
-        
-        if evt.trigger.event_type == EventType.SKY_PEDESTAL:
-
-            if previous_time is None:
-                previous_time = current_time
+    try:
+        for evt in tqdm(data,total=nEvents):
+            current_time = evt.trigger.time
             
-            if current_time - previous_time > delta_t:
-                #print(f"time: {time} previous time: {previous_time} delta: {(time - previous_time).to_value('s')}")
-                #if (previous_time - time) > delta_t:
-                times_edges.append( (time_start,previous_time) )
+            if time_start is None:
                 time_start = current_time
+            
+            if evt.trigger.event_type == event_type:
 
-            previous_time = current_time
-    
+                if previous_time is None:
+                    previous_time = current_time
+                
+                if current_time - previous_time > delta_t:
+                    #print(f"time: {time} previous time: {previous_time} delta: {(time - previous_time).to_value('s')}")
+                    #if (previous_time - time) > delta_t:
+                    times_edges.append( (time_start,previous_time) )
+                    time_start = current_time
+
+                previous_time = current_time
+    except Exception as err:
+        print(f"Error while reading file: [{err}]")
     times_edges.append( (time_start,current_time) )
     # write the last time
     #print(f"There is : {len(times_edges)} intervals")

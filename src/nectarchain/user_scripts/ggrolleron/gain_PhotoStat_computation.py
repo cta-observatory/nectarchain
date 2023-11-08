@@ -15,7 +15,9 @@ import argparse
 
 from astropy.table import QTable
 
-from nectarchain.makers.calibration.gain.PhotoStatisticMakers import PhotoStatisticMaker
+from nectarchain.makers.calibration.gain.photostatistic_makers import (
+    PhotoStatisticMaker,
+)
 
 parser = argparse.ArgumentParser(
     prog="gain_PhotoStat_computation.py",

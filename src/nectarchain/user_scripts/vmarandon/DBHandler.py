@@ -96,14 +96,14 @@ class DB:
         #df1b = pd.read_sql(f"SELECT * FROM 'monitoring_drawer_temperatures' WHERE time>datetime({int(test_time.timestamp())}, 'unixepoch')", con=sqlite3.connect(db_url))
         time_cond = ""
         if self.time_start is not None:
-            if isinstance( self.time_start, datetime ):
+            if isinstance( self.time_start, datetime.datetime ):
                 time_cond = f" WHERE time >= datetime({self.time_start.timestamp()}, 'unixepoch') "
             else:
                 print(f"WARNING> {self.time_start} of type {type(self.time_start)} is of a non handled type ==> Won't be used (please correct code)")
 
         
         if self.time_end is not None:
-            if isinstance( self.time_end, datetime ):
+            if isinstance( self.time_end, datetime.datetime ):
                 link_word = " WHERE " if not time_cond else " AND "
                 time_cond = f" {link_word} time <= datetime({self.time_end.timestamp()}, 'unixepoch') "
             else:

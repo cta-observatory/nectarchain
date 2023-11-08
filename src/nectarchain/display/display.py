@@ -1,32 +1,14 @@
 import logging
+from abc import ABC
+
+from ctapipe.visualization import CameraDisplay
+from matplotlib import pyplot as plt
+
+from ..data.container import ArrayDataContainer, ChargesContainer, WaveformsContainer
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
-
-import copy
-import glob
-import os
-import sys
-from abc import ABC
-from argparse import ArgumentError
-from enum import Enum
-from pathlib import Path
-
-import astropy.units as u
-import numpy as np
-from astropy.io import fits
-from astropy.table import Column, QTable, Table
-from ctapipe.containers import EventType
-from ctapipe.coordinates import CameraFrame, EngineeringCameraFrame
-from ctapipe.instrument import CameraGeometry, SubarrayDescription, TelescopeDescription
-from ctapipe.visualization import CameraDisplay
-from ctapipe_io_nectarcam import NectarCAMEventSource
-from matplotlib import pyplot as plt
-from tqdm import tqdm
-
-from ..data import DataManagement
-from ..data.container import ArrayDataContainer, ChargesContainer, WaveformsContainer
 
 
 class ContainerDisplay(ABC):
