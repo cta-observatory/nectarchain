@@ -92,6 +92,8 @@ class ArrayDataContainer(NectarCAMContainer):
 
     
 
+    
+
 class TriggerMapContainer(Container) : 
     containers = Field(default_factory=partial(Map, Container),
                        description = "trigger mapping of Container"
