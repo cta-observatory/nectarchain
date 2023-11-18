@@ -26,54 +26,8 @@ from .gainMakers import GainMaker
 __all__ = ["PhotoStatisticMaker"]
 
 
-class PhotoStatisticMaker(GainMaker):
-    """
-    The `PhotoStatisticMaker` class is a subclass of `GainMaker` and is used to calculate photo statistics for a given set of charge data. It provides methods to create an instance from charge containers or run numbers, as well as methods to calculate various statistics such as gain and standard deviation.
+class PhotoStatisticAlgorithm(Component):
 
-    Example Usage:
-        # Create an instance of PhotoStatisticMaker using charge containers
-        FFcharge = ChargesContainer(...)
-        Pedcharge = ChargesContainer(...)
-        coefCharge_FF_Ped = 0.5
-        SPE_result = "path/to/SPE_results"
-        photo_stat = PhotoStatisticMaker.create_from_chargeContainer(FFcharge, Pedcharge, coefCharge_FF_Ped, SPE_result)
-
-        # Calculate and retrieve the gain values
-        gain_hg = photo_stat.gainHG
-        gain_lg = photo_stat.gainLG
-
-        # Plot the correlation between photo statistic gain and SPE gain
-        photo_stat_gain = np.array(...)
-        SPE_gain = np.array(...)
-        fig = PhotoStatisticMaker.plot_correlation(photo_stat_gain, SPE_gain)
-
-    Methods:
-        - `__init__(self, FFcharge_hg, FFcharge_lg, Pedcharge_hg, Pedcharge_lg, coefCharge_FF_Ped, SPE_resolution, *args, **kwargs)`: Constructor method to initialize the `PhotoStatisticMaker` instance with charge data and other parameters.
-        - `create_from_chargeContainer(cls, FFcharge, Pedcharge, coefCharge_FF_Ped, SPE_result, **kwargs)`: Class method to create an instance of `PhotoStatisticMaker` from charge containers.
-        - `create_from_run_numbers(cls, FFrun, Pedrun, SPE_result, **kwargs)`: Class method to create an instance of `PhotoStatisticMaker` from run numbers.
-        - `__readSPE(SPEresults) -> tuple`: Static method to read SPE resolution from a file and return the resolution and pixel IDs.
-        - `__get_charges_FF_Ped_reshaped(FFcharge, Pedcharge, SPE_resolution, SPE_pixels_id) -> dict`: Static method to reshape the charge data based on the intersection of pixel IDs and return a dictionary of reshaped data.
-        - `__readFF(FFRun, **kwargs) -> dict`: Static method to read FF data from a file and return the FF charge data and coefficient.
-        - `__readPed(PedRun, **kwargs) -> dict`: Static method to read Ped data from a file and return the Ped charge data.
-        - `__check_shape(self) -> None`: Method to check the shape of the charge data arrays.
-        - `make(self, **kwargs) -> None`: Method to run the photo statistic method and store the results.
-        - `plot_correlation(photoStat_gain, SPE_gain) -> fig`: Static method to plot the correlation between photo statistic gain and SPE gain.
-
-    Fields:
-        - `SPE_resolution`: Property to get the SPE resolution.
-        - `sigmaPedHG`: Property to get the standard deviation of Pedcharge_hg.
-        - `sigmaChargeHG`: Property to get the standard deviation of FFcharge_hg - meanPedHG.
-        - `meanPedHG`: Property to get the mean of Pedcharge_hg.
-        - `meanChargeHG`: Property to get the mean of FFcharge_hg - meanPedHG.
-        - `BHG`: Property to calculate the BHG value.
-        - `gainHG`: Property to calculate the gain for high gain.
-        - `sigmaPedLG`: Property to get the standard deviation of Pedcharge_lg.
-        - `sigmaChargeLG`: Property to get the standard deviation of FFcharge_lg - meanPedLG.
-        - `meanPedLG`: Property to get the mean of Pedcharge_lg.
-        - `meanChargeLG`: Property to get the mean of FFcharge_lg - meanPedLG.
-        - `BLG`: Property to calculate the BLG value.
-        - `gainLG`: Property to calculate the gain for low gain.
-    """
 
     _reduced_name = "PhotoStatistic"
 
@@ -89,23 +43,7 @@ class PhotoStatisticMaker(GainMaker):
         *args,
         **kwargs,
     ) -> None:
-        """
-        Initializes the instance of the PhotoStatisticMaker class with charge data and other parameters.
 
-        Args:
-            FFcharge_hg (np.ndarray): Array of charge data for high gain in the FF (Flat Field) image.
-            FFcharge_lg (np.ndarray): Array of charge data for low gain in the FF image.
-            Pedcharge_hg (np.ndarray): Array of charge data for high gain in the Ped (Pedestal) image.
-            Pedcharge_lg (np.ndarray): Array of charge data for low gain in the Ped image.
-            coefCharge_FF_Ped (float): Coefficient to convert FF charge to Ped charge.
-            SPE_resolution: Array-like of single photoelectron (SPE) resolutions for each pixel, or single value to use the same for each pixel.
-
-        Raises:
-            TypeError: If SPE_resolution is not provided in a valid format.
-
-        Returns:
-            None
-        """
         super().__init__(*args, **kwargs)
 
         self.__coefCharge_FF_Ped = coefCharge_FF_Ped
