@@ -4,10 +4,16 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+import importlib
 import copy
 import numpy as np
+from pathlib import Path
 from ctapipe.containers import Field,Container,partial,Map
 from ctapipe.core.container import FieldValidationError
+from ctapipe.containers import EventType
+from ctapipe.io import HDF5TableReader
+
+from tables.exceptions import NoSuchNodeError
 
 
 __all__ = ["ArrayDataContainer","TriggerMapContainer","get_array_keys","merge_map_ArrayDataContainer"]
@@ -20,6 +26,18 @@ def get_array_keys(container : Container) :
 class NectarCAMContainer(Container):
     """base class for the NectarCAM containers. This contaner cannot berecursive,
     to be directly written with a HDF5TableWriter"""
+    
+    @staticmethod
+    def _container_from_hdf5(path,container_class) : 
+        if isinstance(path,str) : 
+            path = Path(path)
+        
+        container = container_class()
+        with HDF5TableReader(path) as reader :
+            tableReader = reader.read(table_name = f"/data/{container_class.__name__}", containers = container_class)
+            container = next(tableReader)
+        
+        return container
 
 
 class ArrayDataContainer(NectarCAMContainer):
@@ -89,6 +107,57 @@ class ArrayDataContainer(NectarCAMContainer):
     multiplicity = Field(
         type=np.ndarray, dtype=np.uint16, ndim=1, description="events multiplicity"
     )
+
+
+    @staticmethod
+    def _container_from_hdf5(path,container_class,slice_index = None) : 
+        if isinstance(path,str) : 
+            path = Path(path)
+        module = importlib.import_module(f'{container_class.__module__}')
+        container = eval(f"module.{container_class.__name__}s")()
+        
+
+        with HDF5TableReader(path) as reader : 
+            if slice_index is None or len(reader._h5file.root.__members__) > 1 : 
+                for data in reader._h5file.root.__members__ : 
+                    container.containers[data] = eval(f"module.{container_class.__name__}s")()
+                    for key,trigger in EventType.__members__.items() : 
+                        try : 
+                            waveforms_data = eval(f"reader._h5file.root.{data}.__members__") 
+                            _mask = [container_class.__name__ in _word for _word in waveforms_data] 
+                            _waveforms_data = np.array(waveforms_data)[_mask]
+                            if len(_waveforms_data) == 1 : 
+                                tableReader = reader.read(table_name = f"/{data}/{_waveforms_data[0]}/{trigger.name}", containers = container_class)
+                                container.containers[data].containers[trigger] = next(tableReader)
+                            else : 
+                                log.info(f"there is {len(_waveforms_data)} entry corresponding to a {container_class} table save, unable to load")
+                        except NoSuchNodeError as err:
+                            log.warning(err)
+                        except Exception as err:
+                            log.error(err,exc_info = True)
+                            raise err
+            else : 
+                data = "data" if slice_index is None else f"data_{slice_index}"
+                for key,trigger in EventType.__members__.items() : 
+                    try : 
+                        container_data = eval(f"reader._h5file.root.{data}.__members__") 
+                        _mask = [container_class.__name__ in _word for _word in container_data] 
+                        _container_data = container_data[_mask]
+                        if len(_container_data) == 1 : 
+                            tableReader = reader.read(table_name = f"/{data}/{_container_data[0]}/{trigger.name}", containers = container_class)
+                            container.containers[trigger] = next(tableReader)
+                        else : 
+                            log.info(f"there is {len(_container_data)} entry corresponding to a {container_class} table save, unable to load")
+                    except NoSuchNodeError as err:
+                        log.warning(err)
+                    except Exception as err:
+                        log.error(err,exc_info = True)
+                        raise err
+        return container
+    
+    @classmethod
+    def from_hdf5(cls,path,slice_index = None) : 
+        return cls._container_from_hdf5(path,slice_index=slice_index,container_class=cls)
 
     
 

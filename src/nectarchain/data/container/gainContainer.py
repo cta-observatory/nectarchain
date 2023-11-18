@@ -20,6 +20,9 @@ class GainContainer(NectarCAMContainer) :
     high_gain = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="high gain")
     low_gain = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="low gain")
     pixels_id = Field(type=np.ndarray, dtype = np.uint16, ndim = 1, description="pixel ids")
+    @classmethod
+    def from_hdf5(cls,path) : 
+        return super(__class__,cls)._container_from_hdf5(path,container_class=cls)
 
 
 class SPEfitContainer(GainContainer) : 
@@ -33,3 +36,5 @@ class SPEfitContainer(GainContainer) :
     mean = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="mean")
     n = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="n")
     pp = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="pp")
+
+

@@ -41,6 +41,7 @@ class WaveformsContainer(ArrayDataContainer):
     wfs_lg = Field(type=np.ndarray, dtype = np.uint16, ndim = 3, description="low gain waveforms")
 
 
+
 class WaveformsContainers(TriggerMapContainer):
     containers = Field(default_factory=partial(Map, WaveformsContainer),
                        description = "trigger mapping of WaveformContainer"

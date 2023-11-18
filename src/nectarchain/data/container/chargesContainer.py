@@ -14,6 +14,7 @@ from ctapipe.containers import Field,partial,Map
 
 from .core import ArrayDataContainer,TriggerMapContainer
 
+__all__ = ["ChargesContainer","ChargesContainers"]
 class ChargesContainer(ArrayDataContainer):
     """
     A container that holds information about charges from a specific run.
@@ -31,6 +32,7 @@ class ChargesContainer(ArrayDataContainer):
     peak_hg = Field(type=np.ndarray, dtype = np.uint16, ndim = 2, description="The high gain peak time")
     peak_lg = Field(type=np.ndarray, dtype = np.uint16, ndim = 2, description="The low gain peak time")
     method = Field(type=str, description="The charge extraction method used")
+
 
 class ChargesContainers(TriggerMapContainer):
     containers = Field(default_factory=partial(Map, ChargesContainer),
