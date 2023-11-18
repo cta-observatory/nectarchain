@@ -201,9 +201,6 @@ class WaveformsComponent(ArrayDataComponent) :
             output.containers[trigger] = waveformsContainer
         return output
     
-    @staticmethod
-    def waveformsContainer_from_hdf5(path,slice_index = None) : 
-        return super(__class__,__class__)._container_from_hdf5(path,slice_index=slice_index,container_class=WaveformsContainer)
 
     @staticmethod
     def sort(waveformsContainer: WaveformsContainer, method: str = "event_id"):

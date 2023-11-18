@@ -234,6 +234,8 @@ class ChargesComponent(ArrayDataComponent) :
         imageExtractor = eval(method)(subarray, **extractor_kwargs)
         return imageExtractor
 
+
+
     def finish(
         self, *args, **kwargs
     ):
@@ -274,9 +276,6 @@ class ChargesComponent(ArrayDataComponent) :
             output.containers[trigger] = chargesContainer
         return output
 
-    @staticmethod
-    def chargesContainer_from_hdf5(path,slice_index = None) : 
-        return super(__class__,__class__)._container_from_hdf5(path,slice_index=slice_index,container_class=ChargesContainer)
 
     @staticmethod
     def sort(chargesContainer: ChargesContainer, method: str = "event_id"):
