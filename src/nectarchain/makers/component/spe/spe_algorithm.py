@@ -32,13 +32,12 @@ from scipy.special import gammainc
 
 from ctapipe.core.component import Component
 
-from ctapipe.core.traits import Integer,Unicode,Bool
+from ctapipe.core.traits import Integer,Unicode,Bool,Path,Float
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 
 from ....data.container import ChargesContainer,SPEfitContainer,merge_map_ArrayDataContainer
 from ..chargesComponent import ChargesComponent
-from ..gainComponent import GainNectarCAMComponent
 from .parameters import Parameter, Parameters
 from ....utils import (
     MPE2,
@@ -49,7 +48,7 @@ from ....utils import (
     weight_gaussian,
 )
 
-__all__ = ["SPEHHValgorithm","SPEHHVStdalgorithm"]
+__all__ = ["SPEHHValgorithm","SPEHHVStdalgorithm","SPECombinedalgorithm"]
 
 class SPEalgorithm(Component) : 
     Windows_lenght = Integer(40,
@@ -335,11 +334,11 @@ class SPEalgorithm(Component) :
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=7)
             os.makedirs(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/",
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/",
                 exist_ok=True,
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -379,6 +378,11 @@ class SPEHHValgorithm(SPEalgorithm):
     ).tag(config = True)
 
     __fit_array = None
+
+    tol = Float(1e40,
+                help="The tolerance used for minuit",
+                read_only = True,
+    ).tag(config=True)
     
     nproc = Integer(8,
                     help = "The Number of cpu used for SPE fit",
@@ -634,15 +638,15 @@ class SPEHHValgorithm(SPEalgorithm):
             self.log.debug("fit created")
             fit_array[i].errordef = Minuit.LIKELIHOOD
             fit_array[i].strategy = 0
-            fit_array[i].tol = 1e40
+            fit_array[i].tol = self.tol
             fit_array[i].print_level = 1
             fit_array[i].throw_nan = True
             UtilsMinuit.set_minuit_parameters_limits_and_errors(
                 fit_array[i], minuitParameters
             )
-            self.log.debug(fit_array[i].values)
-            self.log.debug(fit_array[i].limits)
-            self.log.debug(fit_array[i].fixed)
+            #self.log.debug(fit_array[i].values)
+            #self.log.debug(fit_array[i].limits)
+            #self.log.debug(fit_array[i].fixed)
 
         return fit_array
 
@@ -718,7 +722,7 @@ class SPEHHValgorithm(SPEalgorithm):
                 except Exception as e:
                     self.log.error(e, exc_info=True)
                     raise e
-                self.log.debug(res)
+                self.log.debug(str(res))
                 self.log.info(
                     f"time for multiproc with starmap_async execution is {time.time() - t:.2e} sec"
                 )
@@ -865,79 +869,47 @@ class SPEHHVStdalgorithm(SPEHHValgorithm):
         n = self._parameters["n"]
         n.frozen = True
 
-'''
-class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
-    
 
-    __parameters_file = "parameters_signal_fromHHVFit.yaml"
+class SPECombinedalgorithm(SPEHHValgorithm):
+    parameters_file = Unicode("parameters_signal_fromHHVFit.yaml",
+                                read_only = True,
+                                help = "The name of the SPE fit parameters file",
+    ).tag(config = True)
 
-    def __init__(
-        self,
-        charge: np.ndarray,
-        counts: np.ndarray,
-        nectarGainSPEresult: str,
-        same_luminosity: bool = False,
-        *args,
-        **kwargs,
-    ) -> None:
+    tol = Float(1e5,
+        help="The tolerance used for minuit",
+        read_only = True,
+    ).tag(config=True)
+
+    SPE_result = Path(
+        help="the path of the SPE result container computed with very high voltage data",
+    ).tag(config = True)
+
+    same_luminosity = Bool(
+        help="if the luminosity is the same between high voltage and low voltage runs",
+        default_value = False,
+    ).tag(config = True)
+
+    def __init__(self, pixels_id : np.ndarray, charge: np.ndarray, counts: np.ndarray,config=None, parent=None, **kwargs) -> None:
         """
-        Initializes an instance of FlatFieldSingleNominalSPEMaker.
+        Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
 
         Args:
-            charge (np.ndarray): The charge values.
-            counts (np.ndarray): The counts values.
-            nectarGainSPEresult (str): The path to the fitted data obtained from a 1400V run.
-            same_luminosity (bool, optional): Whether to fix the luminosity parameter. Defaults to False.
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
+            charge (np.ndarray): The charge data.
+            counts (np.ndarray): The counts data.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
         """
-        super().__init__(charge, counts, *args, **kwargs)
-        self.__fix_parameters(same_luminosity)
-        self.__same_luminosity = same_luminosity
-        self.__nectarGainSPEresult = self._read_SPEresult(nectarGainSPEresult)
-        if len(self.__nectarGainSPEresult) == 0:
+        super().__init__(pixels_id=pixels_id,charge=charge, counts = counts,config=config, parent=parent, **kwargs)
+
+        self.__fix_parameters()
+        self._nectarGainSPEresult = SPEfitContainer.from_hdf5(self.SPE_result)
+        if len(pixels_id[np.in1d(pixels_id, self._nectarGainSPEresult.pixels_id[self._nectarGainSPEresult.is_valid])]) == 0:
             self.log.warning(
                 "The intersection between pixels id from the data and those valid from the SPE fit result is empty"
             )
 
-    @property
-    def nectarGainSPEresult(self):
-        """
-        QTable: The fitted data obtained from a 1400V run, filtered for valid pixels.
-        """
-        return copy.deepcopy(self.__nectarGainSPEresult)
-
-    @property
-    def same_luminosity(self):
-        """
-        bool: Whether the luminosity parameter should be fixed.
-        """
-        return copy.deepcopy(self.__same_luminosity)
-
-    def _read_SPEresult(self, nectarGainSPEresult: str):
-        """
-        Reads the fitted data obtained from a 1400V run and returns a filtered table of valid pixels.
-
-        Args:
-            nectarGainSPEresult (str): The path to the fitted data obtained from a 1400V run.
-
-        Returns:
-            QTable: The filtered table of valid pixels.
-        """
-        table = QTable.read(nectarGainSPEresult, format="ascii.ecsv")
-        table = table[table["is_valid"]]
-        argsort = []
-        mask = []
-        for _id in self._pixels_id:
-            if _id in table["pixels_id"]:
-                argsort.append(np.where(_id == table["pixels_id"])[0][0])
-                mask.append(True)
-            else:
-                mask.append(False)
-        self._pixels_id = self._pixels_id[np.array(mask)]
-        return table[np.array(argsort)]
-
-    def __fix_parameters(self, same_luminosity: bool) -> None:
+    def __fix_parameters(self) -> None:
         """
         Fixes the parameters n, pp, res, and possibly luminosity.
 
@@ -951,7 +923,7 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         n.frozen = True
         resolution = self._parameters["resolution"]
         resolution.frozen = True
-        if same_luminosity:
+        if self.same_luminosity:
             self.log.info("fixing luminosity")
             luminosity = self._parameters["luminosity"]
             luminosity.frozen = True
@@ -969,7 +941,7 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         """
         return super()._make_fit_array_from_parameters(
             pixels_id=pixels_id,
-            nectarGainSPEresult=self.__nectarGainSPEresult,
+            nectarGainSPEresult=self._nectarGainSPEresult,
             **kwargs,
         )
 
@@ -1002,13 +974,24 @@ class FlatFieldSingleNominalSPEMaker(FlatFieldSingleHHVSPEMaker):
         pp = param["pp"]
         n = param["n"]
 
-        index = np.where(pixel_id == nectarGainSPEresult["pixels_id"])[0][0]
+        index = np.where(pixel_id == nectarGainSPEresult.pixels_id)[0][0]
 
-        resolution.value = nectarGainSPEresult[index]["resolution"].value
-        pp.value = nectarGainSPEresult[index]["pp"].value
-        n.value = nectarGainSPEresult[index]["n"].value
+        resolution.value = nectarGainSPEresult.resolution[index]
+        pp.value = nectarGainSPEresult.pp[index]
+        n.value = nectarGainSPEresult.n[index]["n"]
 
         if luminosity.frozen:
-            luminosity.value = nectarGainSPEresult[index]["luminosity"].value
+            luminosity.value = nectarGainSPEresult.luminosity[index].value
         return param
-'''
+
+    def run(
+            self,
+            pixels_id: np.ndarray = None,
+            display: bool = True,
+            **kwargs,
+        ) -> np.ndarray :
+        if pixels_id is None : 
+            pixels_id = self._nectarGainSPEresult.pixels_id[self._nectarGainSPEresult.is_valid]
+        else : 
+            pixels_id = np.asarray(pixels_id)[np.in1d(pixels_id,self._nectarGainSPEresult.pixels_id[self._nectarGainSPEresult.is_valid])]
+        return super().run(pixels_id=pixels_id,display = display,**kwargs)

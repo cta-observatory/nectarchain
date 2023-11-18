@@ -22,3 +22,5 @@ class GainNectarCAMComponent(NectarCAMComponent):
     @abstractmethod
     def finish(self):
         pass
+
+    

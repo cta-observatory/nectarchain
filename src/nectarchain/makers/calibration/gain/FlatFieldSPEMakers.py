@@ -11,7 +11,7 @@ import pathlib
 import os
 import glob
 
-from ctapipe.core.traits import ComponentNameList,Bool
+from ctapipe.core.traits import ComponentNameList,Bool,Path
 from ctapipe.containers import EventType,Container
 
 
@@ -19,12 +19,12 @@ from .core import GainNectarCAMCalibrationTool
 from ...component import NectarCAMComponent,ChargesComponent,ArrayDataComponent
 from ...extractor.utils import CtapipeExtractor
 from ....data.container.core import NectarCAMContainer,merge_map_ArrayDataContainer,TriggerMapContainer
-from ....data.container import SPEfitContainer
+from ....data.container import SPEfitContainer,ChargesContainer
 
 
 
 
-__all__ = ["FlatFieldSPEHHVNectarCAMCalibrationTool","FlatFieldSPEHHVStdNectarCAMCalibrationTool"]
+__all__ = ["FlatFieldSPEHHVNectarCAMCalibrationTool","FlatFieldSPEHHVStdNectarCAMCalibrationTool","FlatFieldSPECombinedStdNectarCAMCalibrationTool"]
 
 
 class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
@@ -58,7 +58,7 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             super().start(n_events = n_events , restart_from_begining=restart_from_begining, *args, **kwargs)
         else : 
             self.log.info(f"reading computed charge from files {files[0]}")
-            chargesContainers = ChargesComponent.chargesContainer_from_hdf5(files[0])
+            chargesContainers = ChargesContainer.from_hdf5(files[0])
             if isinstance(chargesContainers, NectarCAMContainer) : 
                 self.components[0]._chargesContainers = chargesContainers
             else : 
@@ -88,3 +88,19 @@ class FlatFieldSPEHHVStdNectarCAMCalibrationTool(FlatFieldSPEHHVNectarCAMCalibra
         default_value = ["FlatFieldSingleHHVSPEStdNectarCAMComponent"],                           
         help="List of Component names to be apply, the order will be respected"
     ).tag(config=True)
+
+
+class FlatFieldSPECombinedStdNectarCAMCalibrationTool(FlatFieldSPEHHVNectarCAMCalibrationTool):
+    name = "FlatFieldCombinedStddNectarCAM"
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value = ["FlatFieldCombinedSPEStdNectarCAMComponent"],                           
+        help="List of Component names to be apply, the order will be respected"
+    ).tag(config=True)
+
+    def _init_output_path(self) :
+        for word in self.SPE_result.stem.split('_') : 
+            if 'run' in word : 
+                HHVrun = int(word.split('run')[-1])
+        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{self.name}_run{self.run_number}_HHV{HHVrun}_{self.method}_{CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}.h5")
+

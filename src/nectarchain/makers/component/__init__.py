@@ -10,8 +10,10 @@ __all__ = [
     "NectarCAMComponent",
     "SPEHHValgorithm",
     "SPEHHVStdalgorithm",
+    "SPECombinedalgorithm",
     "FlatFieldSingleHHVSPENectarCAMComponent",
     "FlatFieldSingleHHVSPEStdNectarCAMComponent",
+    "FlatFieldCombinedSPEStdNectarCAMComponent",
     "ChargesComponent",
     "WaveformsComponent",
     ]

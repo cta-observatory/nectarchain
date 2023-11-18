@@ -14,17 +14,17 @@ import copy
 
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
-from ctapipe.core.traits import Unicode,Integer,Bool,List,classes_with_traits,Dict,ComponentNameList
+from ctapipe.core.traits import Unicode,Integer,Bool,List,classes_with_traits,Dict,ComponentNameList,Path
 from ctapipe.core.component import Component
 
-from ...data.container import merge_map_ArrayDataContainer
+from ...data.container import merge_map_ArrayDataContainer,SPEfitContainer
 from .chargesComponent import ChargesComponent
 from .gainComponent import GainNectarCAMComponent
 from .chargesComponent import ChargesComponent
-from .spe import SPEHHVStdalgorithm,SPEHHValgorithm
+from .spe import SPEHHVStdalgorithm,SPEHHValgorithm,SPECombinedalgorithm
 from ...utils import ComponentUtils
 
-__all__ = ["FlatFieldSingleHHVSPENectarCAMComponent","FlatFieldSingleHHVSPEStdNectarCAMComponent"]
+__all__ = ["FlatFieldSingleHHVSPENectarCAMComponent","FlatFieldSingleHHVSPEStdNectarCAMComponent","FlatFieldCombinedSPEStdNectarCAMComponent"]
 
 class FlatFieldSingleHHVSPENectarCAMComponent(GainNectarCAMComponent):
     SPEfitalgorithm = Unicode("SPEHHValgorithm",
@@ -118,6 +118,8 @@ class FlatFieldSingleHHVSPENectarCAMComponent(GainNectarCAMComponent):
 
 
 
+
+
 class FlatFieldSingleHHVSPEStdNectarCAMComponent(FlatFieldSingleHHVSPENectarCAMComponent):
     SPEfitalgorithm = Unicode("SPEHHVStdalgorithm",
                               help = "The Spe fit method to be use",
@@ -129,6 +131,18 @@ class FlatFieldSingleHHVSPEStdNectarCAMComponent(FlatFieldSingleHHVSPENectarCAMC
     SubComponents.read_only = True
 
 
+class FlatFieldCombinedSPEStdNectarCAMComponent(FlatFieldSingleHHVSPEStdNectarCAMComponent) :
+    SPEfitalgorithm = Unicode("SPECombinedalgorithm",
+                              help = "The Spe fit method to be use",
+                              read_only = True,
+    ).tag(config = True)
 
+    
+    SubComponents = copy.deepcopy(GainNectarCAMComponent.SubComponents)
+    SubComponents.default_value = ["ChargesComponent",f"{SPEfitalgorithm.default_value}"]
+    SubComponents.read_only = True
+
+    def __init__(self, subarray, config=None, parent=None,*args, **kwargs) -> None:
+        super().__init__(subarray = subarray,config = config, parent = parent,*args,**kwargs)
     
 

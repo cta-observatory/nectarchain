@@ -28,7 +28,8 @@ from ...data.container import (ChargesContainer,
                                TriggerMapContainer,
                                ArrayDataContainer,
                                WaveformsContainer,
-                               WaveformsContainers
+                               WaveformsContainers,
+                               NectarCAMContainer
                                )
 
 __all__ = ["ArrayDataComponent",
@@ -56,6 +57,8 @@ class NectarCAMComponent(TelescopeComponent) :
         self.__pixels_id = parent._event_source.camera_config.expected_pixels_id
         self.__run_number = parent.run_number
         self.__npixels=parent.npixels
+
+
     
     @abstractmethod
     def __call__(
@@ -323,53 +326,6 @@ class ArrayDataComponent(NectarCAMComponent) :
 
         return merged_container
     
-
-
-    @staticmethod
-    def _container_from_hdf5(path,slice_index = None,container_class = ArrayDataContainer) : 
-        if isinstance(path,str) : 
-            path = Path(path)
-        
-        container = eval(f"{container_class.__name__}s")()
-        
-
-        with HDF5TableReader(path) as reader : 
-            if slice_index is None or len(reader._h5file.root.__members__) > 1 : 
-                for data in reader._h5file.root.__members__ : 
-                    container.containers[data] = eval(f"{container_class.__name__}s")()
-                    for key,trigger in EventType.__members__.items() : 
-                        try : 
-                            waveforms_data = eval(f"reader._h5file.root.{data}.__members__") 
-                            _mask = [container_class.__name__ in _word for _word in waveforms_data] 
-                            _waveforms_data = np.array(waveforms_data)[_mask]
-                            if len(_waveforms_data) == 1 : 
-                                tableReader = reader.read(table_name = f"/{data}/{_waveforms_data[0]}/{trigger.name}", containers = container_class)
-                                container.containers[data].containers[trigger] = next(tableReader)
-                            else : 
-                                log.info(f"there is {len(_waveforms_data)} entry corresponding to a {container_class} table save, unable to load")
-                        except NoSuchNodeError as err:
-                            log.warning(err)
-                        except Exception as err:
-                            log.error(err,exc_info = True)
-                            raise err
-            else : 
-                data = "data" if slice_index is None else f"data_{slice_index}"
-                for key,trigger in EventType.__members__.items() : 
-                    try : 
-                        container_data = eval(f"reader._h5file.root.{data}.__members__") 
-                        _mask = [container_class.__name__ in _word for _word in container_data] 
-                        _container_data = container_data[_mask]
-                        if len(_container_data) == 1 : 
-                            tableReader = reader.read(table_name = f"/{data}/{_container_data[0]}/{trigger.name}", containers = container_class)
-                            container.containers[trigger] = next(tableReader)
-                        else : 
-                            log.info(f"there is {len(_container_data)} entry corresponding to a {container_class} table save, unable to load")
-                    except NoSuchNodeError as err:
-                        log.warning(err)
-                    except Exception as err:
-                        log.error(err,exc_info = True)
-                        raise err
-        return container
 
 
     @property
