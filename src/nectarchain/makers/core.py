@@ -8,29 +8,32 @@ import copy
 import os
 import pathlib
 from abc import ABC, abstractmethod
-from tables.exceptions import HDF5ExtError
 
 import numpy as np
-from ctapipe.core import Tool,Component
-from ctapipe.core.traits import Bool, Integer, Path, classes_with_traits, flag, ComponentNameList
+from ctapipe.containers import Container
+from ctapipe.core import Component, Tool
+from ctapipe.core.traits import (
+    Bool,
+    ComponentNameList,
+    Integer,
+    Path,
+    classes_with_traits,
+    flag,
+)
 from ctapipe.instrument import CameraGeometry
 from ctapipe.io import HDF5TableWriter
-from ctapipe.containers import Container
 from ctapipe.io.datawriter import DATA_MODEL_VERSION
 from ctapipe_io_nectarcam import NectarCAMEventSource, constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-
-
-
+from tables.exceptions import HDF5ExtError
 from tqdm.auto import tqdm
 
 from ..data import DataManagement
-from ..data.container.core import NectarCAMContainer,TriggerMapContainer
 from ..data.container import LightNectarCAMEventSource
-
-from .component import NectarCAMComponent,get_valid_component
+from ..data.container.core import NectarCAMContainer, TriggerMapContainer
 from ..utils import ComponentUtils
 from .component import *
+from .component import NectarCAMComponent, get_valid_component
 
 __all__ = ["EventsLoopNectarCAMCalibrationTool"]
 
@@ -104,7 +107,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         ("r", "run-number"): "EventsLoopNectarCAMCalibrationTool.run_number",
         ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
         ("o", "output"): "EventsLoopNectarCAMCalibrationTool.output_path",
-        "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice", 
+        "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice",
     }
 
     flags = {
@@ -123,22 +126,21 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     classes = (
         [
             HDF5TableWriter,
-        ] 
+        ]
         + classes_with_traits(LightNectarCAMEventSource)
         + classes_with_traits(NectarCAMComponent)
-
     )
 
-
-    
     run_number = Integer(help="run number to be treated", default_value=-1).tag(
         config=True
     )
 
     output_path = Path(
-        help="output filename", default_value=pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{name}_run{run_number.default_value}.h5")
+        help="output filename",
+        default_value=pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{name}_run{run_number.default_value}.h5"
+        ),
     ).tag(config=True)
-
 
     max_events = Integer(
         help="maximum number of events to be loaded",
@@ -152,8 +154,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         allow_none=True,
     ).tag(config=True)
 
-    componentsList = ComponentNameList(NectarCAMComponent,
-        help="List of Component names to be apply, the order will be respected"
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     events_per_slice = Integer(
@@ -162,94 +165,102 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         allow_none=True,
     ).tag(config=True)
 
-    def __new__(cls,*args,**kwargs) : 
-        """This method is used to pass to the current instance of Tool the traits defined 
-        in the components provided in the componentsList trait. 
-        WARNING : This method is maybe not the best way to do it, need to discuss with ctapipe developpers. 
+    def __new__(cls, *args, **kwargs):
+        """This method is used to pass to the current instance of Tool the traits defined
+        in the components provided in the componentsList trait.
+        WARNING : This method is maybe not the best way to do it, need to discuss with ctapipe developpers.
         """
-        _cls = super(EventsLoopNectarCAMCalibrationTool,cls).__new__(cls,*args,**kwargs)
-        log.warning("the componentName in componentsList must be defined in the nectarchain.makers.component module, otherwise the import of the componentName will raise an error")
-        for componentName in _cls.componentsList : 
-            configurable_traits = ComponentUtils.get_configurable_traits(eval(componentName))
+        _cls = super(EventsLoopNectarCAMCalibrationTool, cls).__new__(
+            cls, *args, **kwargs
+        )
+        log.warning(
+            "the componentName in componentsList must be defined in the nectarchain.makers.component module, otherwise the import of the componentName will raise an error"
+        )
+        for componentName in _cls.componentsList:
+            configurable_traits = ComponentUtils.get_configurable_traits(
+                eval(componentName)
+            )
             _cls.add_traits(**configurable_traits)
-            _cls.aliases.update({key : f"{componentName}.{key}" for key in configurable_traits.keys()})
+            _cls.aliases.update(
+                {key: f"{componentName}.{key}" for key in configurable_traits.keys()}
+            )
         return _cls
-    
-    def __init__(self,*args,**kwargs) : 
-        super().__init__(*args,**kwargs)
-        if not("output_path" in kwargs.keys()) : 
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not ("output_path" in kwargs.keys()):
             self._init_output_path()
 
-    def _init_output_path(self) :
-        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{self.name}_run{self.run_number}.h5")
+    def _init_output_path(self):
+        self.output_path = pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{self.name}_run{self.run_number}.h5"
+        )
 
-
-    def _load_eventsource(self):
+    def _load_eventsource(self, *args, **kwargs):
         self.log.debug("loading event source")
         self.event_source = self.enter_context(
             self.load_run(self.run_number, self.max_events, run_file=self.run_file)
         )
 
-    def _get_provided_component_kwargs(self,componentName : str) : 
+    def _get_provided_component_kwargs(self, componentName: str):
         component_kwargs = ComponentUtils.get_configurable_traits(eval(componentName))
         output_component_kwargs = {}
-        for key in component_kwargs.keys() : 
-            if hasattr(self,key) : 
-                output_component_kwargs[key] = getattr(self,key)
+        for key in component_kwargs.keys():
+            if hasattr(self, key):
+                output_component_kwargs[key] = getattr(self, key)
         return output_component_kwargs
-    
-    def _init_writer(self,sliced : bool = False,slice_index : int = 0) : 
-        if hasattr(self,'writer') : 
+
+    def _init_writer(self, sliced: bool = False, slice_index: int = 0):
+        if hasattr(self, "writer"):
             self.writer.close()
-        
-        if sliced :  
-            self.log.info(f'initilization of writter in sliced mode (slice index = {slice_index})')
-            #self.output_path = pathlib.Path(f"{self.output_path.parent)}/{self.output_path.stem}_1{self.output_path.suffix}"
+
+        if sliced:
+            self.log.info(
+                f"initilization of writter in sliced mode (slice index = {slice_index})"
+            )
+            # self.output_path = pathlib.Path(f"{self.output_path.parent)}/{self.output_path.stem}_1{self.output_path.suffix}"
             group_name = f"data_{slice_index}"
             mode = "a"
-        else : 
-            self.log.info('initilization of writter in full mode')
+        else:
+            self.log.info("initilization of writter in full mode")
             group_name = "data"
             mode = "w"
-        try : 
+        try:
             self.writer = self.enter_context(
                 HDF5TableWriter(
-                    filename = self.output_path,#pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
-                    parent = self,
-                    mode = mode,
-                    group_name = group_name
-                    )
+                    filename=self.output_path,  # pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
+                    parent=self,
+                    mode=mode,
+                    group_name=group_name,
                 )
-        except HDF5ExtError as err : 
-            self.log.warning(err.args[0],exc_info = True)
+            )
+        except HDF5ExtError as err:
+            self.log.warning(err.args[0], exc_info=True)
             self.log.warning("retry with w mode instead of a")
             self.writer = self.enter_context(
                 HDF5TableWriter(
-                    filename = self.output_path,#pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
-                    parent = self,
-                    mode = "w",
-                    group_name = group_name
-                    )
+                    filename=self.output_path,  # pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
+                    parent=self,
+                    mode="w",
+                    group_name=group_name,
+                )
             )
-        except Exception as err : 
-            self.log.error(err,exc_info = True)
+        except Exception as err:
+            self.log.error(err, exc_info=True)
             raise err
-
 
     def setup(self, *args, **kwargs):
         self.log.info("setup of the Tool")
         if self.run_number == -1:
             raise Exception("run_number need to be set up")
-        self._load_eventsource()
-        self.__npixels = self._event_source.camera_config.num_pixels
-        self.__pixels_id = self._event_source.camera_config.expected_pixels_id
+        self._setup_eventsource(*args, **kwargs)
 
-        self.__setup_components() 
+        self.__setup_components(*args, **kwargs)
 
-        if self.output_path.exists() and self.overwrite : 
+        if self.output_path.exists() and self.overwrite:
             os.remove(self.output_path)
 
-        self._init_writer(sliced = not(self.events_per_slice is None),slice_index = 1)
+        self._init_writer(sliced=not (self.events_per_slice is None), slice_index=1)
 
         self._n_traited_events = 0
 
@@ -258,29 +269,32 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         # self.comp3 = TelescopeWiseComponent(parent=self, subarray=subarray)
         # self.advanced = AdvancedComponent(parent=self)
 
-    
-    def __setup_components(self) : 
+    def _setup_eventsource(self, *args, **kwargs):
+        self._load_eventsource(*args, **kwargs)
+        self.__npixels = self._event_source.camera_config.num_pixels
+        self.__pixels_id = self._event_source.camera_config.expected_pixels_id
+
+    def __setup_components(self, *args, **kwargs):
         self.log.info("setup of components")
         self.components = []
-        for componentName in self.componentsList : 
+        for componentName in self.componentsList:
             if componentName in get_valid_component():
                 component_kwargs = self._get_provided_component_kwargs(componentName)
                 self.components.append(
-                #    self.add_component(
-                        Component.from_name(
-                            componentName,
-                            subarray = self.event_source.subarray, 
-                            parent=self,
-                            **component_kwargs,
-                            )
-                    #    )
+                    #    self.add_component(
+                    Component.from_name(
+                        componentName,
+                        subarray=self.event_source.subarray,
+                        parent=self,
+                        **component_kwargs,
                     )
-            
+                    #    )
+                )
 
     def start(
         self,
         n_events=np.inf,
-        #trigger_type: list = None,
+        # trigger_type: list = None,
         restart_from_begining: bool = False,
         *args,
         **kwargs,
@@ -301,9 +315,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self.log.warning(
                 "neither needed events number specified or events per slice, it may cause a memory error"
             )
-        #if isinstance(trigger_type, EventType) or trigger_type is None:
+        # if isinstance(trigger_type, EventType) or trigger_type is None:
         #    trigger_type = [trigger_type]
-        #for _trigger_type in trigger_type:
+        # for _trigger_type in trigger_type:
         #    self._init_trigger_type(_trigger_type)
 
         if restart_from_begining:
@@ -316,63 +330,70 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             tqdm(
                 self._event_source,
                 desc=self._event_source.__class__.__name__,
-                total=len(self._event_source) if self._event_source.max_events is None else int(np.min((self._event_source.max_events, n_events))),
+                total=len(self._event_source)
+                if self._event_source.max_events is None
+                else int(np.min((self._event_source.max_events, n_events))),
                 unit="ev",
                 disable=not self.progress_bar,
             )
         ):
             if i % 100 == 0:
                 self.log.info(f"reading event number {i}")
-            for component in self.components : 
-                component(event,*args,**kwargs)
+            for component in self.components:
+                component(event, *args, **kwargs)
                 self._n_traited_events += 1
                 n_events_in_slice += 1
             if self._n_traited_events >= n_events:
                 break
-            if not(self.events_per_slice is None) and n_events_in_slice >= self.events_per_slice : 
+            if (
+                not (self.events_per_slice is None)
+                and n_events_in_slice >= self.events_per_slice
+            ):
                 self.log.info(f"slice number {slice_index} is full, pulling buffer")
-                self.__finish_components(*args,**kwargs)
+                self._finish_components(*args, **kwargs)
                 self.writer.close()
                 slice_index += 1
-                self._init_writer(sliced = True,slice_index = slice_index)
+                self._init_writer(sliced=True, slice_index=slice_index)
                 self.__setup_components()
                 n_events_in_slice = 0
 
-
-    def finish(self, *args, **kwargs):
+    def finish(self, return_output_component=False, *args, **kwargs):
         self.log.info("finishing Tool")
-        # self.write = self.enter_context(
-        #    HDF5TableWriter(filename=filename, parent=self)
-        # )
-        self.__finish_components(*args,**kwargs)
+
+        output = self._finish_components(*args, **kwargs)
 
         self.writer.close()
         super().finish()
         self.log.warning("Shutting down.")
+        if return_output_component:
+            return output
 
-    def __finish_components(self, *args, **kwargs) : 
+    def _finish_components(self, *args, **kwargs):
         self.log.info("finishing components and writting to output file")
         output = []
-        for component in self.components : 
-            output.append(component.finish(*args,**kwargs))
+        for component in self.components:
+            output.append(component.finish(*args, **kwargs))
         log.info(output)
-        for i,_output in enumerate(output) : 
-            self._write_container(_output,i)
-            
+        for i, _output in enumerate(output):
+            self._write_container(_output, i)
+        return output
 
-    def _write_container(self, container : Container,index_component : int = 0) -> None:
-        if isinstance(container,NectarCAMContainer) : 
-            self.writer.write(table_name = str(container.__class__.__name__),
-                              containers = container,
+    def _write_container(self, container: Container, index_component: int = 0) -> None:
+        if isinstance(container, NectarCAMContainer):
+            self.writer.write(
+                table_name=str(container.__class__.__name__),
+                containers=container,
             )
-        elif isinstance(container,TriggerMapContainer) : 
-            for key in container.containers.keys(): 
-                self.writer.write(table_name = f"{container.containers[key].__class__.__name__}_{index_component}/{key.name}",
-                                  containers = container.containers[key],
+        elif isinstance(container, TriggerMapContainer):
+            for key in container.containers.keys():
+                self.writer.write(
+                    table_name=f"{container.containers[key].__class__.__name__}_{index_component}/{key.name}",
+                    containers=container.containers[key],
                 )
-        else : 
-            raise TypeError("component output must be an instance of TriggerMapContainer or NectarCAMContainer")
-
+        else:
+            raise TypeError(
+                "component output must be an instance of TriggerMapContainer or NectarCAMContainer"
+            )
 
     @property
     def event_source(self):

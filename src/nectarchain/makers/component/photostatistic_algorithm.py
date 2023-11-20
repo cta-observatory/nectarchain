@@ -15,38 +15,42 @@ import astropy.units as u
 import numpy as np
 from astropy.table import Column, QTable
 from astropy.visualization import quantity_support
+from ctapipe.core import Component
 from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
 from scipy.stats import linregress
 
-from ....data.container import ChargesContainer, ChargesContainerIO
-from ...chargesMakers import ChargesMaker
-from .gainMakers import GainMaker
+from ...data.container import (
+    ChargesContainer,
+    SPEfitContainer,
+    merge_map_ArrayDataContainer,
+)
+from ..component import ChargesComponent
 
-__all__ = ["PhotoStatisticMaker"]
+__all__ = ["PhotoStatisticAlgorithm"]
 
 
 class PhotoStatisticAlgorithm(Component):
-
-
-    _reduced_name = "PhotoStatistic"
-
-    # constructors
     def __init__(
         self,
+        pixels_id: np.ndarray,
         FFcharge_hg: np.ndarray,
         FFcharge_lg: np.ndarray,
         Pedcharge_hg: np.ndarray,
         Pedcharge_lg: np.ndarray,
         coefCharge_FF_Ped: float,
-        SPE_resolution,
-        *args,
+        SPE_resolution: np.ndarray,
+        config=None,
+        parent=None,
         **kwargs,
     ) -> None:
+        # constructors
+        super().__init__(config=config, parent=parent, **kwargs)
 
-        super().__init__(*args, **kwargs)
-
+        self._pixels_id = pixels_id
         self.__coefCharge_FF_Ped = coefCharge_FF_Ped
+
+        self.__SPE_resolution = SPE_resolution
 
         self.__FFcharge_hg = FFcharge_hg
         self.__FFcharge_lg = FFcharge_lg
@@ -54,218 +58,60 @@ class PhotoStatisticAlgorithm(Component):
         self.__Pedcharge_hg = Pedcharge_hg
         self.__Pedcharge_lg = Pedcharge_lg
 
-        if (
-            isinstance(SPE_resolution, np.ndarray)
-            and len(SPE_resolution) == self.npixels
-        ):
-            self.__SPE_resolution = SPE_resolution
-        elif isinstance(SPE_resolution, list) and len(SPE_resolution) == self.npixels:
-            self.__SPE_resolution = np.array(SPE_resolution)
-        elif isinstance(SPE_resolution, float):
-            self.__SPE_resolution = SPE_resolution * np.ones((self.npixels))
-        else:
-            e = TypeError(
-                "SPE_resolution must be a float, a numpy.ndarray or list instance"
-            )
-            raise e
-
         self.__check_shape()
 
     @classmethod
-    def create_from_chargeContainer(
+    def create_from_chargesContainer(
         cls,
         FFcharge: ChargesContainer,
         Pedcharge: ChargesContainer,
+        SPE_result: SPEfitContainer,
         coefCharge_FF_Ped: float,
-        SPE_result,
         **kwargs,
     ):
-        """
-        Create an instance of the PhotoStatisticMaker class from Pedestal and Flatfield runs stored in ChargesContainer.
-
-        Args:
-            FFcharge (ChargesContainer): Array of charge data for the FF image.
-            Pedcharge (ChargesContainer): Array of charge data for the Ped image.
-            coefCharge_FF_Ped (float): Coefficient to convert FF charge to Ped charge.
-            SPE_result (str or Path): Path to the SPE result file (optional).
-            **kwargs: Additional keyword arguments for initializing the PhotoStatisticMaker instance.
-
-        Returns:
-            PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created from the ChargesContainer instances.
-        """
-        if isinstance(SPE_result, str) or isinstance(SPE_result, Path):
-            SPE_resolution, SPE_pixels_id = __class__.__readSPE(SPE_result)
-        else:
-            SPE_pixels_id = None
-
         kwargs_init = __class__.__get_charges_FF_Ped_reshaped(
-            FFcharge, Pedcharge, SPE_resolution, SPE_pixels_id
+            FFcharge, Pedcharge, SPE_result
         )
 
         kwargs.update(kwargs_init)
         return cls(coefCharge_FF_Ped=coefCharge_FF_Ped, **kwargs)
 
-    @classmethod
-    def create_from_run_numbers(
-        cls, FFrun: int, Pedrun: int, SPE_result: str, **kwargs
-    ):
-        """
-        Create an instance of the PhotoStatisticMaker class by reading the FF (Flat Field) and Ped (Pedestal) charge data from run numbers.
-
-        Args:
-            FFrun (int): The run number for the FF charge data.
-            Pedrun (int): The run number for the Ped charge data.
-            SPE_result (str): The path to the SPE result file.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            PhotoStatisticMaker: An instance of the PhotoStatisticMaker class created from the FF and Ped charge data and the SPE result file.
-        """
-        FFkwargs = __class__.__readFF(FFrun, **kwargs)
-        Pedkwargs = __class__.__readPed(Pedrun, **kwargs)
-        kwargs.update(FFkwargs)
-        kwargs.update(Pedkwargs)
-        return cls.create_from_chargeContainer(SPE_result=SPE_result, **kwargs)
-
-    # methods
-    @staticmethod
-    def __readSPE(SPEresults) -> tuple:
-        """
-        Reads the SPE resolution from a file and returns the resolution values and corresponding pixel IDs.
-
-        Args:
-            SPEresults (str): The file path to the SPE results file.
-
-        Returns:
-            tuple: A tuple containing the SPE resolution values and corresponding pixel IDs.
-        """
-        log.info(f"reading SPE resolution from {SPEresults}")
-        table = QTable.read(SPEresults)
-        table.sort("pixels_id")
-        return (
-            table["resolution"][table["is_valid"]].value,
-            table["pixels_id"][table["is_valid"]].value,
-        )
-
     @staticmethod
     def __get_charges_FF_Ped_reshaped(
         FFcharge: ChargesContainer,
         Pedcharge: ChargesContainer,
-        SPE_resolution: np.ndarray,
-        SPE_pixels_id: np.ndarray,
+        SPE_result: SPEfitContainer,
     ) -> dict:
-        """
-        Reshapes the FF (Flat Field) and Ped (Pedestal) charges based on the intersection of pixel IDs between the two charges.
-        Selects the charges for the high-gain and low-gain channels and returns them along with the common pixel IDs.
-
-        Args:
-            FFcharge (ChargesContainer): The charges container for the Flat Field data.
-            Pedcharge (ChargesContainer): The charges container for the Pedestal data.
-            SPE_resolution (np.ndarray): An array containing the SPE resolutions.
-            SPE_pixels_id (np.ndarray): An array containing the pixel IDs for the SPE data.
-
-        Returns:
-            dict: A dictionary containing the reshaped data, including the common pixel IDs, SPE resolution (if provided), and selected charges for the high-gain and low-gain channels.
-        """
         log.info("reshape of SPE, Ped and FF data with intersection of pixel ids")
         out = {}
 
         FFped_intersection = np.intersect1d(Pedcharge.pixels_id, FFcharge.pixels_id)
-        if not (SPE_pixels_id is None):
-            SPEFFPed_intersection = np.intersect1d(FFped_intersection, SPE_pixels_id)
-            mask_SPE = np.array(
-                [
-                    SPE_pixels_id[i] in SPEFFPed_intersection
-                    for i in range(len(SPE_pixels_id))
-                ],
-                dtype=bool,
-            )
-            out["SPE_resolution"] = SPE_resolution[mask_SPE]
+        SPEFFPed_intersection = np.intersect1d(FFped_intersection, SPE_result.pixels_id)
+        mask_SPE = np.array(
+            [
+                SPE_result.pixels_id[i] in SPEFFPed_intersection
+                for i in range(len(SPE_result.pixels_id))
+            ],
+            dtype=bool,
+        )
+        out["SPE_resolution"] = SPE_result.resolution[mask_SPE]
 
         out["pixels_id"] = SPEFFPed_intersection
-        out["FFcharge_hg"] = ChargesMaker.select_charges_hg(
+        out["FFcharge_hg"] = ChargesComponent.select_charges_hg(
             FFcharge, SPEFFPed_intersection
         )
-        out["FFcharge_lg"] = ChargesMaker.select_charges_lg(
+        out["FFcharge_lg"] = ChargesComponent.select_charges_lg(
             FFcharge, SPEFFPed_intersection
         )
-        out["Pedcharge_hg"] = ChargesMaker.select_charges_hg(
+        out["Pedcharge_hg"] = ChargesComponent.select_charges_hg(
             Pedcharge, SPEFFPed_intersection
         )
-        out["Pedcharge_lg"] = ChargesMaker.select_charges_lg(
+        out["Pedcharge_lg"] = ChargesComponent.select_charges_lg(
             Pedcharge, SPEFFPed_intersection
         )
 
         log.info(f"data have {len(SPEFFPed_intersection)} pixels in common")
         return out
-
-    @staticmethod
-    def __readFF(FFRun: int, **kwargs) -> dict:
-        """
-        Reads FF charge data from a FITS file.
-        Args:
-        - FFRun (int): The run number for the FF data.
-        - kwargs (optional): Additional keyword arguments.
-        Returns:
-        - dict: A dictionary containing the FF charge data (`FFcharge`) and the coefficient for the FF charge (`coefCharge_FF_Ped`).
-        """
-        log.info("reading FF data")
-        method = kwargs.get("method", "FullWaveformSum")
-        FFchargeExtractorWindowLength = kwargs.get(
-            "FFchargeExtractorWindowLength", None
-        )
-        if method != "FullWaveformSum":
-            if FFchargeExtractorWindowLength is None:
-                e = Exception(
-                    f"we have to specify FFchargeExtractorWindowLength argument if charge extractor method is not FullwaveformSum"
-                )
-                log.error(e, exc_info=True)
-                raise e
-            else:
-                coefCharge_FF_Ped = FFchargeExtractorWindowLength / constants.N_SAMPLES
-        else:
-            coefCharge_FF_Ped = 1
-        if isinstance(FFRun, int):
-            try:
-                FFcharge = ChargesContainerIO.load(
-                    f"{os.environ['NECTARCAMDATA']}/charges/{method}", FFRun
-                )
-                log.info(f"charges have ever been computed for FF run {FFRun}")
-            except Exception as e:
-                log.error("charge have not been yet computed")
-                raise e
-        else:
-            e = TypeError("FFRun must be int")
-            log.error(e, exc_info=True)
-            raise e
-        return {"FFcharge": FFcharge, "coefCharge_FF_Ped": coefCharge_FF_Ped}
-
-    @staticmethod
-    def __readPed(PedRun: int, **kwargs) -> dict:
-        """
-        Reads Ped charge data from a FITS file.
-        Args:
-        - PedRun (int): The run number for the Ped data.
-        - kwargs (optional): Additional keyword arguments.
-        Returns:
-        - dict: A dictionary containing the Ped charge data (`Pedcharge`).
-        """
-        log.info("reading Ped data")
-        method = "FullWaveformSum"  # kwargs.get('method','std')
-        if isinstance(PedRun, int):
-            try:
-                Pedcharge = ChargesContainerIO.load(
-                    f"{os.environ['NECTARCAMDATA']}/charges/{method}", PedRun
-                )
-                log.info(f"charges have ever been computed for Ped run {PedRun}")
-            except Exception as e:
-                log.error("charge have not been yet computed")
-                raise e
-        else:
-            e = TypeError("PedRun must be int")
-            log.error(e, exc_info=True)
-            raise e
-        return {"Pedcharge": Pedcharge}
 
     def __check_shape(self) -> None:
         """
@@ -279,16 +125,7 @@ class PhotoStatisticAlgorithm(Component):
             log.error(e, exc_info=True)
             raise e
 
-    def make(self, **kwargs) -> None:
-        """
-        Runs the photo statistic method and assigns values to the high_gain and low_gain keys in the _results dictionary.
-
-        Args:
-            **kwargs: Additional keyword arguments (not used in this method).
-
-        Returns:
-            None
-        """
+    def run(self, pixels_id: np.ndarray = None, display: bool = True, **kwargs) -> None:
         log.info("running photo statistic method")
         self._results["high_gain"] = self.gainHG
         self._results["low_gain"] = self.gainLG
@@ -344,173 +181,162 @@ class PhotoStatisticAlgorithm(Component):
 
         return fig
 
+    @property
+    def SPE_resolution(self) -> float:
+        """
+        Returns a deep copy of the SPE resolution.
 
-@property
-def SPE_resolution(self) -> float:
-    """
-    Returns a deep copy of the SPE resolution.
+        Returns:
+            float: The SPE resolution.
+        """
+        return copy.deepcopy(self.__SPE_resolution)
 
-    Returns:
-        float: The SPE resolution.
-    """
-    return copy.deepcopy(self.__SPE_resolution)
+    @property
+    def sigmaPedHG(self) -> float:
+        """
+        Calculates and returns the standard deviation of Pedcharge_hg multiplied by the square root of coefCharge_FF_Ped.
 
+        Returns:
+            float: The standard deviation of Pedcharge_hg.
+        """
+        return np.std(self.__Pedcharge_hg, axis=0) * np.sqrt(self.__coefCharge_FF_Ped)
 
-@property
-def sigmaPedHG(self) -> float:
-    """
-    Calculates and returns the standard deviation of Pedcharge_hg multiplied by the square root of coefCharge_FF_Ped.
+    @property
+    def sigmaChargeHG(self) -> float:
+        """
+        Calculates and returns the standard deviation of FFcharge_hg minus meanPedHG.
 
-    Returns:
-        float: The standard deviation of Pedcharge_hg.
-    """
-    return np.std(self.__Pedcharge_hg, axis=0) * np.sqrt(self.__coefCharge_FF_Ped)
+        Returns:
+            float: The standard deviation of FFcharge_hg minus meanPedHG.
+        """
+        return np.std(self.__FFcharge_hg - self.meanPedHG, axis=0)
 
+    @property
+    def meanPedHG(self) -> float:
+        """
+        Calculates and returns the mean of Pedcharge_hg multiplied by coefCharge_FF_Ped.
 
-@property
-def sigmaChargeHG(self) -> float:
-    """
-    Calculates and returns the standard deviation of FFcharge_hg minus meanPedHG.
+        Returns:
+            float: The mean of Pedcharge_hg.
+        """
+        return np.mean(self.__Pedcharge_hg, axis=0) * self.__coefCharge_FF_Ped
 
-    Returns:
-        float: The standard deviation of FFcharge_hg minus meanPedHG.
-    """
-    return np.std(self.__FFcharge_hg - self.meanPedHG, axis=0)
+    @property
+    def meanChargeHG(self) -> float:
+        """
+        Calculates and returns the mean of FFcharge_hg minus meanPedHG.
 
+        Returns:
+            float: The mean of FFcharge_hg minus meanPedHG.
+        """
+        return np.mean(self.__FFcharge_hg - self.meanPedHG, axis=0)
 
-@property
-def meanPedHG(self) -> float:
-    """
-    Calculates and returns the mean of Pedcharge_hg multiplied by coefCharge_FF_Ped.
+    @property
+    def BHG(self) -> float:
+        """
+        Calculates and returns the BHG value.
 
-    Returns:
-        float: The mean of Pedcharge_hg.
-    """
-    return np.mean(self.__Pedcharge_hg, axis=0) * self.__coefCharge_FF_Ped
+        Returns:
+            float: The BHG value.
+        """
+        min_events = np.min((self.__FFcharge_hg.shape[0], self.__Pedcharge_hg.shape[0]))
+        upper = (
+            np.power(
+                self.__FFcharge_hg.mean(axis=1)[:min_events]
+                - self.__Pedcharge_hg.mean(axis=1)[:min_events]
+                * self.__coefCharge_FF_Ped
+                - self.meanChargeHG.mean(),
+                2,
+            )
+        ).mean(axis=0)
+        lower = np.power(self.meanChargeHG.mean(), 2)
+        return np.sqrt(upper / lower)
 
+    @property
+    def gainHG(self) -> float:
+        """
+        Calculates and returns the gain for high gain charge data.
 
-@property
-def meanChargeHG(self) -> float:
-    """
-    Calculates and returns the mean of FFcharge_hg minus meanPedHG.
+        Returns:
+            float: The gain for high gain charge data.
+        """
+        return (
+            np.power(self.sigmaChargeHG, 2)
+            - np.power(self.sigmaPedHG, 2)
+            - np.power(self.BHG * self.meanChargeHG, 2)
+        ) / (self.meanChargeHG * (1 + np.power(self.SPE_resolution, 2)))
 
-    Returns:
-        float: The mean of FFcharge_hg minus meanPedHG.
-    """
-    return np.mean(self.__FFcharge_hg - self.meanPedHG, axis=0)
+    @property
+    def sigmaPedLG(self) -> float:
+        """
+        Calculates and returns the standard deviation of Pedcharge_lg multiplied by the square root of coefCharge_FF_Ped.
 
+        Returns:
+            float: The standard deviation of Pedcharge_lg.
+        """
+        return np.std(self.__Pedcharge_lg, axis=0) * np.sqrt(self.__coefCharge_FF_Ped)
 
-@property
-def BHG(self) -> float:
-    """
-    Calculates and returns the BHG value.
+    @property
+    def sigmaChargeLG(self) -> float:
+        """
+        Calculates and returns the standard deviation of FFcharge_lg minus meanPedLG.
 
-    Returns:
-        float: The BHG value.
-    """
-    min_events = np.min((self.__FFcharge_hg.shape[0], self.__Pedcharge_hg.shape[0]))
-    upper = (
-        np.power(
-            self.__FFcharge_hg.mean(axis=1)[:min_events]
-            - self.__Pedcharge_hg.mean(axis=1)[:min_events] * self.__coefCharge_FF_Ped
-            - self.meanChargeHG.mean(),
-            2,
-        )
-    ).mean(axis=0)
-    lower = np.power(self.meanChargeHG.mean(), 2)
-    return np.sqrt(upper / lower)
+        Returns:
+            float: The standard deviation of FFcharge_lg minus meanPedLG.
+        """
+        return np.std(self.__FFcharge_lg - self.meanPedLG, axis=0)
 
+    @property
+    def meanPedLG(self) -> float:
+        """
+        Calculates and returns the mean of Pedcharge_lg multiplied by coefCharge_FF_Ped.
 
-@property
-def gainHG(self) -> float:
-    """
-    Calculates and returns the gain for high gain charge data.
+        Returns:
+            float: The mean of Pedcharge_lg.
+        """
+        return np.mean(self.__Pedcharge_lg, axis=0) * self.__coefCharge_FF_Ped
 
-    Returns:
-        float: The gain for high gain charge data.
-    """
-    return (
-        np.power(self.sigmaChargeHG, 2)
-        - np.power(self.sigmaPedHG, 2)
-        - np.power(self.BHG * self.meanChargeHG, 2)
-    ) / (self.meanChargeHG * (1 + np.power(self.SPE_resolution, 2)))
+    @property
+    def meanChargeLG(self) -> float:
+        """
+        Calculates and returns the mean of FFcharge_lg minus meanPedLG.
 
+        Returns:
+            float: The mean of FFcharge_lg minus meanPedLG.
+        """
+        return np.mean(self.__FFcharge_lg - self.meanPedLG, axis=0)
 
-@property
-def sigmaPedLG(self) -> float:
-    """
-    Calculates and returns the standard deviation of Pedcharge_lg multiplied by the square root of coefCharge_FF_Ped.
+    @property
+    def BLG(self) -> float:
+        """
+        Calculates and returns the BLG value.
 
-    Returns:
-        float: The standard deviation of Pedcharge_lg.
-    """
-    return np.std(self.__Pedcharge_lg, axis=0) * np.sqrt(self.__coefCharge_FF_Ped)
+        Returns:
+            float: The BLG value.
+        """
+        min_events = np.min((self.__FFcharge_lg.shape[0], self.__Pedcharge_lg.shape[0]))
+        upper = (
+            np.power(
+                self.__FFcharge_lg.mean(axis=1)[:min_events]
+                - self.__Pedcharge_lg.mean(axis=1)[:min_events]
+                * self.__coefCharge_FF_Ped
+                - self.meanChargeLG.mean(),
+                2,
+            )
+        ).mean(axis=0)
+        lower = np.power(self.meanChargeLG.mean(), 2)
+        return np.sqrt(upper / lower)
 
+    @property
+    def gainLG(self) -> float:
+        """
+        Calculates and returns the gain for low gain charge data.
 
-@property
-def sigmaChargeLG(self) -> float:
-    """
-    Calculates and returns the standard deviation of FFcharge_lg minus meanPedLG.
-
-    Returns:
-        float: The standard deviation of FFcharge_lg minus meanPedLG.
-    """
-    return np.std(self.__FFcharge_lg - self.meanPedLG, axis=0)
-
-
-@property
-def meanPedLG(self) -> float:
-    """
-    Calculates and returns the mean of Pedcharge_lg multiplied by coefCharge_FF_Ped.
-
-    Returns:
-        float: The mean of Pedcharge_lg.
-    """
-    return np.mean(self.__Pedcharge_lg, axis=0) * self.__coefCharge_FF_Ped
-
-
-@property
-def meanChargeLG(self) -> float:
-    """
-    Calculates and returns the mean of FFcharge_lg minus meanPedLG.
-
-    Returns:
-        float: The mean of FFcharge_lg minus meanPedLG.
-    """
-    return np.mean(self.__FFcharge_lg - self.meanPedLG, axis=0)
-
-
-@property
-def BLG(self) -> float:
-    """
-    Calculates and returns the BLG value.
-
-    Returns:
-        float: The BLG value.
-    """
-    min_events = np.min((self.__FFcharge_lg.shape[0], self.__Pedcharge_lg.shape[0]))
-    upper = (
-        np.power(
-            self.__FFcharge_lg.mean(axis=1)[:min_events]
-            - self.__Pedcharge_lg.mean(axis=1)[:min_events] * self.__coefCharge_FF_Ped
-            - self.meanChargeLG.mean(),
-            2,
-        )
-    ).mean(axis=0)
-    lower = np.power(self.meanChargeLG.mean(), 2)
-    return np.sqrt(upper / lower)
-
-
-@property
-def gainLG(self) -> float:
-    """
-    Calculates and returns the gain for low gain charge data.
-
-    Returns:
-        float: The gain for low gain charge data.
-    """
-    return (
-        np.power(self.sigmaChargeLG, 2)
-        - np.power(self.sigmaPedLG, 2)
-        - np.power(self.BLG * self.meanChargeLG, 2)
-    ) / (self.meanChargeLG * (1 + np.power(self.SPE_resolution, 2)))
+        Returns:
+            float: The gain for low gain charge data.
+        """
+        return (
+            np.power(self.sigmaChargeLG, 2)
+            - np.power(self.sigmaPedLG, 2)
+            - np.power(self.BLG * self.meanChargeLG, 2)
+        ) / (self.meanChargeLG * (1 + np.power(self.SPE_resolution, 2)))
