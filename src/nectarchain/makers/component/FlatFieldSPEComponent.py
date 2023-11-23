@@ -112,6 +112,8 @@ class FlatFieldSingleHHVSPENectarCAMComponent(GainNectarCAMComponent):
             self._chargesContainers = merge_map_ArrayDataContainer(self._chargesContainers)
         spe_fit = eval(self.SPEfitalgorithm).create_from_chargesContainer(self._chargesContainers,parent = self,**self._SPEfitalgorithm_kwargs)
         fit_output = spe_fit.run(pixels_id = self.asked_pixels_id, *args, **kwargs)
+        conv_rate = np.sum(spe_fit.results.is_valid)/self.asked_pixels_id
+        self.log.info(f"convergence rate : {conv_rate}")
         return spe_fit.results
         #implement the rest
 
