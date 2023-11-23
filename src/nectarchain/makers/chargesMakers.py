@@ -67,7 +67,6 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
 
     def __init__(self,*args,**kwargs) : 
            super().__init__(*args,**kwargs)
-           #self.__still_finished = False
     def _init_output_path(self) :
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
         if self.max_events is None : 

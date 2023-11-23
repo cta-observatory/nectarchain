@@ -34,11 +34,13 @@ class WaveformsNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected"
     ).tag(config=True)
 
+    def __init__(self,*args,**kwargs) : 
+           super().__init__(*args,**kwargs)
     def _init_output_path(self) :
         if self.max_events is None : 
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
-        else : 
             filename = f"{self.name}_run{self.run_number}.h5"
+        else : 
+            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
         self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/{filename}")
 
 
