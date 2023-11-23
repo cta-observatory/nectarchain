@@ -40,7 +40,7 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from ctapipe.core.traits import ComponentNameList,Unicode,Bool,Path
 from tqdm import tqdm
 
-from ..data.container import WaveformsContainer,TriggerMapContainer,ChargesContainers,WaveformsContainers
+from ..data.container import WaveformsContainer,TriggerMapContainer,ChargesContainers,WaveformsContainers,ArrayDataContainer
 from .core import EventsLoopNectarCAMCalibrationTool
 from .component import NectarCAMComponent,WaveformsComponent,ChargesComponent
 from ..data.management import DataManagement
@@ -89,24 +89,25 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
             files = DataManagement.find_waveforms(run_number = self.run_number,
                                                   max_events = self.max_events)
             if len(files) != 1 : 
-                self.log.info(f"{len(files)} computed wavforms files found with max_events > {self.max_events}  for run {self.run_number}, reload waveforms from event loop")
+                self.log.info(f"{len(files)} computed wavforms files found with max_events >= {self.max_events}  for run {self.run_number}, reload waveforms from event loop")
                 super().start(n_events = n_events , restart_from_begining=restart_from_begining, *args, **kwargs)
             else : 
-                self.log.info(f"{files[0]} is the computed wavforms files found with max_events > {self.max_events}  for run {self.run_number}")
-                waveformsContainers = WaveformsComponent.waveformsContainer_from_hdf5(files[0])
-                if isinstance(waveformsContainers,WaveformsContainers) : 
+                self.log.info(f"{files[0]} is the computed wavforms files found with max_events >= {self.max_events}  for run {self.run_number}")
+                waveformsContainers = WaveformsContainer.from_hdf5(files[0])
+                if not(isinstance(waveformsContainers,WaveformsContainer)) : 
                     chargesContainers = ChargesContainers()
                     if isinstance(list(waveformsContainers.containers.keys())[0],EventType) : 
                         self.log.debug('WaveformsContainer file container multiple trigger type')
                         self._init_writer(sliced = False)
                         chargesContainers = ChargesComponent._create_from_waveforms_looping_eventType(
-                                                            waveformsContainers = waveformsContainers.containers[key],
-                                                            subarray = self.subarray,
+                                                            waveformsContainers = waveformsContainers,
+                                                            subarray = self.event_source.subarray,
                                                             method = self.method,
                                                             **self.extractor_kwargs)
                         self._write_container(container = chargesContainers)
                     else : 
                         self.log.debug('WaveformsContainer file container multiple slices of the run events')
+
                         for key in waveformsContainers.containers.keys() : 
                             self.log.debug(f"extraction of charge associated to {key}")
                             slice_index = int(key.split('_')[-1])
@@ -119,10 +120,10 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                                                             )
                             self._write_container(container = chargesContainers)
                 else : 
-                    self.log.debug('WaveformsContainer file container is not mapped with trigger type')
+                    self.log.debug('WaveformsContainer file container is a simple WaveformsContainer (not mapped)')
                     self._init_writer(sliced = False)
                     chargesContainers = ChargesComponent.create_from_waveforms(waveformsContainer = waveformsContainers,
-                                                            subarray = self.subarray,
+                                                            subarray = self.event_source.subarray,
                                                             method = self.method,
                                                             **self.extractor_kwargs 
                                                             )

@@ -36,5 +36,5 @@ class ChargesContainer(ArrayDataContainer):
 
 class ChargesContainers(TriggerMapContainer):
     containers = Field(default_factory=partial(Map, ChargesContainer),
-                       description = "trigger mapping of ChargesContainer"
+                       description = "trigger or slices of data mapping of ChargesContainer"
                        )

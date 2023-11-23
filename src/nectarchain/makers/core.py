@@ -215,6 +215,14 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self.writer.close()
 
         if sliced:
+            if slice_index == 0 : 
+                if self.overwrite :
+                    try : 
+                        log.info(f'overwrite set to true, trying to remove file {self.output_path}')
+                        os.remove(self.output_path)
+                        log.info(f'{self.output_path} removed')
+                    except OSError:
+                        pass
             self.log.info(
                 f"initilization of writter in sliced mode (slice index = {slice_index})"
             )
@@ -223,6 +231,13 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             mode = "a"
         else:
             self.log.info("initilization of writter in full mode")
+            if self.overwrite :
+                try : 
+                    log.info(f'overwrite set to true, trying to remove file {self.output_path}')
+                    os.remove(self.output_path)
+                    log.info(f'{self.output_path} removed')
+                except OSError:
+                    pass
             group_name = "data"
             mode = "w"
         try:

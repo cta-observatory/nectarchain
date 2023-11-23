@@ -44,6 +44,6 @@ class WaveformsContainer(ArrayDataContainer):
 
 class WaveformsContainers(TriggerMapContainer):
     containers = Field(default_factory=partial(Map, WaveformsContainer),
-                       description = "trigger mapping of WaveformContainer"
+                       description = "trigger or slices of data mapping of WaveformContainer"
                        )
 

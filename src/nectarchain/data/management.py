@@ -183,7 +183,7 @@ class DataManagement:
             all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/*_run{run_number}_maxevents*{ext}").__str__())
             out = []
             for file in all_files : 
-                data = file.split('/')[-1].split('_')
+                data = file.split('/')[-1].split(".h5")[0].split('_')
                 for _data in data : 
                     if "maxevents" in _data :
                         _max_events = int(_data.split('maxevents')[-1])

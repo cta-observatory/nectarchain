@@ -118,7 +118,7 @@ class ArrayDataContainer(NectarCAMContainer):
         
 
         with HDF5TableReader(path) as reader : 
-            if slice_index is None or len(reader._h5file.root.__members__) > 1 : 
+            if len(reader._h5file.root.__members__) > 1 : 
                 for data in reader._h5file.root.__members__ : 
                     container.containers[data] = eval(f"module.{container_class.__name__}s")()
                     for key,trigger in EventType.__members__.items() : 
@@ -141,8 +141,8 @@ class ArrayDataContainer(NectarCAMContainer):
                 for key,trigger in EventType.__members__.items() : 
                     try : 
                         container_data = eval(f"reader._h5file.root.{data}.__members__") 
-                        _mask = [container_class.__name__ in _word for _word in container_data] 
-                        _container_data = container_data[_mask]
+                        _mask =[container_class.__name__ in _word for _word in container_data]
+                        _container_data = np.array(container_data)[_mask]
                         if len(_container_data) == 1 : 
                             tableReader = reader.read(table_name = f"/{data}/{_container_data[0]}/{trigger.name}", containers = container_class)
                             container.containers[trigger] = next(tableReader)
