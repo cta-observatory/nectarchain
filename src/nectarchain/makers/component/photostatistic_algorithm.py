@@ -23,7 +23,7 @@ from scipy.stats import linregress
 from ...data.container import (
     ChargesContainer,
     SPEfitContainer,
-    merge_map_ArrayDataContainer,
+    GainContainer,
 )
 from ..component import ChargesComponent
 
@@ -40,6 +40,7 @@ class PhotoStatisticAlgorithm(Component):
         Pedcharge_lg: np.ndarray,
         coefCharge_FF_Ped: float,
         SPE_resolution: np.ndarray,
+        SPE_high_gain: np.ndarray,
         config=None,
         parent=None,
         **kwargs,
@@ -51,6 +52,7 @@ class PhotoStatisticAlgorithm(Component):
         self.__coefCharge_FF_Ped = coefCharge_FF_Ped
 
         self.__SPE_resolution = SPE_resolution
+        self.__SPE_high_gain = SPE_high_gain
 
         self.__FFcharge_hg = FFcharge_hg
         self.__FFcharge_lg = FFcharge_lg
@@ -59,6 +61,13 @@ class PhotoStatisticAlgorithm(Component):
         self.__Pedcharge_lg = Pedcharge_lg
 
         self.__check_shape()
+
+        self.__results = GainContainer(
+            is_valid = np.zeros((self.npixels),dtype = bool),
+            high_gain = np.zeros((self.npixels,3)),
+            low_gain = np.zeros((self.npixels,3)),
+            pixels_id = self._pixels_id,
+        )
 
     @classmethod
     def create_from_chargesContainer(
@@ -86,7 +95,7 @@ class PhotoStatisticAlgorithm(Component):
         out = {}
 
         FFped_intersection = np.intersect1d(Pedcharge.pixels_id, FFcharge.pixels_id)
-        SPEFFPed_intersection = np.intersect1d(FFped_intersection, SPE_result.pixels_id)
+        SPEFFPed_intersection = np.intersect1d(FFped_intersection, SPE_result.pixels_id[SPE_result.is_valid])
         mask_SPE = np.array(
             [
                 SPE_result.pixels_id[i] in SPEFFPed_intersection
@@ -94,7 +103,9 @@ class PhotoStatisticAlgorithm(Component):
             ],
             dtype=bool,
         )
-        out["SPE_resolution"] = SPE_result.resolution[mask_SPE]
+        out["SPE_resolution"] = SPE_result.resolution[mask_SPE].T[0]
+        out["SPE_high_gain"] = SPE_result.high_gain[mask_SPE].T[0]
+
 
         out["pixels_id"] = SPEFFPed_intersection
         out["FFcharge_hg"] = ChargesComponent.select_charges_hg(
@@ -125,12 +136,26 @@ class PhotoStatisticAlgorithm(Component):
             log.error(e, exc_info=True)
             raise e
 
-    def run(self, pixels_id: np.ndarray = None, display: bool = True, **kwargs) -> None:
+    def run(self, pixels_id: np.ndarray = None, **kwargs) -> None:
         log.info("running photo statistic method")
-        self._results["high_gain"] = self.gainHG
-        self._results["low_gain"] = self.gainLG
-        # self._results["is_valid"] = self._SPEvalid
+        if pixels_id is None : 
+            pixels_id = self._pixels_id
+        mask = np.array([pixel_id in pixels_id for pixel_id in self._pixels_id],dtype = bool)
+        self._results.high_gain = np.array((self.gainHG * mask,np.zeros(self.npixels),np.zeros(self.npixels))).T
+        self._results.low_gain =  np.array((self.gainLG * mask,np.zeros(self.npixels),np.zeros(self.npixels))).T
+        self._results.is_valid = mask
+        
+        figpath = kwargs.get('figpath',False)
+        if figpath : 
+            os.makedirs(figpath,exist_ok=True)
+            fig = __class__.plot_correlation(self._results.high_gain.T[0],
+                                             self.__SPE_high_gain)
+            fig.savefig(f"{figpath}/plot_correlation_Photo_Stat_SPE.pdf")
+            fig.clf()
+            plt.close(fig)
+        return 0
 
+    @staticmethod
     def plot_correlation(
         photoStat_gain: np.ndarray, SPE_gain: np.ndarray
     ) -> plt.Figure:
@@ -180,6 +205,7 @@ class PhotoStatisticAlgorithm(Component):
             ax.legend(fontsize=15)
 
         return fig
+
 
     @property
     def SPE_resolution(self) -> float:
@@ -340,3 +366,15 @@ class PhotoStatisticAlgorithm(Component):
             - np.power(self.sigmaPedLG, 2)
             - np.power(self.BLG * self.meanChargeLG, 2)
         ) / (self.meanChargeLG * (1 + np.power(self.SPE_resolution, 2)))
+
+    @property
+    def results(self):
+        return copy.deepcopy(self.__results)
+
+    @property
+    def _results(self):
+        return self.__results
+
+    @property
+    def npixels(self):
+        return len(self._pixels_id)

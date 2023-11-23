@@ -4,6 +4,8 @@ from .gainComponent import *
 from .waveformsComponent import *
 from .chargesComponent import *
 from .FlatFieldSPEComponent import *
+from .photostatistic_component import *
+from .photostatistic_algorithm import *
 
 __all__ = [
     "ArrayDataComponent",
@@ -16,4 +18,6 @@ __all__ = [
     "FlatFieldCombinedSPEStdNectarCAMComponent",
     "ChargesComponent",
     "WaveformsComponent",
+    "PhotoStatisticNectarCAMComponent",
+    "PhotoStatisticAlgorithm",
     ]

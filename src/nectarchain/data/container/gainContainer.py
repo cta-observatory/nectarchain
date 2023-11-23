@@ -17,6 +17,7 @@ from .core import NectarCAMContainer
 __all__ = ["GainContainer","SPEfitContainer"]
 
 class GainContainer(NectarCAMContainer) : 
+    is_valid = Field(type=np.ndarray, dtype = bool, ndim = 1, description="is_valid")
     high_gain = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="high gain")
     low_gain = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="low gain")
     pixels_id = Field(type=np.ndarray, dtype = np.uint16, ndim = 1, description="pixel ids")
@@ -26,7 +27,6 @@ class GainContainer(NectarCAMContainer) :
 
 
 class SPEfitContainer(GainContainer) : 
-    is_valid = Field(type=np.ndarray, dtype = bool, ndim = 1, description="is_valid")
     likelihood = Field(type=np.ndarray, dtype = np.float64, ndim = 1, description="likelihood")
     p_value = Field(type=np.ndarray, dtype = np.float64, ndim = 1, description="p_value")
     pedestal = Field(type=np.ndarray, dtype = np.float64, ndim = 2, description="pedestal")

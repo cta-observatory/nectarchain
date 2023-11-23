@@ -7,7 +7,9 @@ log.handlers = logging.getLogger("__main__").handlers
 
 import copy
 from abc import ABC, abstractmethod
-
+import matplotlib.pyplot as plt
+from scipy.stats import linregress
+from astropy.visualization import quantity_support
 import astropy.units as u
 import numpy as np
 from astropy.table import Column
@@ -30,12 +32,15 @@ from ...data.container import SPEfitContainer, merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
 from .chargesComponent import ChargesComponent
 from .gainComponent import GainNectarCAMComponent
-from .spe import SPECombinedalgorithm, SPEHHValgorithm, SPEHHVStdalgorithm
+from .photostatistic_algorithm import PhotoStatisticAlgorithm
 
-__all__ = ["PhotoStatiticNectarCAMComponent"]
+__all__ = ["PhotoStatisticNectarCAMComponent"]
 
-class PhotoStatiticNectarCAMComponent(GainNectarCAMComponent):
-    PhotoStatAlgorithm = Unicode("PhotoStatAlgorithm",
+class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
+    SPE_result = Path(
+        help="the path of the SPE result container computed with very high voltage data",
+    ).tag(config=True)
+    PhotoStatAlgorithm = Unicode("PhotoStatisticAlgorithm",
                               help = "The photo-statitic algorithm to be used",
                               read_only = True,
     ).tag(config = True)
@@ -57,7 +62,7 @@ class PhotoStatiticNectarCAMComponent(GainNectarCAMComponent):
         self._PhotoStatAlgorithm_kwargs = {}
         other_kwargs = {}
         chargesComponent_configurable_traits = ComponentUtils.get_configurable_traits(ChargesComponent)
-        PhotoStatAlgorithm_configurable_traits = ComponentUtils.get_configurable_traits(eval(self.SPEfitalgorithm))
+        PhotoStatAlgorithm_configurable_traits = ComponentUtils.get_configurable_traits(eval(self.PhotoStatAlgorithm))
 
         for key in kwargs.keys() : 
             if key in chargesComponent_configurable_traits.keys() : 
@@ -73,7 +78,7 @@ class PhotoStatiticNectarCAMComponent(GainNectarCAMComponent):
         self.Ped_chargesComponent = ChargesComponent(subarray = subarray,config = config, parent = parent,*args, **chargesComponent_kwargs)
         self._Ped_chargesContainers = None
 
-        self.__coefCharge_FF_Ped = int(chargesComponent_kwargs.get("window_width"))/N_SAMPLES
+        self.__coefCharge_FF_Ped = int(chargesComponent_kwargs.get('extractor_kwargs').get("window_width",N_SAMPLES))/N_SAMPLES
 
 
     def __call__(
@@ -84,10 +89,10 @@ class PhotoStatiticNectarCAMComponent(GainNectarCAMComponent):
         ):
         if event.trigger.event_type == EventType.FLATFIELD : 
             self.FF_chargesComponent(event = event, *args, **kwargs) 
-        if event.trigger.event_type in [EventType.SKY_PEDESTAL,EventType.DARK_PEDESTAL,EventType.ELECTRONIC_PEDESTAL]: 
+        elif event.trigger.event_type in [EventType.SKY_PEDESTAL,EventType.DARK_PEDESTAL,EventType.ELECTRONIC_PEDESTAL]: 
             self.Ped_chargesComponent(event = event, *args, **kwargs) 
         else :
-            self.log.warning(f"event {event.event_id} is event type {event.trigger.event_type} which is not used here") 
+            self.log.warning(f"event {event.index.event_id} is event type {event.trigger.event_type} which is not used here") 
     
 
 
@@ -95,16 +100,15 @@ class PhotoStatiticNectarCAMComponent(GainNectarCAMComponent):
         if self._FF_chargesContainers is None : 
             self._FF_chargesContainers = self.FF_chargesComponent.finish(*args,**kwargs)
             self._FF_chargesContainers = merge_map_ArrayDataContainer(self._FF_chargesContainers)
-        if self._FF_chargesContainers is None : 
-            self._FF_chargesContainers = self.FF_chargesComponent.finish(*args,**kwargs)
-            self._FF_chargesContainers = merge_map_ArrayDataContainer(self._FF_chargesContainers)
+        if self._Ped_chargesContainers is None : 
+            self._Ped_chargesContainers = self.Ped_chargesComponent.finish(*args,**kwargs)
+            self._Ped_chargesContainers = merge_map_ArrayDataContainer(self._Ped_chargesContainers)
         nectarGainSPEresult = SPEfitContainer.from_hdf5(self.SPE_result)
         photo_stat = eval(self.PhotoStatAlgorithm).create_from_chargesContainer(FFcharge = self._FF_chargesContainers,
                                                                                 Pedcharge= self._Ped_chargesContainers,
                                                                                 SPE_result = nectarGainSPEresult,
-                                                                                coefCharge_FF_Ped = self.__coefCharge_FF_Ped
-                                                                                parent = self.__coefCharge_FF_Ped,
+                                                                                coefCharge_FF_Ped = self.__coefCharge_FF_Ped,
+                                                                                parent = self,
                                                                                 **self._PhotoStatAlgorithm_kwargs)
         fit_output = photo_stat.run(pixels_id = self.asked_pixels_id, *args, **kwargs)
         return photo_stat.results
-        #implement the rest

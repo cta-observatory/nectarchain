@@ -24,7 +24,9 @@ from ...chargesMakers import ChargesNectarCAMCalibrationTool
 from ...component import ArrayDataComponent, ChargesComponent, NectarCAMComponent
 from ...extractor.utils import CtapipeExtractor
 from .core import GainNectarCAMCalibrationTool
+from ....data.management import DataManagement
 
+__all__ = ["PhotoStatisticNectarCAMCalibrationTool"]
 
 class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     ###TO DO : IMPLEMENT a MOTHER PHOTOSTAT CLASS WITH ONLY 1 RUN WITH FF AND PEDESTAL INTERLEAVED.
@@ -41,9 +43,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     Ped_run_number = Integer(
         help="the FF run number to be treated", default_value=-1
     ).tag(config=True)
-    SPE_result = Path(
-        help="the path of the SPE result container computed with very high voltage data",
-    ).tag(config=True)
+
 
     run_file = Path(
         help="desactivated for PhotoStatistic maker",
@@ -53,8 +53,13 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     ).tag(config=False)
 
     def _init_output_path(self):
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
+        if self.max_events is None : 
+            filename = f"{self.name}_FFrun{self.run_number}_{self.method}_{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_FullWaveformSum.h5"
+        else : 
+            filename = f"{self.name}_FFrun{self.run_number}_{self.method}_{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_FullWaveformSum_maxevents{self.max_events}.h5"
         self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/{self.name}_FFrun{self.run_number}_{self.method}_{CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}_Pedrun{self.Ped_run_number}_FullWaveformSum.h5"
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/{filename}"
         )
 
     def _load_eventsource(self, FF_run=True):
@@ -78,24 +83,23 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             self.extractor_kwargs
         )
-        FF_files = glob.glob(
-            pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/charges/*_run{self.run_number}_{self.method}_{str_extractor_kwargs}.h5"
-            ).__str__()
-        )
-        Ped_files = glob.glob(
-            pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/charges/*_run{self.Ped_run_number}_FullWaveformSum_.h5"
-            ).__str__()
-        )
-
-        if self.compute_charge or len(FF_files) != 1 or len(Ped_files) != 1:
+        FF_files = DataManagement.find_charges(
+                run_number=self.run_number,
+                method = self.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                max_events=self.max_events,
+            )
+        Ped_files = DataManagement.find_charges(
+                run_number=self.run_number,
+                max_events=self.max_events,
+            )
+        if self.reload_events or len(FF_files) != 1 or len(Ped_files) != 1:
             if len(FF_files) != 1 or len(Ped_files) != 1:
                 self.log.info(
-                    f"{len(FF_files)} computed charges FF files found for run {self.run_number} with extraction method {self.method} and {str_extractor_kwargs},\n reload charges from event loop"
+                    f"{len(FF_files)} computed charges FF files found with max_events > {self.max_events} for run {self.run_number} with extraction method {self.method} and {str_extractor_kwargs},\n reload charges from event loop"
                 )
                 self.log.info(
-                    f"{len(Ped_files)} computed charges FF files found for run {self.Ped_run_number} with extraction method FullWaveformSum,\n reload charges from event loop"
+                    f"{len(Ped_files)} computed charges FF files found with max_events > {self.max_events} for run {self.Ped_run_number} with extraction method FullWaveformSum,\n reload charges from event loop"
                 )
 
             super().start(
