@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 from ctapipe.core.component import Component
-from nectarchain.makers.component import NectarCAMComponent
+
 
 
 
@@ -22,8 +22,10 @@ from nectarchain.makers.component import NectarCAMComponent
 class ComponentUtils:
     @staticmethod
     def is_in_non_abstract_subclasses(component : Component,motherClass = "NectarCAMComponent") : 
+        from nectarchain.makers.component.core import NectarCAMComponent
+        #module = importlib.import_module(f'nectarchain.makers.component.core')
         is_in = False
-        if isinstance(component,eval(motherClass)) : 
+        if isinstance(component,eval(f"{motherClass}")) : 
             is_in = True
         else  :
             for _,value in eval(motherClass).non_abstract_subclasses().items() : 
