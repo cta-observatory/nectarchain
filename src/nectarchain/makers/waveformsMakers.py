@@ -35,7 +35,11 @@ class WaveformsNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def _init_output_path(self) :
-        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/{self.name}_run{self.run_number}.h5")
+        if self.max_events is None : 
+            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
+        else : 
+            filename = f"{self.name}_run{self.run_number}.h5"
+        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/{filename}")
 
 
     

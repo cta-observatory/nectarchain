@@ -43,6 +43,7 @@ from tqdm import tqdm
 from ..data.container import WaveformsContainer,TriggerMapContainer,ChargesContainers,WaveformsContainers
 from .core import EventsLoopNectarCAMCalibrationTool
 from .component import NectarCAMComponent,WaveformsComponent,ChargesComponent
+from ..data.management import DataManagement
 
 __all__ = ["ChargesNectarCAMCalibrationTool"]
 
@@ -69,7 +70,12 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
            #self.__still_finished = False
     def _init_output_path(self) :
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
-        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/charges/{self.name}_run{self.run_number}_{self.method}_{str_extractor_kwargs}.h5")
+        if self.max_events is None : 
+            filename = f"{self.name}_run{self.run_number}_{self.method}_{str_extractor_kwargs}.h5"
+        else : 
+            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_{self.method}_{str_extractor_kwargs}.h5"
+        
+        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/charges/{filename}")
 
 
     def start(
@@ -81,12 +87,13 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         **kwargs,
     ):
         if self.from_computed_waveforms : 
-            files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/*_run{self.run_number}.h5").__str__())
+            files = DataManagement.find_waveforms(run_number = self.run_number,
+                                                  max_events = self.max_events)
             if len(files) != 1 : 
-                self.log.info(f"{len(files)} computed wavforms files found for run {self.run_number}, reload waveforms from event loop")
+                self.log.info(f"{len(files)} computed wavforms files found with max_events > {self.max_events}  for run {self.run_number}, reload waveforms from event loop")
                 super().start(n_events = n_events , restart_from_begining=restart_from_begining, *args, **kwargs)
             else : 
-                self.log.info(f"{files[0]} is the computed wavforms files found for run {self.run_number}")
+                self.log.info(f"{files[0]} is the computed wavforms files found with max_events > {self.max_events}  for run {self.run_number}")
                 waveformsContainers = WaveformsComponent.waveformsContainer_from_hdf5(files[0])
                 if isinstance(waveformsContainers,WaveformsContainers) : 
                     chargesContainers = ChargesContainers()

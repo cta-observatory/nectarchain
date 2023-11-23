@@ -20,6 +20,7 @@ from ...component import NectarCAMComponent,ChargesComponent,ArrayDataComponent
 from ...extractor.utils import CtapipeExtractor
 from ....data.container.core import NectarCAMContainer,merge_map_ArrayDataContainer,TriggerMapContainer
 from ....data.container import SPEfitContainer,ChargesContainer
+from ....data.management import DataManagement
 
 
 
@@ -35,13 +36,15 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected"
     ).tag(config=True)
 
-    compute_charge = Bool(
-        default_value = False,
-        help = "a flag to re compute the charge from raw data"
-    )
 
     def _init_output_path(self) :
-        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{self.name}_run{self.run_number}_{self.method}_{CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}.h5")
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
+        if self.max_events is None : 
+            filename = f"{self.name}_run{self.run_number}_{self.method}_{str_extractor_kwargs}.h5"
+        else : 
+            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_{self.method}_{str_extractor_kwargs}.h5"
+
+        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{filename}")
 
     def start(
             self,
@@ -51,10 +54,15 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             *args,
             **kwargs,) : 
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
-        files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/charges/*_run{self.run_number}_{self.method}_{str_extractor_kwargs}.h5").__str__())
-        if self.compute_charge or len(files) != 1 :
+        files = DataManagement.find_charges(
+            run_number=self.run_number,
+            method = self.method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            max_events=self.max_events,
+        )
+        if self.reload_events or len(files) != 1 :
             if len(files) != 1 : 
-                self.log.info(f"{len(files)} computed charges files found for run {self.run_number} with extraction method {self.method} and {str_extractor_kwargs},\n reload charges from event loop")
+                self.log.info(f"{len(files)} computed charges files found with max_events > {self.max_events} for run {self.run_number} with extraction method {self.method} and {str_extractor_kwargs},\n reload charges from event loop")
             super().start(n_events = n_events , restart_from_begining=restart_from_begining, *args, **kwargs)
         else : 
             self.log.info(f"reading computed charge from files {files[0]}")
