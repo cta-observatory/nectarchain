@@ -4,6 +4,7 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+import pathlib
 import glob
 import os
 from pathlib import Path
@@ -162,3 +163,33 @@ class DataManagement:
             return lfns
         else:
             return url_data
+
+
+    def find_waveforms(run_number,max_events = None) : 
+        return __class__.__find_computed_data(
+            run_number=run_number,
+            max_events=max_events
+        )
+    def find_charges(run_number,method = "FullWaveformSum",str_extractor_kwargs = "",max_events = None) : 
+        return __class__.__find_computed_data(
+            run_number=run_number,
+            max_events=max_events,
+            ext = f"_{method}_{str_extractor_kwargs}.h5"
+        )
+    def __find_computed_data(run_number,max_events = None,ext = ".h5"):
+        if max_events is None : 
+            out = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/*_run{run_number}{ext}").__str__())
+        else : 
+            all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/*_run{run_number}_maxevents*{ext}").__str__())
+            out = []
+            for file in all_files : 
+                data = file.split('/')[-1].split('_')
+                for _data in data : 
+                    if "maxevents" in _data :
+                        _max_events = int(_data.split('maxevents')[-1])
+                        break
+                if _max_events >= max_events : 
+                    out = [file]
+                    break
+         
+        return out
