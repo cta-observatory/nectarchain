@@ -427,11 +427,11 @@ class ChargesComponent(ArrayDataComponent) :
             if not (field in ["nsamples", "wfs_hg", "wfs_lg"]):
                 chargesContainer[field] = waveformsContainer[field]
         log.info(f"computing hg charge with {method} method")
-        charges_hg, peak_hg = __class__.compute_charge(
+        charges_hg, peak_hg = __class__.compute_charges(
             waveformsContainer = waveformsContainer, channel = constants.HIGH_GAIN, subarray = subarray, method = method, **kwargs
         )
         log.info(f"computing lg charge with {method} method")
-        charges_lg, peak_lg = __class__.compute_charge(
+        charges_lg, peak_lg = __class__.compute_charges(
             waveformsContainer = waveformsContainer, channel = constants.LOW_GAIN, subarray = subarray, method =  method, **kwargs
         )
         chargesContainer.charges_hg = charges_hg
@@ -442,7 +442,7 @@ class ChargesComponent(ArrayDataComponent) :
         return chargesContainer
 
     @staticmethod
-    def compute_charge(
+    def compute_charges(
         waveformsContainer: WaveformsContainer,
         channel: int,
         subarray : SubarrayDescription,
