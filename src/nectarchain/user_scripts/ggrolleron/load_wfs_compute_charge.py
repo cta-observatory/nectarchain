@@ -1,11 +1,11 @@
 import argparse
-import glob
 import json
 import logging
 import os
 import sys
 from pathlib import Path
 
+os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
 logging.getLogger("numba").setLevel(logging.WARNING)
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -13,7 +13,7 @@ logging.basicConfig(
     filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{Path(__file__).stem}_{os.getpid()}.log",
 )
 log = logging.getLogger(__name__)
-
+import copy
 from nectarchain.data.container import (
     ChargesContainer,
     ChargesContainers,
@@ -176,9 +176,9 @@ if __name__ == "__main__":
     # spe_nevents = [49227,49148,-1]
 
     args = parser.parse_args()
-    arg = vars(args)
+    kwargs = copy.deepcopy(vars(args))
 
-    arg["log_level"] = args.verbosity
+    kwargs["log_level"] = args.verbosity
     
     os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
     logging.basicConfig(
@@ -199,13 +199,13 @@ if __name__ == "__main__":
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
-    arg.pop("verbosity")
+    kwargs.pop("verbosity")
 
 
 
 
 
 
-    log.info(f"arguments passed to main are : {arg}")
+    log.info(f"arguments passed to main are : {kwargs}")
 
-    main(log = log, **arg)
+    main(log = log, **kwargs)

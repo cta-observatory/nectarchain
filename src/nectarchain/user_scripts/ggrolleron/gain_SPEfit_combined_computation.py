@@ -1,30 +1,56 @@
 import logging
 import os
 import sys
-import time
 from pathlib import Path
-
-os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
+import json
 
 # to quiet numba
+os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
 logging.getLogger("numba").setLevel(logging.WARNING)
-
-import argparse
-
-# import seaborn as sns
-from nectarchain.data.container import ChargeContainer
-from nectarchain.makers.calibration.gain.flatfield_spe_makers import (
-    FlatFieldSingleNominalSPEMaker,
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.DEBUG,
+    filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{Path(__file__).stem}_{os.getpid()}.log",
 )
+log = logging.getLogger(__name__)
+
+import copy
+import glob
+import argparse
+from nectarchain.makers.calibration import (
+    FlatFieldSPECombinedStdNectarCAMCalibrationTool
+    
+)
+from nectarchain.makers.extractor.utils import CtapipeExtractor
+from nectarchain.data.management import DataManagement
+
 
 parser = argparse.ArgumentParser(
-    prog="gain_SPEfit_combined_computation.py",
-    description="compute high gain with SPE combined fit for one run at nominal voltage.  Output data will be saved in $NECTARCAMDATA/../SPEfit/data/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",
+    prog="gain_SPEfit_computation.py",
+    description=f"compute high gain with SPE fit for one run at very very high voltage (~1400V) or at nominal voltage (it can often fail). By default, output data are saved in $NECTARCAMDATA/../SPEfit/data/",
+)
+# run numbers
+parser.add_argument(
+    "-r", "--run_number", nargs="+", default=[], help="run(s) list", type=int
 )
 
-# run numbers
-parser.add_argument("-r", "--run_number", help="spe run", type=int)
+# max events to be loaded
+parser.add_argument(
+    "-m",
+    "--max_events",
+    nargs="+",
+    #default=[],
+    help="max events to be load",
+    type=int,
+)
 
+# boolean arguments
+parser.add_argument(
+    "--reload_events",
+    action="store_true",
+    default=False,
+    help="to force re-computation of waveforms from fits.fz files",
+)
 parser.add_argument(
     "--overwrite",
     action="store_true",
@@ -32,63 +58,33 @@ parser.add_argument(
     help="to force overwrite files on disk",
 )
 
-# output figures and path extension
 parser.add_argument(
-    "--display", action="store_true", default=False, help="whether to save plot or not"
-)
-parser.add_argument(
-    "--output_fig_tag", type=str, default="", help="tag to set output figure path"
-)
-
-# pixels selected
-parser.add_argument(
-    "-p", "--pixels", nargs="+", default=None, help="pixels selected", type=int
-)
-
-
-# multiprocessing args
-parser.add_argument(
-    "--multiproc", action="store_true", default=False, help="to use multiprocessing"
-)
-parser.add_argument("--nproc", help="nproc used for multiprocessing", type=int)
-parser.add_argument(
-    "--chunksize",
-    help="chunksize used for multiprocessing, with multiproccesing, create one process per pixels is not optimal, we rather prefer to group quite a few pixels in same process, chunksize is used to set the number of pixels we use for one process, for example if you want to perform the gain computation of the whole camera with 1855 pixels on 6 CPU, a chunksize of 20 seems to be quite optimal  ",
+    "--events_per_slice",
     type=int,
+    default=None,
+    help="will slplit the raw data in fits.fz file with events_per_slice events per slices",
 )
-
 
 # extractor arguments
 parser.add_argument(
-    "--chargeExtractorPath",
-    help="charge extractor path where charges are saved",
+    "--method",
+    choices=[
+        "FullWaveformSum",
+        "FixedWindowSum",
+        "GlobalPeakWindowSum",
+        "LocalPeakWindowSum",
+        "SlidingWindowMaxSum",
+        "TwoPassWindowSum",
+    ],
+    default="LocalPeakWindowSum",
+    help="charge extractor method",
     type=str,
 )
-
-# for VVH combined fit
 parser.add_argument(
-    "--combined",
-    action="store_true",
-    default=False,
-    help="if True : perform a combined fit of VVH and nominal data, if False : perform a nominal fit with SPE resoltion fixed from VVH fitted data",
-)
-parser.add_argument(
-    "--VVH_fitted_results",
-    help="previoulsy fitted VVH data path for nominal SPE fit by fixing some shared parameters",
-    type=str,
-)
-# tag for SPE fit results propagation
-parser.add_argument(
-    "--SPE_fit_results_tag",
-    help="SPE fit results tag for propagate the SPE result to output, this tag will be used to setup the path where output data will be saved, see help for description",
-    type=str,
-    default="",
-)
-parser.add_argument(
-    "--same_luminosity",
-    action="store_true",
-    default=False,
-    help="if luminosity for VVH and nominal data is the same",
+    "--extractor_kwargs",
+    default={"window_width": 16, "window_shift": 4},
+    help="charge extractor kwargs",
+    type=json.loads,
 )
 
 # verbosity argument
@@ -96,81 +92,141 @@ parser.add_argument(
     "-v",
     "--verbosity",
     help="set the verbosity level of logger",
-    default="info",
-    choices=["fatal", "debug", "info", "warning"],
+    default="INFO",
+    choices=["DEBUG","INFO","WARN","ERROR","CRITICAL"],
     type=str,
 )
 
+# output figures path
+parser.add_argument(
+    "--display",
+    action="store_true",
+    default=False,
+    help="to plot the SPE histogram for each pixel"
+)
+parser.add_argument(
+    "--figpath",
+    type=str,
+    default=f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/",
+    help="output figure path"
+)
 
-def main(args):
-    figpath = f"{os.environ.get('NECTARCHAIN_FIGURES',f'/tmp/nectarchain_log/{os.getpid()}/figure')}/"
-    figpath_ext = "" if args.output_fig_tag == "" else f"-{args.output_fig_tag}"
+# pixels selected
+parser.add_argument(
+    "-p", "--asked_pixels_id", nargs="+", default=None, help="pixels selected", type=int
+)
 
-    multipath = "MULTI-" if args.multiproc else ""
+# multiprocessing args
+parser.add_argument(
+    "--multiproc",
+    action="store_true",
+    default=False,
+    help="to use multiprocessing"
+)
+parser.add_argument("--nproc",
+                    help="nproc used for multiprocessing",
+                    default=8,
+                    type=int
+)
+parser.add_argument("--chunksize",
+                    help="chunksize used for multiprocessing",
+                    default=1,
+                    type=int
+)
 
-    charge_run = ChargeContainer.from_file(
-        f"{os.environ.get('NECTARCAMDATA')}/charges/{args.chargeExtractorPath}/",
-        args.run_number,
+#combined fit
+parser.add_argument(
+    "--same_luminosity",
+    action="store_true",
+    default=False,
+    help="if luminosity for VVH and nominal data is the same",
+)
+parser.add_argument(
+    "--HHV_run_number",
+    help="HHV run number of which the SPE fit has ever been performed",
+    type=int
+)
+
+args = parser.parse_args()
+
+def main(log,
+         **kwargs,
+         ):
+    run_number = kwargs.pop("run_number")
+    max_events = kwargs.pop(
+        "max_events", [None for i in range(len(run_number))]
     )
+    if max_events is None : 
+        max_events = [None for i in range(len(run_number))]
 
-    if args.combined:
-        raise NotImplementedError("combined fit not implemented yet")
-    else:
-        gain_Std = FlatFieldSingleNominalSPEMaker.create_from_chargeContainer(
-            signal=charge_run,
-            nectarGainSPEresult=args.VVH_fitted_results,
-            same_luminosity=args.same_luminosity,
-        )
-        t = time.time()
-        gain_Std.make(
-            pixels_id=args.pixels,
-            multiproc=args.multiproc,
-            display=args.display,
-            nproc=args.nproc,
-            chunksize=args.chunksize,
-            figpath=figpath
-            + f"/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}{figpath_ext}",
-        )
+    log.info(f"max_events : {max_events}")
 
-        log.info(f"fit time =  {time.time() - t } sec")
-        gain_Std.save(
-            f"{os.environ.get('NECTARCAMDATA')}/../SPEfit/data/{multipath}nominal-prefitCombinedSPE{args.SPE_fit_results_tag}-SPEStd-{args.run_number}-{args.chargeExtractorPath}/",
-            overwrite=args.overwrite,
-        )
-        log.info(
-            f"convergence rate : {len(gain_Std._results[gain_Std._results['is_valid']])/gain_Std.npixels}"
-        )
+    figpath = args.figpath
+
+    str_extractor_kwargs=CtapipeExtractor.get_extractor_kwargs_str(args.extractor_kwargs)
+    path = DataManagement.find_SPE_HHV(
+                run_number=args.HHV_run_number,
+                method = args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+            )
+    if len(path) == 1 : 
+        log.info(f"{path[0]} found associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}")
+    else : 
+        _text = f"no file found in $NECTARCAM_DATA/../SPEfit associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}"
+        log.error(_text)
+        raise FileNotFoundError(_text)
+    for _run_number,_max_events in zip(run_number,max_events) : 
+        try : 
+            tool = FlatFieldSPECombinedStdNectarCAMCalibrationTool(
+                progress_bar = True,
+                run_number = _run_number,
+                max_events = _max_events,
+                SPE_result = path[0],
+                **kwargs,
+            )
+            tool.setup()
+            tool.start()
+            if args.reload_events and not(_max_events is None):
+                _figpath =  f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{str_extractor_kwargs}"
+            else : 
+                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{str_extractor_kwargs}"
+            tool.finish(figpath = _figpath,display = args.display)
+        except Exception as e:
+            log.warning(e,exc_info=True)
+
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    logginglevel = logging.FATAL
-    if args.verbosity == "warning":
-        logginglevel = logging.WARNING
-    elif args.verbosity == "info":
-        logginglevel = logging.INFO
-    elif args.verbosity == "debug":
-        logginglevel = logging.DEBUG
 
-    os.makedirs(
-        f"{os.environ.get('NECTARCHAIN_LOG','/tmp/nectarchain_log')}/{os.getpid()}/figures"
-    )
+    args = parser.parse_args()
+    kwargs = copy.deepcopy(vars(args))
+
+    kwargs["log_level"] = args.verbosity
+    
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
     logging.basicConfig(
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         force=True,
-        level=logginglevel,
-        filename=f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
+        level=args.verbosity,
+        filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
     )
 
     log = logging.getLogger(__name__)
-    log.setLevel(logginglevel)
+    log.setLevel(args.verbosity)
     ##tips to add message to stdout
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logginglevel)
+    handler.setLevel(args.verbosity)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
-    main(args)
+    kwargs.pop("verbosity")
+    kwargs.pop("figpath")
+    kwargs.pop("display")
+    kwargs.pop("HHV_run_number")
+
+    log.info(f"arguments passed to main are : {kwargs}")
+    main(log = log, **kwargs)
+
