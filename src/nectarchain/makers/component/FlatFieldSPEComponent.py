@@ -110,12 +110,12 @@ class FlatFieldSingleHHVSPENectarCAMComponent(GainNectarCAMComponent):
         is_empty = False
         if self._chargesContainers is None : 
             self._chargesContainers = self.chargesComponent.finish(*args,**kwargs)
-            if len(self._chargesContainers.containers.keys()) != 0 : 
-                is_empty = False
-                self._chargesContainers = merge_map_ArrayDataContainer(self._chargesContainers)
-            else : 
+            is_empty = self._chargesContainers.is_empty()
+            if is_empty :  
                 log.warning("empty chargesContainer in output")
-                is_empty = True
+            else : 
+                self._chargesContainers = merge_map_ArrayDataContainer(self._chargesContainers)
+
         if not(is_empty) : 
             spe_fit = eval(self.SPEfitalgorithm).create_from_chargesContainer(self._chargesContainers,parent = self,**self._SPEfitalgorithm_kwargs)
             fit_output = spe_fit.run(pixels_id = self.asked_pixels_id, *args, **kwargs)

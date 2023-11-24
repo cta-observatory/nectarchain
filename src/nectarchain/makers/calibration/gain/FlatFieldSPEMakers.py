@@ -62,10 +62,14 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
 
     def _init_output_path(self) :
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
-        if self.max_events is None : 
-            filename = f"{self.name}_run{self.run_number}_{self.method}_{str_extractor_kwargs}.h5"
+        if self.events_per_slice is None : 
+            ext = '.h5'
         else : 
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_{self.method}_{str_extractor_kwargs}.h5"
+            ext = f'_sliced{self.events_per_slice}.h5'
+        if self.max_events is None : 
+            filename = f"{self.name}_run{self.run_number}_{self.method}_{str_extractor_kwargs}{ext}"
+        else : 
+            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_{self.method}_{str_extractor_kwargs}{ext}"
 
         self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{filename}")
 

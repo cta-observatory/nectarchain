@@ -152,7 +152,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns:
             tuple: Two arrays of zeros with the same shape as `wfs_hg` (or `wfs_lg`) but without the last dimension.
         """
-        log.warning("computation of broken pixels is not yet implemented")
+        log.debug("computation of broken pixels is not yet implemented")
         return np.zeros((wfs_hg.shape[:-1]), dtype=bool), np.zeros(
             (wfs_hg.shape[:-1]), dtype=bool
         )
@@ -170,7 +170,7 @@ class ArrayDataComponent(NectarCAMComponent) :
         Returns:
             tuple: Two arrays of zeros with the length of `pixels_id`.
         """
-        log.warning("computation of broken pixels is not yet implemented")
+        log.debug("computation of broken pixels is not yet implemented")
         return np.zeros((len(pixels_id)), dtype=bool), np.zeros(
             (len(pixels_id)), dtype=bool
         )

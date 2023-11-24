@@ -168,6 +168,9 @@ class TriggerMapContainer(Container) :
                        description = "trigger mapping of Container"
                        )
 
+    def is_empty(self) : 
+        return len(self.containers.keys())==0
+    
     def validate(self) : 
         super().validate()
         for i,container in enumerate(self.containers) : 

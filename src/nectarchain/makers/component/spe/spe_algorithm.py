@@ -14,6 +14,7 @@ from typing import Tuple
 
 import astropy.units as u
 import matplotlib.pyplot as plt
+import matplotlib
 
 import matplotlib.style as mplstyle
 mplstyle.use('fast')
@@ -814,6 +815,7 @@ class SPEHHValgorithm(SPEalgorithm):
             **kwargs: Additional keyword arguments.
                 figpath (str): The path to save the generated plot figures. Defaults to "/tmp/NectarGain_pid{os.getpid()}".
         """
+        matplotlib.use('TkAgg') 
         figpath = kwargs.get("figpath", f"/tmp/NectarGain_pid{os.getpid()}")
         os.makedirs(figpath, exist_ok=True)
         for _id in pixels_id:

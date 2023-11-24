@@ -179,6 +179,24 @@ class DataManagement:
             ext = f"_{method}_{str_extractor_kwargs}.h5",
             data_type = "charges",
         )
+
+    def find_SPE_HHV(run_number,method = "FullWaveformSum",str_extractor_kwargs = "") : 
+        full_file = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/*_run{run_number}_{method}_{str_extractor_kwargs}.h5").__str__())
+        if len(full_file) != 1 : 
+            all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/*_run{run_number}_maxevents*_{method}_{str_extractor_kwargs}.h5").__str__())
+            max_events = 0
+            for i,file in enumerate(all_files) : 
+                data = file.split('/')[-1].split(".h5")[0].split('_')
+                for _data in data : 
+                    if "maxevents" in _data :
+                        _max_events = int(_data.split('maxevents')[-1])
+                        break
+                if _max_events >= max_events : 
+                    max_events = _max_events
+                    index = i
+            return [all_files[i]]
+        else : 
+            return full_file
     def __find_computed_data(run_number,max_events = None,ext = ".h5",data_type = "waveforms"):
         if max_events is None : 
             out = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}{ext}").__str__())

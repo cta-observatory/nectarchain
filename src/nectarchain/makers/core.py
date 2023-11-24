@@ -352,8 +352,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 disable=not self.progress_bar,
             )
         ):
-            if i % 100 == 0:
-                self.log.info(f"reading event number {i}")
+            #if i % 100 == 0:
+            #    self.log.info(f"reading event number {i}")
             for component in self.components:
                 component(event, *args, **kwargs)
                 self._n_traited_events += 1

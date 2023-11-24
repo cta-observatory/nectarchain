@@ -46,11 +46,38 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
 
 
     run_file = Path(
-        help="desactivated for PhotoStatistic maker",
+        help="desactivated for PhotoStatistic maker with FF and pedestal runs separated",
         default_value=None,
         allow_none=True,
         read_only=True,
     ).tag(config=False)
+
+    events_per_slice = Integer(
+        help="desactivated for PhotoStatistic maker with FF and pedestal runs separated",
+        default_value=None,
+        allow_none=True,
+        read_only=True,
+    ).tag(config=False)
+
+    def __init__(self,*args,**kwargs) : 
+        super().__init__(*args,**kwargs)
+
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
+        if not(self.reload_events) : 
+            FF_files = DataManagement.find_charges(
+                run_number=self.run_number,
+                method = self.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                max_events=self.max_events,
+            )
+            Ped_files = DataManagement.find_charges(
+                run_number=self.run_number,
+                max_events=self.max_events,
+            )
+
+            if len(FF_files) == 1 and len(Ped_files) == 1: 
+                log.warning("You asked events_per_slice but you don't want to reload events and a charges file is on disk for FF and Pedestals, then events_per_slice is set to None")
+                self.events_per_slice = None
 
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)

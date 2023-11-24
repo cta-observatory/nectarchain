@@ -19,7 +19,7 @@ from ctapipe.core import Component
 from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
 from scipy.stats import linregress
-
+import matplotlib
 from ...data.container import (
     ChargesContainer,
     SPEfitContainer,
@@ -169,10 +169,13 @@ class PhotoStatisticAlgorithm(Component):
         Returns:
             fig (plt.Figure): The figure object containing the scatter plot and the linear fit line.
         """
-
+        matplotlib.use('TkAgg') 
         # Create a mask to filter the data points based on certain criteria
         mask = (photoStat_gain > 20) * (SPE_gain > 0) * (photoStat_gain < 80)
 
+        if not(np.max(mask)) : 
+            log.debug('mask conditions are much strict, remove the mask')
+            mask = np.ones(len(mask),dtype = bool)
         # Perform a linear regression analysis on the filtered data points
         a, b, r, p_value, std_err = linregress(
             photoStat_gain[mask], SPE_gain[mask], "greater"
