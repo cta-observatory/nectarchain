@@ -390,7 +390,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             output.append(component.finish(*args, **kwargs))
         log.info(output)
         for i, _output in enumerate(output):
-            self._write_container(_output, i)
+            if not(_output is None) : 
+                self._write_container(_output, i)
         return output
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:

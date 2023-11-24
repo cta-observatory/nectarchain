@@ -11,7 +11,7 @@ import pathlib
 import os
 import glob
 
-from ctapipe.core.traits import ComponentNameList,Bool,Path
+from ctapipe.core.traits import ComponentNameList,Bool,Path,Integer
 from ctapipe.containers import EventType,Container
 
 
@@ -35,6 +35,29 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         default_value = ["FlatFieldSingleHHVSPENectarCAMComponent"],                           
         help="List of Component names to be apply, the order will be respected"
     ).tag(config=True)
+
+    #events_per_slice = Integer(
+    #    help="feature desactivated for this class",
+    #    default_value=None,
+    #    allow_none=True,
+    #    read_only = True,
+    #).tag(config=True)
+
+    def __init__(self,*args,**kwargs) : 
+        super().__init__(*args,**kwargs)
+
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
+        if not(self.reload_events) : 
+            files = DataManagement.find_charges(
+                run_number=self.run_number,
+                method = self.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                max_events=self.max_events,
+            )
+            if len(files) == 1 : 
+                log.warning("You asked events_per_slice but you don't want to reload events and a charges file is on disk, then events_per_slice is set to None")
+                self.events_per_slice = None
+        
 
 
     def _init_output_path(self) :
@@ -67,7 +90,7 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         else : 
             self.log.info(f"reading computed charge from files {files[0]}")
             chargesContainers = ChargesContainer.from_hdf5(files[0])
-            if isinstance(chargesContainers, NectarCAMContainer) : 
+            if isinstance(chargesContainers, ChargesContainer) : 
                 self.components[0]._chargesContainers = chargesContainers
             else : 
                 if isinstance(list(chargesContainers.containers.keys())[0],EventType) : 
@@ -110,5 +133,11 @@ class FlatFieldSPECombinedStdNectarCAMCalibrationTool(FlatFieldSPEHHVNectarCAMCa
         for word in self.SPE_result.stem.split('_') : 
             if 'run' in word : 
                 HHVrun = int(word.split('run')[-1])
-        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{self.name}_run{self.run_number}_HHV{HHVrun}_{self.method}_{CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}.h5")
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
+        if self.max_events is None : 
+            filename = f"{self.name}_run{self.run_number}_HHV{HHVrun}_{self.method}_{str_extractor_kwargs}.h5"
+        else : 
+            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_HHV{HHVrun}_{self.method}_{str_extractor_kwargs}.h5"
+        
+        self.output_path = pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{filename}")
 

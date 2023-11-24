@@ -9,6 +9,7 @@ import glob
 import os
 from pathlib import Path
 from typing import List, Tuple
+import numpy as np
 
 __all__ = ["DataManagement"]
 
@@ -168,28 +169,34 @@ class DataManagement:
     def find_waveforms(run_number,max_events = None) : 
         return __class__.__find_computed_data(
             run_number=run_number,
-            max_events=max_events
+            max_events=max_events,
+            data_type = "waveforms"
         )
     def find_charges(run_number,method = "FullWaveformSum",str_extractor_kwargs = "",max_events = None) : 
         return __class__.__find_computed_data(
             run_number=run_number,
             max_events=max_events,
-            ext = f"_{method}_{str_extractor_kwargs}.h5"
+            ext = f"_{method}_{str_extractor_kwargs}.h5",
+            data_type = "charges",
         )
-    def __find_computed_data(run_number,max_events = None,ext = ".h5"):
+    def __find_computed_data(run_number,max_events = None,ext = ".h5",data_type = "waveforms"):
         if max_events is None : 
-            out = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/*_run{run_number}{ext}").__str__())
+            out = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}{ext}").__str__())
         else : 
-            all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/waveforms/*_run{run_number}_maxevents*{ext}").__str__())
+            all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}_maxevents*{ext}").__str__())
             out = []
-            for file in all_files : 
+            best_max_events = np.inf
+            best_index = None
+            for i,file in enumerate(all_files) : 
                 data = file.split('/')[-1].split(".h5")[0].split('_')
                 for _data in data : 
                     if "maxevents" in _data :
                         _max_events = int(_data.split('maxevents')[-1])
                         break
                 if _max_events >= max_events : 
-                    out = [file]
-                    break
-         
+                    if _max_events < best_max_events : 
+                        best_max_events = _max_events
+                        best_index = i
+            if not(best_index is None) : 
+                out = [all_files[best_index]]
         return out
