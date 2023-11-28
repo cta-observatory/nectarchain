@@ -96,7 +96,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                 waveformsContainers = WaveformsContainer.from_hdf5(files[0])
                 if not(isinstance(waveformsContainers,WaveformsContainer)) : 
                     chargesContainers = ChargesContainers()
-                    if isinstance(list(waveformsContainers.containers.keys())[0],EventType) : 
+                    if isinstance(waveformsContainers,WaveformsContainers) : 
                         self.log.debug('WaveformsContainer file container multiple trigger type')
                         self._init_writer(sliced = False)
                         chargesContainers = ChargesComponent._create_from_waveforms_looping_eventType(
@@ -107,13 +107,10 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                         self._write_container(container = chargesContainers)
                     else : 
                         self.log.debug('WaveformsContainer file container multiple slices of the run events')
-
-                        for key in waveformsContainers.containers.keys() : 
-                            self.log.debug(f"extraction of charge associated to {key}")
-                            slice_index = int(key.split('_')[-1])
+                        for slice_index,_waveformsContainers in enumerate(waveformsContainers) : 
                             self._init_writer(sliced = True,slice_index=slice_index)
                             chargesContainers = ChargesComponent._create_from_waveforms_looping_eventType(
-                                                                    waveformsContainers = waveformsContainers.containers[key],
+                                                                    waveformsContainers = _waveformsContainers,
                                                                     subarray = self.event_source.subarray,
                                                                     method = self.method,
                                                                     **self.extractor_kwargs 

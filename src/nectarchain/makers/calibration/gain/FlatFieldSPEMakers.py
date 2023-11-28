@@ -19,7 +19,7 @@ from .core import GainNectarCAMCalibrationTool
 from ...component import NectarCAMComponent,ChargesComponent,ArrayDataComponent
 from ...extractor.utils import CtapipeExtractor
 from ....data.container.core import NectarCAMContainer,merge_map_ArrayDataContainer,TriggerMapContainer
-from ....data.container import SPEfitContainer,ChargesContainer
+from ....data.container import SPEfitContainer,ChargesContainer,ChargesContainers
 from ....data.management import DataManagement
 
 
@@ -96,15 +96,14 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             chargesContainers = ChargesContainer.from_hdf5(files[0])
             if isinstance(chargesContainers, ChargesContainer) : 
                 self.components[0]._chargesContainers = chargesContainers
+            elif isinstance(chargesContainers,ChargesContainers) : 
+                self.log.debug("merging along TriggerType")
+                self.components[0]._chargesContainers = merge_map_ArrayDataContainer(chargesContainers)
             else : 
-                if isinstance(list(chargesContainers.containers.keys())[0],EventType) : 
-                    self.log.debug("merging along TriggerType")
-                    self.components[0]._chargesContainers = merge_map_ArrayDataContainer(chargesContainers)
-                else : 
-                    self.log.debug("merging along slices")
-                    chargesContaienrs_merdes_along_slices = ArrayDataComponent.merge_along_slices(chargesContainers)
-                    self.log.debug("merging along TriggerType")
-                    self.components[0]._chargesContainers = merge_map_ArrayDataContainer(chargesContaienrs_merdes_along_slices)
+                self.log.debug("merging along slices")
+                chargesContaienrs_merdes_along_slices = ArrayDataComponent.merge_along_slices(containers_generator=chargesContainers)
+                self.log.debug("merging along TriggerType")
+                self.components[0]._chargesContainers = merge_map_ArrayDataContainer(chargesContaienrs_merdes_along_slices)
 
     def _write_container(self, container : Container,index_component : int = 0) -> None:
         #if isinstance(container,SPEfitContainer) : 

@@ -4,6 +4,7 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+from collections.abc import Iterable
 import numpy as np
 from abc import ABC, abstractmethod
 import copy
@@ -273,17 +274,18 @@ class ArrayDataComponent(NectarCAMComponent) :
 
     @staticmethod
     def merge_along_slices(
-        containers: TriggerMapContainer
+        containers_generator: Iterable,        
         ) -> ArrayDataContainer:
-        keys_list = list(containers.containers.keys())
-        merged_containers = containers.containers[keys_list[0]]
-        for trigger in merged_containers.containers.keys() : 
-            for key in keys_list[1:] : 
-                if trigger in containers.containers[key].containers.keys() :
-                    merged_containers.containers[trigger] =  __class__.merge(merged_containers.containers[trigger],containers.containers[key].containers[trigger])
-                for new_trigger in containers.containers[key].containers.keys() : 
-                    if not(new_trigger in merged_containers.containers.keys()) : 
-                        merged_containers.containers[new_trigger] = containers.containers[key].containers[new_trigger]
+
+        for i,container in enumerate(containers_generator) : 
+            if i == 0 : 
+                merged_containers = copy.deepcopy(container)
+            else : 
+                for trigger in container.containers.keys() : 
+                    if trigger in merged_containers.containers.keys() :
+                        merged_containers.containers[trigger] =  __class__.merge(merged_containers.containers[trigger],container.containers[trigger])
+                    else :  
+                        merged_containers.containers[trigger] = copy.deepcopy(container.containers[trigger])
         return merged_containers
 
     @staticmethod

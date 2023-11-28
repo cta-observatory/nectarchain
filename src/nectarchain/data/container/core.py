@@ -118,9 +118,10 @@ class ArrayDataContainer(NectarCAMContainer):
         
 
         with HDF5TableReader(path) as reader : 
-            if len(reader._h5file.root.__members__) > 1 : 
+            if len(reader._h5file.root.__members__) > 1 and slice_index is None:
+                log.info(f"reading {container_class.__name__}s containing {len(reader._h5file.root.__members__)} slices, will return a generator")
                 for data in reader._h5file.root.__members__ : 
-                    container.containers[data] = eval(f"module.{container_class.__name__}s")()
+                    #container.containers[data] = eval(f"module.{container_class.__name__}s")()
                     for key,trigger in EventType.__members__.items() : 
                         try : 
                             waveforms_data = eval(f"reader._h5file.root.{data}.__members__") 
@@ -128,7 +129,9 @@ class ArrayDataContainer(NectarCAMContainer):
                             _waveforms_data = np.array(waveforms_data)[_mask]
                             if len(_waveforms_data) == 1 : 
                                 tableReader = reader.read(table_name = f"/{data}/{_waveforms_data[0]}/{trigger.name}", containers = container_class)
-                                container.containers[data].containers[trigger] = next(tableReader)
+                                #container.containers[data].containers[trigger] = next(tableReader)
+                                container.containers[trigger] = next(tableReader)
+
                             else : 
                                 log.info(f"there is {len(_waveforms_data)} entry corresponding to a {container_class} table save, unable to load")
                         except NoSuchNodeError as err:
@@ -136,8 +139,14 @@ class ArrayDataContainer(NectarCAMContainer):
                         except Exception as err:
                             log.error(err,exc_info = True)
                             raise err
+                    yield container
             else : 
-                data = "data" if slice_index is None else f"data_{slice_index}"
+                if slice_index is None : 
+                    log.info(f"reading {container_class.__name__}s containing a single slice, will return the {container_class.__name__}s instance")
+                    data = "data"
+                else :
+                    log.info(f"reading slice {slice_index} of {container_class.__name__}s, will return the {container_class.__name__}s instance")
+                    data = f"data_{slice_index}"
                 for key,trigger in EventType.__members__.items() : 
                     try : 
                         container_data = eval(f"reader._h5file.root.{data}.__members__") 
