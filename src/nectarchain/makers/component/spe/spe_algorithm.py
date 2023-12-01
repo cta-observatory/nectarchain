@@ -49,7 +49,7 @@ from ....utils import (
     weight_gaussian,
 )
 
-__all__ = ["SPEHHValgorithm","SPEHHVStdalgorithm","SPECombinedalgorithm"]
+__all__ = ["SPEHHValgorithm","SPEHHVStdalgorithm","SPEnominalStdalgorithm","SPEnominalalgorithm","SPECombinedalgorithm"]
 
 class SPEalgorithm(Component) : 
     Windows_lenght = Integer(40,
@@ -204,7 +204,7 @@ class SPEalgorithm(Component) :
 
     @staticmethod
     def _get_mean_gaussian_fit(
-        charge: np.ndarray, counts: np.ndarray, extension: str = "", **kwargs
+        charge: np.ndarray, counts: np.ndarray, pixel_id = None, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Perform a Gaussian fit on the data to determine the pedestal and mean values.
@@ -212,7 +212,7 @@ class SPEalgorithm(Component) :
         Args:
             charge (np.ndarray): An array of charge values.
             counts (np.ndarray): An array of corresponding counts.
-            extension (str, optional): An extension string. Defaults to "".
+            pixel_id (int): The id of the current pixel. Default to None
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -278,7 +278,7 @@ class SPEalgorithm(Component) :
                 exist_ok=True,
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_pedestal_pixel{extension}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_pedestal_pixel{pixel_id}_{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -339,7 +339,7 @@ class SPEalgorithm(Component) :
                 exist_ok=True,
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/initialization_mean_pixel{extension}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/initialization_mean_pixel{pixel_id}_{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -371,16 +371,16 @@ class SPEalgorithm(Component) :
                 )
 '''
 
-class SPEHHValgorithm(SPEalgorithm):
+class SPEnominalalgorithm(SPEalgorithm):
 
-    parameters_file = Unicode("parameters_signal.yaml",
+    parameters_file = Unicode("parameters_SPEnominal.yaml",
                                 read_only = True,
                                 help = "The name of the SPE fit parameters file",
     ).tag(config = True)
 
     __fit_array = None
 
-    tol = Float(1e40,
+    tol = Float(1e-1,
                 help="The tolerance used for minuit",
                 read_only = True,
     ).tag(config=True)
@@ -481,6 +481,7 @@ class SPEHHValgorithm(SPEalgorithm):
         Returns:
             None
         """
+        ########NEED TO BE OPTIMIZED!!!###########
         chi2_sig = signature(__class__.cost(self._charge, self._counts))
         for i in range(len(pixels_id)):
             values = dico[i].get(f"values_{i}", None)
@@ -742,11 +743,80 @@ class SPEHHValgorithm(SPEalgorithm):
 
             if display:
                 self.log.info("plotting")
+                t = time.time()
                 self.display(pixels_id, **kwargs)
+                log.info(f"time for plotting {len(pixels_id)} pixels : {time.time() - t:.2e} sec")
 
             return output
+    def plot_single_pyqtgraph(
+        pixel_id: int,
+        charge: np.ndarray,
+        counts: np.ndarray,
+        pp: float,
+        resolution: float,
+        gain: float,
+        gain_error: float,
+        n: float,
+        pedestal: float,
+        pedestalWidth: float,
+        luminosity: float,
+        likelihood: float,
+    ) -> tuple:
+        import pyqtgraph as pg
+        from pyqtgraph.Qt import QtGui, QtCore
+        #from pyqtgraph.Qt import QtGui
 
-    def plot_single(
+        app = pg.mkQApp(name = 'minimal')
+#
+        ## Create a window
+        win = pg.GraphicsLayoutWidget(show=False)
+        win.setWindowTitle(f"SPE fit pixel id : {pixel_id}")
+
+        # Add a plot to the window
+        plot = win.addPlot(title = f"SPE fit pixel id : {pixel_id}")
+        
+        plot.addLegend()
+        error = pg.ErrorBarItem(
+            x=charge,
+            y=counts,
+            top=np.sqrt(counts), 
+            bottom=np.sqrt(counts), 
+            beam=0.5)
+        plot.addItem(error)
+        plot.plot(
+            x=charge,
+            y=np.trapz(counts, charge)
+            * MPE2(
+                charge,
+                pp,
+                resolution,
+                gain,
+                n,
+                pedestal,
+                pedestalWidth,
+                luminosity,
+            ),
+            name = f"SPE model fit",
+        )
+        legend = pg.TextItem(
+            f"SPE model fit gain : {gain - gain_error:.2f} < {gain:.2f} < {gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
+            color=(200, 200, 200),          
+        )
+        legend.setPos(pedestal,np.max(counts)/2)
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        legend.setFont(font)
+        legend.setTextWidth(500)
+        plot.addItem(legend)
+        
+        label_style = {"color": "#EEE", "font-size": "12pt"}
+        plot.setLabel("bottom", "Charge (ADC)", **label_style)
+        plot.setLabel("left", "Events",**label_style)
+        plot.setRange(xRange=[pedestal - 6 * pedestalWidth, np.quantile(charge.data[~charge.mask],0.84)])
+        #ax.legend(fontsize=18)
+        return win
+
+    def plot_single_matplotlib(
         pixel_id: int,
         charge: np.ndarray,
         counts: np.ndarray,
@@ -802,48 +872,93 @@ class SPEHHValgorithm(SPEalgorithm):
         ax.set_xlabel("Charge (ADC)", size=15)
         ax.set_ylabel("Events", size=15)
         ax.set_title(f"SPE fit pixel id : {pixel_id}")
-        ax.set_xlim([pedestal - 6 * pedestalWidth, None])
+        ax.set_xlim([pedestal - 6 * pedestalWidth, np.max(charge)])
         ax.legend(fontsize=18)
         return fig, ax
 
-    def display(self, pixels_id: np.ndarray, **kwargs) -> None:
+    def display(self, pixels_id: np.ndarray, package = "pyqtgraph", **kwargs) -> None:
         """
         Display and save the plot for each specified pixel ID.
 
         Args:
             pixels_id (np.ndarray): An array of pixel IDs.
+            package (str): the package use to plot, can be matplotlib or pyqtgraph. Default to pyqtgraph
             **kwargs: Additional keyword arguments.
                 figpath (str): The path to save the generated plot figures. Defaults to "/tmp/NectarGain_pid{os.getpid()}".
         """
-        matplotlib.use('TkAgg') 
-        figpath = kwargs.get("figpath", f"/tmp/NectarGain_pid{os.getpid()}")
+        figpath = kwargs.get("figpath", f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/NectarGain_pid{os.getpid()}")
+        self.log.debug(f"saving figures in {figpath}")
         os.makedirs(figpath, exist_ok=True)
-        for _id in pixels_id:
-            index = np.argmax(self._results.pixels_id == _id)
-            fig, ax = __class__.plot_single(
-                _id,
-                self._charge[index],
-                self._counts[index],
-                self._results.pp[index][0],
-                self._results.resolution[index][0],
-                self._results.high_gain[index][0],
-                self._results.high_gain[index][1:].mean(),
-                self._results.n[index][0],
-                self._results.pedestal[index][0],
-                self._results.pedestalWidth[index][0],
-                self._results.luminosity[index][0],
-                self._results.likelihood[index],
-            )
-            fig.savefig(f"{figpath}/fit_SPE_pixel{_id}.pdf")
-            fig.clf()
-            plt.close(fig)
-            del fig, ax
+        if package == "matplotlib" : 
+            matplotlib.use('TkAgg') 
+            for _id in pixels_id:
+                index = np.argmax(self._results.pixels_id == _id)
+                fig, ax = __class__.plot_single_matplotlib(
+                    _id,
+                    self._charge[index],
+                    self._counts[index],
+                    self._results.pp[index][0],
+                    self._results.resolution[index][0],
+                    self._results.high_gain[index][0],
+                    self._results.high_gain[index][1:].mean(),
+                    self._results.n[index][0],
+                    self._results.pedestal[index][0],
+                    self._results.pedestalWidth[index][0],
+                    self._results.luminosity[index][0],
+                    self._results.likelihood[index],
+                )
+                fig.savefig(f"{figpath}/fit_SPE_pixel{_id}.pdf")
+                fig.clf()
+                plt.close(fig)
+                del fig, ax
+        elif package =="pyqtgraph" :
+            import pyqtgraph as pg
+            import pyqtgraph.exporters
+            for _id in pixels_id:
+                index = np.argmax(self._results.pixels_id == _id)
+                try : 
+                    widget = None
+                    widget = __class__.plot_single_pyqtgraph(
+                        _id,
+                        self._charge[index],
+                        self._counts[index],
+                        self._results.pp[index][0],
+                        self._results.resolution[index][0],
+                        self._results.high_gain[index][0],
+                        self._results.high_gain[index][1:].mean(),
+                        self._results.n[index][0],
+                        self._results.pedestal[index][0],
+                        self._results.pedestalWidth[index][0],
+                        self._results.luminosity[index][0],
+                        self._results.likelihood[index],
+                    )
+                    exporter = pg.exporters.ImageExporter(widget.getItem(0,0))
+                    exporter.parameters()['width'] = 1000
+                    exporter.export(f"{figpath}/fit_SPE_pixel{_id}.png")
+                except Exception as e : 
+                    log.warning(e,exc_info = True)
+                finally : 
+                    del widget
 
 
-class SPEHHVStdalgorithm(SPEHHValgorithm):
+
+class SPEHHValgorithm(SPEnominalalgorithm):
+    """class to perform fit of the SPE HHV signal with n and pp free"""
+
+    parameters_file = Unicode("parameters_SPEHHV.yaml",
+                                read_only = True,
+                                help = "The name of the SPE fit parameters file",
+    ).tag(config = True)
+    tol = Float(1e40,
+                help="The tolerance used for minuit",
+                read_only = True,
+    ).tag(config=True)
+
+
+class SPEnominalStdalgorithm(SPEnominalalgorithm):
     """class to perform fit of the SPE signal with n and pp fixed"""
 
-    parameters_file = Unicode("parameters_signalStd.yaml",
+    parameters_file = Unicode("parameters_SPEnominalStd.yaml",
                                 read_only = True,
                                 help = "The name of the SPE fit parameters file",
     ).tag(config = True)
@@ -871,9 +986,20 @@ class SPEHHVStdalgorithm(SPEHHValgorithm):
         n = self._parameters["n"]
         n.frozen = True
 
+class SPEHHVStdalgorithm(SPEnominalStdalgorithm) : 
+    parameters_file = Unicode(
+        "parameters_SPEHHVStd.yaml",
+        read_only = True,
+        help = "The name of the SPE fit parameters file",
+    ).tag(config = True)
+    tol = Float(1e40,
+        help="The tolerance used for minuit",
+        read_only = True,
+    ).tag(config=True)
 
-class SPECombinedalgorithm(SPEHHValgorithm):
-    parameters_file = Unicode("parameters_signal_fromHHVFit.yaml",
+
+class SPECombinedalgorithm(SPEnominalalgorithm):
+    parameters_file = Unicode("parameters_SPECombined_fromHHVFit.yaml",
                                 read_only = True,
                                 help = "The name of the SPE fit parameters file",
     ).tag(config = True)

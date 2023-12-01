@@ -3,6 +3,7 @@ import os
 import sys
 from pathlib import Path
 import json
+import time
 
 # to quiet numba
 os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
@@ -18,7 +19,9 @@ import copy
 import argparse
 from nectarchain.makers.calibration import (
     FlatFieldSPEHHVStdNectarCAMCalibrationTool,
-    FlatFieldSPEHHVNectarCAMCalibrationTool
+    FlatFieldSPEHHVNectarCAMCalibrationTool,
+    FlatFieldSPENominalNectarCAMCalibrationTool,
+    FlatFieldSPENominalStdNectarCAMCalibrationTool
 )
 from nectarchain.makers.extractor.utils import CtapipeExtractor
 
@@ -119,6 +122,14 @@ parser.add_argument(
     "--free_pp_n", action="store_true", default=False, help="to let free pp and n"
 )
 
+#to say if it is a run taken at HHV
+parser.add_argument(
+    "--HHV",
+    action="store_true",
+    default=False,
+    help="to say that these runs are taken at HHV, it will change the configuration file used"
+)
+
 # multiprocessing args
 parser.add_argument(
     "--multiproc",
@@ -152,11 +163,16 @@ def main(log,
 
     figpath = args.figpath
 
-
-    if args.free_pp_n:
-        _class = FlatFieldSPEHHVNectarCAMCalibrationTool
+    if args.HHV : 
+        if args.free_pp_n:
+            _class = FlatFieldSPEHHVNectarCAMCalibrationTool
+        else : 
+            _class = FlatFieldSPEHHVStdNectarCAMCalibrationTool
     else : 
-        _class = FlatFieldSPEHHVStdNectarCAMCalibrationTool
+        if args.free_pp_n:
+            _class = FlatFieldSPENominalNectarCAMCalibrationTool
+        else : 
+            _class = FlatFieldSPENominalStdNectarCAMCalibrationTool
 
     for _run_number,_max_events in zip(run_number,max_events) : 
         try : 
@@ -179,6 +195,7 @@ def main(log,
 
 
 if __name__ == "__main__":
+    t = time.time()
 
     args = parser.parse_args()
     kwargs = copy.deepcopy(vars(args))
@@ -207,6 +224,8 @@ if __name__ == "__main__":
     kwargs.pop("verbosity")
     kwargs.pop('figpath')
     kwargs.pop('display')
+    kwargs.pop('HHV')
 
     log.info(f"arguments passed to main are : {kwargs}")
     main(log = log, **kwargs)
+    log.info(f"time for execution is {time.time() - t:.2e} sec")

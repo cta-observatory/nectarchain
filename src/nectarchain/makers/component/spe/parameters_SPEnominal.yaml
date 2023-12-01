@@ -1,0 +1,32 @@
+{
+  pedestalWidth : {
+    value : 50,
+    min : 1,
+    max : 150
+  }, 
+  luminosity : { 
+    value : 1, 
+    min : 0.01,
+    max : 5.0
+  },
+  pp : { 
+    value : 0.45,
+    min : 0.2,
+    max : 0.8
+  }, 
+  resolution : {
+    value : 0.5,
+    min : 0.3,
+    max : 0.7
+  },
+  n : {
+    value : 0.697,
+    min : 0.5,
+    max : 0.9
+  },
+  mean : {
+    value : 50,
+    min : 10,
+    max : 200
+  }
+}

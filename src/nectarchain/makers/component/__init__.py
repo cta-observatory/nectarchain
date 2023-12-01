@@ -15,6 +15,8 @@ __all__ = [
     "SPECombinedalgorithm",
     "FlatFieldSingleHHVSPENectarCAMComponent",
     "FlatFieldSingleHHVSPEStdNectarCAMComponent",
+    "FlatFieldSingleNominalSPENectarCAMComponent",
+    "FlatFieldSingleNominalSPEStdNectarCAMComponent",
     "FlatFieldCombinedSPEStdNectarCAMComponent",
     "ChargesComponent",
     "WaveformsComponent",

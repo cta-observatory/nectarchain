@@ -21,13 +21,13 @@ from ...data.container import merge_map_ArrayDataContainer,SPEfitContainer
 from .chargesComponent import ChargesComponent
 from .gainComponent import GainNectarCAMComponent
 from .chargesComponent import ChargesComponent
-from .spe import SPEHHVStdalgorithm,SPEHHValgorithm,SPECombinedalgorithm
+from .spe import SPEHHVStdalgorithm,SPEHHValgorithm,SPECombinedalgorithm,SPEnominalStdalgorithm,SPEnominalalgorithm
 from ...utils import ComponentUtils
 
-__all__ = ["FlatFieldSingleHHVSPENectarCAMComponent","FlatFieldSingleHHVSPEStdNectarCAMComponent","FlatFieldCombinedSPEStdNectarCAMComponent"]
+__all__ = ["FlatFieldSingleNominalSPEStdNectarCAMComponent","FlatFieldSingleNominalSPENectarCAMComponent","FlatFieldSingleHHVSPENectarCAMComponent","FlatFieldSingleHHVSPEStdNectarCAMComponent","FlatFieldCombinedSPEStdNectarCAMComponent"]
 
-class FlatFieldSingleHHVSPENectarCAMComponent(GainNectarCAMComponent):
-    SPEfitalgorithm = Unicode("SPEHHValgorithm",
+class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
+    SPEfitalgorithm = Unicode("SPEnominalalgorithm",
                               help = "The Spe fit method to be use",
                               read_only = True,
     ).tag(config = True)
@@ -129,9 +129,27 @@ class FlatFieldSingleHHVSPENectarCAMComponent(GainNectarCAMComponent):
 
 
 
+class FlatFieldSingleNominalSPEStdNectarCAMComponent(FlatFieldSingleNominalSPENectarCAMComponent):
+    SPEfitalgorithm = Unicode("SPEnominalStdalgorithm",
+                              help = "The Spe fit method to be use",
+                              read_only = True,
+    ).tag(config = True)
+    
+    SubComponents = copy.deepcopy(GainNectarCAMComponent.SubComponents)
+    SubComponents.default_value = ["ChargesComponent",f"{SPEfitalgorithm.default_value}"]
+    SubComponents.read_only = True
 
+class FlatFieldSingleHHVSPENectarCAMComponent(FlatFieldSingleNominalSPENectarCAMComponent):
+    SPEfitalgorithm = Unicode("SPEHHValgorithm",
+                              help = "The Spe fit method to be use",
+                              read_only = True,
+    ).tag(config = True)
+    
+    SubComponents = copy.deepcopy(GainNectarCAMComponent.SubComponents)
+    SubComponents.default_value = ["ChargesComponent",f"{SPEfitalgorithm.default_value}"]
+    SubComponents.read_only = True
 
-class FlatFieldSingleHHVSPEStdNectarCAMComponent(FlatFieldSingleHHVSPENectarCAMComponent):
+class FlatFieldSingleHHVSPEStdNectarCAMComponent(FlatFieldSingleNominalSPENectarCAMComponent):
     SPEfitalgorithm = Unicode("SPEHHVStdalgorithm",
                               help = "The Spe fit method to be use",
                               read_only = True,
@@ -142,7 +160,10 @@ class FlatFieldSingleHHVSPEStdNectarCAMComponent(FlatFieldSingleHHVSPENectarCAMC
     SubComponents.read_only = True
 
 
-class FlatFieldCombinedSPEStdNectarCAMComponent(FlatFieldSingleHHVSPEStdNectarCAMComponent) :
+
+
+
+class FlatFieldCombinedSPEStdNectarCAMComponent(FlatFieldSingleNominalSPENectarCAMComponent) :
     SPEfitalgorithm = Unicode("SPECombinedalgorithm",
                               help = "The Spe fit method to be use",
                               read_only = True,

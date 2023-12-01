@@ -23,12 +23,10 @@ from ....data.container import SPEfitContainer,ChargesContainer,ChargesContainer
 from ....data.management import DataManagement
 
 
+__all__ = ["FlatFieldSPENominalNectarCAMCalibrationTool","FlatFieldSPENominalStdNectarCAMCalibrationTool","FlatFieldSPEHHVNectarCAMCalibrationTool","FlatFieldSPEHHVStdNectarCAMCalibrationTool","FlatFieldSPECombinedStdNectarCAMCalibrationTool"]
 
 
-__all__ = ["FlatFieldSPEHHVNectarCAMCalibrationTool","FlatFieldSPEHHVStdNectarCAMCalibrationTool","FlatFieldSPECombinedStdNectarCAMCalibrationTool"]
-
-
-class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
+class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     name = "FlatFieldSPEHHVNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -113,9 +111,15 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         #else : 
         super()._write_container(container = container,index_component= index_component)
                 
+class FlatFieldSPEHHVNectarCAMCalibrationTool(FlatFieldSPENominalNectarCAMCalibrationTool):
+    name = "FlatFieldSPEHHVNectarCAM"
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value = ["FlatFieldSingleHHVSPENectarCAMComponent"],                           
+        help="List of Component names to be apply, the order will be respected"
+    ).tag(config=True)
 
-
-class FlatFieldSPEHHVStdNectarCAMCalibrationTool(FlatFieldSPEHHVNectarCAMCalibrationTool):
+class FlatFieldSPEHHVStdNectarCAMCalibrationTool(FlatFieldSPENominalNectarCAMCalibrationTool):
     name = "FlatFieldSPEHHVStdNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -124,7 +128,16 @@ class FlatFieldSPEHHVStdNectarCAMCalibrationTool(FlatFieldSPEHHVNectarCAMCalibra
     ).tag(config=True)
 
 
-class FlatFieldSPECombinedStdNectarCAMCalibrationTool(FlatFieldSPEHHVNectarCAMCalibrationTool):
+class FlatFieldSPENominalStdNectarCAMCalibrationTool(FlatFieldSPENominalNectarCAMCalibrationTool):
+    name = "FlatFieldSPENominalStdNectarCAM"
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value = ["FlatFieldSingleNominalSPEStdNectarCAMComponent"],                           
+        help="List of Component names to be apply, the order will be respected"
+    ).tag(config=True)
+
+
+class FlatFieldSPECombinedStdNectarCAMCalibrationTool(FlatFieldSPENominalNectarCAMCalibrationTool):
     name = "FlatFieldCombinedStddNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,

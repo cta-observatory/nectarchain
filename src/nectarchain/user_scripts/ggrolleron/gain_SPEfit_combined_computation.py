@@ -3,6 +3,7 @@ import os
 import sys
 from pathlib import Path
 import json
+import time
 
 # to quiet numba
 os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
@@ -197,7 +198,7 @@ def main(log,
 
 
 if __name__ == "__main__":
-
+    t = time.time()
     args = parser.parse_args()
     kwargs = copy.deepcopy(vars(args))
 
@@ -229,4 +230,6 @@ if __name__ == "__main__":
 
     log.info(f"arguments passed to main are : {kwargs}")
     main(log = log, **kwargs)
+    log.info(f"time for execution is {time.time() - t:.2e} sec")
+
 
