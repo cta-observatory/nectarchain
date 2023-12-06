@@ -74,11 +74,11 @@ class DQMSummary:
             hdulist.append(hdu1)
         else:
             print("No MWF studies requests")
-        if:
+        if hdu0:
             hdulist.append(hdu0)
         else:
             print("No Pixel Timeline studies requests")
-        if:
+        if hdu:
             hdulist.append(hdu)
         else:
             print("No Camera studies requests")
