@@ -1,4 +1,4 @@
-from dqm_summary_processor import dqm_summary
+from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
 from ctapipe.visualization import CameraDisplay
 from ctapipe.instrument import CameraGeometry
@@ -6,7 +6,7 @@ from ctapipe.coordinates import EngineeringCameraFrame
 import numpy as np
 
 
-class PixelParticipation_HighLowGain(dqm_summary):
+class PixelParticipation_HighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
         return None
