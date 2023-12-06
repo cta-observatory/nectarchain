@@ -38,7 +38,7 @@ class DQMSummary:
         data1 = Table()
         data0 = Table()
         data = Table()
-        hdu, hdu1, hdu2 = None, None, None
+        hdu, hdu0, hdu1, hdu2 = None, None, None, None
         hdulist = fits.HDUList()
         for i, j in DICT.items():
             if (i == "Results_TriggerStatistics"):
@@ -74,25 +74,17 @@ class DQMSummary:
             hdulist.append(hdu1)
         else:
             print("No MWF studies requests")
-<<<<<<< HEAD
-        if hdu:
-=======
-        try:
+        if:
             hdulist.append(hdu0)
-        except:
+        else:
             print("No Pixel Timeline studies requests")
-        try:
->>>>>>> cc29b1f (Adding BPX timeline module)
+        if:
             hdulist.append(hdu)
         else:
             print("No Camera studies requests")
-<<<<<<< HEAD
-        FileName = path + "_Results.fits"
-=======
 
         
         FileName = path + '_Results.fits'
->>>>>>> cc29b1f (Adding BPX timeline module)
         print(FileName)
         hdulist.writeto(FileName, overwrite=True)
         return None

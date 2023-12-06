@@ -4,20 +4,18 @@ import sys
 import time
 
 from camera_monitoring import CameraMonitoring
-<<<<<<< HEAD:src/nectarchain/dqm/start_dqm.py
 from charge_integration import ChargeIntegrationHighLowGain
-from ctapipe.io import EventSeeker, EventSource
-from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
-=======
 from pixel_participation import PixelParticipation_HighLowGain
 from pixel_timeline import PixelTimeline_HighLowGain
-
->>>>>>> b92cee1 (Adding a new class: pixel_participation):src/nectarchain/dqm/start_calib.py
-from db_utils import DQMDB
-from matplotlib import pyplot as plt
 from mean_camera_display import MeanCameraDisplay_HighLowGain
 from mean_waveforms import MeanWaveFormsHighLowGain
 from trigger_statistics import TriggerStatistics
+
+from ctapipe.io import EventSeeker, EventSource
+from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
+from db_utils import DQMDB
+from matplotlib import pyplot as plt
+
 
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser(description="NectarCAM Data Quality Monitoring tool")
