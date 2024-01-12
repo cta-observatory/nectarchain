@@ -22,6 +22,7 @@ from ctapipe.core.traits import (
 )
 from ctapipe.instrument import CameraGeometry
 from ctapipe.io import HDF5TableWriter
+from ctapipe.core.container import FieldValidationError
 from ctapipe.io.datawriter import DATA_MODEL_VERSION
 from ctapipe_io_nectarcam import NectarCAMEventSource, constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
@@ -270,7 +271,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             raise Exception("run_number need to be set up")
         self._setup_eventsource(*args, **kwargs)
 
-        self.__setup_components(*args, **kwargs)
+        self._setup_components(*args, **kwargs)
 
         if self.output_path.exists() and self.overwrite:
             os.remove(self.output_path)
@@ -289,7 +290,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         self.__npixels = self._event_source.camera_config.num_pixels
         self.__pixels_id = self._event_source.camera_config.expected_pixels_id
 
-    def __setup_components(self, *args, **kwargs):
+    def _setup_components(self, *args, **kwargs):
         self.log.info("setup of components")
         self.components = []
         for componentName in self.componentsList:
@@ -369,7 +370,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 self.writer.close()
                 slice_index += 1
                 self._init_writer(sliced=True, slice_index=slice_index)
-                self.__setup_components()
+                self._setup_components()
                 n_events_in_slice = 0
 
     def finish(self, return_output_component=False, *args, **kwargs):
@@ -395,21 +396,32 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         return output
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
-        if isinstance(container, NectarCAMContainer):
-            self.writer.write(
-                table_name=str(container.__class__.__name__),
-                containers=container,
-            )
-        elif isinstance(container, TriggerMapContainer):
-            for key in container.containers.keys():
+        try : 
+            container.validate()
+            if isinstance(container, NectarCAMContainer):
                 self.writer.write(
-                    table_name=f"{container.containers[key].__class__.__name__}_{index_component}/{key.name}",
-                    containers=container.containers[key],
+                    table_name=str(container.__class__.__name__),
+                    containers=container,
                 )
-        else:
-            raise TypeError(
-                "component output must be an instance of TriggerMapContainer or NectarCAMContainer"
-            )
+            elif isinstance(container, TriggerMapContainer):
+                for key in container.containers.keys():
+                    self.writer.write(
+                        table_name=f"{container.containers[key].__class__.__name__}_{index_component}/{key.name}",
+                        containers=container.containers[key],
+                    )
+            else:
+                raise TypeError(
+                    "component output must be an instance of TriggerMapContainer or NectarCAMContainer"
+                )
+        except FieldValidationError as e : 
+            log.warning(e,exc_info=True)
+            self.log.warning("the container has not been written")
+        except Exception as e : 
+            self.log.error(e,exc_info=True)
+            raise e
+
+
+        
 
     @property
     def event_source(self):

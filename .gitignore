@@ -92,6 +92,7 @@ src/nectarchain/user_scripts/**/test
 **.log
 **.pdf
 **.csv
+**.png
 
 #VScode
 .vscode/

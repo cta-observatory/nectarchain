@@ -27,8 +27,8 @@ from nectarchain.data.management import DataManagement
 
 
 parser = argparse.ArgumentParser(
-    prog="gain_SPEfit_computation.py",
-    description=f"compute high gain with SPE fit for one run at very very high voltage (~1400V) or at nominal voltage (it can often fail). By default, output data are saved in $NECTARCAMDATA/../SPEfit/data/",
+    prog="gain_SPEfit_combined_computation.py",
+    description=f"compute high gain with SPE fit for one run at nominal voltage from a SPE result from a run at 1400V. By default, output data are saved in $NECTARCAMDATA/../SPEfit/data/",
 )
 # run numbers
 parser.add_argument(
