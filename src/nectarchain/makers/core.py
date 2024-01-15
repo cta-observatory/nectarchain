@@ -253,6 +253,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             group_name = "data"
             mode = "w"
         try:
+            os.makedirs(self.output_path.parent,exist_ok = True)
             self.writer = self.enter_context(
                 HDF5TableWriter(
                     filename=self.output_path,  # pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),

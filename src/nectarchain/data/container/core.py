@@ -37,7 +37,7 @@ class NectarCAMContainer(Container):
             tableReader = reader.read(table_name = f"/data/{container_class.__name__}", containers = container_class)
             container = next(tableReader)
         
-        return container
+        yield container
 
 
 class ArrayDataContainer(NectarCAMContainer):
@@ -162,7 +162,8 @@ class ArrayDataContainer(NectarCAMContainer):
                     except Exception as err:
                         log.error(err,exc_info = True)
                         raise err
-        return container
+                yield container
+        return container 
     
     @classmethod
     def from_hdf5(cls,path,slice_index = None) : 
