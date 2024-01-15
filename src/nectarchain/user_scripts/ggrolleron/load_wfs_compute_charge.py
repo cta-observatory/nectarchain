@@ -60,7 +60,7 @@ parser.add_argument(
     "--events_per_slice",
     type=int,
     default=None,
-    help="will slplit the raw data in fits.fz file with events_per_slice events per slices",
+    help="will split the raw data in fits.fz file with events_per_slice events per slices",
 )
 
 # extractor arguments

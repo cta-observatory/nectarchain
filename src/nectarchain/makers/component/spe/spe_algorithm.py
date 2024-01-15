@@ -1096,7 +1096,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         Returns:
             dict: The updated parameters.
         """
-        param = super()._update_parameters(parameters, charge, counts, **kwargs)
+        param = super(__class__,__class__)._update_parameters(parameters, charge, counts, **kwargs)
         luminosity = param["luminosity"]
         resolution = param["resolution"]
         pp = param["pp"]

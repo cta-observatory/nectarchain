@@ -13,13 +13,16 @@ from ctapipe.containers import EventType
 from ctapipe.instrument import SubarrayDescription
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe.core.traits import ComponentNameList,Path
+from ctapipe.core.traits import ComponentNameList,Path,ComponentName
 from tqdm import tqdm
 import os
 
 from ..data.container import WaveformsContainer
 from .core import EventsLoopNectarCAMCalibrationTool
-from .component import NectarCAMComponent
+from .component import (
+    NectarCAMComponent,
+    WaveformsComponent,
+)
 
 __all__ = ["WaveformsNectarCAMCalibrationTool"]
 

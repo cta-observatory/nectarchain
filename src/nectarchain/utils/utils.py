@@ -53,6 +53,17 @@ class ComponentUtils:
                 output_traits_dict.pop(key)
         return output_traits_dict
     
+    @staticmethod
+    def get_class_name_from_ComponentName(componentName : str) : 
+        from nectarchain.makers.component.core import NectarCAMComponent
+        for class_name,_class in NectarCAMComponent.non_abstract_subclasses().items() :
+            if componentName in class_name : 
+                return _class
+
+        raise ValueError("componentName is not a valid component, this component is not known as a child of NectarCAMComponent")
+    
+
+    
 class multiprocessing:
     @staticmethod
     def custom_error_callback(error):

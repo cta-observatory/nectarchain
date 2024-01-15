@@ -15,6 +15,7 @@ from ctapipe.core import Component, Tool
 from ctapipe.core.traits import (
     Bool,
     ComponentNameList,
+    ComponentName,
     Integer,
     Path,
     classes_with_traits,
@@ -178,8 +179,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             "the componentName in componentsList must be defined in the nectarchain.makers.component module, otherwise the import of the componentName will raise an error"
         )
         for componentName in _cls.componentsList:
+            class_name = ComponentUtils.get_class_name_from_ComponentName(componentName)
             configurable_traits = ComponentUtils.get_configurable_traits(
-                eval(componentName)
+                class_name
             )
             _cls.add_traits(**configurable_traits)
             _cls.aliases.update(
@@ -197,6 +199,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{self.name}_run{self.run_number}.h5"
         )
 
+
+
     def _load_eventsource(self, *args, **kwargs):
         self.log.debug("loading event source")
         self.event_source = self.enter_context(
@@ -204,7 +208,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         )
 
     def _get_provided_component_kwargs(self, componentName: str):
-        component_kwargs = ComponentUtils.get_configurable_traits(eval(componentName))
+        class_name = ComponentUtils.get_class_name_from_ComponentName(componentName)
+        component_kwargs = ComponentUtils.get_configurable_traits(class_name)
         output_component_kwargs = {}
         for key in component_kwargs.keys():
             if hasattr(self, key):
@@ -224,6 +229,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                         log.info(f'{self.output_path} removed')
                     except OSError:
                         pass
+                else : 
+                    if os.path.exists(self.output_path) : 
+                        raise Exception(f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite")
             self.log.info(
                 f"initilization of writter in sliced mode (slice index = {slice_index})"
             )
@@ -239,6 +247,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     log.info(f'{self.output_path} removed')
                 except OSError:
                     pass
+            else : 
+                if os.path.exists(self.output_path) : 
+                    raise Exception(f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite")
             group_name = "data"
             mode = "w"
         try:
