@@ -64,7 +64,7 @@ distribute-*.tar.gz
 .ropeproject
 
 # ipython/jupyter notebooks and checkpoints
-#*.ipynb
+*.ipynb
 .ipynb_checkpoints
 .cache*
 .cache
