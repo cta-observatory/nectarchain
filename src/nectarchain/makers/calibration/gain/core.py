@@ -13,6 +13,5 @@ __all__ = ["GainNectarCAMCalibrationTool"]
 
 class GainNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     reload_events = Bool(
-        default_value = False,
-        help = "a flag to re compute the charge from raw data"
+        default_value=False, help="a flag to re compute the charge from raw data"
     )

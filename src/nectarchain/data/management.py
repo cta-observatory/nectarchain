@@ -4,11 +4,12 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import pathlib
 import glob
 import os
+import pathlib
 from pathlib import Path
 from typing import List, Tuple
+
 import numpy as np
 
 __all__ = ["DataManagement"]
@@ -165,54 +166,73 @@ class DataManagement:
         else:
             return url_data
 
+    def find_waveforms(run_number, max_events=None):
+        return __class__.__find_computed_data(
+            run_number=run_number, max_events=max_events, data_type="waveforms"
+        )
 
-    def find_waveforms(run_number,max_events = None) : 
+    def find_charges(
+        run_number, method="FullWaveformSum", str_extractor_kwargs="", max_events=None
+    ):
         return __class__.__find_computed_data(
             run_number=run_number,
             max_events=max_events,
-            data_type = "waveforms"
-        )
-    def find_charges(run_number,method = "FullWaveformSum",str_extractor_kwargs = "",max_events = None) : 
-        return __class__.__find_computed_data(
-            run_number=run_number,
-            max_events=max_events,
-            ext = f"_{method}_{str_extractor_kwargs}.h5",
-            data_type = "charges",
+            ext=f"_{method}_{str_extractor_kwargs}.h5",
+            data_type="charges",
         )
 
-    def find_SPE_HHV(run_number,method = "FullWaveformSum",str_extractor_kwargs = "") : 
-        full_file = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/FlatFieldSPEHHVStdNectarCAM_run{run_number}_{method}_{str_extractor_kwargs}.h5").__str__())
-        if len(full_file) != 1 : 
-            all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/FlatFieldSPEHHVStdNectarCAM_run{run_number}_maxevents*_{method}_{str_extractor_kwargs}.h5").__str__())
+    def find_SPE_HHV(run_number, method="FullWaveformSum", str_extractor_kwargs=""):
+        full_file = glob.glob(
+            pathlib.Path(
+                f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/FlatFieldSPEHHVStdNectarCAM_run{run_number}_{method}_{str_extractor_kwargs}.h5"
+            ).__str__()
+        )
+        if len(full_file) != 1:
+            all_files = glob.glob(
+                pathlib.Path(
+                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/FlatFieldSPEHHVStdNectarCAM_run{run_number}_maxevents*_{method}_{str_extractor_kwargs}.h5"
+                ).__str__()
+            )
             max_events = 0
-            for i,file in enumerate(all_files) : 
-                data = file.split('/')[-1].split(".h5")[0].split('_')
-                for _data in data : 
-                    if "maxevents" in _data :
-                        _max_events = int(_data.split('maxevents')[-1])
+            for i, file in enumerate(all_files):
+                data = file.split("/")[-1].split(".h5")[0].split("_")
+                for _data in data:
+                    if "maxevents" in _data:
+                        _max_events = int(_data.split("maxevents")[-1])
                         break
-                if _max_events >= max_events : 
+                if _max_events >= max_events:
                     max_events = _max_events
                     index = i
             return [all_files[index]]
-        else : 
+        else:
             return full_file
-    def __find_computed_data(run_number,max_events = None,ext = ".h5",data_type = "waveforms"):
-        out = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}{ext}").__str__())
-        if not(max_events is None) : 
-            all_files = glob.glob(pathlib.Path(f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}_maxevents*{ext}").__str__())
+
+    def __find_computed_data(
+        run_number, max_events=None, ext=".h5", data_type="waveforms"
+    ):
+        out = glob.glob(
+            pathlib.Path(
+                f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}{ext}"
+            ).__str__()
+        )
+        if not (max_events is None):
+            all_files = glob.glob(
+                pathlib.Path(
+                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}_maxevents*{ext}"
+                ).__str__()
+            )
             best_max_events = np.inf
             best_index = None
-            for i,file in enumerate(all_files) : 
-                data = file.split('/')[-1].split(".h5")[0].split('_')
-                for _data in data : 
-                    if "maxevents" in _data :
-                        _max_events = int(_data.split('maxevents')[-1])
+            for i, file in enumerate(all_files):
+                data = file.split("/")[-1].split(".h5")[0].split("_")
+                for _data in data:
+                    if "maxevents" in _data:
+                        _max_events = int(_data.split("maxevents")[-1])
                         break
-                if _max_events >= max_events : 
-                    if _max_events < best_max_events : 
+                if _max_events >= max_events:
+                    if _max_events < best_max_events:
                         best_max_events = _max_events
                         best_index = i
-            if not(best_index is None) : 
+            if not (best_index is None):
                 out = [all_files[best_index]]
         return out

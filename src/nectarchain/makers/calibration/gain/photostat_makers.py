@@ -4,29 +4,22 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import glob
 import os
 import pathlib
 
-import astropy.units as u
 import numpy as np
-from astropy.table import Column
 from ctapipe.containers import Container, EventType
-from ctapipe.core.traits import Bool, ComponentNameList, Integer, Path
+from ctapipe.core.traits import ComponentNameList, Integer, Path
 
-from ....data.container import ChargesContainer, SPEfitContainer
-from ....data.container.core import (
-    NectarCAMContainer,
-    TriggerMapContainer,
-    merge_map_ArrayDataContainer,
-)
-from ...chargesMakers import ChargesNectarCAMCalibrationTool
-from ...component import ArrayDataComponent, ChargesComponent, NectarCAMComponent
+from ....data.container import ChargesContainer
+from ....data.container.core import NectarCAMContainer, merge_map_ArrayDataContainer
+from ....data.management import DataManagement
+from ...component import ArrayDataComponent, NectarCAMComponent
 from ...extractor.utils import CtapipeExtractor
 from .core import GainNectarCAMCalibrationTool
-from ....data.management import DataManagement
 
 __all__ = ["PhotoStatisticNectarCAMCalibrationTool"]
+
 
 class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     ###TO DO : IMPLEMENT a MOTHER PHOTOSTAT CLASS WITH ONLY 1 RUN WITH FF AND PEDESTAL INTERLEAVED.
@@ -44,7 +37,6 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         help="the FF run number to be treated", default_value=-1
     ).tag(config=True)
 
-
     run_file = Path(
         help="desactivated for PhotoStatistic maker with FF and pedestal runs separated",
         default_value=None,
@@ -59,14 +51,16 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         read_only=True,
     ).tag(config=False)
 
-    def __init__(self,*args,**kwargs) : 
-        super().__init__(*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
-        if not(self.reload_events) : 
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+            self.extractor_kwargs
+        )
+        if not (self.reload_events):
             FF_files = DataManagement.find_charges(
                 run_number=self.run_number,
-                method = self.method,
+                method=self.method,
                 str_extractor_kwargs=str_extractor_kwargs,
                 max_events=self.max_events,
             )
@@ -75,15 +69,19 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                 max_events=self.max_events,
             )
 
-            if len(FF_files) == 1 and len(Ped_files) == 1: 
-                log.warning("You asked events_per_slice but you don't want to reload events and a charges file is on disk for FF and Pedestals, then events_per_slice is set to None")
+            if len(FF_files) == 1 and len(Ped_files) == 1:
+                log.warning(
+                    "You asked events_per_slice but you don't want to reload events and a charges file is on disk for FF and Pedestals, then events_per_slice is set to None"
+                )
                 self.events_per_slice = None
 
     def _init_output_path(self):
-        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)
-        if self.max_events is None : 
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+            self.extractor_kwargs
+        )
+        if self.max_events is None:
             filename = f"{self.name}_FFrun{self.run_number}_{self.method}_{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_FullWaveformSum.h5"
-        else : 
+        else:
             filename = f"{self.name}_FFrun{self.run_number}_{self.method}_{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_FullWaveformSum_maxevents{self.max_events}.h5"
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/{filename}"
@@ -111,15 +109,15 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             self.extractor_kwargs
         )
         FF_files = DataManagement.find_charges(
-                run_number=self.run_number,
-                method = self.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                max_events=self.max_events,
-            )
+            run_number=self.run_number,
+            method=self.method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            max_events=self.max_events,
+        )
         Ped_files = DataManagement.find_charges(
-                run_number=self.run_number,
-                max_events=self.max_events,
-            )
+            run_number=self.run_number,
+            max_events=self.max_events,
+        )
         if self.reload_events or len(FF_files) != 1 or len(Ped_files) != 1:
             if len(FF_files) != 1 or len(Ped_files) != 1:
                 self.log.info(
@@ -143,20 +141,16 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                 self.components[0]._FF_chargesContainers = chargesContainers
             elif isinstance(list(chargesContainers.containers.keys())[0], EventType):
                 self.log.debug("merging along TriggerType")
-                self.components[
-                    0
-                ]._FF_chargesContainers = merge_map_ArrayDataContainer(
+                self.components[0]._FF_chargesContainers = merge_map_ArrayDataContainer(
                     chargesContainers
-                    )
+                )
             else:
                 self.log.debug("merging along slices")
                 chargesContaienrs_merdes_along_slices = (
                     ArrayDataComponent.merge_along_slices(chargesContainers)
                 )
                 self.log.debug("merging along TriggerType")
-                self.components[
-                    0
-                ]._FF_chargesContainers = merge_map_ArrayDataContainer(
+                self.components[0]._FF_chargesContainers = merge_map_ArrayDataContainer(
                     chargesContaienrs_merdes_along_slices
                 )
 

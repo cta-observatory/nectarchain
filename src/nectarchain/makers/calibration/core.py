@@ -3,34 +3,24 @@ import logging
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
-import os
-from collections.abc import Iterable
-from copy import copy
-from datetime import date
-from pathlib import Path
 
-import astropy.units as u
-import numpy as np
-from astropy.table import Column, QTable
+from ctapipe.core.traits import List
 
 from ..core import EventsLoopNectarCAMCalibrationTool
-from ctapipe.core.traits import List
 
 __all__ = [""]
 
 
 class NectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
-
     name = "CalibrationTool"
-    #PIXELS_ID_COLUMN = "pixels_id"
-    #NP_PIXELS = "npixels"
+    # PIXELS_ID_COLUMN = "pixels_id"
+    # NP_PIXELS = "npixels"
 
-    pixels_id = List(default_value = None,
-                     help = "the list of pixel id to apply the components",
-                     allow_none = True,
-                     ).tag(config=  True)
-
-    
+    pixels_id = List(
+        default_value=None,
+        help="the list of pixel id to apply the components",
+        allow_none=True,
+    ).tag(config=True)
 
 
 '''

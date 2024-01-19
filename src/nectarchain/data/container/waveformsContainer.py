@@ -1,24 +1,13 @@
 import logging
-import sys
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import os
-from abc import ABC
-from enum import Enum
-from pathlib import Path
-
-import astropy.units as u
 import numpy as np
-from astropy.io import fits
-from astropy.table import Column, QTable, Table
-from ctapipe.containers import Field,Container,partial,Map
-from ctapipe.instrument.subarray import SubarrayDescription
-from tqdm import tqdm
+from ctapipe.containers import Field, Map, partial
 
-from .core import ArrayDataContainer,TriggerMapContainer
+from .core import ArrayDataContainer, TriggerMapContainer
 
 
 class WaveformsContainer(ArrayDataContainer):
@@ -36,14 +25,17 @@ class WaveformsContainer(ArrayDataContainer):
         type=np.uint8,
         description="number of samples in the waveforms",
     )
-    #subarray = Field(type=SubarrayDescription, description="The subarray  description")
-    wfs_hg = Field(type=np.ndarray, dtype = np.uint16, ndim = 3, description="high gain waveforms")
-    wfs_lg = Field(type=np.ndarray, dtype = np.uint16, ndim = 3, description="low gain waveforms")
-
+    # subarray = Field(type=SubarrayDescription, description="The subarray  description")
+    wfs_hg = Field(
+        type=np.ndarray, dtype=np.uint16, ndim=3, description="high gain waveforms"
+    )
+    wfs_lg = Field(
+        type=np.ndarray, dtype=np.uint16, ndim=3, description="low gain waveforms"
+    )
 
 
 class WaveformsContainers(TriggerMapContainer):
-    containers = Field(default_factory=partial(Map, WaveformsContainer),
-                       description = "trigger or slices of data mapping of WaveformContainer"
-                       )
-
+    containers = Field(
+        default_factory=partial(Map, WaveformsContainer),
+        description="trigger or slices of data mapping of WaveformContainer",
+    )

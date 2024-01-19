@@ -8,23 +8,15 @@ log.handlers = logging.getLogger("__main__").handlers
 
 import copy
 import os
-from datetime import date
-from pathlib import Path
 
-import astropy.units as u
+import matplotlib
 import numpy as np
-from astropy.table import Column, QTable
 from astropy.visualization import quantity_support
 from ctapipe.core import Component
-from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
 from scipy.stats import linregress
-import matplotlib
-from ...data.container import (
-    ChargesContainer,
-    SPEfitContainer,
-    GainContainer,
-)
+
+from ...data.container import ChargesContainer, GainContainer, SPEfitContainer
 from ..component import ChargesComponent
 
 __all__ = ["PhotoStatisticAlgorithm"]
@@ -63,10 +55,10 @@ class PhotoStatisticAlgorithm(Component):
         self.__check_shape()
 
         self.__results = GainContainer(
-            is_valid = np.zeros((self.npixels),dtype = bool),
-            high_gain = np.zeros((self.npixels,3)),
-            low_gain = np.zeros((self.npixels,3)),
-            pixels_id = self._pixels_id,
+            is_valid=np.zeros((self.npixels), dtype=bool),
+            high_gain=np.zeros((self.npixels, 3)),
+            low_gain=np.zeros((self.npixels, 3)),
+            pixels_id=self._pixels_id,
         )
 
     @classmethod
@@ -95,7 +87,9 @@ class PhotoStatisticAlgorithm(Component):
         out = {}
 
         FFped_intersection = np.intersect1d(Pedcharge.pixels_id, FFcharge.pixels_id)
-        SPEFFPed_intersection = np.intersect1d(FFped_intersection, SPE_result.pixels_id[SPE_result.is_valid])
+        SPEFFPed_intersection = np.intersect1d(
+            FFped_intersection, SPE_result.pixels_id[SPE_result.is_valid]
+        )
         mask_SPE = np.array(
             [
                 SPE_result.pixels_id[i] in SPEFFPed_intersection
@@ -105,7 +99,6 @@ class PhotoStatisticAlgorithm(Component):
         )
         out["SPE_resolution"] = SPE_result.resolution[mask_SPE].T[0]
         out["SPE_high_gain"] = SPE_result.high_gain[mask_SPE].T[0]
-
 
         out["pixels_id"] = SPEFFPed_intersection
         out["FFcharge_hg"] = ChargesComponent.select_charges_hg(
@@ -138,18 +131,25 @@ class PhotoStatisticAlgorithm(Component):
 
     def run(self, pixels_id: np.ndarray = None, **kwargs) -> None:
         log.info("running photo statistic method")
-        if pixels_id is None : 
+        if pixels_id is None:
             pixels_id = self._pixels_id
-        mask = np.array([pixel_id in pixels_id for pixel_id in self._pixels_id],dtype = bool)
-        self._results.high_gain = np.array((self.gainHG * mask,np.zeros(self.npixels),np.zeros(self.npixels))).T
-        self._results.low_gain =  np.array((self.gainLG * mask,np.zeros(self.npixels),np.zeros(self.npixels))).T
+        mask = np.array(
+            [pixel_id in pixels_id for pixel_id in self._pixels_id], dtype=bool
+        )
+        self._results.high_gain = np.array(
+            (self.gainHG * mask, np.zeros(self.npixels), np.zeros(self.npixels))
+        ).T
+        self._results.low_gain = np.array(
+            (self.gainLG * mask, np.zeros(self.npixels), np.zeros(self.npixels))
+        ).T
         self._results.is_valid = mask
-        
-        figpath = kwargs.get('figpath',False)
-        if figpath : 
-            os.makedirs(figpath,exist_ok=True)
-            fig = __class__.plot_correlation(self._results.high_gain.T[0],
-                                             self.__SPE_high_gain)
+
+        figpath = kwargs.get("figpath", False)
+        if figpath:
+            os.makedirs(figpath, exist_ok=True)
+            fig = __class__.plot_correlation(
+                self._results.high_gain.T[0], self.__SPE_high_gain
+            )
             fig.savefig(f"{figpath}/plot_correlation_Photo_Stat_SPE.pdf")
             fig.clf()
             plt.close(fig)
@@ -169,13 +169,13 @@ class PhotoStatisticAlgorithm(Component):
         Returns:
             fig (plt.Figure): The figure object containing the scatter plot and the linear fit line.
         """
-        matplotlib.use('TkAgg') 
+        matplotlib.use("TkAgg")
         # Create a mask to filter the data points based on certain criteria
         mask = (photoStat_gain > 20) * (SPE_gain > 0) * (photoStat_gain < 80)
 
-        if not(np.max(mask)) : 
-            log.debug('mask conditions are much strict, remove the mask')
-            mask = np.ones(len(mask),dtype = bool)
+        if not (np.max(mask)):
+            log.debug("mask conditions are much strict, remove the mask")
+            mask = np.ones(len(mask), dtype=bool)
         # Perform a linear regression analysis on the filtered data points
         a, b, r, p_value, std_err = linregress(
             photoStat_gain[mask], SPE_gain[mask], "greater"
@@ -208,7 +208,6 @@ class PhotoStatisticAlgorithm(Component):
             ax.legend(fontsize=15)
 
         return fig
-
 
     @property
     def SPE_resolution(self) -> float:

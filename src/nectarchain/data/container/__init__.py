@@ -1,5 +1,11 @@
 from .chargesContainer import *
-from .core import NectarCAMContainer,ArrayDataContainer,TriggerMapContainer,merge_map_ArrayDataContainer,get_array_keys
-from .waveformsContainer import *
-from .gainContainer import *
+from .core import (
+    ArrayDataContainer,
+    NectarCAMContainer,
+    TriggerMapContainer,
+    get_array_keys,
+    merge_map_ArrayDataContainer,
+)
 from .eventSource import *
+from .gainContainer import *
+from .waveformsContainer import *

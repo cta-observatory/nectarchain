@@ -1,5 +1,4 @@
 import logging
-import sys
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -13,17 +12,17 @@ from multiprocessing import Pool
 from typing import Tuple
 
 import astropy.units as u
-import matplotlib.pyplot as plt
 import matplotlib
-
+import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
-mplstyle.use('fast')
+
+mplstyle.use("fast")
 
 import numpy as np
 import yaml
-from abc import ABC, abstractmethod
-
-from astropy.table import Column, QTable
+from astropy.table import QTable
+from ctapipe.core.component import Component
+from ctapipe.core.traits import Bool, Float, Integer, Path, Unicode
 from iminuit import Minuit
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Rectangle
@@ -31,60 +30,58 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks, savgol_filter
 from scipy.special import gammainc
 
-from ctapipe.core.component import Component
-
-from ctapipe.core.traits import Integer,Unicode,Bool,Path,Float
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-
-
-from ....data.container import ChargesContainer,SPEfitContainer,merge_map_ArrayDataContainer
+from ....data.container import ChargesContainer, SPEfitContainer
+from ....utils import MPE2, MeanValueError, Statistics, UtilsMinuit, weight_gaussian
 from ..chargesComponent import ChargesComponent
 from .parameters import Parameter, Parameters
-from ....utils import (
-    MPE2,
-    MeanValueError,
-    PedestalValueError,
-    Statistics,
-    UtilsMinuit,
-    weight_gaussian,
-)
 
-__all__ = ["SPEHHValgorithm","SPEHHVStdalgorithm","SPEnominalStdalgorithm","SPEnominalalgorithm","SPECombinedalgorithm"]
+__all__ = [
+    "SPEHHValgorithm",
+    "SPEHHVStdalgorithm",
+    "SPEnominalStdalgorithm",
+    "SPEnominalalgorithm",
+    "SPECombinedalgorithm",
+]
 
-class SPEalgorithm(Component) : 
-    Windows_lenght = Integer(40,
-                            read_only = True,
-                            help = "The windows leght used for the savgol filter algorithm",
-    ).tag(config = True)
-    
-    Order = Integer(2,
-                    read_only = True,
-                    help = "The order of the polynome used in the savgol filter algorithm",
-    ).tag(config = True)
 
-    def __init__(self,pixels_id : np.ndarray,config=None, parent=None, **kwargs) -> None:
-        super().__init__(config = config, parent = parent, **kwargs)
+class SPEalgorithm(Component):
+    Windows_lenght = Integer(
+        40,
+        read_only=True,
+        help="The windows leght used for the savgol filter algorithm",
+    ).tag(config=True)
+
+    Order = Integer(
+        2,
+        read_only=True,
+        help="The order of the polynome used in the savgol filter algorithm",
+    ).tag(config=True)
+
+    def __init__(
+        self, pixels_id: np.ndarray, config=None, parent=None, **kwargs
+    ) -> None:
+        super().__init__(config=config, parent=parent, **kwargs)
         self.__pixels_id = pixels_id
         self.__pedestal = Parameter(
             name="pedestal",
-            value = 0,
+            value=0,
         )
         self.__parameters = Parameters()
         self.__parameters.append(self.__pedestal)
         self.__results = SPEfitContainer(
-            is_valid = np.zeros((self.npixels),dtype = bool),
-            high_gain = np.empty((self.npixels,3)),
-            low_gain = np.empty((self.npixels,3)),
-            pixels_id = self.__pixels_id,
-            likelihood = np.empty((self.npixels)),
-            p_value = np.empty((self.npixels)),
-            pedestal = np.empty((self.npixels,3)),
-            pedestalWidth = np.empty((self.npixels,3)),
-            resolution = np.empty((self.npixels,3)),
-            luminosity = np.empty((self.npixels,3)),
-            mean = np.empty((self.npixels,3)),
-            n = np.empty((self.npixels,3)),
-            pp = np.empty((self.npixels,3)),
+            is_valid=np.zeros((self.npixels), dtype=bool),
+            high_gain=np.empty((self.npixels, 3)),
+            low_gain=np.empty((self.npixels, 3)),
+            pixels_id=self.__pixels_id,
+            likelihood=np.empty((self.npixels)),
+            p_value=np.empty((self.npixels)),
+            pedestal=np.empty((self.npixels, 3)),
+            pedestalWidth=np.empty((self.npixels, 3)),
+            resolution=np.empty((self.npixels, 3)),
+            luminosity=np.empty((self.npixels, 3)),
+            mean=np.empty((self.npixels, 3)),
+            n=np.empty((self.npixels, 3)),
+            pp=np.empty((self.npixels, 3)),
         )
 
     @property
@@ -94,7 +91,7 @@ class SPEalgorithm(Component) :
     @property
     def _parameters(self):
         return self.__parameters
-    
+
     @property
     def results(self):
         return copy.deepcopy(self.__results)
@@ -104,15 +101,15 @@ class SPEalgorithm(Component) :
         return self.__results
 
     @property
-    def pixels_id(self) : 
+    def pixels_id(self):
         return copy.deepcopy(self.__pixels_id)
-    
+
     @property
-    def _pixels_id(self) : 
+    def _pixels_id(self):
         return self.__pixels_id
 
     @property
-    def npixels(self) : 
+    def npixels(self):
         return len(self.__pixels_id)
 
     # methods
@@ -204,7 +201,7 @@ class SPEalgorithm(Component) :
 
     @staticmethod
     def _get_mean_gaussian_fit(
-        charge: np.ndarray, counts: np.ndarray, pixel_id = None, **kwargs
+        charge: np.ndarray, counts: np.ndarray, pixel_id=None, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Perform a Gaussian fit on the data to determine the pedestal and mean values.
@@ -346,6 +343,7 @@ class SPEalgorithm(Component) :
             del fig, ax
         return coeff, coeff_mean
 
+
 '''
     def _update_table_from_parameters(self) -> None:
         """
@@ -371,33 +369,46 @@ class SPEalgorithm(Component) :
                 )
 '''
 
-class SPEnominalalgorithm(SPEalgorithm):
 
-    parameters_file = Unicode("parameters_SPEnominal.yaml",
-                                read_only = True,
-                                help = "The name of the SPE fit parameters file",
-    ).tag(config = True)
+class SPEnominalalgorithm(SPEalgorithm):
+    parameters_file = Unicode(
+        "parameters_SPEnominal.yaml",
+        read_only=True,
+        help="The name of the SPE fit parameters file",
+    ).tag(config=True)
 
     __fit_array = None
 
-    tol = Float(1e-1,
-                help="The tolerance used for minuit",
-                read_only = True,
+    tol = Float(
+        1e-1,
+        help="The tolerance used for minuit",
+        read_only=True,
     ).tag(config=True)
-    
-    nproc = Integer(8,
-                    help = "The Number of cpu used for SPE fit",
-    ).tag(config = True)
 
-    chunksize = Integer(1,
-                    help = "The chunk size for multi-processing",
-    ).tag(config = True)
+    nproc = Integer(
+        8,
+        help="The Number of cpu used for SPE fit",
+    ).tag(config=True)
 
-    multiproc = Bool(True,
-                    help = "flag to active multi-processing",
-    ).tag(config = True)
+    chunksize = Integer(
+        1,
+        help="The chunk size for multi-processing",
+    ).tag(config=True)
 
-    def __init__(self,pixels_id : np.ndarray, charge : np.ndarray, counts: np.ndarray, config=None, parent=None, **kwargs) -> None:
+    multiproc = Bool(
+        True,
+        help="flag to active multi-processing",
+    ).tag(config=True)
+
+    def __init__(
+        self,
+        pixels_id: np.ndarray,
+        charge: np.ndarray,
+        counts: np.ndarray,
+        config=None,
+        parent=None,
+        **kwargs,
+    ) -> None:
         """
         Initializes the FlatFieldSingleHHVSPEMaker object.
         Args:
@@ -406,7 +417,7 @@ class SPEnominalalgorithm(SPEalgorithm):
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
-        super().__init__(pixels_id = pixels_id, config=config, parent=parent, **kwargs)
+        super().__init__(pixels_id=pixels_id, config=config, parent=parent, **kwargs)
         if isinstance(charge, np.ma.masked_array):
             self.__charge = charge
         else:
@@ -418,9 +429,10 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         self.read_param_from_yaml(kwargs.get("parameters_file", self.parameters_file))
 
-
     @classmethod
-    def create_from_chargesContainer(cls, signal: ChargesContainer, config=None, parent=None, **kwargs):
+    def create_from_chargesContainer(
+        cls, signal: ChargesContainer, config=None, parent=None, **kwargs
+    ):
         """
         Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts data from a ChargesContainer object.
         Args:
@@ -432,13 +444,12 @@ class SPEnominalalgorithm(SPEalgorithm):
         histo = ChargesComponent.histo_hg(signal, autoscale=True)
         return cls(
             pixels_id=signal.pixels_id,
-            charge=histo[1], 
-            counts=histo[0], 
-            config=config, 
-            parent=parent, 
-            **kwargs
+            charge=histo[1],
+            counts=histo[0],
+            config=config,
+            parent=parent,
+            **kwargs,
         )
-
 
     # getters and setters
     @property
@@ -646,9 +657,9 @@ class SPEnominalalgorithm(SPEalgorithm):
             UtilsMinuit.set_minuit_parameters_limits_and_errors(
                 fit_array[i], minuitParameters
             )
-            #self.log.debug(fit_array[i].values)
-            #self.log.debug(fit_array[i].limits)
-            #self.log.debug(fit_array[i].fixed)
+            # self.log.debug(fit_array[i].values)
+            # self.log.debug(fit_array[i].limits)
+            # self.log.debug(fit_array[i].fixed)
 
         return fit_array
 
@@ -678,7 +689,6 @@ class SPEnominalalgorithm(SPEalgorithm):
         display: bool = True,
         **kwargs,
     ) -> np.ndarray:
-        
         self.log.info("running maker")
         self.log.info("checking asked pixels id")
         if pixels_id is None:
@@ -689,7 +699,9 @@ class SPEnominalalgorithm(SPEalgorithm):
             pixels_id = np.asarray(pixels_id)
             mask = np.array([_id in self.pixels_id for _id in pixels_id], dtype=bool)
             if False in mask:
-                self.log.debug(f"The following pixels are not in data : {pixels_id[~mask]}")
+                self.log.debug(
+                    f"The following pixels are not in data : {pixels_id[~mask]}"
+                )
                 pixels_id = pixels_id[mask]
             npix = len(pixels_id)
 
@@ -733,7 +745,9 @@ class SPEnominalalgorithm(SPEalgorithm):
                 t = time.time()
                 res = [__class__.run_fit(i) for i in range(npix)]
                 self.log.debug(res)
-                self.log.info(f"time for singleproc execution is {time.time() - t:.2e} sec")
+                self.log.info(
+                    f"time for singleproc execution is {time.time() - t:.2e} sec"
+                )
 
             self.log.info("filling result table from fits results")
             self._fill_results_table_from_dict(res, pixels_id)
@@ -745,9 +759,12 @@ class SPEnominalalgorithm(SPEalgorithm):
                 self.log.info("plotting")
                 t = time.time()
                 self.display(pixels_id, **kwargs)
-                log.info(f"time for plotting {len(pixels_id)} pixels : {time.time() - t:.2e} sec")
+                log.info(
+                    f"time for plotting {len(pixels_id)} pixels : {time.time() - t:.2e} sec"
+                )
 
             return output
+
     def plot_single_pyqtgraph(
         pixel_id: int,
         charge: np.ndarray,
@@ -763,25 +780,23 @@ class SPEnominalalgorithm(SPEalgorithm):
         likelihood: float,
     ) -> tuple:
         import pyqtgraph as pg
-        from pyqtgraph.Qt import QtGui, QtCore
-        #from pyqtgraph.Qt import QtGui
+        from pyqtgraph.Qt import QtCore, QtGui
 
-        app = pg.mkQApp(name = 'minimal')
-#
+        # from pyqtgraph.Qt import QtGui
+
+        app = pg.mkQApp(name="minimal")
+        #
         ## Create a window
         win = pg.GraphicsLayoutWidget(show=False)
         win.setWindowTitle(f"SPE fit pixel id : {pixel_id}")
 
         # Add a plot to the window
-        plot = win.addPlot(title = f"SPE fit pixel id : {pixel_id}")
-        
+        plot = win.addPlot(title=f"SPE fit pixel id : {pixel_id}")
+
         plot.addLegend()
         error = pg.ErrorBarItem(
-            x=charge,
-            y=counts,
-            top=np.sqrt(counts), 
-            bottom=np.sqrt(counts), 
-            beam=0.5)
+            x=charge, y=counts, top=np.sqrt(counts), bottom=np.sqrt(counts), beam=0.5
+        )
         plot.addItem(error)
         plot.plot(
             x=charge,
@@ -796,24 +811,29 @@ class SPEnominalalgorithm(SPEalgorithm):
                 pedestalWidth,
                 luminosity,
             ),
-            name = f"SPE model fit",
+            name=f"SPE model fit",
         )
         legend = pg.TextItem(
             f"SPE model fit gain : {gain - gain_error:.2f} < {gain:.2f} < {gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
-            color=(200, 200, 200),          
+            color=(200, 200, 200),
         )
-        legend.setPos(pedestal,np.max(counts)/2)
+        legend.setPos(pedestal, np.max(counts) / 2)
         font = QtGui.QFont()
         font.setPointSize(12)
         legend.setFont(font)
         legend.setTextWidth(500)
         plot.addItem(legend)
-        
+
         label_style = {"color": "#EEE", "font-size": "12pt"}
         plot.setLabel("bottom", "Charge (ADC)", **label_style)
-        plot.setLabel("left", "Events",**label_style)
-        plot.setRange(xRange=[pedestal - 6 * pedestalWidth, np.quantile(charge.data[~charge.mask],0.84)])
-        #ax.legend(fontsize=18)
+        plot.setLabel("left", "Events", **label_style)
+        plot.setRange(
+            xRange=[
+                pedestal - 6 * pedestalWidth,
+                np.quantile(charge.data[~charge.mask], 0.84),
+            ]
+        )
+        # ax.legend(fontsize=18)
         return win
 
     def plot_single_matplotlib(
@@ -876,7 +896,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         ax.legend(fontsize=18)
         return fig, ax
 
-    def display(self, pixels_id: np.ndarray, package = "pyqtgraph", **kwargs) -> None:
+    def display(self, pixels_id: np.ndarray, package="pyqtgraph", **kwargs) -> None:
         """
         Display and save the plot for each specified pixel ID.
 
@@ -886,11 +906,14 @@ class SPEnominalalgorithm(SPEalgorithm):
             **kwargs: Additional keyword arguments.
                 figpath (str): The path to save the generated plot figures. Defaults to "/tmp/NectarGain_pid{os.getpid()}".
         """
-        figpath = kwargs.get("figpath", f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/NectarGain_pid{os.getpid()}")
+        figpath = kwargs.get(
+            "figpath",
+            f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/NectarGain_pid{os.getpid()}",
+        )
         self.log.debug(f"saving figures in {figpath}")
         os.makedirs(figpath, exist_ok=True)
-        if package == "matplotlib" : 
-            matplotlib.use('TkAgg') 
+        if package == "matplotlib":
+            matplotlib.use("TkAgg")
             for _id in pixels_id:
                 index = np.argmax(self._results.pixels_id == _id)
                 fig, ax = __class__.plot_single_matplotlib(
@@ -911,12 +934,13 @@ class SPEnominalalgorithm(SPEalgorithm):
                 fig.clf()
                 plt.close(fig)
                 del fig, ax
-        elif package =="pyqtgraph" :
+        elif package == "pyqtgraph":
             import pyqtgraph as pg
             import pyqtgraph.exporters
+
             for _id in pixels_id:
                 index = np.argmax(self._results.pixels_id == _id)
-                try : 
+                try:
                     widget = None
                     widget = __class__.plot_single_pyqtgraph(
                         _id,
@@ -932,38 +956,48 @@ class SPEnominalalgorithm(SPEalgorithm):
                         self._results.luminosity[index][0],
                         self._results.likelihood[index],
                     )
-                    exporter = pg.exporters.ImageExporter(widget.getItem(0,0))
-                    exporter.parameters()['width'] = 1000
+                    exporter = pg.exporters.ImageExporter(widget.getItem(0, 0))
+                    exporter.parameters()["width"] = 1000
                     exporter.export(f"{figpath}/fit_SPE_pixel{_id}.png")
-                except Exception as e : 
-                    log.warning(e,exc_info = True)
-                finally : 
+                except Exception as e:
+                    log.warning(e, exc_info=True)
+                finally:
                     del widget
-
 
 
 class SPEHHValgorithm(SPEnominalalgorithm):
     """class to perform fit of the SPE HHV signal with n and pp free"""
 
-    parameters_file = Unicode("parameters_SPEHHV.yaml",
-                                read_only = True,
-                                help = "The name of the SPE fit parameters file",
-    ).tag(config = True)
-    tol = Float(1e40,
-                help="The tolerance used for minuit",
-                read_only = True,
+    parameters_file = Unicode(
+        "parameters_SPEHHV.yaml",
+        read_only=True,
+        help="The name of the SPE fit parameters file",
+    ).tag(config=True)
+    tol = Float(
+        1e40,
+        help="The tolerance used for minuit",
+        read_only=True,
     ).tag(config=True)
 
 
 class SPEnominalStdalgorithm(SPEnominalalgorithm):
     """class to perform fit of the SPE signal with n and pp fixed"""
 
-    parameters_file = Unicode("parameters_SPEnominalStd.yaml",
-                                read_only = True,
-                                help = "The name of the SPE fit parameters file",
-    ).tag(config = True)
+    parameters_file = Unicode(
+        "parameters_SPEnominalStd.yaml",
+        read_only=True,
+        help="The name of the SPE fit parameters file",
+    ).tag(config=True)
 
-    def __init__(self, pixels_id : np.ndarray, charge: np.ndarray, counts: np.ndarray,config=None, parent=None, **kwargs) -> None:
+    def __init__(
+        self,
+        pixels_id: np.ndarray,
+        charge: np.ndarray,
+        counts: np.ndarray,
+        config=None,
+        parent=None,
+        **kwargs,
+    ) -> None:
         """
         Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
 
@@ -973,7 +1007,14 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
-        super().__init__(pixels_id=pixels_id,charge=charge, counts = counts,config=config, parent=parent, **kwargs)
+        super().__init__(
+            pixels_id=pixels_id,
+            charge=charge,
+            counts=counts,
+            config=config,
+            parent=parent,
+            **kwargs,
+        )
         self.__fix_parameters()
 
     def __fix_parameters(self) -> None:
@@ -986,39 +1027,51 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
         n = self._parameters["n"]
         n.frozen = True
 
-class SPEHHVStdalgorithm(SPEnominalStdalgorithm) : 
+
+class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
     parameters_file = Unicode(
         "parameters_SPEHHVStd.yaml",
-        read_only = True,
-        help = "The name of the SPE fit parameters file",
-    ).tag(config = True)
-    tol = Float(1e40,
+        read_only=True,
+        help="The name of the SPE fit parameters file",
+    ).tag(config=True)
+    tol = Float(
+        1e40,
         help="The tolerance used for minuit",
-        read_only = True,
+        read_only=True,
     ).tag(config=True)
 
 
 class SPECombinedalgorithm(SPEnominalalgorithm):
-    parameters_file = Unicode("parameters_SPECombined_fromHHVFit.yaml",
-                                read_only = True,
-                                help = "The name of the SPE fit parameters file",
-    ).tag(config = True)
+    parameters_file = Unicode(
+        "parameters_SPECombined_fromHHVFit.yaml",
+        read_only=True,
+        help="The name of the SPE fit parameters file",
+    ).tag(config=True)
 
-    tol = Float(1e5,
+    tol = Float(
+        1e5,
         help="The tolerance used for minuit",
-        read_only = True,
+        read_only=True,
     ).tag(config=True)
 
     SPE_result = Path(
         help="the path of the SPE result container computed with very high voltage data",
-    ).tag(config = True)
+    ).tag(config=True)
 
     same_luminosity = Bool(
         help="if the luminosity is the same between high voltage and low voltage runs",
-        default_value = False,
-    ).tag(config = True)
+        default_value=False,
+    ).tag(config=True)
 
-    def __init__(self, pixels_id : np.ndarray, charge: np.ndarray, counts: np.ndarray,config=None, parent=None, **kwargs) -> None:
+    def __init__(
+        self,
+        pixels_id: np.ndarray,
+        charge: np.ndarray,
+        counts: np.ndarray,
+        config=None,
+        parent=None,
+        **kwargs,
+    ) -> None:
         """
         Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
 
@@ -1028,11 +1081,30 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
-        super().__init__(pixels_id=pixels_id,charge=charge, counts = counts,config=config, parent=parent, **kwargs)
+        super().__init__(
+            pixels_id=pixels_id,
+            charge=charge,
+            counts=counts,
+            config=config,
+            parent=parent,
+            **kwargs,
+        )
 
         self.__fix_parameters()
         self._nectarGainSPEresult = SPEfitContainer.from_hdf5(self.SPE_result)
-        if len(pixels_id[np.in1d(pixels_id, self._nectarGainSPEresult.pixels_id[self._nectarGainSPEresult.is_valid])]) == 0:
+        if (
+            len(
+                pixels_id[
+                    np.in1d(
+                        pixels_id,
+                        self._nectarGainSPEresult.pixels_id[
+                            self._nectarGainSPEresult.is_valid
+                        ],
+                    )
+                ]
+            )
+            == 0
+        ):
             self.log.warning(
                 "The intersection between pixels id from the data and those valid from the SPE fit result is empty"
             )
@@ -1096,7 +1168,9 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         Returns:
             dict: The updated parameters.
         """
-        param = super(__class__,__class__)._update_parameters(parameters, charge, counts, **kwargs)
+        param = super(__class__, __class__)._update_parameters(
+            parameters, charge, counts, **kwargs
+        )
         luminosity = param["luminosity"]
         resolution = param["resolution"]
         pp = param["pp"]
@@ -1113,13 +1187,22 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         return param
 
     def run(
-            self,
-            pixels_id: np.ndarray = None,
-            display: bool = True,
-            **kwargs,
-        ) -> np.ndarray :
-        if pixels_id is None : 
-            pixels_id = self._nectarGainSPEresult.pixels_id[self._nectarGainSPEresult.is_valid]
-        else : 
-            pixels_id = np.asarray(pixels_id)[np.in1d(pixels_id,self._nectarGainSPEresult.pixels_id[self._nectarGainSPEresult.is_valid])]
-        return super().run(pixels_id=pixels_id,display = display,**kwargs)
+        self,
+        pixels_id: np.ndarray = None,
+        display: bool = True,
+        **kwargs,
+    ) -> np.ndarray:
+        if pixels_id is None:
+            pixels_id = self._nectarGainSPEresult.pixels_id[
+                self._nectarGainSPEresult.is_valid
+            ]
+        else:
+            pixels_id = np.asarray(pixels_id)[
+                np.in1d(
+                    pixels_id,
+                    self._nectarGainSPEresult.pixels_id[
+                        self._nectarGainSPEresult.is_valid
+                    ],
+                )
+            ]
+        return super().run(pixels_id=pixels_id, display=display, **kwargs)

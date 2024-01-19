@@ -7,26 +7,21 @@ log.handlers = logging.getLogger("__main__").handlers
 import copy
 import os
 import pathlib
-from abc import ABC, abstractmethod
 
 import numpy as np
 from ctapipe.containers import Container
 from ctapipe.core import Component, Tool
+from ctapipe.core.container import FieldValidationError
 from ctapipe.core.traits import (
     Bool,
     ComponentNameList,
-    ComponentName,
     Integer,
     Path,
     classes_with_traits,
     flag,
 )
-from ctapipe.instrument import CameraGeometry
 from ctapipe.io import HDF5TableWriter
-from ctapipe.core.container import FieldValidationError
 from ctapipe.io.datawriter import DATA_MODEL_VERSION
-from ctapipe_io_nectarcam import NectarCAMEventSource, constants
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from tables.exceptions import HDF5ExtError
 from tqdm.auto import tqdm
 
@@ -180,9 +175,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         )
         for componentName in _cls.componentsList:
             class_name = ComponentUtils.get_class_name_from_ComponentName(componentName)
-            configurable_traits = ComponentUtils.get_configurable_traits(
-                class_name
-            )
+            configurable_traits = ComponentUtils.get_configurable_traits(class_name)
             _cls.add_traits(**configurable_traits)
             _cls.aliases.update(
                 {key: f"{componentName}.{key}" for key in configurable_traits.keys()}
@@ -198,8 +191,6 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{self.name}_run{self.run_number}.h5"
         )
-
-
 
     def _load_eventsource(self, *args, **kwargs):
         self.log.debug("loading event source")
@@ -221,17 +212,21 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self.writer.close()
 
         if sliced:
-            if slice_index == 0 : 
-                if self.overwrite :
-                    try : 
-                        log.info(f'overwrite set to true, trying to remove file {self.output_path}')
+            if slice_index == 0:
+                if self.overwrite:
+                    try:
+                        log.info(
+                            f"overwrite set to true, trying to remove file {self.output_path}"
+                        )
                         os.remove(self.output_path)
-                        log.info(f'{self.output_path} removed')
+                        log.info(f"{self.output_path} removed")
                     except OSError:
                         pass
-                else : 
-                    if os.path.exists(self.output_path) : 
-                        raise Exception(f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite")
+                else:
+                    if os.path.exists(self.output_path):
+                        raise Exception(
+                            f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
+                        )
             self.log.info(
                 f"initilization of writter in sliced mode (slice index = {slice_index})"
             )
@@ -240,20 +235,24 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             mode = "a"
         else:
             self.log.info("initilization of writter in full mode")
-            if self.overwrite :
-                try : 
-                    log.info(f'overwrite set to true, trying to remove file {self.output_path}')
+            if self.overwrite:
+                try:
+                    log.info(
+                        f"overwrite set to true, trying to remove file {self.output_path}"
+                    )
                     os.remove(self.output_path)
-                    log.info(f'{self.output_path} removed')
+                    log.info(f"{self.output_path} removed")
                 except OSError:
                     pass
-            else : 
-                if os.path.exists(self.output_path) : 
-                    raise Exception(f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite")
+            else:
+                if os.path.exists(self.output_path):
+                    raise Exception(
+                        f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
+                    )
             group_name = "data"
             mode = "w"
         try:
-            os.makedirs(self.output_path.parent,exist_ok = True)
+            os.makedirs(self.output_path.parent, exist_ok=True)
             self.writer = self.enter_context(
                 HDF5TableWriter(
                     filename=self.output_path,  # pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
@@ -365,7 +364,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 disable=not self.progress_bar,
             )
         ):
-            #if i % 100 == 0:
+            # if i % 100 == 0:
             #    self.log.info(f"reading event number {i}")
             for component in self.components:
                 component(event, *args, **kwargs)
@@ -403,12 +402,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             output.append(component.finish(*args, **kwargs))
         log.info(output)
         for i, _output in enumerate(output):
-            if not(_output is None) : 
+            if not (_output is None):
                 self._write_container(_output, i)
         return output
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
-        try : 
+        try:
             container.validate()
             if isinstance(container, NectarCAMContainer):
                 self.writer.write(
@@ -425,15 +424,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 raise TypeError(
                     "component output must be an instance of TriggerMapContainer or NectarCAMContainer"
                 )
-        except FieldValidationError as e : 
-            log.warning(e,exc_info=True)
+        except FieldValidationError as e:
+            log.warning(e, exc_info=True)
             self.log.warning("the container has not been written")
-        except Exception as e : 
-            self.log.error(e,exc_info=True)
+        except Exception as e:
+            self.log.error(e, exc_info=True)
             raise e
-
-
-        
 
     @property
     def event_source(self):

@@ -4,22 +4,14 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+import copy
+import time
+from argparse import ArgumentError
 
 import numpy as np
 import numpy.ma as ma
-
-from abc import ABC, abstractmethod
-import copy
-import tqdm
-from argparse import ArgumentError
-import time
-from numba import bool_, float64, guvectorize, int64
-
-from ctapipe.core import Component,TelescopeComponent
-from ctapipe.instrument import CameraGeometry
 from ctapipe.containers import EventType
-from ctapipe.core.traits import List,Unicode,Dict
-from ctapipe.instrument import SubarrayDescription
+from ctapipe.core.traits import Dict, Unicode
 from ctapipe.image.extractor import (
     BaselineSubtractedNeighborPeakWindowSum,
     FixedWindowSum,
@@ -30,12 +22,19 @@ from ctapipe.image.extractor import (
     SlidingWindowMaxSum,
     TwoPassWindowSum,
 )
+from ctapipe.instrument import SubarrayDescription
+from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe_io_nectarcam import NectarCAMEventSource, constants
+from numba import bool_, float64, guvectorize, int64
 
-from .core import ArrayDataComponent
+from ...data.container import (
+    ChargesContainer,
+    ChargesContainers,
+    WaveformsContainer,
+    WaveformsContainers,
+)
 from ..extractor.utils import CtapipeExtractor
-from ...data.container import ChargesContainer,ChargesContainers,WaveformsContainer,WaveformsContainers
+from .core import ArrayDataComponent
 
 __all__ = ["ChargesComponent"]
 
@@ -112,33 +111,29 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         pass
 
 
+class ChargesComponent(ArrayDataComponent):
+    method = Unicode(
+        default_value="FullWaveformSum",
+        help="the charge extraction method",
+    ).tag(config=True)
 
+    extractor_kwargs = Dict(
+        default_value={},
+        help="The kwargs to be pass to the charge extractor method",
+    ).tag(config=True)
 
-
-
-
-class ChargesComponent(ArrayDataComponent) : 
-
-    method = Unicode(default_value = "FullWaveformSum",
-                     help = "the charge extraction method",
-
-                     ).tag(config = True)
-    
-    extractor_kwargs = Dict(default_value = {},
-                            help = "The kwargs to be pass to the charge extractor method",
-                            ).tag(config = True)
-    
     SubComponents = copy.deepcopy(ArrayDataComponent.SubComponents)
     SubComponents.read_only = True
 
-    def __init__(self, subarray, config=None, parent=None,*args, **kwargs):
-        super().__init__(subarray = subarray, config = config, parent = parent, *args,**kwargs)
+    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        super().__init__(
+            subarray=subarray, config=config, parent=parent, *args, **kwargs
+        )
 
         self.__charges_hg = {}
         self.__charges_lg = {}
         self.__peak_hg = {}
         self.__peak_lg = {}
-
 
     def _init_trigger_type(self, trigger_type: EventType, **kwargs):
         """
@@ -160,13 +155,12 @@ class ChargesComponent(ArrayDataComponent) :
         self.__peak_lg[f"{name}"] = []
 
     def __call__(
-        self, 
-        event: NectarCAMDataContainer, 
-        *args, 
+        self,
+        event: NectarCAMDataContainer,
+        *args,
         **kwargs,
     ):
-        
-        wfs_hg_tmp, wfs_lg_tmp = super(ChargesComponent,self).__call__(
+        wfs_hg_tmp, wfs_lg_tmp = super(ChargesComponent, self).__call__(
             event=event, return_wfs=True, *args, **kwargs
         )
         name = __class__._get_name_trigger(event.trigger.event_type)
@@ -198,7 +192,7 @@ class ChargesComponent(ArrayDataComponent) :
         self.__peak_lg[f"{name}"].append(__image[1].tolist())
 
     @staticmethod
-    def _get_extractor_kwargs_from_method_and_kwargs(method : str,kwargs : dict) : 
+    def _get_extractor_kwargs_from_method_and_kwargs(method: str, kwargs: dict):
         extractor_kwargs = {}
         for key in eval(method).class_own_traits().keys():
             if key in kwargs.keys():
@@ -226,19 +220,19 @@ class ChargesComponent(ArrayDataComponent) :
             method in list_ctapipe_charge_extractor
             or method in list_nectarchain_charge_extractor
         ):
-            raise ArgumentError(f"method must be in {list_ctapipe_charge_extractor} or {list_nectarchain_charge_extractor}")
-        extractor_kwargs = __class__._get_extractor_kwargs_from_method_and_kwargs(method = method,kwargs = kwargs)
+            raise ArgumentError(
+                f"method must be in {list_ctapipe_charge_extractor} or {list_nectarchain_charge_extractor}"
+            )
+        extractor_kwargs = __class__._get_extractor_kwargs_from_method_and_kwargs(
+            method=method, kwargs=kwargs
+        )
         log.debug(
             f"Extracting charges with method {method} and extractor_kwargs {extractor_kwargs}"
         )
         imageExtractor = eval(method)(subarray, **extractor_kwargs)
         return imageExtractor
 
-
-
-    def finish(
-        self, *args, **kwargs
-    ):
+    def finish(self, *args, **kwargs):
         """
         Create an output container for the specified trigger type and method.
         Args:
@@ -250,12 +244,14 @@ class ChargesComponent(ArrayDataComponent) :
             list: A list of ChargesContainer objects.
         """
         output = ChargesContainers()
-        for i,trigger in enumerate(self.trigger_list):
+        for i, trigger in enumerate(self.trigger_list):
             chargesContainer = ChargesContainer(
-                run_number=ChargesContainer.fields['run_number'].type(self._run_number),
-                npixels=ChargesContainer.fields['npixels'].type(self._npixels),
+                run_number=ChargesContainer.fields["run_number"].type(self._run_number),
+                npixels=ChargesContainer.fields["npixels"].type(self._npixels),
                 camera=self.CAMERA_NAME,
-                pixels_id=ChargesContainer.fields['pixels_id'].dtype.type(self._pixels_id),
+                pixels_id=ChargesContainer.fields["pixels_id"].dtype.type(
+                    self._pixels_id
+                ),
                 method=self.method,
                 nevents=self.nevents(trigger),
                 charges_hg=self.charges_hg(trigger),
@@ -275,7 +271,6 @@ class ChargesComponent(ArrayDataComponent) :
             )
             output.containers[trigger] = chargesContainer
         return output
-
 
     @staticmethod
     def sort(chargesContainer: ChargesContainer, method: str = "event_id"):
@@ -358,7 +353,8 @@ class ChargesComponent(ArrayDataComponent) :
             np.ndarray: The charges for the specific trigger type.
         """
         return np.array(
-            self.__charges_hg[__class__._get_name_trigger(trigger)], dtype=ChargesContainer.fields['charges_hg'].dtype
+            self.__charges_hg[__class__._get_name_trigger(trigger)],
+            dtype=ChargesContainer.fields["charges_hg"].dtype,
         )
 
     def charges_lg(self, trigger: EventType):
@@ -370,7 +366,8 @@ class ChargesComponent(ArrayDataComponent) :
             np.ndarray: The charges for the specific trigger type.
         """
         return np.array(
-            self.__charges_lg[__class__._get_name_trigger(trigger)], dtype=ChargesContainer.fields['charges_lg'].dtype
+            self.__charges_lg[__class__._get_name_trigger(trigger)],
+            dtype=ChargesContainer.fields["charges_lg"].dtype,
         )
 
     def peak_hg(self, trigger: EventType):
@@ -382,7 +379,8 @@ class ChargesComponent(ArrayDataComponent) :
             np.ndarray: The peak charges for the specific trigger type.
         """
         return np.array(
-            self.__peak_hg[__class__._get_name_trigger(trigger)], dtype=ChargesContainer.fields['peak_hg'].dtype
+            self.__peak_hg[__class__._get_name_trigger(trigger)],
+            dtype=ChargesContainer.fields["peak_hg"].dtype,
         )
 
     def peak_lg(self, trigger: EventType):
@@ -394,22 +392,25 @@ class ChargesComponent(ArrayDataComponent) :
             np.ndarray: The peak charges for the specific trigger type.
         """
         return np.array(
-            self.__peak_lg[__class__._get_name_trigger(trigger)], dtype=ChargesContainer.fields['peak_lg'].dtype
+            self.__peak_lg[__class__._get_name_trigger(trigger)],
+            dtype=ChargesContainer.fields["peak_lg"].dtype,
         )
 
     @staticmethod
-    def _create_from_waveforms_looping_eventType(waveformsContainers: WaveformsContainers,**kwargs) : 
+    def _create_from_waveforms_looping_eventType(
+        waveformsContainers: WaveformsContainers, **kwargs
+    ):
         chargesContainers = ChargesContainers()
-        for key in waveformsContainers.containers.keys() : 
-            chargesContainers.containers[key] = ChargesComponent.create_from_waveforms(waveformsContainer = waveformsContainers.containers[key],
-                                            **kwargs
-                                            )
+        for key in waveformsContainers.containers.keys():
+            chargesContainers.containers[key] = ChargesComponent.create_from_waveforms(
+                waveformsContainer=waveformsContainers.containers[key], **kwargs
+            )
         return chargesContainers
 
     @staticmethod
     def create_from_waveforms(
         waveformsContainer: WaveformsContainer,
-        subarray = SubarrayDescription,
+        subarray=SubarrayDescription,
         method: str = "FullWaveformSum",
         **kwargs,
     ) -> ChargesContainer:
@@ -428,11 +429,19 @@ class ChargesComponent(ArrayDataComponent) :
                 chargesContainer[field] = waveformsContainer[field]
         log.info(f"computing hg charge with {method} method")
         charges_hg, peak_hg = __class__.compute_charges(
-            waveformsContainer = waveformsContainer, channel = constants.HIGH_GAIN, subarray = subarray, method = method, **kwargs
+            waveformsContainer=waveformsContainer,
+            channel=constants.HIGH_GAIN,
+            subarray=subarray,
+            method=method,
+            **kwargs,
         )
         log.info(f"computing lg charge with {method} method")
         charges_lg, peak_lg = __class__.compute_charges(
-            waveformsContainer = waveformsContainer, channel = constants.LOW_GAIN, subarray = subarray, method =  method, **kwargs
+            waveformsContainer=waveformsContainer,
+            channel=constants.LOW_GAIN,
+            subarray=subarray,
+            method=method,
+            **kwargs,
         )
         chargesContainer.charges_hg = charges_hg
         chargesContainer.charges_lg = charges_lg
@@ -445,9 +454,9 @@ class ChargesComponent(ArrayDataComponent) :
     def compute_charges(
         waveformsContainer: WaveformsContainer,
         channel: int,
-        subarray : SubarrayDescription,
+        subarray: SubarrayDescription,
         method: str = "FullWaveformSum",
-        tel_id : int = None,
+        tel_id: int = None,
         **kwargs,
     ):
         """
@@ -466,7 +475,7 @@ class ChargesComponent(ArrayDataComponent) :
         # import is here for fix issue with pytest (TypeError :  inference is not possible with python <3.9 (Numba conflict bc there is no inference...))
         from ..extractor.utils import CtapipeExtractor
 
-        if tel_id is None : 
+        if tel_id is None:
             tel_id = __class__.TEL_ID.default_value
 
         imageExtractor = __class__._get_imageExtractor(
@@ -486,7 +495,9 @@ class ChargesComponent(ArrayDataComponent) :
                     for i in range(len(waveformsContainer.wfs_hg))
                 ]
             ).transpose(1, 0, 2)
-            return ChargesContainer.fields['charges_hg'].dtype.type(out[0]), ChargesContainer.fields['peak_hg'].dtype.type(out[1])
+            return ChargesContainer.fields["charges_hg"].dtype.type(
+                out[0]
+            ), ChargesContainer.fields["peak_hg"].dtype.type(out[1])
         elif channel == constants.LOW_GAIN:
             out = np.array(
                 [
@@ -501,7 +512,9 @@ class ChargesComponent(ArrayDataComponent) :
                     for i in range(len(waveformsContainer.wfs_lg))
                 ]
             ).transpose(1, 0, 2)
-            return ChargesContainer.fields['charges_lg'].dtype.type(out[0]), ChargesContainer.fields['peak_lg'].dtype.type(out[1])
+            return ChargesContainer.fields["charges_lg"].dtype.type(
+                out[0]
+            ), ChargesContainer.fields["peak_lg"].dtype.type(out[1])
         else:
             raise ArgumentError(
                 f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"

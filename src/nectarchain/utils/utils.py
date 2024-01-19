@@ -1,6 +1,6 @@
+import importlib
 import logging
 import math
-import importlib
 
 import numpy as np
 from iminuit import Minuit
@@ -15,55 +15,61 @@ log.handlers = logging.getLogger("__main__").handlers
 from ctapipe.core.component import Component
 
 
-
-
-#__all__ = ["ComponentUtils","UtilsMinuit","multiprocessing"]
-
 class ComponentUtils:
     @staticmethod
-    def is_in_non_abstract_subclasses(component : Component,motherClass = "NectarCAMComponent") : 
+    def is_in_non_abstract_subclasses(
+        component: Component, motherClass="NectarCAMComponent"
+    ):
         from nectarchain.makers.component.core import NectarCAMComponent
-        #module = importlib.import_module(f'nectarchain.makers.component.core')
+
+        # module = importlib.import_module(f'nectarchain.makers.component.core')
         is_in = False
-        if isinstance(component,eval(f"{motherClass}")) : 
+        if isinstance(component, eval(f"{motherClass}")):
             is_in = True
-        else  :
-            for _,value in eval(motherClass).non_abstract_subclasses().items() : 
-                is_in = np.logical_or(is_in,component == value)
+        else:
+            for _, value in eval(motherClass).non_abstract_subclasses().items():
+                is_in = np.logical_or(is_in, component == value)
         return is_in
-    
+
     @staticmethod
-    def get_specific_traits(component : Component) : 
-        importlib.import_module(f'{component.__module__}')
+    def get_specific_traits(component: Component):
+        importlib.import_module(f"{component.__module__}")
         traits_dict = component.class_traits()
-        if ComponentUtils.is_in_non_abstract_subclasses(component,"NectarCAMComponent") and not(component.SubComponents.default_value is None) : 
-            for component_name in component.SubComponents.default_value : #####CPT 
-                _class = getattr(importlib.import_module('nectarchain.makers.component'),component_name)
+        if ComponentUtils.is_in_non_abstract_subclasses(
+            component, "NectarCAMComponent"
+        ) and not (component.SubComponents.default_value is None):
+            for component_name in component.SubComponents.default_value:  #####CPT
+                _class = getattr(
+                    importlib.import_module("nectarchain.makers.component"),
+                    component_name,
+                )
                 traits_dict.update(ComponentUtils.get_specific_traits(_class))
-        traits_dict.pop("config",True)
-        traits_dict.pop("parent",True)
+        traits_dict.pop("config", True)
+        traits_dict.pop("parent", True)
         return traits_dict
 
     @staticmethod
-    def get_configurable_traits(component : Component) : 
+    def get_configurable_traits(component: Component):
         traits_dict = ComponentUtils.get_specific_traits(component)
         output_traits_dict = traits_dict.copy()
-        for key,item in traits_dict.items() : 
-            if item.read_only : 
+        for key, item in traits_dict.items():
+            if item.read_only:
                 output_traits_dict.pop(key)
         return output_traits_dict
-    
+
     @staticmethod
-    def get_class_name_from_ComponentName(componentName : str) : 
+    def get_class_name_from_ComponentName(componentName: str):
         from nectarchain.makers.component.core import NectarCAMComponent
-        for class_name,_class in NectarCAMComponent.non_abstract_subclasses().items() :
-            if componentName in class_name : 
+
+        for class_name, _class in NectarCAMComponent.non_abstract_subclasses().items():
+            if componentName in class_name:
                 return _class
 
-        raise ValueError("componentName is not a valid component, this component is not known as a child of NectarCAMComponent")
-    
+        raise ValueError(
+            "componentName is not a valid component, this component is not known as a child of NectarCAMComponent"
+        )
 
-    
+
 class multiprocessing:
     @staticmethod
     def custom_error_callback(error):

@@ -1,8 +1,8 @@
+import json
 import logging
 import os
 import sys
 from pathlib import Path
-import json
 
 # to quiet numba
 os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
@@ -14,16 +14,13 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+import argparse
 import copy
 import glob
-import argparse
-from nectarchain.makers.calibration import (
-    PhotoStatisticNectarCAMCalibrationTool
-    
-)
-from nectarchain.makers.extractor.utils import CtapipeExtractor
-from nectarchain.data.management import DataManagement
 
+from nectarchain.data.management import DataManagement
+from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
+from nectarchain.makers.extractor.utils import CtapipeExtractor
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
@@ -42,7 +39,7 @@ parser.add_argument(
     "-m",
     "--max_events",
     nargs="+",
-    #default=[],
+    # default=[],
     help="max events to be load",
     type=int,
 )
@@ -91,7 +88,7 @@ parser.add_argument(
     "--verbosity",
     help="set the verbosity level of logger",
     default="INFO",
-    choices=["DEBUG","INFO","WARN","ERROR","CRITICAL"],
+    choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     type=str,
 )
 
@@ -100,7 +97,7 @@ parser.add_argument(
     "--figpath",
     type=str,
     default=f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/",
-    help="output figure path"
+    help="output figure path",
 )
 
 # pixels selected
@@ -111,71 +108,75 @@ parser.add_argument(
 parser.add_argument(
     "--HHV_run_number",
     help="HHV run number of which the SPE fit has ever been performed",
-    type=int
+    type=int,
 )
 
 args = parser.parse_args()
 
-def main(log,
-         **kwargs,
-         ):
+
+def main(
+    log,
+    **kwargs,
+):
     FF_run_number = kwargs.pop("FF_run_number")
     Ped_run_number = kwargs.pop("Ped_run_number")
 
-    if len(FF_run_number) != len(Ped_run_number) : 
-        raise Exception('The number of FF and Ped runs must be the same')
+    if len(FF_run_number) != len(Ped_run_number):
+        raise Exception("The number of FF and Ped runs must be the same")
 
-    max_events = kwargs.pop(
-        "max_events", [None for i in range(len(FF_run_number))]
-    )
-    if max_events is None : 
+    max_events = kwargs.pop("max_events", [None for i in range(len(FF_run_number))])
+    if max_events is None:
         max_events = [None for i in range(len(FF_run_number))]
 
     log.info(f"max_events : {max_events}")
 
     figpath = args.figpath
 
-    str_extractor_kwargs=CtapipeExtractor.get_extractor_kwargs_str(args.extractor_kwargs)
+    str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+        args.extractor_kwargs
+    )
     path = DataManagement.find_SPE_HHV(
-                run_number=args.HHV_run_number,
-                method = args.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-            )
-    if len(path) == 1 : 
-        log.info(f"{path[0]} found associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}")
-    else : 
+        run_number=args.HHV_run_number,
+        method=args.method,
+        str_extractor_kwargs=str_extractor_kwargs,
+    )
+    if len(path) == 1:
+        log.info(
+            f"{path[0]} found associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}"
+        )
+    else:
         _text = f"no file found in $NECTARCAM_DATA/../SPEfit associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}"
         log.error(_text)
         raise FileNotFoundError(_text)
-    for _FF_run_number,_Ped_run_number,_max_events in zip(FF_run_number,Ped_run_number,max_events) : 
-        try : 
+    for _FF_run_number, _Ped_run_number, _max_events in zip(
+        FF_run_number, Ped_run_number, max_events
+    ):
+        try:
             tool = PhotoStatisticNectarCAMCalibrationTool(
-                progress_bar = True,
-                run_number = _FF_run_number,
-                max_events = _max_events,
-                Ped_run_number = _Ped_run_number,
-                SPE_result = path[0],
+                progress_bar=True,
+                run_number=_FF_run_number,
+                max_events=_max_events,
+                Ped_run_number=_Ped_run_number,
+                SPE_result=path[0],
                 **kwargs,
             )
             tool.setup()
-            if args.reload_events and not(_max_events is None):
-                _figpath =  f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{str_extractor_kwargs}"
-            else : 
+            if args.reload_events and not (_max_events is None):
+                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{str_extractor_kwargs}"
+            else:
                 _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{str_extractor_kwargs}"
             tool.start()
-            tool.finish(figpath = _figpath)
+            tool.finish(figpath=_figpath)
         except Exception as e:
-            log.warning(e,exc_info=True)
-
+            log.warning(e, exc_info=True)
 
 
 if __name__ == "__main__":
-
     args = parser.parse_args()
     kwargs = copy.deepcopy(vars(args))
 
     kwargs["log_level"] = args.verbosity
-    
+
     os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
     logging.basicConfig(
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -200,5 +201,4 @@ if __name__ == "__main__":
     kwargs.pop("HHV_run_number")
 
     log.info(f"arguments passed to main are : {kwargs}")
-    main(log = log, **kwargs)
-
+    main(log=log, **kwargs)

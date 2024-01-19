@@ -10,7 +10,6 @@ __all__ = ["FlatfieldNectarCAMCalibrationTool"]
 
 
 class FlatfieldNectarCAMCalibrationTool(NectarCAMCalibrationTool):
-
     def start(self):
         raise NotImplementedError(
             "The computation of the flatfield calibration is not yet implemented, feel free to contribute !:)"

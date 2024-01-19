@@ -14,13 +14,17 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 import copy
+
 from nectarchain.data.container import (
     ChargesContainer,
     ChargesContainers,
     WaveformsContainer,
     WaveformsContainers,
 )
-from nectarchain.makers import WaveformsNectarCAMCalibrationTool,ChargesNectarCAMCalibrationTool
+from nectarchain.makers import (
+    ChargesNectarCAMCalibrationTool,
+    WaveformsNectarCAMCalibrationTool,
+)
 
 parser = argparse.ArgumentParser(
     prog="load_wfs_compute_charge",
@@ -37,7 +41,7 @@ parser.add_argument(
     "-m",
     "--max_events",
     nargs="+",
-    #default=[],
+    # default=[],
     help="max events to be load",
     type=int,
 )
@@ -91,81 +95,79 @@ parser.add_argument(
     "--verbosity",
     help="set the verbosity level of logger",
     default="INFO",
-    choices=["DEBUG","INFO","WARN","ERROR","CRITICAL"],
+    choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     type=str,
 )
 
 args = parser.parse_args()
 
-def main(log,
+
+def main(
+    log,
     **kwargs,
 ):
     # print(kwargs)
     run_number = kwargs.pop("run_number")
-    max_events = kwargs.pop(
-        "max_events", [None for i in range(len(run_number))]
-    )
-    if max_events is None : 
+    max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
+    if max_events is None:
         max_events = [None for i in range(len(run_number))]
 
     log.info(max_events)
 
-
-
     tool = WaveformsNectarCAMCalibrationTool()
     waveforms_kwargs = {}
-    for key in tool.traits().keys() : 
-        if key in kwargs.keys() : 
+    for key in tool.traits().keys():
+        if key in kwargs.keys():
             waveforms_kwargs[key] = kwargs[key]
 
     tool = ChargesNectarCAMCalibrationTool()
     charges_kwargs = {}
-    for key in tool.traits().keys() : 
-        if key in kwargs.keys() : 
+    for key in tool.traits().keys():
+        if key in kwargs.keys():
             charges_kwargs[key] = kwargs[key]
 
     log.info(f"WaveformsNectarCAMCalibrationTool kwargs are {waveforms_kwargs}")
     log.info(f"ChargesNectarCAMCalibrationTool kwargs are {charges_kwargs}")
 
-    for _run_number,_max_events in zip(run_number,max_events) : 
-        try : 
-            if kwargs.get("reload_wfs",False) : 
+    for _run_number, _max_events in zip(run_number, max_events):
+        try:
+            if kwargs.get("reload_wfs", False):
                 log.info("reloading waveforms")
-                tool = WaveformsNectarCAMCalibrationTool(progress_bar = True,
-                                                         run_number = _run_number,
-                                                         max_events = _max_events,
-                                                         **waveforms_kwargs
-                                                         )
+                tool = WaveformsNectarCAMCalibrationTool(
+                    progress_bar=True,
+                    run_number=_run_number,
+                    max_events=_max_events,
+                    **waveforms_kwargs,
+                )
                 tool.setup()
                 tool.start()
                 tool.finish()
 
-                tool = ChargesNectarCAMCalibrationTool(progress_bar = True,
-                                                        run_number = _run_number,
-                                                        max_events = _max_events,
-                                                        from_computed_waveforms = True,
-                                                        **charges_kwargs
-                                                         )
+                tool = ChargesNectarCAMCalibrationTool(
+                    progress_bar=True,
+                    run_number=_run_number,
+                    max_events=_max_events,
+                    from_computed_waveforms=True,
+                    **charges_kwargs,
+                )
                 tool.setup()
                 tool.start()
                 tool.finish()
-            else : 
+            else:
                 log.info("trying to compute charges from waveforms yet extracted")
-                tool = ChargesNectarCAMCalibrationTool(progress_bar = True,
-                                                        run_number = _run_number,
-                                                        max_events = _max_events,
-                                                        from_computed_waveforms = True,
-                                                        **charges_kwargs
-                                                         )
-
+                tool = ChargesNectarCAMCalibrationTool(
+                    progress_bar=True,
+                    run_number=_run_number,
+                    max_events=_max_events,
+                    from_computed_waveforms=True,
+                    **charges_kwargs,
+                )
 
                 tool.setup()
                 tool.start()
                 tool.finish()
-        except Exception as e : 
-            log.error(e,exc_info = True)
-
-    
+        except Exception as e:
+            log.error(e, exc_info=True)
 
 
 if __name__ == "__main__":
@@ -179,7 +181,7 @@ if __name__ == "__main__":
     kwargs = copy.deepcopy(vars(args))
 
     kwargs["log_level"] = args.verbosity
-    
+
     os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
     logging.basicConfig(
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -201,11 +203,6 @@ if __name__ == "__main__":
 
     kwargs.pop("verbosity")
 
-
-
-
-
-
     log.info(f"arguments passed to main are : {kwargs}")
 
-    main(log = log, **kwargs)
+    main(log=log, **kwargs)

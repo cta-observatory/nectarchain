@@ -4,17 +4,14 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import os
-from abc import ABC
-from pathlib import Path
-
 import numpy as np
-from astropy.io import fits
-from ctapipe.containers import Field,partial,Map
+from ctapipe.containers import Field, Map, partial
 
-from .core import ArrayDataContainer,TriggerMapContainer
+from .core import ArrayDataContainer, TriggerMapContainer
 
-__all__ = ["ChargesContainer","ChargesContainers"]
+__all__ = ["ChargesContainer", "ChargesContainers"]
+
+
 class ChargesContainer(ArrayDataContainer):
     """
     A container that holds information about charges from a specific run.
@@ -27,14 +24,23 @@ class ChargesContainer(ArrayDataContainer):
       method (str): The charge extraction method used.
     """
 
-    charges_hg = Field(type=np.ndarray, dtype = np.uint16, ndim = 2, description="The high gain charges")
-    charges_lg = Field(type=np.ndarray, dtype = np.uint16, ndim = 2, description="The low gain charges")
-    peak_hg = Field(type=np.ndarray, dtype = np.uint16, ndim = 2, description="The high gain peak time")
-    peak_lg = Field(type=np.ndarray, dtype = np.uint16, ndim = 2, description="The low gain peak time")
+    charges_hg = Field(
+        type=np.ndarray, dtype=np.uint16, ndim=2, description="The high gain charges"
+    )
+    charges_lg = Field(
+        type=np.ndarray, dtype=np.uint16, ndim=2, description="The low gain charges"
+    )
+    peak_hg = Field(
+        type=np.ndarray, dtype=np.uint16, ndim=2, description="The high gain peak time"
+    )
+    peak_lg = Field(
+        type=np.ndarray, dtype=np.uint16, ndim=2, description="The low gain peak time"
+    )
     method = Field(type=str, description="The charge extraction method used")
 
 
 class ChargesContainers(TriggerMapContainer):
-    containers = Field(default_factory=partial(Map, ChargesContainer),
-                       description = "trigger or slices of data mapping of ChargesContainer"
-                       )
+    containers = Field(
+        default_factory=partial(Map, ChargesContainer),
+        description="trigger or slices of data mapping of ChargesContainer",
+    )
