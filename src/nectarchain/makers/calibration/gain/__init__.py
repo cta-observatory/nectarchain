@@ -1,3 +1,5 @@
-# from .flatfield_spe_makers import *
+from .FlatFieldSPEMakers import *
+from .photostat_makers import *
+
 # from .WhiteTargetSPEMakers import *
-# from .photostatistic_makers import *
+# from .PhotoStatisticMakers import *

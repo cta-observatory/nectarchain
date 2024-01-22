@@ -1,13 +1,13 @@
 import logging
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 import numpy as np
 from ctapipe.containers import Field, Map, partial
 
 from .core import ArrayDataContainer, TriggerMapContainer
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
 
 
 class WaveformsContainer(ArrayDataContainer):
@@ -22,11 +22,10 @@ class WaveformsContainer(ArrayDataContainer):
     """
 
     nsamples = Field(
-        type=int,
+        type=np.uint8,
         description="number of samples in the waveforms",
     )
-    # subarray = Field(type=SubarrayDescription,
-    #                  description="The subarray  description")
+    # subarray = Field(type=SubarrayDescription, description="The subarray  description")
     wfs_hg = Field(
         type=np.ndarray, dtype=np.uint16, ndim=3, description="high gain waveforms"
     )
@@ -38,5 +37,5 @@ class WaveformsContainer(ArrayDataContainer):
 class WaveformsContainers(TriggerMapContainer):
     containers = Field(
         default_factory=partial(Map, WaveformsContainer),
-        description="trigger mapping of WaveformContainer",
+        description="trigger or slices of data mapping of WaveformContainer",
     )

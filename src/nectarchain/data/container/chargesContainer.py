@@ -1,13 +1,15 @@
 import logging
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 import numpy as np
 from ctapipe.containers import Field, Map, partial
 
 from .core import ArrayDataContainer, TriggerMapContainer
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
+__all__ = ["ChargesContainer", "ChargesContainers"]
 
 
 class ChargesContainer(ArrayDataContainer):
@@ -40,5 +42,5 @@ class ChargesContainer(ArrayDataContainer):
 class ChargesContainers(TriggerMapContainer):
     containers = Field(
         default_factory=partial(Map, ChargesContainer),
-        description="trigger mapping of ChargesContainer",
+        description="trigger or slices of data mapping of ChargesContainer",
     )

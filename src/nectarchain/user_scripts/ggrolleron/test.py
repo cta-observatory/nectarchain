@@ -68,7 +68,7 @@ def test_extractor():
 
     # wfs = WaveformsContainer.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}.fits")
 
-    # charge = ChargeContainer.compute_charge(spe_run_1000V,1,method = "gradient_extractor",)
+    # charge = ChargeContainer.reload_events(spe_run_1000V,1,method = "gradient_extractor",)
 
     t = time.time()
     charge = ChargeContainer.from_waveforms(
@@ -121,7 +121,7 @@ def test_simplecontainer():
 
     # spe_run_1000V.load(f"{os.environ['NECTARCAMDATA']}/waveforms/waveforms_run{run_number[0]}.fits")
 
-    charge = ChargeContainer.compute_charge(
+    charge = ChargeContainer.reload_events(
         spe_run_1000V,
         1,
         method="LocalPeakWindowSum",
