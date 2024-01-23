@@ -50,8 +50,9 @@ print("Output path:", output_path)
 
 if args.runnb is not None:
     # Grab runs automatically from DIRAC is the -r option is provided
-    from nectarchain.data.container import utils
-    dm = utils.DataManagement()
+    from nectarchain.data.management import DataManagement
+
+    dm = DataManagement()
     _, filelist = dm.findrun(args.runnb)
     args.input_files = [s.name for s in filelist]
 elif args.input_files is None:

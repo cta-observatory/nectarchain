@@ -4,6 +4,7 @@ import sqlite3
 import numpy as np
 from astropy import time as astropytime
 from ctapipe.coordinates import EngineeringCameraFrame
+from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
 from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
@@ -43,9 +44,9 @@ class CameraMonitoring(DQMSummary):
         try:
             # print(cursor.fetchall())
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            TempData = cursor.execute(
-                """SELECT * FROM monitoring_drawer_temperatures"""
-            )
+            # TempData = cursor.execute(
+            #     """SELECT * FROM monitoring_drawer_temperatures"""
+            # )
             # print(TempData.description)
             self.DrawerTemp = cursor.fetchall()
             cursor.close()
