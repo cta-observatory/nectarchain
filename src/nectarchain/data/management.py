@@ -1,4 +1,5 @@
 import logging
+import sys
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -7,10 +8,15 @@ log.handlers = logging.getLogger("__main__").handlers
 import glob
 import os
 import pathlib
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
+from DIRAC.DataManagementSystem.Client.FileCatalogClientCLI import FileCatalogClientCLI
+from DIRAC.Interfaces.Utilities.DCommands import DCatalog
+
+from ..utils import StdoutRecord
 
 __all__ = ["DataManagement"]
 
@@ -26,7 +32,7 @@ class DataManagement:
         Returns:
             (PosixPath,list): the path list of *fits.fz files
         """
-        basepath = os.environ["NECTARCAMDATA"]
+        basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
         list = glob.glob(
             basepath + "**/*" + str(run_number) + "*.fits.fz", recursive=True
         )
@@ -71,27 +77,67 @@ class DataManagement:
         dirac = Dirac()
         for lfn in lfns:
             if not (
-                os.path.exists(f'{os.environ["NECTARCAMDATA"]}/{os.path.basename(lfn)}')
+                os.path.exists(
+                    f'{os.environ["NECTARCAMDATA"]}/runs/{os.path.basename(lfn)}'
+                )
             ):
                 dirac.getFile(
-                    lfn=lfn, destDir=os.environ["NECTARCAMDATA"], printOutput=True
+                    lfn=lfn,
+                    destDir=f"{os.environ['NECTARCAMDATA']}/runs/",
+                    printOutput=True,
                 )
 
     @staticmethod
     def get_GRID_location(
-        run_number: int, output_lfns=True, username=None, password=None
+        run_number: int,
+        output_lfns=True,
+        basepath="/vo.cta.in2p3.fr/nectarcam/",
+        fromElog=False,
+        username=None,
+        password=None,
     ):
         """method to get run location on GRID from Elog (work in progress!)
 
         Args:
             run_number (int): run number
             output_lfns (bool, optional): if True, return lfns path of fits.gz files, else return parent directory of run location. Defaults to True.
+            basepath (str) : the path on GRID where nectarCAM data are stored. Default to /vo.cta.in2p3.fr/nectarcam/.
+            fromElog (bool,optionnl): To force to use the method which read the Elog. Default to False. To use the method with DIRAC API.
             username (_type_, optional): username for Elog login. Defaults to None.
             password (_type_, optional): password for Elog login. Defaults to None.
 
         Returns:
             _type_: _description_
         """
+        if fromElog:
+            return __class__.__get_GRID_location_ELog(
+                run_number=run_number,
+                output_lfns=output_lfns,
+                username=username,
+                password=password,
+            )
+        else:
+            return __class__.__get_GRID_location_DIRAC(
+                run_number=run_number, basepath=basepath
+            )
+
+    @staticmethod
+    def __get_GRID_location_DIRAC(
+        run_number: int, basepath="/vo.cta.in2p3.fr/nectarcam/"
+    ):
+        catalog = DCatalog()
+        fccli = FileCatalogClientCLI(catalog.catalog)
+        with redirect_stdout(sys.stdout):
+            sys.stdout = StdoutRecord(keyword=f"Run{run_number}")
+            fccli.do_find("-q " + basepath)
+            lfns = sys.stdout.output
+            sys.stdout = sys.__stdout__
+        return lfns
+
+    @staticmethod
+    def __get_GRID_location_ELog(
+        run_number: int, output_lfns=True, username=None, password=None
+    ):
         import browser_cookie3
         import mechanize
         import requests
