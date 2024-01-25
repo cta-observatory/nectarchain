@@ -53,7 +53,7 @@ From: condaforge/mambaforge
     conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
     mamba deactivate
     mamba activate nectarchain
-    pip install CTADIRAC COMDIRAC
+    pip install CTADIRAC
 
     # Since there is no proxy available at build time, manually configure the CTADIRAC client
     cat <<EOF > ${CONDA_PREFIX}/etc/dirac.cfg
