@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - ctapipe=0.19.1
+  - ctapipe=0.19
   - ctapipe-io-nectarcam
   - jinja2=3.0.1
   - jupyterlab
