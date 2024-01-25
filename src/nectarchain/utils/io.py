@@ -13,8 +13,9 @@ class StdoutRecord:
         self.output = []
 
     def write(self, message):
-        # self.console.write(message)
         if self.keyword in message:
+            self.console.write(message)
+            self.console.write("\n")
             self.output.append(message)
 
     def flush(self):

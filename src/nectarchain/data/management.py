@@ -8,15 +8,12 @@ log.handlers = logging.getLogger("__main__").handlers
 import glob
 import os
 import pathlib
-from contextlib import redirect_stdout
 from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
-from DIRAC.DataManagementSystem.Client.FileCatalogClientCLI import FileCatalogClientCLI
-from DIRAC.Interfaces.Utilities.DCommands import DCatalog
 
-from ..utils import StdoutRecord
+from ..utils import KeepLoggingUnchanged
 
 __all__ = ["DataManagement"]
 
@@ -38,6 +35,7 @@ class DataManagement:
         )
         list_path = [Path(chemin) for chemin in list]
         if len(list_path) == 0:
+            #############
             e = FileNotFoundError(f"run {run_number} is not present in {basepath}")
             if search_on_GRID:
                 log.warning(e, exc_info=True)
@@ -51,6 +49,7 @@ class DataManagement:
             else:
                 log.error(e, exc_info=True)
                 raise e
+            ############## the pb is here !!!!!!
 
         name = list_path[0].name.split(".")
         name[2] = "*"
@@ -72,20 +71,22 @@ class DataManagement:
         Args:
             lfns (list): list of lfns path
         """
-        from DIRAC.Interfaces.API.Dirac import Dirac
+        with KeepLoggingUnchanged():
+            from DIRAC.Interfaces.API.Dirac import Dirac
 
-        dirac = Dirac()
-        for lfn in lfns:
-            if not (
-                os.path.exists(
-                    f'{os.environ["NECTARCAMDATA"]}/runs/{os.path.basename(lfn)}'
-                )
-            ):
-                dirac.getFile(
-                    lfn=lfn,
-                    destDir=f"{os.environ['NECTARCAMDATA']}/runs/",
-                    printOutput=True,
-                )
+            dirac = Dirac()
+            for lfn in lfns:
+                if not (
+                    os.path.exists(
+                        f'{os.environ["NECTARCAMDATA"]}/runs/{os.path.basename(lfn)}'
+                    )
+                ):
+                    dirac.getFile(
+                        lfn=lfn,
+                        destDir=f"{os.environ['NECTARCAMDATA']}/runs/",
+                        printOutput=True,
+                    )
+                    pass
 
     @staticmethod
     def get_GRID_location(
@@ -125,13 +126,25 @@ class DataManagement:
     def __get_GRID_location_DIRAC(
         run_number: int, basepath="/vo.cta.in2p3.fr/nectarcam/"
     ):
-        catalog = DCatalog()
-        fccli = FileCatalogClientCLI(catalog.catalog)
-        with redirect_stdout(sys.stdout):
-            sys.stdout = StdoutRecord(keyword=f"Run{run_number}")
-            fccli.do_find("-q " + basepath)
-            lfns = sys.stdout.output
-            sys.stdout = sys.__stdout__
+        with KeepLoggingUnchanged():
+            from contextlib import redirect_stdout
+
+            from DIRAC.DataManagementSystem.Client.FileCatalogClientCLI import (
+                FileCatalogClientCLI,
+            )
+            from DIRAC.Interfaces.Utilities.DCommands import DCatalog
+
+            from nectarchain.utils import StdoutRecord
+
+            catalog = DCatalog()
+            with redirect_stdout(sys.stdout):
+                # stdout = StdoutRecord(keyword=f"Run{run_number}")
+                # fccli = FileCatalogClientCLI(catalog.catalog,stdout = stdout) // marche pas car DIRAC est mal code
+                fccli = FileCatalogClientCLI(catalog.catalog)
+                sys.stdout = StdoutRecord(keyword=f"Run{run_number}")
+                fccli.do_find("-q " + basepath)
+                lfns = sys.stdout.output
+                sys.stdout = sys.__stdout__
         return lfns
 
     @staticmethod
