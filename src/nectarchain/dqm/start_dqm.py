@@ -63,7 +63,7 @@ elif args.input_files is None:
 path1 = args.input_files[0]
 
 # THE PATH OF INPUT FILES
-path = f"{NectarPath}/{path1}"
+path = f"{NectarPath}/runs/{path1}"
 print("Input files:")
 print(path)
 for arg in args.input_files[1:]:
