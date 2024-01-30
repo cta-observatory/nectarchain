@@ -1,13 +1,16 @@
-import logging
-import sys
+# The DIRAC magic 2 lines !
+try:
+    import DIRAC
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
+    DIRAC.initialize()
+except ImportError:
+    pass
 
 import glob
+import logging
 import os
 import pathlib
+import sys
 from pathlib import Path
 from typing import List, Tuple
 
@@ -15,13 +18,18 @@ import numpy as np
 
 from ..utils import KeepLoggingUnchanged
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 __all__ = ["DataManagement"]
 
 
 class DataManagement:
     @staticmethod
     def findrun(run_number: int, search_on_GRID=True) -> Tuple[Path, List[Path]]:
-        """method to find in NECTARCAMDATA the list of *.fits.fz files associated to run_number
+        """method to find in NECTARCAMDATA the list of *.fits.fz files associated to
+        run_number
 
         Args:
             run_number (int): the run number
@@ -49,7 +57,7 @@ class DataManagement:
             else:
                 log.error(e, exc_info=True)
                 raise e
-            ############## the pb is here !!!!!!
+            # the pb is here !!!!!!
 
         name = list_path[0].name.split(".")
         name[2] = "*"
@@ -101,9 +109,12 @@ class DataManagement:
 
         Args:
             run_number (int): run number
-            output_lfns (bool, optional): if True, return lfns path of fits.gz files, else return parent directory of run location. Defaults to True.
-            basepath (str) : the path on GRID where nectarCAM data are stored. Default to /vo.cta.in2p3.fr/nectarcam/.
-            fromElog (bool,optionnl): To force to use the method which read the Elog. Default to False. To use the method with DIRAC API.
+            output_lfns (bool, optional): if True, return lfns path of fits.gz files,
+                else return parent directory of run location. Defaults to True.
+            basepath (str) : the path on GRID where nectarCAM data are stored.
+                Default to /vo.cta.in2p3.fr/nectarcam/.
+            fromElog (bool,optionnl): To force to use the method which read the Elog.
+                Default to False. To use the method with DIRAC API.
             username (_type_, optional): username for Elog login. Defaults to None.
             password (_type_, optional): password for Elog login. Defaults to None.
 
@@ -138,8 +149,6 @@ class DataManagement:
 
             catalog = DCatalog()
             with redirect_stdout(sys.stdout):
-                # stdout = StdoutRecord(keyword=f"Run{run_number}")
-                # fccli = FileCatalogClientCLI(catalog.catalog,stdout = stdout) // marche pas car DIRAC est mal code
                 fccli = FileCatalogClientCLI(catalog.catalog)
                 sys.stdout = StdoutRecord(keyword=f"Run{run_number}")
                 fccli.do_find("-q " + basepath)
@@ -157,8 +166,6 @@ class DataManagement:
 
         url = "http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?cmd=Find"
 
-        # url_run = f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?mode=full&reverse=0&reverse=1&npp=20&subtext=%23{run_number}"
-
         if not (username is None or password is None):
             log.debug("log to Elog with username and password")
             # log to Elog
@@ -175,7 +182,11 @@ class DataManagement:
             cookies = br._ua_handlers["_cookies"].cookiejar
             # get data
             req = requests.get(
-                f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=%23{run_number}&ModuleCount=&subtext=",
+                f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/"
+                f"?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&"
+                f"ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&"
+                f"Setup=&Category=&Keyword=&Subject=%23{run_number}&"
+                f"ModuleCount=&subtext=",
                 cookies=cookies,
             )
 
@@ -184,7 +195,11 @@ class DataManagement:
             log.debug("try to get data with cookies from Firefox abnd Chrome")
             cookies = browser_cookie3.load()
             req = requests.get(
-                f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb=&nb=&cb=&Author=&Setup=&Category=&Keyword=&Subject=%23{run_number}&ModuleCount=&subtext=",
+                f"http://nectarcam.in2p3.fr/elog/nectarcam-data-qm/?"
+                f"jcmd=&mode=Raw&attach=1&printable=1&reverse=0&reverse=1"
+                f"&npp=20&ma=&da=&ya=&ha=&na=&ca=&last=&mb=&db=&yb=&hb="
+                f"&nb=&cb=&Author=&Setup=&Category=&Keyword="
+                f"&Subject=%23{run_number}&ModuleCount=&subtext=",
                 cookies=cookies,
             )
 
@@ -212,7 +227,10 @@ class DataManagement:
                 from DIRAC.Interfaces.API.Dirac import Dirac
 
                 dirac = Dirac()
-                loc = f"/vo.cta.in2p3.fr/nectarcam/{url_data.split('/')[-2]}/{url_data.split('/')[-1]}"
+                loc = (
+                    f"/vo.cta.in2p3.fr/nectarcam/{url_data.split('/')[-2]}/"
+                    f"{url_data.split('/')[-1]}"
+                )
                 log.debug(f"searching in Dirac filecatalog at {loc}")
                 res = dirac.listCatalogDirectory(loc, printOutput=True)
 
@@ -243,13 +261,17 @@ class DataManagement:
     def find_SPE_HHV(run_number, method="FullWaveformSum", str_extractor_kwargs=""):
         full_file = glob.glob(
             pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/FlatFieldSPEHHVStdNectarCAM_run{run_number}_{method}_{str_extractor_kwargs}.h5"
+                f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
+                f"FlatFieldSPEHHVStdNectarCAM_run{run_number}_{method}"
+                f"_{str_extractor_kwargs}.h5"
             ).__str__()
         )
         if len(full_file) != 1:
             all_files = glob.glob(
                 pathlib.Path(
-                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/FlatFieldSPEHHVStdNectarCAM_run{run_number}_maxevents*_{method}_{str_extractor_kwargs}.h5"
+                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
+                    f"FlatFieldSPEHHVStdNectarCAM_run{run_number}_maxevents*_"
+                    f"{method}_{str_extractor_kwargs}.h5"
                 ).__str__()
             )
             max_events = 0
@@ -271,13 +293,15 @@ class DataManagement:
     ):
         out = glob.glob(
             pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}{ext}"
+                f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
+                f"{data_type}/*_run{run_number}{ext}"
             ).__str__()
         )
         if not (max_events is None):
             all_files = glob.glob(
                 pathlib.Path(
-                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{data_type}/*_run{run_number}_maxevents*{ext}"
+                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
+                    f"{data_type}/*_run{run_number}_maxevents*{ext}"
                 ).__str__()
             )
             best_max_events = np.inf
