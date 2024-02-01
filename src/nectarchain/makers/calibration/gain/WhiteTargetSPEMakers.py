@@ -1,12 +1,12 @@
 import logging
 
-from .gain_makers import GainMaker
-
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-__all__ = ["WhiteTargetSPEMaker"]
+from .gainMakers import GainMaker
+
+__all__ = ["FlatfieldMaker"]
 
 
 class WhiteTargetSPEMaker(GainMaker):
@@ -15,6 +15,5 @@ class WhiteTargetSPEMaker(GainMaker):
 
     def make(self):
         raise NotImplementedError(
-            "The computation of the white target calibration is not yet implemented, "
-            "feel free to contribute !:)"
+            "The computation of the white target calibration is not yet implemented, feel free to contribute !:)"
         )

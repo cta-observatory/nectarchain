@@ -110,8 +110,8 @@ or the [container alternative](#note-to-macos-users) as explained above.
 
 All contribution are welcome.
 
-Guidelines are the same as [ctapipe's ones](https://ctapipe.readthedocs.io/en/latest/getting_started/)
-See [here](https://ctapipe.readthedocs.io/en/latest/development/pullrequests.html#pullrequests) how to make a pull request to contribute.
+Guidelines are the same as [ctapipe's ones](https://ctapipe.readthedocs.io/en/latest/developer-guide/getting-started.html).
+See [here](https://ctapipe.readthedocs.io/en/latest/developer-guide/pullrequests.html#pullrequests) how to make a pull request to contribute.
 
 
 ## Report issue / Ask a question

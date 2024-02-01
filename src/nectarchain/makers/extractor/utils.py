@@ -12,7 +12,7 @@ class CtapipeExtractor:
     A class to extract the image and peak time from a DL1CameraContainer object.
     """
 
-    def get_image_peak_time(cameraContainer):
+    def get_image_peak_time(cameraContainer: DL1CameraContainer):
         """
         Extracts the image and peak time from a DL1CameraContainer object.
 
@@ -23,3 +23,15 @@ class CtapipeExtractor:
         tuple: A tuple containing the image and peak time values from the container.
         """
         return cameraContainer.image, cameraContainer.peak_time
+
+    def get_extractor_kwargs_str(extractor_kwargs):
+        if len(extractor_kwargs) == 0:
+            str_extractor_kwargs = ""
+        else:
+            extractor_kwargs_list = [
+                f"{key}_{value}" for key, value in extractor_kwargs.items()
+            ]
+            str_extractor_kwargs = extractor_kwargs_list[0]
+            for item in extractor_kwargs_list[1:]:
+                str_extractor_kwargs += f"_{item}"
+        return str_extractor_kwargs

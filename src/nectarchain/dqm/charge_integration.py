@@ -2,6 +2,7 @@ import ctapipe.instrument.camera.readout
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image import LocalPeakWindowSum
+from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
 from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt

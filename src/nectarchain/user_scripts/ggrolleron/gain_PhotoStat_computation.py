@@ -1,45 +1,55 @@
+import json
 import logging
 import os
 import sys
 from pathlib import Path
 
-import numpy as np
-
-os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
-
 # to quiet numba
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
 logging.getLogger("numba").setLevel(logging.WARNING)
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.DEBUG,
+    filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{Path(__file__).stem}_{os.getpid()}.log",
+)
+log = logging.getLogger(__name__)
 
 import argparse
+import copy
+import glob
 
-from astropy.table import QTable
-
-from nectarchain.makers.calibration.gain.photostatistic_makers import (
-    PhotoStatisticMaker,
-)
+from nectarchain.data.management import DataManagement
+from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
+from nectarchain.makers.extractor.utils import CtapipeExtractor
 
 parser = argparse.ArgumentParser(
-    prog="gain_PhotoStat_computation.py",
-    description="compute high gain and low gain with Photo-statistic method, it need a pedestal run and a FF run with a SPE fit results (for resolution value needed in this method). Output data will be saved in $NECTARCAMDATA/../PhotoStat/data/PhotoStat-FF{FF_run_number}-ped{ped_run_number}-SPEres{SPE_fit_results_tag}-{chargeExtractorPath}/",
+    prog="gain_SPEfit_computation.py",
+    description=f"compute high and low gain with the Photo-statistic method, output data are saved in $NECTARCAMDATA/../PhotoStat/",
 )
-
 # run numbers
-parser.add_argument("-p", "--ped_run_number", help="ped run", required=True, type=int)
-parser.add_argument("-f", "--FF_run_number", help="FF run", required=True, type=int)
 parser.add_argument(
-    "--SPE_fit_results",
-    help="SPE fit results path for accessing SPE resolution",
-    type=str,
-    required=True,
+    "--FF_run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+parser.add_argument(
+    "--Ped_run_number", nargs="+", default=[], help="run(s) list", type=int
 )
 
-# tag for SPE fit results propagation
+# max events to be loaded
 parser.add_argument(
-    "--SPE_fit_results_tag",
-    help="SPE fit results tag for propagate the SPE result to output, this tag will be used to setup the path where output data will be saved, see help for description",
-    type=str,
-    default="",
+    "-m",
+    "--max_events",
+    nargs="+",
+    # default=[],
+    help="max events to be load",
+    type=int,
+)
+
+# boolean arguments
+parser.add_argument(
+    "--reload_events",
+    action="store_true",
+    default=False,
+    help="to force re-computation of waveforms from fits.fz files",
 )
 
 parser.add_argument(
@@ -49,25 +59,27 @@ parser.add_argument(
     help="to force overwrite files on disk",
 )
 
-# for plotting correlation
-parser.add_argument(
-    "--correlation",
-    action="store_true",
-    default=True,
-    help="to plot correlation between SPE gain computation and Photo-statistic gain resluts",
-)
 
 # extractor arguments
 parser.add_argument(
-    "--chargeExtractorPath",
-    help="charge extractor path where charges are saved",
+    "--method",
+    choices=[
+        "FullWaveformSum",
+        "FixedWindowSum",
+        "GlobalPeakWindowSum",
+        "LocalPeakWindowSum",
+        "SlidingWindowMaxSum",
+        "TwoPassWindowSum",
+    ],
+    default="LocalPeakWindowSum",
+    help="charge extractor method",
     type=str,
 )
-
 parser.add_argument(
-    "--FFchargeExtractorWindowLength",
-    help="charge extractor window length in ns",
-    type=int,
+    "--extractor_kwargs",
+    default={"window_width": 16, "window_shift": 4},
+    help="charge extractor kwargs",
+    type=json.loads,
 )
 
 # verbosity argument
@@ -75,76 +87,118 @@ parser.add_argument(
     "-v",
     "--verbosity",
     help="set the verbosity level of logger",
-    default="info",
-    choices=["fatal", "debug", "info", "warning"],
+    default="INFO",
+    choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     type=str,
 )
 
+# output figures path
+parser.add_argument(
+    "--figpath",
+    type=str,
+    default=f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/",
+    help="output figure path",
+)
 
-def main(args):
-    figpath = os.environ.get("NECTARCHAIN_FIGURES")
+# pixels selected
+parser.add_argument(
+    "-p", "--asked_pixels_id", nargs="+", default=None, help="pixels selected", type=int
+)
 
-    photoStat_FFandPed = PhotoStatisticMaker.create_from_run_numbers(
-        FFrun=args.FF_run_number,
-        Pedrun=args.ped_run_number,
-        SPE_resolution=args.SPE_fit_results,
-        method=args.chargeExtractorPath,
-        FFchargeExtractorWindowLength=args.FFchargeExtractorWindowLength,
+parser.add_argument(
+    "--HHV_run_number",
+    help="HHV run number of which the SPE fit has ever been performed",
+    type=int,
+)
+
+args = parser.parse_args()
+
+
+def main(
+    log,
+    **kwargs,
+):
+    FF_run_number = kwargs.pop("FF_run_number")
+    Ped_run_number = kwargs.pop("Ped_run_number")
+
+    if len(FF_run_number) != len(Ped_run_number):
+        raise Exception("The number of FF and Ped runs must be the same")
+
+    max_events = kwargs.pop("max_events", [None for i in range(len(FF_run_number))])
+    if max_events is None:
+        max_events = [None for i in range(len(FF_run_number))]
+
+    log.info(f"max_events : {max_events}")
+
+    figpath = args.figpath
+
+    str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+        args.extractor_kwargs
     )
-    photoStat_FFandPed.make()
-    photoStat_FFandPed.save(
-        f"{os.environ.get('NECTARCAMDATA')}/../PhotoStat/data/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-SPEres{args.SPE_fit_results_tag}-{args.chargeExtractorPath}/",
-        overwrite=args.overwrite,
+    path = DataManagement.find_SPE_HHV(
+        run_number=args.HHV_run_number,
+        method=args.method,
+        str_extractor_kwargs=str_extractor_kwargs,
     )
-    log.info(f"BF^2 HG : {np.power(np.mean(photoStat_FFandPed.BHG),2)}")
-    log.info(f"BF^2 LG : {np.power(np.mean(photoStat_FFandPed.BLG),2)}")
-
-    if args.correlation:
-        table = QTable.read(args.SPE_fit_results, format="ascii.ecsv")
-        table.sort("pixels_id")
-        mask = np.array(
-            [pix in photoStat_FFandPed.pixels_id for pix in table["pixels_id"].value],
-            dtype=bool,
+    if len(path) == 1:
+        log.info(
+            f"{path[0]} found associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}"
         )
-        fig = PhotoStatisticMaker.plot_correlation(
-            photoStat_FFandPed.results["high_gain"], table["high_gain"][mask]
-        )
-        os.makedirs(
-            f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}/",
-            exist_ok=True,
-        )
-        fig.savefig(
-            f"{figpath}/PhotoStat-FF{args.FF_run_number}-ped{args.ped_run_number}-{args.chargeExtractorPath}/correlation_PhotoStat_SPE{args.SPE_fit_results_tag}.pdf"
-        )
+    else:
+        _text = f"no file found in $NECTARCAM_DATA/../SPEfit associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}"
+        log.error(_text)
+        raise FileNotFoundError(_text)
+    for _FF_run_number, _Ped_run_number, _max_events in zip(
+        FF_run_number, Ped_run_number, max_events
+    ):
+        try:
+            tool = PhotoStatisticNectarCAMCalibrationTool(
+                progress_bar=True,
+                run_number=_FF_run_number,
+                max_events=_max_events,
+                Ped_run_number=_Ped_run_number,
+                SPE_result=path[0],
+                **kwargs,
+            )
+            tool.setup()
+            if args.reload_events and not (_max_events is None):
+                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{str_extractor_kwargs}"
+            else:
+                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{str_extractor_kwargs}"
+            tool.start()
+            tool.finish(figpath=_figpath)
+        except Exception as e:
+            log.warning(e, exc_info=True)
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    logginglevel = logging.FATAL
-    if args.verbosity == "warning":
-        logginglevel = logging.WARNING
-    elif args.verbosity == "info":
-        logginglevel = logging.INFO
-    elif args.verbosity == "debug":
-        logginglevel = logging.DEBUG
+    kwargs = copy.deepcopy(vars(args))
 
-    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures")
+    kwargs["log_level"] = args.verbosity
+
+    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
     logging.basicConfig(
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         force=True,
-        level=logginglevel,
-        filename=f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
+        level=args.verbosity,
+        filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
     )
 
     log = logging.getLogger(__name__)
-    log.setLevel(logginglevel)
+    log.setLevel(args.verbosity)
     ##tips to add message to stdout
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logginglevel)
+    handler.setLevel(args.verbosity)
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
-    main(args)
+    kwargs.pop("verbosity")
+    kwargs.pop("figpath")
+    kwargs.pop("HHV_run_number")
+
+    log.info(f"arguments passed to main are : {kwargs}")
+    main(log=log, **kwargs)

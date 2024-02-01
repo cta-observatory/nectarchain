@@ -53,7 +53,7 @@ From: condaforge/mambaforge
     conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
     mamba deactivate
     mamba activate nectarchain
-    pip install CTADIRAC COMDIRAC
+    pip install CTADIRAC
 
     # Since there is no proxy available at build time, manually configure the CTADIRAC client
     cat <<EOF > ${CONDA_PREFIX}/etc/dirac.cfg
@@ -64,9 +64,11 @@ DIRAC
   {
     Servers = dips://dcta-servers03.pic.es:9135/Configuration/Server
     Servers += dips://dcta-agents03.pic.es:9135/Configuration/Server
-    Servers += dips://ccdcta-server04.in2p3.fr:9135/Configuration/Server
-    Servers += dips://ccdcta-server05.in2p3.fr:9135/Configuration/Server
-    Servers += dips://ccdcta-web01.in2p3.fr:9135/Configuration/Server
+    Servers += dips://ctadirac-01.cscs.cta-observatory.org:9135/Configuration/Server
+    Servers += dips://ctadirac-02.cscs.cta-observatory.org:9135/Configuration/Server
+    Servers += dips://ctadirac-03.cscs.cta-observatory.org:9135/Configuration/Server
+    Servers += dips://ctadirac-04.cscs.cta-observatory.org:9135/Configuration/Server
+    Servers += dips://ctadirac-05.cscs.cta-observatory.org:9135/Configuration/Server
     Servers += dips://cta-dirac.zeuthen.desy.de:9135/Configuration/Server
   }
   Security
@@ -79,9 +81,11 @@ LocalInstallation
   Setup = CTA
   ConfigurationServer = dips://dcta-servers03.pic.es:9135/Configuration/Server
   ConfigurationServer += dips://dcta-agents03.pic.es:9135/Configuration/Server
-  ConfigurationServer += dips://ccdcta-server04.in2p3.fr:9135/Configuration/Server
-  ConfigurationServer += dips://ccdcta-server05.in2p3.fr:9135/Configuration/Server
-  ConfigurationServer += dips://ccdcta-web01.in2p3.fr:9135/Configuration/Server
+  ConfigurationServer += dips://ctadirac-01.cscs.cta-observatory.org:9135/Configuration/Server
+  ConfigurationServer += dips://ctadirac-02.cscs.cta-observatory.org:9135/Configuration/Server
+  ConfigurationServer += dips://ctadirac-03.cscs.cta-observatory.org:9135/Configuration/Server
+  ConfigurationServer += dips://ctadirac-04.cscs.cta-observatory.org:9135/Configuration/Server
+  ConfigurationServer += dips://ctadirac-05.cscs.cta-observatory.org:9135/Configuration/Server
   ConfigurationServer += dips://cta-dirac.zeuthen.desy.de:9135/Configuration/Server
   SkipCAChecks = True
 }
