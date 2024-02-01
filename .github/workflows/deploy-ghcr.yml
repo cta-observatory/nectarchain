@@ -39,7 +39,7 @@ jobs:
         with:
           apptainer-version: 1.1.7
 
-      - name: Build ${{ matrix.deffiles[1] }}
+      - name: Build ${{ env.container }} container
         run: |
           echo "Preparing to build ${{ env.container }} from ${{ matrix.deffiles[0] }}"
           if [ ! -f "${{ matrix.deffiles[0]}}" ]; then
@@ -55,7 +55,12 @@ jobs:
         run: |
           echo ${{ github.token }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.registry }}
 
-      - name: Deploy ${{ matrix.deffiles[1] }}
+      - name: Deploy ${{ env.container }} container
+        # Assign the release tag to container on release
+        if: github.event_name == 'release'
+        run: |
+          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ github.ref }}
+        # Otherwise, the container tag is "latest" by default.
         # Don't push the container on a pull request.
         if: github.event_name != 'pull_request'
         run: |  
