@@ -55,6 +55,7 @@ function exit_script() {
     # Some cleanup before leaving:
     # [ -d $CONTAINER ] && rm -rf $CONTAINER
     # [ -f $CONTAINER ] && rm -f $CONTAINER
+    [ -d $NECTARCAMDATA ] && rm -rf $NECTARCAMDATA
     [ -d $OUTDIR ] && rm -rf $OUTDIR
     [ -f ${OUTDIR}.tar.gz ] && rm -f ${OUTDIR}.tar.gz
     [ -d ${OUTDIR} ] && rm -rf ${OUTDIR}
@@ -63,15 +64,17 @@ function exit_script() {
     exit $return_code
 }
 
+export NECTARCAMDATA=$PWD/runs
+[ ! -d $NECTARCAMDATA ] && mkdir -p $NECTARCAMDATA || exit_script $?
+mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARCAMDATA/.
+
 # Halim's DQM code needs to use a specific output directory:
 export NECTARDIR=$PWD/$OUTDIR
-[ ! -d $NECTARDIR ] && mkdir -p $NECTARDIR || exit_script $?
-# mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARDIR/.
 
-LISTRUNS=""
-for run in $PWD/NectarCAM.Run${runnb}.*.fits.fz; do
-    LISTRUNS="$LISTRUNS $(basename $run)"
-done
+#LISTRUNS=""
+#for run in $NECTARCAMDATA/NectarCAM.Run${runnb}.*.fits.fz; do
+#    LISTRUNS="$LISTRUNS $(basename $run)"
+#done
 
 # Create a wrapper BASH script with cleaned environment, see https://redmine.cta-observatory.org/issues/51483
 cat > $WRAPPER <<EOF
@@ -102,7 +105,8 @@ fi
 echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
-cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_calib.py $PWD $NECTARDIR -i $LISTRUNS"
+# cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 NECTARCAMDATA $NECTARDIR -i $LISTRUNS"
+cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 -r $runnb NECTARCAMDATA $NECTARDIR"
 echo \$cmd
 eval \$cmd
 EOF
