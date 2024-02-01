@@ -55,11 +55,13 @@ jobs:
         run: |
           echo ${{ github.token }} | apptainer remote login --username ${{ github.actor }} --password-stdin oras://${{ env.registry }}
 
-      - name: Deploy ${{ env.container }} container
+      - name: Deploy ${{ env.container }} container ${{ github.ref }}
         # Assign the release tag to container on release
         if: github.event_name == 'release'
         run: |
           apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ github.ref }}
+
+      - name: Deploy ${{ env.container }} container ${{ matrix.deffiles[1] }}
         # Otherwise, the container tag is "latest" by default.
         # Don't push the container on a pull request.
         if: github.event_name != 'pull_request'
