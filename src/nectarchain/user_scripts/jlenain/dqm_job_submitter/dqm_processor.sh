@@ -5,7 +5,7 @@
 
 function usage ()
 {
-    echo "Usage: `basename $0` -r <run number>"
+    echo "Usage: $(basename $0) -r <run number>"
 }
 
 function help ()
@@ -82,6 +82,11 @@ cat > $WRAPPER <<EOF
 echo "Cleaning environment \$CLEANED_ENV" 
 [ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@" 
 
+# From https://github.com/DIRACGrid/COMDIRAC/wiki/Injob
+# initialize job for COMDIRAC commands
+export DCOMMANDS_CONFIG_DIR=$PWD
+dconfig --guess
+dinit --fromProxy
 
 # Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
 export SINGULARITYENV_MPLCONFIGDIR=/tmp
@@ -105,8 +110,8 @@ fi
 echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
-# cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 NECTARCAMDATA $NECTARDIR -i $LISTRUNS"
-cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 -r $runnb NECTARCAMDATA $NECTARDIR"
+# cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 $NECTARCAMDATA $NECTARDIR -i $LISTRUNS"
+cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 -r $runnb $NECTARCAMDATA $NECTARDIR"
 echo \$cmd
 eval \$cmd
 EOF
