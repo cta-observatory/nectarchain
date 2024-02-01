@@ -135,7 +135,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
             )
             part_ax.set_xlabel("Samples")
             part_ax.set_ylabel("Amplitude (DC)")
-            part_ax.legend()
+            # part_ax.legend()
             part_ax.grid()
 
             part_name = name + "_MeanWaveforms_%s_%sGain.png" % (
@@ -158,7 +158,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         full_ax.set_title("Mean Waveforms Combined Plot (%s Gain)" % gain_c)
         full_ax.set_xlabel("Samples")
         full_ax.set_ylabel("Amplitude (DC)")
-        full_ax.legend()
+        # full_ax.legend()
         full_ax.grid()
 
         full_name = name + "_MeanWaveforms_CombinedPlot_%sGain.png" % gain_c

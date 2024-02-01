@@ -5,12 +5,14 @@ import time
 
 from camera_monitoring import CameraMonitoring
 from charge_integration import ChargeIntegrationHighLowGain
-from ctapipe.io import EventSeeker, EventSource
+from ctapipe.io import EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
 from db_utils import DQMDB
 from matplotlib import pyplot as plt
 from mean_camera_display import MeanCameraDisplay_HighLowGain
 from mean_waveforms import MeanWaveFormsHighLowGain
+from tqdm import tqdm
+from traitlets.config import Config
 from trigger_statistics import TriggerStatistics
 
 # Create an ArgumentParser object
@@ -29,6 +31,13 @@ parser.add_argument(
 )
 parser.add_argument(
     "-r", "--runnb", help="Optional run number, automatically found on DIRAC", type=int
+)
+parser.add_argument("--r0", action="store_true", help="Disable all R0->R1 corrections")
+parser.add_argument(
+    "--max-events",
+    default=None,
+    type=int,
+    help="Maximum number of events to loop through in each run slice",
 )
 parser.add_argument("-i", "--input-files", nargs="+", help="Local input files")
 
@@ -69,7 +78,7 @@ print(path)
 for arg in args.input_files[1:]:
     print(arg)
 
-# Defining and priting the options
+# Defining and printing the options
 PlotFig = args.plot
 noped = args.noped
 
@@ -106,9 +115,22 @@ print(path)
 cmap = "gnuplot2"
 
 # Read and seek
-reader = EventSource(input_url=path)
-seeker = EventSeeker(reader)
-reader1 = EventSource(input_url=path, max_events=1)
+config = None
+if args.r0:
+    config = Config(
+        dict(
+            NectarCAMEventSource=dict(
+                NectarCAMR0Corrections=dict(
+                    calibration_path=None,
+                    apply_flatfield=False,
+                    select_gain=False,
+                )
+            )
+        )
+    )
+
+reader = EventSource(input_url=path, config=config, max_events=args.max_events)
+reader1 = EventSource(input_url=path, config=config, max_events=1)
 # print(reader.file_list)
 
 name = GetName(path)
@@ -118,26 +140,16 @@ ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
 # LIST OF PROCESSES TO RUN
 ########################################################################################
-a = TriggerStatistics(HIGH_GAIN)
-b = MeanWaveFormsHighLowGain(HIGH_GAIN)
-c = MeanWaveFormsHighLowGain(LOW_GAIN)
-d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
-e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
-f = ChargeIntegrationHighLowGain(HIGH_GAIN)
-g = ChargeIntegrationHighLowGain(LOW_GAIN)
-h = CameraMonitoring(HIGH_GAIN)
-
-processors = list()
-
-processors.append(a)
-processors.append(b)
-processors.append(c)
-processors.append(d)
-processors.append(e)
-processors.append(f)
-processors.append(g)
-processors.append(h)
-
+processors = [
+    TriggerStatistics(HIGH_GAIN),
+    MeanWaveFormsHighLowGain(HIGH_GAIN),
+    MeanWaveFormsHighLowGain(LOW_GAIN),
+    MeanCameraDisplay_HighLowGain(HIGH_GAIN),
+    MeanCameraDisplay_HighLowGain(LOW_GAIN),
+    ChargeIntegrationHighLowGain(HIGH_GAIN),
+    ChargeIntegrationHighLowGain(LOW_GAIN),
+    CameraMonitoring(HIGH_GAIN),
+]
 
 # LIST OF DICT RESULTS
 Results_MeanWaveForms_HighGain = {}
@@ -170,19 +182,22 @@ for p in processors:
 for p in processors:
     p.ConfigureForRun(path, Pix, Samp, reader1)
 
-for i, evt in enumerate(reader):
+for evt in tqdm(
+    reader, total=args.max_events if args.max_events else len(reader), unit="ev"
+):
     for p in processors:
         p.ProcessEvent(evt, noped)
 
 # for the rest of the event files
 for arg in args.input_files[1:]:
-    path2 = f"{NectarPath}/{arg}"
+    path2 = f"{NectarPath}/runs/{arg}"
     print(path2)
 
-    reader = EventSource(input_url=path2)
-    seeker = EventSeeker(reader)
+    reader = EventSource(input_url=path2, config=config, max_events=args.max_events)
 
-    for i, evt in enumerate(reader):
+    for evt in tqdm(
+        reader, total=args.max_events if args.max_events else len(reader), unit="ev"
+    ):
         for p in processors:
             p.ProcessEvent(evt, noped)
 
