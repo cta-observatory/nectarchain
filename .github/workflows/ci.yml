@@ -1,5 +1,6 @@
 name: CI
 
+# by not building all branches on push, we avoid the duplicated builds in PRs
 on:
   push:
     branches:
