@@ -82,12 +82,6 @@ cat > $WRAPPER <<EOF
 echo "Cleaning environment \$CLEANED_ENV" 
 [ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@" 
 
-# From https://github.com/DIRACGrid/COMDIRAC/wiki/Injob
-# initialize job for COMDIRAC commands
-export DCOMMANDS_CONFIG_DIR=$PWD
-dconfig --guess
-dinit --fromProxy
-
 # Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
 export SINGULARITYENV_MPLCONFIGDIR=/tmp
 export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
