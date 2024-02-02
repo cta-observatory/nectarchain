@@ -5,7 +5,7 @@
 
 function usage ()
 {
-    echo "Usage: $(basename $0) -r <run number>"
+    echo "Usage: $(basename "$0") -r <run number>"
 }
 
 function help ()
@@ -36,7 +36,7 @@ while getopts ":hr:" option; do
 done
 shift $((OPTIND-1))
 
-if [ -z $runnb ]; then
+if [ -z "$runnb" ]; then
     usage
     exit 1
 fi
@@ -56,17 +56,17 @@ function exit_script() {
     # [ -d $CONTAINER ] && rm -rf $CONTAINER
     # [ -f $CONTAINER ] && rm -f $CONTAINER
     [ -d "$NECTARCAMDATA/runs" ] && rm -rf "$NECTARCAMDATA/runs"
-    [ -d $OUTDIR ] && rm -rf $OUTDIR
-    [ -f ${OUTDIR}.tar.gz ] && rm -f ${OUTDIR}.tar.gz
-    [ -d ${OUTDIR} ] && rm -rf ${OUTDIR}
+    [ -d "$OUTDIR" ] && rm -rf "$OUTDIR"
+    [ -f "${OUTDIR}.tar.gz" ] && rm -f "${OUTDIR}.tar.gz"
+    [ -d "${OUTDIR}" ] && rm -rf "${OUTDIR}"
     [ -f $WRAPPER ] && rm -f $WRAPPER
 
-    exit $return_code
+    exit "$return_code"
 }
 
 export NECTARCAMDATA=$PWD
-[ ! -d $NECTARCAMDATA/runs ] && mkdir -p $NECTARCAMDATA/runs || exit_script $?
-mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARCAMDATA/runs/.
+[ ! -d "$NECTARCAMDATA/runs" ] && mkdir -p "$NECTARCAMDATA/runs" || exit_script $?
+mv nectarcam*.sqlite NectarCAM.Run*.fits.fz "$NECTARCAMDATA/runs/."
 
 # Halim's DQM code needs to use a specific output directory:
 export NECTARDIR=$PWD/$OUTDIR
@@ -115,7 +115,7 @@ chmod u+x $WRAPPER || exit_script $?
 
 
 # Archive the output directory and push it on DIRAC before leaving the job:
-tar zcf ${OUTDIR}.tar.gz ${OUTDIR}/ || exit_script $?
-dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz GRIF-USER || exit_script $?
+tar zcf "${OUTDIR}.tar.gz" "${OUTDIR}/" || exit_script $?
+dirac-dms-add-file "${DIRAC_OUTDIR}/${OUTDIR}.tar.gz" "${OUTDIR}.tar.gz" GRIF-USER || exit_script $?
 
 exit_script 0
