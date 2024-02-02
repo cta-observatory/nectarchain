@@ -79,23 +79,26 @@ export NECTARDIR=$PWD/$OUTDIR
 # Create a wrapper BASH script with cleaned environment, see https://redmine.cta-observatory.org/issues/51483
 cat > $WRAPPER <<EOF
 #!/bin/env bash
+# See https://redmine.cta-observatory.org/issues/51483: start container from a clean environment
 echo "Cleaning environment \$CLEANED_ENV" 
 [ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@" 
 
-# Handle Singularity or Apptainer case:
 # Some environment variables, related to python or nectarchain, have to be passed to container, be it for old Singularity versions or recent Apptainer ones:
+export SINGULARITYENV_MPLCONFIGDIR=/tmp
+export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
+export SINGULARITYENV_NECTARCAMDATA=$NECTARCAMDATA
+export SINGULARITYENV_NECTARDIR=$NECTARDIR
+
+export APPTAINERENV_MPLCONFIGDIR=/tmp
+export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
+export APPTAINERENV_NECTARCAMDATA=$NECTARCAMDATA
+export APPTAINERENV_NECTARDIR=$NECTARDIR
+
+# Handle Singularity or Apptainer case:
 if command -v singularity &> /dev/null; then
     CALLER=singularity
-    export SINGULARITYENV_MPLCONFIGDIR=/tmp
-    export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
-    export SINGULARITYENV_NECTARCAMDATA=$NECTARCAMDATA
-    export SINGULARITYENV_NECTARDIR=$NECTARDIR
 elif command -v apptainer &> /dev/null; then
     CALLER=apptainer
-    export APPTAINERENV_MPLCONFIGDIR=/tmp
-    export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
-    export APPTAINERENV_NECTARCAMDATA=$NECTARCAMDATA
-    export APPTAINERENV_NECTARDIR=$NECTARDIR
 else
     echo "It seems neither Singularity nor Apptainer are available from here"
     exit 1
