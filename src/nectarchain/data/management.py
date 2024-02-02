@@ -1,11 +1,3 @@
-# The DIRAC magic 2 lines !
-try:
-    import DIRAC
-
-    DIRAC.initialize()
-except ImportError:
-    pass
-
 import glob
 import logging
 import os
@@ -23,6 +15,18 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["DataManagement"]
+
+# The DIRAC magic 2 lines !
+try:
+    import DIRAC
+
+    DIRAC.initialize()
+except ImportError:
+    log.warning("DIRAC probably not installed")
+    pass
+except Exception as e:
+    log.warning(f"DIRAC could not be properly initialized: {e}")
+    pass
 
 
 class DataManagement:
