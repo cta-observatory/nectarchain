@@ -85,10 +85,12 @@ echo "Cleaning environment \$CLEANED_ENV"
 # Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
 export SINGULARITYENV_MPLCONFIGDIR=/tmp
 export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
+export SINGULARITYENV_NECTARCAMDATA=$NECTARCAMDATA
 export SINGULARITYENV_NECTARDIR=$NECTARDIR
 
 export APPTAINERENV_MPLCONFIGDIR=/tmp
 export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
+export APPTAINERENV_NECTARCAMDATA=$NECTARCAMDATA
 export APPTAINERENV_NECTARDIR=$NECTARDIR
 
 # Handle Singularity or Apptainer case:

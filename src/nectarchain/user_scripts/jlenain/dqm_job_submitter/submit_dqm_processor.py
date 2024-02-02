@@ -8,14 +8,14 @@ import logging
 import sys
 from time import sleep
 
-# The magic DIRAC 2 lines
+# DIRAC client initialization
 import DIRAC
+
+DIRAC.initialize()
 
 # astropy imports
 from astropy import time
 from astropy import units as u
-
-DIRAC.initialize()
 
 # DIRAC imports
 from DIRAC.Interfaces.API.Dirac import Dirac
