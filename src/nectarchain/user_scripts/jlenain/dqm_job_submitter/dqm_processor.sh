@@ -116,6 +116,6 @@ chmod u+x $WRAPPER || exit_script $?
 
 # Archive the output directory and push it on DIRAC before leaving the job:
 tar zcf ${OUTDIR}.tar.gz ${OUTDIR}/ || exit_script $?
-dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz || exit_script $?
+dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz GRIF-USER || exit_script $?
 
 exit_script 0
