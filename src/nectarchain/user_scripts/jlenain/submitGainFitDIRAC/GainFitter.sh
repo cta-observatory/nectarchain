@@ -94,7 +94,7 @@ cd $ORIGPWD
 
 # Archive the output directory and push it on DIRAC before leaving the job:
 tar zcf ${OUTDIR}.tar.gz ${OUTDIR}/
-dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz LPNHE-USER
+dirac-dms-add-file ${DIRAC_OUTDIR}/${OUTDIR}.tar.gz ${OUTDIR}.tar.gz GRIF-USER
 
 # Some cleanup before leaving:
 [ -d $OUTDIR ] && rm -rf $OUTDIR
