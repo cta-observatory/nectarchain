@@ -64,9 +64,9 @@ function exit_script() {
     exit $return_code
 }
 
-export NECTARCAMDATA=$PWD/runs
-[ ! -d $NECTARCAMDATA ] && mkdir -p $NECTARCAMDATA || exit_script $?
-mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARCAMDATA/.
+export NECTARCAMDATA=$PWD
+[ ! -d $NECTARCAMDATA/runs ] && mkdir -p $NECTARCAMDATA/runs || exit_script $?
+mv nectarcam*.sqlite NectarCAM.Run*.fits.fz $NECTARCAMDATA/runs/.
 
 # Halim's DQM code needs to use a specific output directory:
 export NECTARDIR=$PWD/$OUTDIR
