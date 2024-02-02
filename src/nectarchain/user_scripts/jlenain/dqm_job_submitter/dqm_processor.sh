@@ -55,7 +55,7 @@ function exit_script() {
     # Some cleanup before leaving:
     # [ -d $CONTAINER ] && rm -rf $CONTAINER
     # [ -f $CONTAINER ] && rm -f $CONTAINER
-    [ -d $NECTARCAMDATA ] && rm -rf $NECTARCAMDATA
+    [ -d "$NECTARCAMDATA/runs" ] && rm -rf "$NECTARCAMDATA/runs"
     [ -d $OUTDIR ] && rm -rf $OUTDIR
     [ -f ${OUTDIR}.tar.gz ] && rm -f ${OUTDIR}.tar.gz
     [ -d ${OUTDIR} ] && rm -rf ${OUTDIR}
@@ -82,22 +82,20 @@ cat > $WRAPPER <<EOF
 echo "Cleaning environment \$CLEANED_ENV" 
 [ -z "\$CLEANED_ENV" ] && exec /bin/env -i CLEANED_ENV="Done" HOME=\${HOME} SHELL=/bin/bash /bin/bash -l "\$0" "\$@" 
 
-# Some environment variables related to python, to be passed to container, be it for old Singularity version or recent Apptainer ones:
-export SINGULARITYENV_MPLCONFIGDIR=/tmp
-export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
-export SINGULARITYENV_NECTARCAMDATA=$NECTARCAMDATA
-export SINGULARITYENV_NECTARDIR=$NECTARDIR
-
-export APPTAINERENV_MPLCONFIGDIR=/tmp
-export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
-export APPTAINERENV_NECTARCAMDATA=$NECTARCAMDATA
-export APPTAINERENV_NECTARDIR=$NECTARDIR
-
 # Handle Singularity or Apptainer case:
+# Some environment variables, related to python or nectarchain, have to be passed to container, be it for old Singularity versions or recent Apptainer ones:
 if command -v singularity &> /dev/null; then
     CALLER=singularity
+    export SINGULARITYENV_MPLCONFIGDIR=/tmp
+    export SINGULARITYENV_NUMBA_CACHE_DIR=/tmp
+    export SINGULARITYENV_NECTARCAMDATA=$NECTARCAMDATA
+    export SINGULARITYENV_NECTARDIR=$NECTARDIR
 elif command -v apptainer &> /dev/null; then
     CALLER=apptainer
+    export APPTAINERENV_MPLCONFIGDIR=/tmp
+    export APPTAINERENV_NUMBA_CACHE_DIR=/tmp
+    export APPTAINERENV_NECTARCAMDATA=$NECTARCAMDATA
+    export APPTAINERENV_NECTARDIR=$NECTARDIR
 else
     echo "It seems neither Singularity nor Apptainer are available from here"
     exit 1
