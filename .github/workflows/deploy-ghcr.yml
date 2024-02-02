@@ -59,7 +59,10 @@ jobs:
         # Assign the release tag to container on release
         if: github.event_name == 'release'
         run: |
-          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ github.ref_name }}
+          fullversionname=${{ github.ref_name }}
+          # Remove the leading "v" character  
+          versionname=${fullversionname:1}
+          apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${versionname}
 
       - name: Deploy ${{ env.container }} container ${{ matrix.deffiles[1] }}
         # Otherwise, the container tag is "latest" by default.

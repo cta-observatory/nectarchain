@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nectarchain"
 description = "Analysis chain for the CTA MSTN NectarCAM prototype"
+readme = "README.md"
 authors = [{name = "NectarCAM collaboration"}]
 license = {text = "BSD-3-Clause"}
 classifiers = [
@@ -27,22 +28,26 @@ dependencies = [
     "zodb",
     "zeo",
 ]
-dynamic = ["version"]
 
-[project.readme]
-file = "README.md"
-content-type = "text/markdown; charset=UTF-8"
+# needed for setuptools_scm, we don't define a static version
+dynamic = ["version"]
 
 [project.urls]
 "Bug Tracker" = "https://github.com/cta-observatory/nectarchain/issues"
 "Source Code" = "https://github.com/cta-observatory/nectarchain"
 
 [project.optional-dependencies]
-tests = ["pytest"]
-dev = ["setuptools_scm"]
-all = [
+test = [
     "pytest",
+    "pytest-cov",
+]
+dev = [
     "setuptools_scm",
+]
+
+# we can use self-references to simplify all
+all = [
+    "nectarchain[test,dev]",
 ]
 
 [tool.setuptools.packages.find]
