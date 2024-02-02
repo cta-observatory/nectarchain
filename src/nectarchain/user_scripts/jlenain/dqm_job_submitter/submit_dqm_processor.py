@@ -8,14 +8,14 @@ import logging
 import sys
 from time import sleep
 
-# The magic DIRAC 2 lines
+# DIRAC client initialization
 import DIRAC
+
+DIRAC.initialize()
 
 # astropy imports
 from astropy import time
 from astropy import units as u
-
-DIRAC.initialize()
 
 # DIRAC imports
 from DIRAC.Interfaces.API.Dirac import Dirac
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 dirac = Dirac()
 
 # Option and argument parser
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Submit jobs on DIRAC to run the DQM")
 parser.add_argument(
     "-d",
     "--date",
@@ -37,7 +37,11 @@ parser.add_argument(
     type=str,
 )
 parser.add_argument(
-    "-r", "--run", default=None, help="only process a specific run (optional)", type=str
+    "-r",
+    "--run",
+    default=None,
+    help="only process a specific run (optional). When omitted, all the runs acquired on DATE are processed (1 job per run).",
+    type=str,
 )
 parser.add_argument(
     "--dry-run",
