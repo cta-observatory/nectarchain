@@ -139,9 +139,29 @@ if len(sqlfilelist) == 0:
     sys.exit(1)
 logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
 
+# Check already existing DQM outputs
+dfcOutDir = "/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm"
+infos = dfc.listDirectory(dfcOutDir)
+if not infos["OK"] or not infos["Value"]["Successful"]:
+    logger.critical(
+        f"Could not properly retrieve the file metadata for {dfcOutDir} ... Exiting !"
+    )
+    sys.exit(1)
+metaOutDir = infos["Value"]["Successful"][dfcOutDir]
+
 # Now, submit the DIRAC jobs:
 # for run in ['2721']:
 for run in runlist:
+    logger.debug(metaOutDir["Files"].keys())
+    if f"{dfcOutDir}/NectarCAM_DQM_Run{run}.tar.gz" in metaOutDir["Files"].keys():
+        logger.warning(
+            f"Run {run} already processed and present in {dfcOutDir}. If you really "
+            f"want to re-run the DQM on this run, consider deleting "
+            f"{dfcOutDir}/NectarCAM_DQM_Run{run}.tar.gz before executing this script. "
+            f"Skipping run {run} for now..."
+        )
+        continue
+
     j = Job()
     # j.setExecutable(f'{executable_wrapper}', '<SOME POSSIBLE ARGUMENTS such as run number>')
     j.setExecutable(f"{executable_wrapper}", f"-r {run}")
