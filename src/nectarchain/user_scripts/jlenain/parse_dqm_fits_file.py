@@ -19,7 +19,6 @@ outdict = dict()
 
 for h in range(1, len(hdu)):
     extname = hdu[h].header["EXTNAME"]
-    # Get all camera related fino
     outdict[extname] = dict()
     for i in range(hdu[extname].header["TFIELDS"]):
         keyname = hdu[extname].header[f"TTYPE{i+1}"]
