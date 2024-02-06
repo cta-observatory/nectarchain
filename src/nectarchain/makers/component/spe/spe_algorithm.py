@@ -8,7 +8,10 @@ import copy
 import os
 import time
 from inspect import signature
+
+import multiprocessing as mp
 from multiprocessing import Pool
+
 from typing import Tuple
 
 import astropy.units as u
@@ -43,6 +46,12 @@ __all__ = [
     "SPECombinedalgorithm",
 ]
 
+def init_processes(fit_array : np.ndarray):
+    """
+    Initialize each process in the process pool with global variable fit_array.
+    """
+    global _fit_array
+    _fit_array = fit_array
 
 class SPEalgorithm(Component):
     Windows_lenght = Integer(
@@ -663,6 +672,8 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         return fit_array
 
+
+
     @staticmethod
     def run_fit(i: int) -> dict:
         """
@@ -676,10 +687,10 @@ class SPEnominalalgorithm(SPEalgorithm):
                   The keys are "values_i" and "errors_i", where "i" is the index of the pixel.
         """
         log.info("Starting")
-        __class__.__fit_array[i].migrad()
-        __class__.__fit_array[i].hesse()
-        _values = np.array([params.value for params in __class__.__fit_array[i].params])
-        _errors = np.array([params.error for params in __class__.__fit_array[i].params])
+        _fit_array[i].migrad()
+        _fit_array[i].hesse()
+        _values = np.array([params.value for params in _fit_array[i].params])
+        _errors = np.array([params.error for params in _fit_array[i].params])
         log.info("Finished")
         return {f"values_{i}": _values, f"errors_{i}": _errors}
 
@@ -716,6 +727,11 @@ class SPEnominalalgorithm(SPEalgorithm):
 
             self.log.info("running fits")
             if self.multiproc:
+                try:
+                   mp.set_start_method('spawn', force=True)
+                   self.log.info("spawned multiproc")
+                except RuntimeError:
+                   pass
                 nproc = kwargs.get("nproc", self.nproc)
                 chunksize = kwargs.get(
                     "chunksize",
@@ -723,8 +739,11 @@ class SPEnominalalgorithm(SPEalgorithm):
                 )
                 self.log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
 
+
                 t = time.time()
-                with Pool(nproc) as pool:
+                fit_array = __class__.__fit_array
+                #fit_array = np.empty(5,dtype = np.object_)
+                with Pool(nproc, initializer= init_processes, initargs=(fit_array,)) as pool:
                     result = pool.starmap_async(
                         __class__.run_fit,
                         [(i,) for i in range(npix)],
