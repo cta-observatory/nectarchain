@@ -3,8 +3,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-
-os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
 import argparse
 import copy
 import glob

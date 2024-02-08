@@ -4,9 +4,6 @@ import os
 import sys
 import time
 from pathlib import Path
-
-os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
-
 import argparse
 import copy
 import glob
