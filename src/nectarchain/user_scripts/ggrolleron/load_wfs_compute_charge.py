@@ -78,13 +78,13 @@ parser.add_argument(
         "SlidingWindowMaxSum",
         "TwoPassWindowSum",
     ],
-    default="LocalPeakWindowSum",
+    default="FullWaveformSum",
     help="charge extractor method",
     type=str,
 )
 parser.add_argument(
     "--extractor_kwargs",
-    default={"window_width": 16, "window_shift": 4},
+    default={},
     help="charge extractor kwargs",
     type=json.loads,
 )
@@ -162,7 +162,6 @@ def main(
                     from_computed_waveforms=True,
                     **charges_kwargs,
                 )
-
                 tool.setup()
                 tool.start()
                 tool.finish()
