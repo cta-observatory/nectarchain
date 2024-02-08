@@ -29,25 +29,28 @@ from nectarchain.makers.calibration import (
 )
 
 # %%
-run_number = 3936
+run_number = 3942
 
 # %%
+os.environ["NECTARCAMDATA"]
 
+# %%
 # !ls -lh $NECTARCAMDATA/runs/*
 
 # %%
-tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
+tool = FlatFieldSPEHHVStdNectarCAMCalibrationTool(
     progress_bar=True,
     method="LocalPeakWindowSum",
     extractor_kwargs={"window_width": 12, "window_shift": 4},
     multiproc=True,
-    nproc=10,
+    nproc=2,
     run_number=run_number,
-    max_events=10000,
+    max_events=1000,
     log_level=20,
-    reload_events=True,
+    reload_events=False,
     # events_per_slice = 200,
-    asked_pixels_id=[52, 48],
+    overwrite=True,
+    asked_pixels_id=[52, 48, 78, 94],
     output_path=pathlib.Path(os.environ.get("NECTARCAMDATA", "/tmp"))
     / "tutorials/"
     / f"SPEfit_{run_number}.h5",

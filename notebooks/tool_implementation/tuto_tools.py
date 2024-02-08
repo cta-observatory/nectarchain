@@ -13,17 +13,17 @@
 # ---
 
 # %% [markdown]
-# # Tutorial to use ctapipe tools and component 
+# # Tutorial to use ctapipe tools and component
 
 # %% [markdown]
 # ## Context
 
 # %% [markdown]
-# Tool and Component are 2 modules of ctapipe, Tool is a high level module to analyse raw data (fits.fz files). This module use Component to perform computation on the raw data. Basically, we can create a class (MyTool) which inherits of Tool, where we can define 2 Component (Comp_A and Comp_B). Thus, with an instance of MyTool, we can loop over event within raw data, and for each event apply sucessively Comp_A, Comp_B. 
+# Tool and Component are 2 modules of ctapipe, Tool is a high level module to analyse raw data (fits.fz files). This module use Component to perform computation on the raw data. Basically, we can create a class (MyTool) which inherits of Tool, where we can define 2 Component (Comp_A and Comp_B). Thus, with an instance of MyTool, we can loop over event within raw data, and for each event apply sucessively Comp_A, Comp_B.
 #
 # A ctapipe tutorial is accessible here : https://ctapipe.readthedocs.io/en/stable/auto_examples/core/command_line_tools.html#sphx-glr-auto-examples-core-command-line-tools-py
 #
-# You can find documentation of ctapipe Tool and Component : 
+# You can find documentation of ctapipe Tool and Component :
 #
 # https://ctapipe.readthedocs.io/en/stable/api-reference/tools/index.html
 #
@@ -32,35 +32,32 @@
 #
 # Within nectarchain, we implemented within the nectarchain.makers module both a top level Tool and Component from which all the nectarchain Component and Tool should inherit.
 #
-# In this tutorial, we explain quickly how we can use Tool and Component to develop the nectarchain software, as an example there is the implementation of a PedestalTool which extract pedestal   
+# In this tutorial, we explain quickly how we can use Tool and Component to develop the nectarchain software, as an example there is the implementation of a PedestalTool which extract pedestal
 
 # %% [markdown]
 # ### Imports
 
-# %%
-import numpy as np
-import pathlib
 import os
+import pathlib
 
 import matplotlib.pyplot as plt
 
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe_io_nectarcam import constants
-
-from ctapipe.core.traits import ComponentNameList
+# %%
+import numpy as np
 from ctapipe.containers import Field
-from ctapipe.core.traits import Integer
 from ctapipe.core import Component
+from ctapipe.core.traits import ComponentNameList, Integer
 from ctapipe.io import HDF5TableReader
+from ctapipe_io_nectarcam import constants
+from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
-
-from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
-from nectarchain.makers.component import NectarCAMComponent, ArrayDataComponent
 from nectarchain.data.container import (
-    NectarCAMContainer,
     ArrayDataContainer,
+    NectarCAMContainer,
     TriggerMapContainer,
 )
+from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
+from nectarchain.makers.component import ArrayDataComponent, NectarCAMComponent
 from nectarchain.utils import ComponentUtils
 
 # %%
@@ -72,12 +69,13 @@ tools.classes
 
 
 # %% [markdown]
-# The only thing to add to to fill the componentList field, which contains the names of the component to be apply on events. 
+# The only thing to add to to fill the componentList field, which contains the names of the component to be apply on events.
 #
-# Then we will define a very simple component to compute the pedestal of each events. 
+# Then we will define a very simple component to compute the pedestal of each events.
 
 # %% [markdown]
 # ### Definition of container to store extracted data on disk
+
 
 # %%
 class MyContainer(NectarCAMContainer):
@@ -108,6 +106,7 @@ class MyContainer(NectarCAMContainer):
 
 # %% [markdown]
 # ### Definition of our Component
+
 
 # %%
 class MyComp(NectarCAMComponent):
@@ -147,7 +146,7 @@ class MyComp(NectarCAMComponent):
         #####THE JOB IS HERE######
         for i, pedestal in enumerate([self.__pedestal_hg, self.__pedestal_lg]):
             index_peak = np.argmax(wfs[i])
-            signal_start = index_peak - self.window_shiftclasses
+            signal_start = index_peak - self.window_shift
             signal_stop = index_peak + self.window_width - self.window_shift
             if signal_start < 0:
                 signal_stop = self.window_width
@@ -188,7 +187,8 @@ class MyComp(NectarCAMComponent):
 # ### Definition of our Tool
 
 # %% [markdown]
-# Now we can define out Tool, we have just to add our component "MyComp" in the ComponentList : 
+# Now we can define out Tool, we have just to add our component "MyComp" in the ComponentList :
+
 
 # %%
 def get_valid_component():
@@ -204,39 +204,6 @@ class MyTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    #######   THIS PART IS NEEDED NOW #####
-
-    # This part uis needed because the component defined outside of the nectarchain
-    # module is not accessible from the module (with eval(componentName)).
-    # This issus should be fixed soon.
-    def __new__(cls, *args, **kwargs):
-        _cls = super(EventsLoopNectarCAMCalibrationTool, cls).__new__(
-            cls, *args, **kwargs
-        )
-
-        for componentName in _cls.componentsList:
-            configurable_traits = ComponentUtils.get_configurable_traits(
-                eval(componentName)
-            )
-            _cls.add_traits(**configurable_traits)
-            _cls.aliases.update(
-                {key: f"{componentName}.{key}" for key in configurable_traits.keys()}
-            )
-        return _cls
-
-    def _get_provided_component_kwargs(self, componentName: str):
-        component_kwargs = ComponentUtils.get_configurable_traits(eval(componentName))
-        output_component_kwargs = {}
-        for key in component_kwargs.keys():
-            if hasattr(self, key):
-                output_component_kwargs[key] = getattr(self, key)
-        return output_component_kwargs
-
-    #####################################################################
-
-    # def __init__(self,*args,**kwargs) :
-    #       super().__init__(*args,**kwargs)
-
     def _init_output_path(self):
         if self.max_events is None:
             filename = f"{self.name}_run{self.run_number}.h5"
@@ -249,7 +216,12 @@ class MyTool(EventsLoopNectarCAMCalibrationTool):
 
 # %%
 tool = MyTool(
-    progress_bar=True, run_number=4943, max_events=500, log_level=20, window_width=14
+    progress_bar=True,
+    run_number=4943,
+    max_events=500,
+    log_level=20,
+    window_width=14,
+    overwrite=True,
 )
 
 # %%
@@ -265,19 +237,19 @@ tool
 tool.initialize()
 
 # %% [markdown]
-# Then to setup, it will in particular setup the Components : 
+# Then to setup, it will in particular setup the Components :
 
 # %%
 tool.setup()
 
 # %% [markdown]
-# The following command will just start the tool and apply components looping over events 
+# The following command will just start the tool and apply components looping over events
 
 # %%
 tool.start()
 
 # %% [markdown]
-# Then, we finish the tool, behind thius command the component will be finilized and will create an output container whiich will be written on disk and can be returned 
+# Then, we finish the tool, behind thius command the component will be finilized and will create an output container whiich will be written on disk and can be returned
 
 # %%
 output = tool.finish(return_output_component=True)[0]
@@ -286,19 +258,19 @@ output = tool.finish(return_output_component=True)[0]
 output
 
 # %% [markdown]
-# The following file has been written : 
+# The following file has been written :
 
 # %%
 # !ls -lh $NECTARCAMDATA/tutorials
 
 # %% [markdown]
-# The shape of pedestal is (n_events,n_pixels) 
+# The shape of pedestal is (n_events,n_pixels)
 
 # %%
 output.pedestal_hg.shape
 
 # %% [markdown]
-# To have a look to a random pixel pedestal evolution : 
+# To have a look to a random pixel pedestal evolution :
 
 # %%
 fix, ax = plt.subplots(1, 1)
@@ -313,12 +285,14 @@ ax.set_ylabel("Charge [ADC]")
 ax.set_xlabel("time [ms]")
 
 # %% [markdown]
-# If you want to load container thereafter : 
+# If you want to load container thereafter :
 
 # %%
-container_loaded = MyContainer._container_from_hdf5(
-    f"{os.environ.get('NECTARCAMDATA','/tmp')}/tutorials/PedestalTutoNectarCAM_run4943_maxevents500.h5",
-    MyContainer,
+container_loaded = next(
+    MyContainer._container_from_hdf5(
+        f"{os.environ.get('NECTARCAMDATA','/tmp')}/tutorials/PedestalTutoNectarCAM_run4943_maxevents500.h5",
+        MyContainer,
+    )
 )
 container_loaded.validate()
 container_loaded
@@ -328,7 +302,7 @@ container_loaded
 
 # %% [markdown]
 # An argument that are implemented in EventsLoopNectarCAMCalibrationTool is the 'event_per_slice', this argument allows to split all the events within the raw data fits.fz file in slices. It allows to, for each slice, loop over events and write container on disk. This mechanism allows to save RAM.
-# The resulting hdf5 file that is written on disk , can be easily loaded thereafter. There is only one hdf5 file for the whole run, which is a mapping between slices and containers filled by computed quantity from components. 
+# The resulting hdf5 file that is written on disk , can be easily loaded thereafter. There is only one hdf5 file for the whole run, which is a mapping between slices and containers filled by computed quantity from components.
 
 # %%
 tool = MyTool(
@@ -359,6 +333,7 @@ output
 # %%
 # container_loaded = ArrayDataContainer._container_from_hdf5(f"{os.environ.get('NECTARCAMDATA','/tmp')}/tutorials/PedestalTutoNectarCAM_run4943_maxevents2000.h5",MyContainer)
 # container_loaded
+
 
 # %%
 def read_hdf5_sliced(path):
