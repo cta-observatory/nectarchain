@@ -1,17 +1,16 @@
 import logging
+import sys
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 import copy
+import multiprocessing as mp
 import os
 import time
 from inspect import signature
-
-import multiprocessing as mp
 from multiprocessing import Pool
-
 from typing import Tuple
 
 import astropy.units as u
@@ -46,12 +45,61 @@ __all__ = [
     "SPECombinedalgorithm",
 ]
 
-def init_processes(fit_array : np.ndarray):
+
+class ContextFit:
+    def __init__(
+        self,
+        _class,
+        minuitParameters_array: np.ndarray,
+        charge: np.ndarray,
+        counts: np.ndarray,
+    ):
+        self._class = _class
+        self.minuitParameters_array = minuitParameters_array
+        self.charge = charge
+        self.counts = counts
+
+    def __enter__(self):
+        init_processes(
+            self._class, self.minuitParameters_array, self.charge, self.counts
+        )
+
+    def __exit__(self, type, value, traceback):
+        del globals()["_minuitParameters_array"]
+        del globals()["_charge"]
+        del globals()["_counts"]
+        del globals()["_chi2"]
+
+
+def init_processes(
+    _class, minuitParameters_array: np.ndarray, charge: np.ndarray, counts: np.ndarray
+):
     """
     Initialize each process in the process pool with global variable fit_array.
     """
-    global _fit_array
-    _fit_array = fit_array
+    global _minuitParameters_array
+    global _charge
+    global _counts
+    global _chi2
+    _minuitParameters_array = minuitParameters_array
+    _charge = charge
+    _counts = counts
+
+    def chi2(pedestal, pp, luminosity, resolution, mean, n, pedestalWidth, index):
+        return _class._NG_Likelihood_Chi2(
+            pp,
+            resolution,
+            mean,
+            n,
+            pedestal,
+            pedestalWidth,
+            luminosity,
+            _charge[int(index)].data[~_charge[int(index)].mask],
+            _counts[int(index)].data[~_charge[int(index)].mask],
+        )
+
+    _chi2 = chi2
+
 
 class SPEalgorithm(Component):
     Windows_lenght = Integer(
@@ -280,11 +328,14 @@ class SPEalgorithm(Component):
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=7)
             os.makedirs(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/",
+                f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/figures/",
                 exist_ok=True,
             )
+            log.info(
+                f'figures of initialization of parameters will be accessible at {os.environ.get("NECTARCHAIN_LOG","/tmp")}/{os.getpid()}'
+            )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG')}/{os.getpid()}/figures/initialization_pedestal_pixel{pixel_id}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/initialization_pedestal_pixel{pixel_id}_{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -353,40 +404,12 @@ class SPEalgorithm(Component):
         return coeff, coeff_mean
 
 
-'''
-    def _update_table_from_parameters(self) -> None:
-        """
-        Update the result table based on the parameters of the FlatFieldSPEMaker class.
-        This method adds columns to the table for each parameter and its corresponding error.
-        """
-
-        for param in self._parameters.parameters:
-            if not (param.name in self._results.keys()):
-                self._results.add_column(
-                    Column(
-                        data=np.empty((self.npixels), dtype=np.float64),
-                        name=param.name,
-                        unit=param.unit,
-                    )
-                )
-                self._results.add_column(
-                    Column(
-                        data=np.empty((self.npixels), dtype=np.float64),
-                        name=f"{param.name}_error",
-                        unit=param.unit,
-                    )
-                )
-'''
-
-
 class SPEnominalalgorithm(SPEalgorithm):
     parameters_file = Unicode(
         "parameters_SPEnominal.yaml",
         read_only=True,
         help="The name of the SPE fit parameters file",
     ).tag(config=True)
-
-    __fit_array = None
 
     tol = Float(
         1e-1,
@@ -490,7 +513,9 @@ class SPEnominalalgorithm(SPEalgorithm):
         return self.__counts
 
     # methods
-    def _fill_results_table_from_dict(self, dico: dict, pixels_id: np.ndarray) -> None:
+    def _fill_results_table_from_dict(
+        self, dico: dict, pixels_id: np.ndarray, return_fit_array: bool = True
+    ) -> None:
         """
         Populates the results table with fit values and errors for each pixel based on the dictionary provided as input.
 
@@ -502,37 +527,51 @@ class SPEnominalalgorithm(SPEalgorithm):
             None
         """
         ########NEED TO BE OPTIMIZED!!!###########
-        chi2_sig = signature(__class__.cost(self._charge, self._counts))
+        chi2_sig = signature(_chi2)
+        if return_fit_array:
+            fit_array = np.empty(len(pixels_id), dtype=np.object_)
         for i in range(len(pixels_id)):
             values = dico[i].get(f"values_{i}", None)
             errors = dico[i].get(f"errors_{i}", None)
-            if not ((values is None) or (errors is None)):
+            fit_status = dico[i].get(f"fit_status_{i}", None)
+            if not ((values is None) or (errors is None) or (fit_status is None)):
+                if return_fit_array:
+                    fit_array[i] = fit_status
                 index = np.argmax(self._results.pixels_id == pixels_id[i])
                 if len(values) != len(chi2_sig.parameters):
                     e = Exception(
                         "the size out the minuit output parameters values array does not fit the signature of the minimized cost function"
                     )
-                    self.log.error(e, exc_info=True)
+                    log.error(e, exc_info=True)
                     raise e
                 for j, key in enumerate(chi2_sig.parameters):
-                    self._results[key][index][0] = values[j]
-                    self._results[key][index][1] = errors[j]
-                    self._results[key][index][2] = errors[j]
-                    if key == "mean":
-                        self._results.high_gain[index][0] = values[j]
-                        self._results.high_gain[index][1] = errors[j]
-                        self._results.high_gain[index][2] = errors[j]
-                self._results.is_valid[index] = True
-                self._results.likelihood[index] = __class__.__fit_array[i].fcn(
-                    __class__.__fit_array[i].values
+                    if key != "index":
+                        self._results[key][index][0] = values[j]
+                        self._results[key][index][1] = errors[j]
+                        self._results[key][index][2] = errors[j]
+                        if key == "mean":
+                            self._results.high_gain[index][0] = values[j]
+                            self._results.high_gain[index][1] = errors[j]
+                            self._results.high_gain[index][2] = errors[j]
+                self._results.is_valid[index] = (
+                    fit_status["is_valid"]
+                    and not (fit_status["has_parameters_at_limit"])
+                    and fit_status["has_valid_parameters"]
                 )
+                if fit_status["has_reached_call_limit"]:
+                    self.log.warning(
+                        f"The minuit fit for pixel {pixels_id[i]} reached the call limit"
+                    )
+                self._results.likelihood[index] = fit_status["values"]
                 ndof = (
                     self._counts.data[index][~self._counts.mask[index]].shape[0]
-                    - __class__.__fit_array[i].nfit
+                    - fit_status["nfit"]
                 )
                 self._results.p_value[index] = Statistics.chi2_pvalue(
-                    ndof, __class__.__fit_array[i].fcn(__class__.__fit_array[i].values)
+                    ndof, fit_status["values"]
                 )
+        if return_fit_array:
+            return fit_array
 
     @staticmethod
     def _NG_Likelihood_Chi2(
@@ -563,6 +602,12 @@ class SPEnominalalgorithm(SPEalgorithm):
         Returns:
         float: The chi-square value.
         """
+        if not (kwargs.get("ntotalPE", False)):
+            for i in range(1000):
+                if gammainc(i + 1, lum) < 1e-5:
+                    ntotalPE = i
+                    break
+            kwargs.update({"ntotalPE": ntotalPE})
         pdf = MPE2(charge, pp, res, mu2, n, muped, sigped, lum, **kwargs)
         # log.debug(f"pdf : {np.sum(pdf)}")
         Ntot = np.sum(counts)
@@ -573,49 +618,8 @@ class SPEnominalalgorithm(SPEalgorithm):
         )  # 2 times faster
         return Lik
 
-    @staticmethod
-    def cost(charge: np.ndarray, counts: np.ndarray):
-        """
-        Defines a function called Chi2 that calculates the chi-square value using the _NG_Likelihood_Chi2 method.
-        Parameters:
-        charge (np.ndarray): An array of charge values.
-        counts (np.ndarray): An array of count values.
-        Returns:
-        function: The Chi2 function.
-        """
-
-        def Chi2(
-            pedestal: float,
-            pp: float,
-            luminosity: float,
-            resolution: float,
-            mean: float,
-            n: float,
-            pedestalWidth: float,
-        ):
-            # assert not(np.isnan(pp) or np.isnan(resolution) or np.isnan(mean) or np.isnan(n) or np.isnan(pedestal) or np.isnan(pedestalWidth) or np.isnan(luminosity))
-            for i in range(1000):
-                if gammainc(i + 1, luminosity) < 1e-5:
-                    ntotalPE = i
-                    break
-            kwargs = {"ntotalPE": ntotalPE}
-            return __class__._NG_Likelihood_Chi2(
-                pp,
-                resolution,
-                mean,
-                n,
-                pedestal,
-                pedestalWidth,
-                luminosity,
-                charge,
-                counts,
-                **kwargs,
-            )
-
-        return Chi2
-
     # @njit(parallel=True,nopython = True)
-    def _make_fit_array_from_parameters(
+    def _make_minuitParameters_array_from_parameters(
         self, pixels_id: np.ndarray = None, **kwargs
     ) -> np.ndarray:
         """
@@ -633,7 +637,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         else:
             npix = len(pixels_id)
 
-        fit_array = np.empty((npix), dtype=np.object_)
+        minuitParameters_array = np.empty((npix), dtype=np.object_)
 
         for i, _id in enumerate(pixels_id):
             index = np.where(self.pixels_id == _id)[0][0]
@@ -644,38 +648,20 @@ class SPEnominalalgorithm(SPEalgorithm):
                 pixel_id=_id,
                 **kwargs,
             )
+            index_parameter = Parameter(name="index", value=index, frozen=True)
+            parameters.append(index_parameter)
+
             minuitParameters = UtilsMinuit.make_minuit_par_kwargs(parameters)
-            minuit_kwargs = {
-                parname: minuitParameters["values"][parname]
-                for parname in minuitParameters["values"]
-            }
-            self.log.info(f"creation of fit instance for pixel: {_id}")
-            fit_array[i] = Minuit(
-                __class__.cost(
-                    self._charge[index].data[~self._charge[index].mask],
-                    self._counts[index].data[~self._charge[index].mask],
-                ),
-                **minuit_kwargs,
-            )
-            self.log.debug("fit created")
-            fit_array[i].errordef = Minuit.LIKELIHOOD
-            fit_array[i].strategy = 0
-            fit_array[i].tol = self.tol
-            fit_array[i].print_level = 1
-            fit_array[i].throw_nan = True
-            UtilsMinuit.set_minuit_parameters_limits_and_errors(
-                fit_array[i], minuitParameters
-            )
+            minuitParameters_array[i] = minuitParameters
+
             # self.log.debug(fit_array[i].values)
             # self.log.debug(fit_array[i].limits)
             # self.log.debug(fit_array[i].fixed)
 
-        return fit_array
-
-
+        return minuitParameters_array
 
     @staticmethod
-    def run_fit(i: int) -> dict:
+    def run_fit(i: int, tol: float) -> dict:
         """
         Perform a fit on a specific pixel using the Minuit package.
 
@@ -686,13 +672,43 @@ class SPEnominalalgorithm(SPEalgorithm):
             dict: A dictionary containing the fit values and errors for the specified pixel.
                   The keys are "values_i" and "errors_i", where "i" is the index of the pixel.
         """
+        log = logging.getLogger(__name__)
+        log.setLevel(logging.INFO)
+
         log.info("Starting")
-        _fit_array[i].migrad()
-        _fit_array[i].hesse()
-        _values = np.array([params.value for params in _fit_array[i].params])
-        _errors = np.array([params.error for params in _fit_array[i].params])
+        minuit_kwargs = {
+            parname: _minuitParameters_array[i]["values"][parname]
+            for parname in _minuitParameters_array[i]["values"]
+        }
+        log.info(f"creation of fit instance for pixel: {minuit_kwargs['index']}")
+        fit = Minuit(_chi2, **minuit_kwargs)
+        fit.errordef = Minuit.LIKELIHOOD
+        fit.strategy = 0
+        fit.tol = tol
+        fit.print_level = 1
+        fit.throw_nan = True
+        UtilsMinuit.set_minuit_parameters_limits_and_errors(
+            fit, _minuitParameters_array[i]
+        )
+        log.info("fit created")
+        fit.migrad()
+        fit.hesse()
+        _values = np.array([params.value for params in fit.params])
+        _errors = np.array([params.error for params in fit.params])
+        _fit_status = {
+            "is_valid": fit.fmin.is_valid,
+            "has_valid_parameters": fit.fmin.has_valid_parameters,
+            "has_parameters_at_limit": fit.fmin.has_parameters_at_limit,
+            "has_reached_call_limit": fit.fmin.has_reached_call_limit,
+            "nfit": fit.nfit,
+            "values": fit.fcn(fit.values),
+        }
         log.info("Finished")
-        return {f"values_{i}": _values, f"errors_{i}": _errors}
+        return {
+            f"values_{i}": _values,
+            f"errors_{i}": _errors,
+            f"fit_status_{i}": _fit_status,
+        }
 
     def run(
         self,
@@ -720,59 +736,68 @@ class SPEnominalalgorithm(SPEalgorithm):
             self.log.warning("The asked pixels id are all out of the data")
             return None
         else:
-            self.log.info("creation of the fits instance array")
-            __class__.__fit_array = self._make_fit_array_from_parameters(
+            self.log.info("creation of the minuit parameters array")
+            minuitParameters_array = self._make_minuitParameters_array_from_parameters(
                 pixels_id=pixels_id, display=display, **kwargs
             )
 
             self.log.info("running fits")
-            if self.multiproc:
-                try:
-                   mp.set_start_method('spawn', force=True)
-                   self.log.info("spawned multiproc")
-                except RuntimeError:
-                   pass
-                nproc = kwargs.get("nproc", self.nproc)
-                chunksize = kwargs.get(
-                    "chunksize",
-                    max(self.chunksize, npix // (nproc * 10)),
-                )
-                self.log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
-
-
-                t = time.time()
-                fit_array = __class__.__fit_array
-                #fit_array = np.empty(5,dtype = np.object_)
-                with Pool(nproc, initializer= init_processes, initargs=(fit_array,)) as pool:
-                    result = pool.starmap_async(
-                        __class__.run_fit,
-                        [(i,) for i in range(npix)],
-                        chunksize=chunksize,
+            with ContextFit(
+                __class__, minuitParameters_array, self._charge, self._counts
+            ):
+                if self.multiproc:
+                    try:
+                        mp.set_start_method("spawn", force=True)
+                        self.log.info("spawned multiproc")
+                    except RuntimeError:
+                        pass
+                    nproc = kwargs.get("nproc", self.nproc)
+                    chunksize = kwargs.get(
+                        "chunksize",
+                        max(self.chunksize, npix // (nproc * 10)),
                     )
-                    result.wait()
-                try:
-                    res = result.get()
-                except Exception as e:
-                    self.log.error(e, exc_info=True)
-                    raise e
-                self.log.debug(str(res))
-                self.log.info(
-                    f"time for multiproc with starmap_async execution is {time.time() - t:.2e} sec"
-                )
-            else:
-                self.log.info("running in mono-cpu")
-                t = time.time()
-                res = [__class__.run_fit(i) for i in range(npix)]
-                self.log.debug(res)
-                self.log.info(
-                    f"time for singleproc execution is {time.time() - t:.2e} sec"
-                )
+                    self.log.info(f"pooling with nproc {nproc}, chunksize {chunksize}")
 
-            self.log.info("filling result table from fits results")
-            self._fill_results_table_from_dict(res, pixels_id)
+                    t = time.time()
+                    with Pool(
+                        nproc,
+                        initializer=init_processes,
+                        initargs=(
+                            __class__,
+                            minuitParameters_array,
+                            self._charge,
+                            self._counts,
+                        ),
+                    ) as pool:
+                        self.log.info(
+                            f"time to create the Pool is {time.time() - t:.2e} sec"
+                        )
+                        result = pool.starmap_async(
+                            __class__.run_fit,
+                            [(i, self.tol) for i in range(npix)],
+                            chunksize=chunksize,
+                        )
+                        result.wait()
+                    try:
+                        res = result.get()
+                    except Exception as e:
+                        log.error(e, exc_info=True)
+                        raise e
+                    self.log.info(
+                        f"total time for multiproc with starmap_async execution is {time.time() - t:.2e} sec"
+                    )
 
-            output = copy.copy(__class__.__fit_array)
-            __class__.__fit_array = None
+                else:
+                    self.log.info("running in mono-cpu")
+                    t = time.time()
+                    res = [__class__.run_fit(i, self.tol) for i in range(npix)]
+                    self.log.info(
+                        f"time for singleproc execution is {time.time() - t:.2e} sec"
+                    )
+                self.log.info("filling result table from fits results")
+                output = self._fill_results_table_from_dict(
+                    res, pixels_id, return_fit_array=True
+                )
 
             if display:
                 self.log.info("plotting")
