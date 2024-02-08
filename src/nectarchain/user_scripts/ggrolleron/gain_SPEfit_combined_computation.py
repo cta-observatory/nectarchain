@@ -5,15 +5,7 @@ import sys
 import time
 from pathlib import Path
 
-# to quiet numba
 os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
-logging.getLogger("numba").setLevel(logging.WARNING)
-logging.basicConfig(
-    format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    level=logging.DEBUG,
-    filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{Path(__file__).stem}_{os.getpid()}.log",
-)
-log = logging.getLogger(__name__)
 
 import argparse
 import copy
@@ -193,13 +185,19 @@ def main(
 
 
 if __name__ == "__main__":
+    import logging
+
+    # to quiet numba
+    logging.getLogger("numba").setLevel(logging.WARNING)
     t = time.time()
     args = parser.parse_args()
     kwargs = copy.deepcopy(vars(args))
 
     kwargs["log_level"] = args.verbosity
-
-    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
+    os.makedirs(
+        f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
+        exist_ok=True,
+    )
     logging.basicConfig(
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         force=True,
