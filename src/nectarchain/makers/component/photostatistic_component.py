@@ -121,7 +121,7 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
             self._Ped_chargesContainers = merge_map_ArrayDataContainer(
                 self._Ped_chargesContainers
             )
-        nectarGainSPEresult = SPEfitContainer.from_hdf5(self.SPE_result)
+        nectarGainSPEresult = next(SPEfitContainer.from_hdf5(self.SPE_result))
         photo_stat = eval(self.PhotoStatAlgorithm).create_from_chargesContainer(
             FFcharge=self._FF_chargesContainers,
             Pedcharge=self._Ped_chargesContainers,
