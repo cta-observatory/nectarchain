@@ -10,6 +10,8 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+import numpy as np
+
 
 class ContainerDisplay(ABC):
     @staticmethod
@@ -25,11 +27,34 @@ class ContainerDisplay(ABC):
         """
         if isinstance(container, ChargesContainer):
             image = container.charges_hg
+            pixels_id = container.pixels_id
         elif isinstance(container, WaveformsContainer):
             image = container.wfs_hg.sum(axis=2)
+            pixels_id = container.pixels_id
         else:
-            log.warning("container can't be displayed")
+            log.error(
+                "container can't be displayed, must be a ChargesContainer or a WaveformsContainer"
+            )
+            raise Exception(
+                "container can't be displayed, must be a ChargesContainer or a WaveformsContainer"
+            )
+
+        highlighten_pixels = np.array([], dtype=int)
+        if geometry.pix_id.value.shape[0] != image.shape[1]:
+            mask = np.array([_id in pixels_id for _id in geometry.pix_id.value])
+            missing_pixels = np.array(geometry.pix_id.value[~mask], dtype=int)
+
+            missing_values = np.empty((image.shape[0], missing_pixels.shape[0]))
+            missing_values.fill(np.nan)
+            highlighten_pixels = np.concatenate((highlighten_pixels, missing_pixels))
+
+            image = np.concatenate((missing_values, image), axis=1)
+            pixels_id = np.concatenate((missing_pixels, pixels_id))
+        sort_index = [np.where(pixels_id == pix)[0][0] for pix in geometry.pix_id.value]
+        image = image.T[sort_index].T
+
         disp = CameraDisplay(geometry=geometry, image=image[evt], cmap=cmap)
+        disp.highlight_pixels(highlighten_pixels, color="r", linewidth=2)
         disp.add_colorbar()
         return disp
 
