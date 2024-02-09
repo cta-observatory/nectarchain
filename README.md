@@ -20,7 +20,7 @@ mamba create -n nectarchain -c conda-forge nectarchain
 `nectarchain` can also be manually installed as a PyPI package, albeit following specific requirements which are automatically accounted for through a `conda`/`mamba` installation.
 
 ```shell
-mamba create -n nectarchain python=3.8
+mamba create -n nectarchain python=3.11
 mamba activate nectarchain
 pip install nectarchain
 ```
