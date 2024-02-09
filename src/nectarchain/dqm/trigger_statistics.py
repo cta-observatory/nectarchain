@@ -9,16 +9,31 @@ from matplotlib import pyplot as plt
 class TriggerStatistics(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
+        self.Pix = None
+        self.Samp = None
+        self.event_type = []
+        self.event_times = []
+        self.event_id = []
+        self.run_times = []
+        self.run_start1 = None
+        self.run_start = None
+        self.run_end = None
+        self.event_ped_times = None
+        self.event_phy_times = None
+        self.event_other_times = None
+        self.event_ped_id = None
+        self.event_phy_id = None
+        self.event_other_id = None
+        self.event_wrong_times = None
+        self.TriggerStat_Results_Dict = {}
+        self.TriggerStat_Figures_Dict = {}
+        self.TriggerStat_Figures_Names_Dict = {}
+
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
-
-        self.event_type = []
-        self.event_times = []
-        self.event_id = []
-        self.run_times = []
 
     def ProcessEvent(self, evt, noped):
         trigger_type = evt.trigger.event_type.value
@@ -72,7 +87,6 @@ class TriggerStatistics(DQMSummary):
         self.event_times = self.event_times[self.event_times > self.run_start]
 
     def GetResults(self):
-        self.TriggerStat_Results_Dict = {}
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
         self.TriggerStat_Results_Dict[
             "TRIGGER-STATISTICS"
@@ -97,8 +111,6 @@ class TriggerStatistics(DQMSummary):
         n1 = np.array(self.event_times.max() - self.event_times.min(), dtype=object)
         n = math.ceil(n1 / w)
 
-        self.TriggerStat_Figures_Dict = {}
-        self.TriggerStat_Figures_Names_Dict = {}
         fig1, ax = plt.subplots()
         ax.hist(
             self.event_type,

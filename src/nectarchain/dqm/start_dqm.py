@@ -11,6 +11,8 @@ from db_utils import DQMDB
 from matplotlib import pyplot as plt
 from mean_camera_display import MeanCameraDisplay_HighLowGain
 from mean_waveforms import MeanWaveFormsHighLowGain
+from pixel_participation import PixelParticipationHighLowGain
+from pixel_timeline import PixelTimelineHighLowGain
 from tqdm import tqdm
 from traitlets.config import Config
 from trigger_statistics import TriggerStatistics
@@ -140,28 +142,51 @@ ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
 # LIST OF PROCESSES TO RUN
 ########################################################################################
-processors = [
-    TriggerStatistics(HIGH_GAIN),
-    MeanWaveFormsHighLowGain(HIGH_GAIN),
-    MeanWaveFormsHighLowGain(LOW_GAIN),
-    MeanCameraDisplay_HighLowGain(HIGH_GAIN),
-    MeanCameraDisplay_HighLowGain(LOW_GAIN),
-    ChargeIntegrationHighLowGain(HIGH_GAIN),
-    ChargeIntegrationHighLowGain(LOW_GAIN),
-    CameraMonitoring(HIGH_GAIN),
-]
+a = TriggerStatistics(HIGH_GAIN)
+b = MeanWaveFormsHighLowGain(HIGH_GAIN)
+c = MeanWaveFormsHighLowGain(LOW_GAIN)
+d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
+e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
+f = ChargeIntegrationHighLowGain(HIGH_GAIN)
+g = ChargeIntegrationHighLowGain(LOW_GAIN)
+h = CameraMonitoring(HIGH_GAIN)
+i = PixelParticipationHighLowGain(HIGH_GAIN)
+j = PixelParticipationHighLowGain(LOW_GAIN)
+k = PixelTimelineHighLowGain(HIGH_GAIN)
+ll = PixelTimelineHighLowGain(LOW_GAIN)
+
+processors = list()
+
+processors.append(a)
+processors.append(b)
+processors.append(c)
+processors.append(d)
+processors.append(e)
+processors.append(f)
+processors.append(g)
+processors.append(h)
+processors.append(i)
+processors.append(j)
+processors.append(k)
+processors.append(ll)
+
 
 # LIST OF DICT RESULTS
+Results_TriggerStatistics = {}
 Results_MeanWaveForms_HighGain = {}
 Results_MeanWaveForms_LowGain = {}
 Results_MeanCameraDisplay_HighGain = {}
 Results_MeanCameraDisplay_LowGain = {}
 Results_ChargeIntegration_HighGain = {}
 Results_ChargeIntegration_LowGain = {}
-Results_TriggerStatistics = {}
 Results_CameraMonitoring = {}
+Results_PixelParticipation_HighGain = {}
+Results_PixelParticipation_LowGain = {}
+Results_PixelTimeline_HighGain = {}
+Results_PixelTimeline_LowGain = {}
 
 NESTED_DICT = {}  # The final results dictionary
+
 NESTED_DICT_KEYS = [
     "Results_TriggerStatistics",
     "Results_MeanWaveForms_HighGain",
@@ -171,8 +196,13 @@ NESTED_DICT_KEYS = [
     "Results_ChargeIntegration_HighGain",
     "Results_ChargeIntegration_LowGain",
     "Results_CameraMonitoring",
+    "Results_PixelParticipation_HighGain",
+    "Results_PixelParticipation_LowGain",
+    "Results_PixelTimeline_HighGain",
+    "Results_PixelTimeline_LowGain",
 ]
-# NESTED_DICT_KEYS = ["Results_CameraMonitoring"]
+
+# NESTED_DICT_KEYS = ["Results_PixelParticipation_HighGain"]
 
 # START
 for p in processors:

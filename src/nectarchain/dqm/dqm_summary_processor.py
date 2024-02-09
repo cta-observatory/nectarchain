@@ -13,7 +13,6 @@ class DQMSummary:
             self.FirstReader = reader1
             self.Samp = len(evt1.r0.tel[0].waveform[0][0])
             self.Pix = len(evt1.r0.tel[0].waveform[0])
-
         return self.Pix, self.Samp
 
     def ConfigureForRun(self):
@@ -36,11 +35,12 @@ class DQMSummary:
     def WriteAllResults(self, path, DICT):
         data2 = Table()
         data1 = Table()
+        data0 = Table()
         data = Table()
-        hdu, hdu1, hdu2 = None, None, None
+        hdu, hdu0, hdu1, hdu2 = None, None, None, None
         hdulist = fits.HDUList()
         for i, j in DICT.items():
-            if i == "Results_TriggerStatistics":
+            if (i == "Results_TriggerStatistics"):
                 for n2, m2 in j.items():
                     data2[n2] = m2
                 hdu2 = fits.BinTableHDU(data2)
@@ -52,7 +52,13 @@ class DQMSummary:
                 for n1, m1 in j.items():
                     data1[n1] = m1
                 hdu1 = fits.BinTableHDU(data1)
-                hdu1.name = "MWF"
+                hdu1.name = "MWF"    
+
+            elif (i == "Results_PixelTimeline_HighGain") or (i == "Results_PixelTimeline_LowGain"):
+                for n0, m0 in j.items():
+                    data0[n0] = m0 
+                hdu0 = fits.BinTableHDU(data0)
+                hdu0.name = "BPX"
 
             else:
                 for n, m in j.items():
@@ -67,11 +73,17 @@ class DQMSummary:
             hdulist.append(hdu1)
         else:
             print("No MWF studies requests")
+        if hdu0:
+            hdulist.append(hdu0)
+        else:
+            print("No Pixel Timeline studies requests")
         if hdu:
             hdulist.append(hdu)
         else:
             print("No Camera studies requests")
-        FileName = path + "_Results.fits"
+
+        
+        FileName = path + '_Results.fits'
         print(FileName)
         hdulist.writeto(FileName, overwrite=True)
         return None
