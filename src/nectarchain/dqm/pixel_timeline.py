@@ -6,29 +6,30 @@ from ctapipe.coordinates import EngineeringCameraFrame
 import numpy as np
 
 
-class PixelTimeline_HighLowGain(DQMSummary):
+class PixelTimelineHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
-        return None
+        self.Pix = None
+        self.Samp = None
+        self.counter_evt = None
+        self.counter_ped = None
+        self.SumBadPixels_ped = []
+        self.SumBadPixels = []
+        self.BadPixelTimeline_ped = None
+        self.BadPixelTimeline = None
+        self.camera = None
+        self.cmap = None
+        self.cmap2  = None
+        self.PixelTimeline_Results_Dict = {}
+        self.PixelTimeline_Figures_Dict = {}
+        self.PixelTimeline_Figures_Names_Dict = {}
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
-
-
         self.counter_evt = 0
         self.counter_ped = 0
-
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
-        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
-
-        self.cmap = "gnuplot2"
-        self.cmap2 = "gnuplot2"
-
-
-        self.SumBadPixels_ped = []
-        self.SumBadPixels = []
 
     def ProcessEvent(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
@@ -66,11 +67,7 @@ class PixelTimeline_HighLowGain(DQMSummary):
         print( self.BadPixelTimeline_ped)
 
 
-
-
     def GetResults(self):
-        # INITIATE DICT
-        self.PixelTimeline_Results_Dict = {}
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
@@ -102,8 +99,6 @@ class PixelTimeline_HighLowGain(DQMSummary):
         return self.PixelTimeline_Results_Dict
 
     def PlotResults(self, name, FigPath):
-        self.PixelTimeline_Figures_Dict = {}
-        self.PixelTimeline_Figures_Names_Dict = {}
 
         # titles = ['All', 'Pedestals']
         if self.k == 0:

@@ -13,7 +13,6 @@ class DQMSummary:
             self.FirstReader = reader1
             self.Samp = len(evt1.r0.tel[0].waveform[0][0])
             self.Pix = len(evt1.r0.tel[0].waveform[0])
-
         return self.Pix, self.Samp
 
     def ConfigureForRun(self):

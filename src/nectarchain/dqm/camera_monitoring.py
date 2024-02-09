@@ -13,6 +13,29 @@ from matplotlib import pyplot as plt
 class CameraMonitoring(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
+        self.Pix = None
+        self.Samp = None
+        self.camera = None
+        self.cmap = None
+        self.subarray = None
+        self.event_id = []
+        self.event_times = []
+        self.DrawerTemp = None
+        self.run_start = None
+        self.run_end = None
+        self.DrawerTimes = None
+        self.DrawerTemp11 = None
+        self.DrawerTemp21 = None
+        self.DrawerNum1 = None
+        self.DrawerTimes_new = None
+        self.DrawerTemp12 = None
+        self.DrawerTemp22 = None
+        self.DrawerNum2 = None
+        self.DrawerTemp1_mean = []
+        self.DrawerTemp2_mean = []
+        self.CameraMonitoring_Results_Dict = {}
+        self.ChargeInt_Figures_Dict = {}
+        self.ChargeInt_Figures_Names_Dict = {}
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
@@ -25,9 +48,6 @@ class CameraMonitoring(DQMSummary):
         self.cmap = "gnuplot2"
 
         self.subarray = Reader1.subarray
-
-        self.event_id = []
-        self.event_times = []
 
         for i, evt1 in enumerate(Reader1):
             self.run_start1 = evt1.nectarcam.tel[0].svc.date
@@ -89,8 +109,6 @@ class CameraMonitoring(DQMSummary):
             self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
             self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]
 
-            self.DrawerTemp1_mean = []
-            self.DrawerTemp2_mean = []
             TotalDrawers = np.max(self.DrawerNum2)
 
             for i in range(TotalDrawers + 1):
@@ -110,7 +128,6 @@ class CameraMonitoring(DQMSummary):
             print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
 
     def GetResults(self):
-        self.CameraMonitoring_Results_Dict = {}
         try:
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
@@ -122,8 +139,6 @@ class CameraMonitoring(DQMSummary):
         return self.CameraMonitoring_Results_Dict
 
     def PlotResults(self, name, FigPath):
-        self.ChargeInt_Figures_Dict = {}
-        self.ChargeInt_Figures_Names_Dict = {}
 
         try:
             fig, disp = plt.subplots()

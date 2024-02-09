@@ -5,7 +5,17 @@ import time
 
 from camera_monitoring import CameraMonitoring
 from charge_integration import ChargeIntegrationHighLowGain
+<<<<<<< HEAD
 from ctapipe.io import EventSource
+=======
+from pixel_participation import PixelParticipationHighLowGain
+from pixel_timeline import PixelTimelineHighLowGain
+from mean_camera_display import MeanCameraDisplay_HighLowGain
+from mean_waveforms import MeanWaveFormsHighLowGain
+from trigger_statistics import TriggerStatistics
+
+from ctapipe.io import EventSeeker, EventSource
+>>>>>>> ba8e8ad (declaring all class members in init)
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
 from db_utils import DQMDB
 from matplotlib import pyplot as plt
@@ -140,6 +150,7 @@ ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
 # LIST OF PROCESSES TO RUN
 ########################################################################################
+<<<<<<< HEAD
 processors = [
     TriggerStatistics(HIGH_GAIN),
     MeanWaveFormsHighLowGain(HIGH_GAIN),
@@ -154,6 +165,36 @@ processors = [
     PixelTimeline_HighLowGain(HIGH_GAIN),
     PixelTimeline_HighLowGain(LOW_GAIN),
 ]
+=======
+a = TriggerStatistics(HIGH_GAIN)
+b = MeanWaveFormsHighLowGain(HIGH_GAIN)
+c = MeanWaveFormsHighLowGain(LOW_GAIN)
+d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
+e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
+f = ChargeIntegrationHighLowGain(HIGH_GAIN)
+g = ChargeIntegrationHighLowGain(LOW_GAIN)
+h = CameraMonitoring(HIGH_GAIN)
+i = PixelParticipationHighLowGain(HIGH_GAIN)
+j = PixelParticipationHighLowGain(LOW_GAIN)
+k = PixelTimelineHighLowGain(HIGH_GAIN)
+l = PixelTimelineHighLowGain(LOW_GAIN)
+
+processors = list()
+
+processors.append(a)
+processors.append(b)
+processors.append(c)
+processors.append(d)
+processors.append(e)
+processors.append(f)
+processors.append(g)
+processors.append(h)
+processors.append(i)
+processors.append(j)
+processors.append(k)
+processors.append(l)
+
+>>>>>>> ba8e8ad (declaring all class members in init)
 
 # LIST OF DICT RESULTS
 Results_TriggerStatistics = {}

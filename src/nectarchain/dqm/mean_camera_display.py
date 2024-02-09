@@ -8,15 +8,31 @@ from matplotlib import pyplot as plt
 class MeanCameraDisplay_HighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
-        return None
+        self.Pix = None
+        self.Samp = None
+        self.CameraAverage = None
+        self.CameraAverage_ped = None
+        self.counter_evt = None
+        self.counter_ped = None
+        self.camera = None
+        self.cmap = None
+        self.CameraAverage = []
+        self.CameraAverage1 = []
+        self.CameraAverage_ped = []
+        self.CameraAverage_ped1 = []
+        self.CameraAverage_overEvents = None
+        self.CameraAverage_overEvents_overSamp = None
+        self.CameraAverage_ped_overEvents  = None
+        self.CameraAverage_ped_overEvents_overSamp = None
+        self.MeanCameraDisplay_Results_Dict = {}
+        self.MeanCameraDisplay_Figures_Dict = {}
+        self.MeanCameraDisplay_Figures_Names_Dict = {}
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
 
-        self.CameraAverage = np.zeros(self.Pix)
-        self.CameraAverage_ped = np.zeros(self.Pix)
         self.counter_evt = 0
         self.counter_ped = 0
 
@@ -26,8 +42,6 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
 
         self.cmap = "gnuplot2"
 
-        self.CameraAverage = []
-        self.CameraAverage_ped = []
 
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
@@ -72,8 +86,6 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
             )
 
     def GetResults(self):
-        # INITIATE DICT
-        self.MeanCameraDisplay_Results_Dict = {}
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
@@ -113,8 +125,6 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
         return self.MeanCameraDisplay_Results_Dict
 
     def PlotResults(self, name, FigPath):
-        self.MeanCameraDisplay_Figures_Dict = {}
-        self.MeanCameraDisplay_Figures_Names_Dict = {}
 
         # titles = ['All', 'Pedestals']
         if self.k == 0:
@@ -123,14 +133,14 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
             gain_c = "Low"
 
         if self.counter_evt > 0:
-            fig1, self.disp1 = plt.subplots()
-            self.disp1 = CameraDisplay(
+            fig1, disp1 = plt.subplots()
+            disp1 = CameraDisplay(
                 geometry=self.camera[~self.pixelBAD[0]],
                 image=self.CameraAverage_overEvents_overSamp[~self.pixelBAD[0]],
                 cmap=plt.cm.coolwarm,
             )
-            self.disp1.add_colorbar()
-            self.disp1.axes.text(2.0, 0, "Charge (DC)", rotation=90)
+            disp1.add_colorbar()
+            disp1.axes.text(2.0, 0, "Charge (DC)", rotation=90)
             plt.title("Camera average %s gain (ALL)" % gain_c)
 
             self.MeanCameraDisplay_Figures_Dict[
@@ -144,14 +154,14 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
             plt.close()
 
         if self.counter_ped > 0:
-            fig2, self.disp2 = plt.subplots()
-            self.disp2 = CameraDisplay(
+            fig2, disp2 = plt.subplots()
+            disp2 = CameraDisplay(
                 geometry=self.camera[~self.pixelBAD[0]],
                 image=self.CameraAverage_ped_overEvents_overSamp[~self.pixelBAD[0]],
                 cmap=plt.cm.coolwarm,
             )
-            self.disp2.add_colorbar()
-            self.disp2.axes.text(2.0, 0, "Charge (DC)", rotation=90)
+            disp2.add_colorbar()
+            disp2.axes.text(2.0, 0, "Charge (DC)", rotation=90)
             plt.title("Camera average %s gain (PED)" % gain_c)
 
             self.MeanCameraDisplay_Figures_Dict[

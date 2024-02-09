@@ -6,28 +6,43 @@ from ctapipe.coordinates import EngineeringCameraFrame
 import numpy as np
 
 
-class PixelParticipation_HighLowGain(DQMSummary):
+class PixelParticipationHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
-        return None
+        self.Pix = None
+        self.Samp = None
+        self.counter_evt = None
+        self.counter_ped = None
+        self.BadPixels_ped = None
+        self.BadPixels =  None
+        self.camera  = None
+        self.camera2 = None
+        self.cmap = None
+        self.cmap2 = None
+        self.PixelParticipation_Results_Dict = {}
+        self.PixelParticipation_Figures_Dict = {}
+        self.PixelParticipation_Figures_Names_Dict = {}
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
-
         self.counter_evt = 0
         self.counter_ped = 0
+        self.BadPixels_ped = np.zeros(self.Pix)
+        self.BadPixels =  np.zeros(self.Pix)
 
-        self.camera = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
-        self.camera2 = CameraGeometry.from_name("NectarCam-003").transform_to(EngineeringCameraFrame())
+        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+            EngineeringCameraFrame()
+        )
+
+        self.camera2 = Reader1.subarray.tel[0].camera.geometry.transform_to(
+            EngineeringCameraFrame()
+        )
 
         self.cmap = "gnuplot2"
         self.cmap2 = "gnuplot2"
 
-
-        self.BadPixels_ped = np.zeros(self.Pix)
-        self.BadPixels =  np.zeros(self.Pix)
 
     def ProcessEvent(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
@@ -57,8 +72,6 @@ class PixelParticipation_HighLowGain(DQMSummary):
 
 
     def GetResults(self):
-        # INITIATE DICT
-        self.PixelParticipation_Results_Dict = {}
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
@@ -87,8 +100,6 @@ class PixelParticipation_HighLowGain(DQMSummary):
         return self.PixelParticipation_Results_Dict
 
     def PlotResults(self, name, FigPath):
-        self.PixelParticipation_Figures_Dict = {}
-        self.PixelParticipation_Figures_Names_Dict = {}
 
         # titles = ['All', 'Pedestals']
         if self.k == 0:
@@ -97,16 +108,16 @@ class PixelParticipation_HighLowGain(DQMSummary):
             gain_c = "Low"
 
         if self.counter_evt > 0:
-            fig1, self.disp1 = plt.subplots()
-            self.disp1 = CameraDisplay(
+            fig1, disp1 = plt.subplots()
+            disp1 = CameraDisplay(
                 geometry=self.camera,
                 image=self.BadPixels,
                 cmap=self.cmap,
             )
-            self.disp1.cmap = self.cmap
-            self.disp1.cmap = plt.cm.coolwarm
-            self.disp1.add_colorbar()
-            self.disp1.axes.text(2.0, 0, "Bad Pixels", rotation=90)
+            disp1.cmap = self.cmap
+            disp1.cmap = plt.cm.coolwarm
+            disp1.add_colorbar()
+            disp1.axes.text(2.0, 0, "Bad Pixels", rotation=90)
             plt.title("Camera BPX %s gain (ALL)" % gain_c)
 
             self.PixelParticipation_Figures_Dict[
@@ -120,16 +131,16 @@ class PixelParticipation_HighLowGain(DQMSummary):
             plt.close()
 
         if self.counter_ped > 0:
-            fig2, self.disp2 = plt.subplots()
-            self.disp2 = CameraDisplay(
+            fig2, disp2 = plt.subplots()
+            disp2 = CameraDisplay(
                 geometry=self.camera2,
                 image=self.BadPixels_ped,
                 cmap=self.cmap2,
             )
-            self.disp2.cmap = self.cmap2
-            self.disp2.cmap = plt.cm.coolwarm
-            self.disp2.add_colorbar()
-            self.disp2.axes.text(2.0, 0, "Bad Pixels", rotation=90)
+            disp2.cmap = self.cmap2
+            disp2.cmap = plt.cm.coolwarm
+            disp2.add_colorbar()
+            disp2.axes.text(2.0, 0, "Bad Pixels", rotation=90)
             plt.title("Camera BPX %s gain (PED)" % gain_c)
 
             self.PixelParticipation_Figures_Dict[

@@ -6,24 +6,30 @@ from matplotlib import pyplot as plt
 class MeanWaveFormsHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
-        return None
+        self.Pix = None
+        self.Samp = None
+        self.Mwf = None
+        self.Mwf_ped = None
+        self.counter_evt = None
+        self.counter_ped = None
+        self.Mwf_average = None
+        self.Mwf_ped_average = None
+        self.Mwf_Mean_overPix = []
+        self.Mwf_ped_Mean_overPix = []
+        self.MeanWaveForms_Results_Dict = {}
+        self.MeanWaveForms_Figures_Dict = {}
+        self.MeanWaveForms_Figures_Names_Dict = {}
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
-
-        # redefine everything
         self.Mwf = np.zeros((self.Pix, self.Samp))
         self.Mwf_ped = np.zeros((self.Pix, self.Samp))
         self.counter_evt = 0
         self.counter_ped = 0
-
         self.Mwf_average = np.zeros((self.Pix, self.Samp))
         self.Mwf_ped_average = np.zeros((self.Pix, self.Samp))
-        self.Mwf_Mean_overPix = []
-        self.Mwf_ped_Mean_overPix = []
-
         self.wf_list_plot = list(range(1, self.Samp + 1))  # used for plotting later on
 
         return None
@@ -64,8 +70,6 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         return None
 
     def GetResults(self):
-        # INITIATE DICT
-        self.MeanWaveForms_Results_Dict = {}
 
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
@@ -89,8 +93,6 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         return self.MeanWaveForms_Results_Dict
 
     def PlotResults(self, name, FigPath):
-        self.MeanWaveForms_Figures_Dict = {}
-        self.MeanWaveForms_Figures_Names_Dict = {}
 
         wf_list = np.array(self.wf_list_plot)
 

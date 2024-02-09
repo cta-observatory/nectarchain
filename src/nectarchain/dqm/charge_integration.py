@@ -12,6 +12,32 @@ from traitlets.config.loader import Config
 class ChargeIntegrationHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
+        self.Pix = None
+        self.Samp = None
+        self.counter_evt = None
+        self.counter_ped = None
+        self.image_all = []
+        self.peakpos_all = []
+        self.image_ped = []
+        self.peakpos_ped = []
+        self.camera  = None
+        self.cmap = None
+        self.subarray  = None
+        self.integrator = None
+        self.pixelBAD  = None
+        self.image_all = []
+        self.image_all_median = None
+        self.image_all_average = None
+        self.image_all_std = None
+        self.image_all_rms = None
+        self.image_ped = []
+        self.image_ped_median = None
+        self.image_ped_average = None
+        self.image_ped_std = None
+        self.image_ped_rms = None
+        self.ChargeInt_Results_Dict = {}
+        self.ChargeInt_Figures_Dict = {}
+        self.ChargeInt_Figures_Names_Dict = {}
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples
@@ -38,11 +64,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         self.integrator = LocalPeakWindowSum(subarray, config=config)
 
-        self.image_all = []
-        self.peakpos_all = []
 
-        self.image_ped = []
-        self.peakpos_ped = []
 
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
@@ -107,7 +129,6 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.image_ped_rms = np.sqrt(np.sum(self.image_ped**2, axis=0))
 
     def GetResults(self):
-        self.ChargeInt_Results_Dict = {}
 
         if self.k == 0:
             self.ChargeInt_Results_Dict[
@@ -168,8 +189,6 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         return self.ChargeInt_Results_Dict
 
     def PlotResults(self, name, FigPath):
-        self.ChargeInt_Figures_Dict = {}
-        self.ChargeInt_Figures_Names_Dict = {}
 
         # titles = ['All', 'Pedestals']
         if self.k == 0:
