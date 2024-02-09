@@ -1,9 +1,6 @@
+import numpy as np
 from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
-from ctapipe.visualization import CameraDisplay
-from ctapipe.instrument import CameraGeometry
-from ctapipe.coordinates import EngineeringCameraFrame
-import numpy as np
 
 
 class PixelTimelineHighLowGain(DQMSummary):
@@ -19,7 +16,7 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.BadPixelTimeline = None
         self.camera = None
         self.cmap = None
-        self.cmap2  = None
+        self.cmap2 = None
         self.PixelTimeline_Results_Dict = {}
         self.PixelTimeline_Figures_Dict = {}
         self.PixelTimeline_Figures_Names_Dict = {}
@@ -38,7 +35,7 @@ class PixelTimelineHighLowGain(DQMSummary):
             pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
             pixels = np.concatenate([pixel21, pixel])
-        else: 
+        else:
             pixels = pixel
 
         if evt.trigger.event_type.value == 32:  # count peds
@@ -60,29 +57,25 @@ class PixelTimelineHighLowGain(DQMSummary):
         return None
 
     def FinishRun(self):
-        
-        self.BadPixelTimeline_ped = np.array(self.SumBadPixels_ped, dtype=float)/self.Pix 
-        self.BadPixelTimeline = np.array(self.SumBadPixels, dtype=float)/self.Pix
+        self.BadPixelTimeline_ped = (
+            np.array(self.SumBadPixels_ped, dtype=float) / self.Pix
+        )
+        self.BadPixelTimeline = np.array(self.SumBadPixels, dtype=float) / self.Pix
         print(self.BadPixelTimeline)
-        print( self.BadPixelTimeline_ped)
-
+        print(self.BadPixelTimeline_ped)
 
     def GetResults(self):
-
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
-
             if self.counter_evt > 0:
                 self.PixelTimeline_Results_Dict[
                     "CAMERA-BadPixTimeline-PHY-HIGH-GAIN"
                 ] = self.BadPixelTimeline
 
-
             if self.counter_ped > 0:
                 self.PixelTimeline_Results_Dict[
                     "CAMERA-BadPixTimeline-PED-HIGH-GAIN"
                 ] = self.BadPixelTimeline_ped
-
 
         if self.k == 1:
             if self.counter_evt > 0:
@@ -95,11 +88,9 @@ class PixelTimelineHighLowGain(DQMSummary):
                     "CAMERA-BadPixTimeline-PED-LOW-GAIN"
                 ] = self.BadPixelTimeline_ped
 
-
         return self.PixelTimeline_Results_Dict
 
     def PlotResults(self, name, FigPath):
-
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -108,7 +99,11 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         if self.counter_evt > 0:
             fig1, disp = plt.subplots()
-            plt.plot(np.arange(self.counter_evt), self.BadPixelTimeline*100, label = "Physical events")
+            plt.plot(
+                np.arange(self.counter_evt),
+                self.BadPixelTimeline * 100,
+                label="Physical events",
+            )
             plt.legend()
             plt.xlabel("Timeline")
             plt.ylabel("BPX fraction (%)")
@@ -116,9 +111,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
             full_name = name + "_BPX_Timeline_%sGain_All.png" % gain_c
             FullPath = FigPath + full_name
-            self.PixelTimeline_Figures_Dict[
-                "BPX-TIMELINE-ALL-%s-GAIN" % gain_c
-            ] = fig1
+            self.PixelTimeline_Figures_Dict["BPX-TIMELINE-ALL-%s-GAIN" % gain_c] = fig1
             self.PixelTimeline_Figures_Names_Dict[
                 "BPX-TIMELINE-ALL-%s-GAIN" % gain_c
             ] = FullPath
@@ -127,7 +120,11 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig2, disp = plt.subplots()
-            plt.plot(np.arange(self.counter_ped), self.BadPixelTimeline_ped*100, label = "Pedestal events")
+            plt.plot(
+                np.arange(self.counter_ped),
+                self.BadPixelTimeline_ped * 100,
+                label="Pedestal events",
+            )
             plt.legend()
             plt.xlabel("Timeline")
             plt.ylabel("BPX fraction (%)")
@@ -135,9 +132,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
             full_name = name + "_BPX_Timeline_%sGain_Ped.png" % gain_c
             FullPath = FigPath + full_name
-            self.PixelTimeline_Figures_Dict[
-                "BPX-TIMELINE-PED-%s-GAIN" % gain_c
-            ] = fig2
+            self.PixelTimeline_Figures_Dict["BPX-TIMELINE-PED-%s-GAIN" % gain_c] = fig2
             self.PixelTimeline_Figures_Names_Dict[
                 "BPX-TIMELINE-PED-%s-GAIN" % gain_c
             ] = FullPath
