@@ -14,10 +14,8 @@ from ctapipe_io_nectarcam.constants import (
     N_GAINS, N_PIXELS, N_SAMPLES,
     HIGH_GAIN, LOW_GAIN,
 )
-from ctapipe_io_nectarcam import time_from_unix_tai_ns
 from ctapipe.core.traits import Dict, Unicode
-from ctapipe.containers import PedestalContainer
-from ...data.container import merge_map_ArrayDataContainer
+from ...data.container import NectarCAMPedestalContainer, merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
 from .waveformsComponent import WaveformsComponent
 
@@ -26,6 +24,7 @@ import numpy as np
 __all__ = [
     "PedestalEstimationComponent",
 ]
+
 
 class PedestalEstimationComponent(NectarCAMComponent):
     """
@@ -37,7 +36,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
     #     read_only=True,
     # ).tag(config=True)
 
-    #not implemented yet, placeholder
+    # not implemented yet, placeholder
     filter_kwargs = Dict(
         default_value={},
         help="The kwargs to be pass to the waveform filter method",
@@ -48,7 +47,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
     SubComponents = copy.deepcopy(NectarCAMComponent)
     SubComponents.default_value = [
         "WaveformsComponent",
-        #f"{PedestalFilterAlgorithm.default_value}",
+        # f"{PedestalFilterAlgorithm.default_value}",
     ]
     SubComponents.read_only = True
 
@@ -87,7 +86,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         self._wfs_mask = None
 
     @staticmethod
-    def calculate_stats(waveformsContainers,wfs_mask,statistics):
+    def calculate_stats(waveformsContainers, wfs_mask, statistics):
         """
         Calculate statistics for the pedestals from a waveforms container.
 
@@ -111,7 +110,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         for stat in statistics:
             # Calculate the statistic along axis = 0, that is over events
             ped_stat_hg = getattr(np, stat)(
-                ma.masked_array(waveformsContainers.wfs_hg,wfs_mask),axis=0)
+                ma.masked_array(waveformsContainers.wfs_hg, wfs_mask), axis=0)
             ped_stat_lg = getattr(np, stat)(
                 ma.masked_array(waveformsContainers.wfs_lg, wfs_mask), axis=0)
 
@@ -144,7 +143,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         if not (is_empty):
             # change this into something that creates a real mask
             # one mask for both HG and LG or separate? mask only on hg which is more sensitive
-            self._wfs_mask = np.zeros(np.shape(self._waveformsContainers.wfs_hg),dtype=bool)
+            self._wfs_mask = np.zeros(np.shape(self._waveformsContainers.wfs_hg), dtype=bool)
         else:
             pass
 
@@ -153,20 +152,22 @@ class PedestalEstimationComponent(NectarCAMComponent):
         # compute statistics for the pedestals
         # the statistic names must be valid numpy attributes
         statistics = ['mean', 'median', 'std']
-        #print(np.shape(self._waveformsContainers.wfs_hg))
-        ped_stats = self.calculate_stats(self._waveformsContainers,self._wfs_mask,statistics)
+        ped_stats = self.calculate_stats(self._waveformsContainers, self._wfs_mask, statistics)
 
-        metadata = {} # store information about filtering method and params
-
-        output = PedestalContainer(
-            n_events = self._waveformsContainers.nevents,
-            sample_time= np.nan, # TODO : does this need to be filled?
-            sample_time_min= time_from_unix_tai_ns(self._waveformsContainers.ucts_timestamp.min()).value * u.s,
-            sample_time_max = time_from_unix_tai_ns(self._waveformsContainers.ucts_timestamp.max()).value * u.s,
-            charge_mean = ped_stats['mean'],
-            charge_median = ped_stats['median'],
-            charge_std = ped_stats['std'],
-            meta = metadata,
+        # Fill output container
+        # metadata = {} # store information about filtering method and params
+        output = NectarCAMPedestalContainer(
+            nsamples=self._waveformsContainers.nsamples,
+            nevents= self._waveformsContainers.nevents,
+            pixels_id=self._waveformsContainers.pixels_id,
+            ucts_timestamp_min=self._waveformsContainers.ucts_timestamp.min(),
+            ucts_timestamp_max=self._waveformsContainers.ucts_timestamp.max(),
+            pedestal_mean_hg=ped_stats['mean'][HIGH_GAIN],
+            pedestal_mean_lg=ped_stats['mean'][LOW_GAIN],
+            pedestal_median_hg=ped_stats['median'][HIGH_GAIN],
+            pedestal_median_lg=ped_stats['median'][LOW_GAIN],
+            pedestal_std_hg=ped_stats['std'][HIGH_GAIN],
+            pedestal_std_lg=ped_stats['std'][LOW_GAIN],
         )
 
         return output

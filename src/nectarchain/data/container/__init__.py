@@ -9,3 +9,4 @@ from .core import (
 from .eventSource import *
 from .gainContainer import *
 from .waveformsContainer import *
+from .pedestalContainer import *
