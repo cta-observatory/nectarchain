@@ -1,18 +1,11 @@
 import argparse
 import json
-import logging
 import os
 import sys
 from pathlib import Path
 
 os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
-logging.getLogger("numba").setLevel(logging.WARNING)
-logging.basicConfig(
-    format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    level=logging.DEBUG,
-    filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{Path(__file__).stem}_{os.getpid()}.log",
-)
-log = logging.getLogger(__name__)
+
 import copy
 
 from nectarchain.data.container import (
@@ -78,13 +71,13 @@ parser.add_argument(
         "SlidingWindowMaxSum",
         "TwoPassWindowSum",
     ],
-    default="LocalPeakWindowSum",
+    default="FullWaveformSum",
     help="charge extractor method",
     type=str,
 )
 parser.add_argument(
     "--extractor_kwargs",
-    default={"window_width": 16, "window_shift": 4},
+    default={},
     help="charge extractor kwargs",
     type=json.loads,
 )
@@ -162,7 +155,6 @@ def main(
                     from_computed_waveforms=True,
                     **charges_kwargs,
                 )
-
                 tool.setup()
                 tool.start()
                 tool.finish()
@@ -171,6 +163,10 @@ def main(
 
 
 if __name__ == "__main__":
+    import logging
+
+    # to quiet numba
+    logging.getLogger("numba").setLevel(logging.WARNING)
     # run of interest
     # spe_run_number = [2633,2634,3784]
     # ff_run_number = [2608]
@@ -182,7 +178,10 @@ if __name__ == "__main__":
 
     kwargs["log_level"] = args.verbosity
 
-    os.makedirs(f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures")
+    os.makedirs(
+        f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
+        exist_ok=True,
+    )
     logging.basicConfig(
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         force=True,

@@ -11,7 +11,7 @@ import numpy as np
 from ctapipe.containers import Container, EventType
 from ctapipe.core.traits import ComponentNameList, Integer, Path
 
-from ....data.container import ChargesContainer
+from ....data.container import ChargesContainer, ChargesContainers
 from ....data.container.core import NectarCAMContainer, merge_map_ArrayDataContainer
 from ....data.management import DataManagement
 from ...component import ArrayDataComponent, NectarCAMComponent
@@ -30,11 +30,11 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         default_value=["PhotoStatisticNectarCAMComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
-    run_number = Integer(help="the FF run number to be treated", default_value=-1).tag(
-        config=True
-    )
+    run_number = Integer(
+        help="the flat-field run number to be treated", default_value=-1
+    ).tag(config=True)
     Ped_run_number = Integer(
-        help="the FF run number to be treated", default_value=-1
+        help="the pedestal run number to be treated", default_value=-1
     ).tag(config=True)
 
     run_file = Path(
@@ -53,27 +53,6 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
-        )
-        if not (self.reload_events):
-            FF_files = DataManagement.find_charges(
-                run_number=self.run_number,
-                method=self.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                max_events=self.max_events,
-            )
-            Ped_files = DataManagement.find_charges(
-                run_number=self.run_number,
-                max_events=self.max_events,
-            )
-
-            if len(FF_files) == 1 and len(Ped_files) == 1:
-                log.warning(
-                    "You asked events_per_slice but you don't want to reload events and a charges file is on disk for FF and Pedestals, then events_per_slice is set to None"
-                )
-                self.events_per_slice = None
 
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
@@ -115,7 +94,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             max_events=self.max_events,
         )
         Ped_files = DataManagement.find_charges(
-            run_number=self.run_number,
+            run_number=self.Ped_run_number,
             max_events=self.max_events,
         )
         if self.reload_events or len(FF_files) != 1 or len(Ped_files) != 1:
@@ -137,9 +116,9 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         else:
             self.log.info(f"reading computed charge from FF file {FF_files[0]}")
             chargesContainers = ChargesContainer.from_hdf5(FF_files[0])
-            if isinstance(chargesContainers, NectarCAMContainer):
+            if isinstance(chargesContainers, ChargesContainer):
                 self.components[0]._FF_chargesContainers = chargesContainers
-            elif isinstance(list(chargesContainers.containers.keys())[0], EventType):
+            elif isinstance(chargesContainers, ChargesContainers):
                 self.log.debug("merging along TriggerType")
                 self.components[0]._FF_chargesContainers = merge_map_ArrayDataContainer(
                     chargesContainers
@@ -156,9 +135,9 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
 
             self.log.info(f"reading computed charge from Ped file {Ped_files[0]}")
             chargesContainers = ChargesContainer.from_hdf5(Ped_files[0])
-            if isinstance(chargesContainers, NectarCAMContainer):
+            if isinstance(chargesContainers, ChargesContainer):
                 self.components[0]._Ped_chargesContainers = chargesContainers
-            elif isinstance(list(chargesContainers.containers.keys())[0], EventType):
+            elif isinstance(chargesContainers, ChargesContainers):
                 self.log.debug("merging along TriggerType")
                 self.components[
                     0

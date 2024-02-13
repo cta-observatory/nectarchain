@@ -7,6 +7,7 @@ log.handlers = logging.getLogger("__main__").handlers
 import copy
 import os
 import pathlib
+from datetime import datetime
 
 import numpy as np
 from ctapipe.containers import Container
@@ -24,6 +25,7 @@ from ctapipe.io import HDF5TableWriter
 from ctapipe.io.datawriter import DATA_MODEL_VERSION
 from tables.exceptions import HDF5ExtError
 from tqdm.auto import tqdm
+from traitlets import default
 
 from ..data import DataManagement
 from ..data.container import LightNectarCAMEventSource
@@ -47,6 +49,14 @@ class BaseNectarCAMCalibrationTool(Tool):
     progress_bar = Bool(
         help="show progress bar during processing", default_value=False
     ).tag(config=True)
+
+    @default("provenance_log")
+    def _default_provenance_log(self):
+        return f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{self.name}_{os.getpid()}_{datetime.now()}.provenance.log"
+
+    @default("log_file")
+    def _default_log_file(self):
+        return f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{self.name}_{os.getpid()}_{datetime.now()}.log"
 
     @staticmethod
     def load_run(
