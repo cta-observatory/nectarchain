@@ -30,4 +30,4 @@ tool.initialize()
 tool.setup()
 
 tool.start()
-tool.finish(return_output_component=True)
+output = tool.finish(return_output_component=True)

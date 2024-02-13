@@ -36,9 +36,9 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
-        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
-        )
+        # str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+        #     self.extractor_kwargs
+        # )
         if self.events_per_slice is None:
             ext = ".h5"
         else:
@@ -95,7 +95,7 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 self.log.debug("merging along slices")
                 waveformsContainers_merges_along_slices = (
                     ArrayDataComponent.merge_along_slices(
-                        containers_generator=waveformContainers
+                        containers_generator=waveformsContainers
                     )
                 )
                 self.log.debug("merging along TriggerType")
@@ -104,4 +104,3 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 )
 
         print("Input wfs shape", np.shape(self.components[0]._waveformsContainers.wfs_hg))
-        print("Input wfs 0", self.components[0]._waveformsContainers.wfs_hg[0])

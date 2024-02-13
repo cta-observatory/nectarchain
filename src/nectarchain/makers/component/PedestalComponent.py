@@ -5,6 +5,8 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 import copy
+import astropy.units as u
+import numpy.ma as ma
 
 from .core import NectarCAMComponent
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
@@ -12,6 +14,7 @@ from ctapipe_io_nectarcam.constants import (
     N_GAINS, N_PIXELS, N_SAMPLES,
     HIGH_GAIN, LOW_GAIN,
 )
+from ctapipe_io_nectarcam import time_from_unix_tai_ns
 from ctapipe.core.traits import Dict, Unicode
 from ctapipe.containers import PedestalContainer
 from ...data.container import merge_map_ArrayDataContainer
@@ -81,7 +84,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         )
         self._waveformsContainers = None
 
-        self.__wfs_mask = None
+        self._wfs_mask = None
 
     @staticmethod
     def calculate_stats(waveformsContainers,wfs_mask,statistics):
@@ -106,12 +109,15 @@ class PedestalEstimationComponent(NectarCAMComponent):
         ped_stats = {}
 
         for stat in statistics:
-            # Calculate the statistic
-            ped_stat_hg = getattr(np, stat)(waveformsContainers.wfs_hg[wfs_mask])
-            ped_stat_lg = getattr(np, stat)(waveformsContainers.wfs_lg[wfs_mask])
+            # Calculate the statistic along axis = 0, that is over events
+            ped_stat_hg = getattr(np, stat)(
+                ma.masked_array(waveformsContainers.wfs_hg,wfs_mask),axis=0)
+            ped_stat_lg = getattr(np, stat)(
+                ma.masked_array(waveformsContainers.wfs_lg, wfs_mask), axis=0)
 
             # Create a 3D array for the statistic
-            ped_stat = np.zeros([N_GAINS, N_PIXELS, N_SAMPLES])
+            array_shape = np.append([N_GAINS], np.shape(waveformsContainers.wfs_hg[0]))
+            ped_stat = np.zeros(array_shape)
             ped_stat[HIGH_GAIN] = ped_stat_hg
             ped_stat[LOW_GAIN] = ped_stat_lg
 
@@ -138,7 +144,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         if not (is_empty):
             # change this into something that creates a real mask
             # one mask for both HG and LG or separate? mask only on hg which is more sensitive
-            self.__wfs_mask = np.ones(np.shape(self._waveformsContainers.wfs_hg),dtype=bool)
+            self._wfs_mask = np.zeros(np.shape(self._waveformsContainers.wfs_hg),dtype=bool)
         else:
             pass
 
@@ -148,26 +154,19 @@ class PedestalEstimationComponent(NectarCAMComponent):
         # the statistic names must be valid numpy attributes
         statistics = ['mean', 'median', 'std']
         #print(np.shape(self._waveformsContainers.wfs_hg))
-        ped_stats = self.calculate_stats(self._waveformsContainers,self.__wfs_mask,statistics)
+        ped_stats = self.calculate_stats(self._waveformsContainers,self._wfs_mask,statistics)
 
         metadata = {} # store information about filtering method and params
 
-        # set reference time to mean between min and max
-        # is this choice reasonable?
-        #print(self._waveformsContainers.ucts_timestamp)
-        ref_time = np.mean(self._waveformsContainers.ucts_timestamp.min(),
-                           self._waveformsContainers.ucts_timestamp.max())
-        print(self._waveformsContainers.ucts_timestamp.min(),
-              self._waveformsContainers.ucts_timestamp.max())
-
         output = PedestalContainer(
             n_events = self._waveformsContainers.nevents,
-            sample_time = ref_time,#to be filled, mean of min/max
-            sample_time_min = self._waveformsContainers.ucts_timestamp.min(),
-            sample_time_max = self._waveformsContainers.ucts_timestamp.max(),
+            sample_time= np.nan, # TODO : does this need to be filled?
+            sample_time_min= time_from_unix_tai_ns(self._waveformsContainers.ucts_timestamp.min()).value * u.s,
+            sample_time_max = time_from_unix_tai_ns(self._waveformsContainers.ucts_timestamp.max()).value * u.s,
             charge_mean = ped_stats['mean'],
             charge_median = ped_stats['median'],
             charge_std = ped_stats['std'],
             meta = metadata,
         )
+
         return output
