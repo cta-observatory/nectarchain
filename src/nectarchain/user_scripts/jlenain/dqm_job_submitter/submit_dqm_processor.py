@@ -169,6 +169,9 @@ for run in runlist:
     # j.setDestination('LCG.GRIF.fr')
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")
+    j.setBannedSites(
+        ["LCG.DESY-ZEUTHEN.de", "LCG.PIC.es", "LCG.FRASCATI.it", "ARC.CSCS.ch"]
+    )
     sandboxlist = [f"{executable_wrapper}"]
     for f in meta["Files"]:
         if f.endswith(".fits.fz") and f"NectarCAM.Run{run}" in f:
