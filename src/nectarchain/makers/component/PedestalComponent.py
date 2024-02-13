@@ -24,17 +24,18 @@ __all__ = [
     "PedestalEstimationComponent",
 ]
 
-class PedestalComponent(NectarCAMComponent):
+class PedestalEstimationComponent(NectarCAMComponent):
     """
     Component that computes calibration pedestal coefficients from raw data.
     """
-    PedestalFilterAlgorithm = Unicode(
-        "PedestalWaveformStdFilter",
-        help="The waveform filter method",
-        read_only=True,
-    ).tag(config=True)
+    # PedestalFilterAlgorithm = Unicode(
+    #     "PedestalWaveformStdFilter",
+    #     help="The waveform filter method",
+    #     read_only=True,
+    # ).tag(config=True)
 
-    extractor_kwargs = Dict(
+    #not implemented yet, placeholder
+    filter_kwargs = Dict(
         default_value={},
         help="The kwargs to be pass to the waveform filter method",
     ).tag(config=True)
@@ -44,7 +45,7 @@ class PedestalComponent(NectarCAMComponent):
     SubComponents = copy.deepcopy(NectarCAMComponent)
     SubComponents.default_value = [
         "WaveformsComponent",
-        f"{PedestalFilterAlgorithm.default_value}",
+        #f"{PedestalFilterAlgorithm.default_value}",
     ]
     SubComponents.read_only = True
 
@@ -55,9 +56,9 @@ class PedestalComponent(NectarCAMComponent):
         waveformsComponent_configurable_traits = ComponentUtils.get_configurable_traits(
             WaveformsComponent
         )
-        pedestalFilterAlgorithm_configurable_traits = ComponentUtils.get_configurable_traits(
-            eval(self.PedestalFilterAlgorithm)
-        )
+        # pedestalFilterAlgorithm_configurable_traits = ComponentUtils.get_configurable_traits(
+        #     eval(self.PedestalFilterAlgorithm)
+        # )
 
         for key in kwargs.keys():
             if key in waveformsComponent_configurable_traits.keys():
@@ -137,7 +138,7 @@ class PedestalComponent(NectarCAMComponent):
         if not (is_empty):
             # change this into something that creates a real mask
             # one mask for both HG and LG or separate? mask only on hg which is more sensitive
-            self.__wfs_mask = np.ones([N_PIXELS,N_SAMPLES],dtype=bool)
+            self.__wfs_mask = np.ones(np.shape(self._waveformsContainers.wfs_hg),dtype=bool)
         else:
             pass
 
@@ -146,13 +147,22 @@ class PedestalComponent(NectarCAMComponent):
         # compute statistics for the pedestals
         # the statistic names must be valid numpy attributes
         statistics = ['mean', 'median', 'std']
+        #print(np.shape(self._waveformsContainers.wfs_hg))
         ped_stats = self.calculate_stats(self._waveformsContainers,self.__wfs_mask,statistics)
 
         metadata = {} # store information about filtering method and params
 
+        # set reference time to mean between min and max
+        # is this choice reasonable?
+        #print(self._waveformsContainers.ucts_timestamp)
+        ref_time = np.mean(self._waveformsContainers.ucts_timestamp.min(),
+                           self._waveformsContainers.ucts_timestamp.max())
+        print(self._waveformsContainers.ucts_timestamp.min(),
+              self._waveformsContainers.ucts_timestamp.max())
+
         output = PedestalContainer(
             n_events = self._waveformsContainers.nevents,
-            sample_time = 0.,#to be filled, mean of min/max
+            sample_time = ref_time,#to be filled, mean of min/max
             sample_time_min = self._waveformsContainers.ucts_timestamp.min(),
             sample_time_max = self._waveformsContainers.ucts_timestamp.max(),
             charge_mean = ped_stats['mean'],
