@@ -13,7 +13,7 @@ from nectarchain.makers.calibration import (
 )
 
 run_number = 3938
-max_events= 100
+max_events= 20
 outfile = "/Users/ltibaldo/tmp/test_pedestal/pedestal_{}.h5".format(run_number)
 
 tool = PedestalNectarCAMCalibrationTool(
