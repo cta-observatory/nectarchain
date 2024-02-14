@@ -24,6 +24,7 @@ tool = PedestalNectarCAMCalibrationTool(
     reload_events=False,
     output_path=outfile,
     overwrite = True,
+    ucts_tmin = 1674462932650000000,
 )
 
 tool.initialize()
