@@ -25,6 +25,7 @@ tool = PedestalNectarCAMCalibrationTool(
     output_path=outfile,
     overwrite = True,
     ucts_tmin = 1674462932650000000,
+    filter_method = "WaveformsStdFilter",
 )
 
 tool.initialize()

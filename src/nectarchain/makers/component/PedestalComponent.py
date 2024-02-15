@@ -9,8 +9,8 @@ import numpy.ma as ma
 
 from .core import NectarCAMComponent
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe_io_nectarcam.constants import (N_GAINS, HIGH_GAIN, LOW_GAIN, )
-from ctapipe.core.traits import Dict, Integer
+from ctapipe_io_nectarcam.constants import N_GAINS, HIGH_GAIN, LOW_GAIN
+from ctapipe.core.traits import Integer, Unicode, Float
 from ...data.container import NectarCAMPedestalContainer, merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
 from .waveformsComponent import WaveformsComponent
@@ -26,47 +26,54 @@ class PedestalEstimationComponent(NectarCAMComponent):
     """
 
     ucts_tmin = Integer(None,
-        help="Minimum UCTS timestamp for events used in pedestal estimation", read_only=False,
-        allow_none=True, ).tag(config=True)
+                        help="Minimum UCTS timestamp for events used in pedestal estimation",
+                        read_only=False,
+                        allow_none=True, ).tag(config=True)
 
     ucts_tmax = Integer(None,
-        help="Maximum UCTS timestamp for events used in pedestal estimation", read_only=False,
-        allow_none=True, ).tag(config=True)
+                        help="Maximum UCTS timestamp for events used in pedestal estimation",
+                        read_only=False,
+                        allow_none=True, ).tag(config=True)
 
-    filter_kwargs = Dict(default_value={},
-        help="The kwargs to be pass to the waveform filter method", ).tag(config=True)
+    filter_method = Unicode(
+        None,
+        help="The waveforms filter method to be used.\n"
+             "Inplemented methods: WaveformsStdFilter (standard deviation of waveforms),\n"
+             "                     ChargeDistributionFilter (charge distribution).",
+        read_only=False,
+        allow_none=True,
+    ).tag(config=True)
 
-    # add parameters for min max time
+    wfs_std_threshold = Float(
+        4,
+        help="Threshold of waveforms standard deviation in ADC counts above which a waveform is excluded from pedestal computation.",
+        read_only=False,
+    )
 
     SubComponents = copy.deepcopy(NectarCAMComponent)
     SubComponents.default_value = ["WaveformsComponent",
-        # f"{PedestalFilterAlgorithm.default_value}",
-    ]
+                                   # f"{PedestalFilterAlgorithm.default_value}",
+                                   ]
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
 
         waveformsComponent_kwargs = {}
-        self._PedestalFilterAlgorithm_kwargs = {}
         other_kwargs = {}
         waveformsComponent_configurable_traits = ComponentUtils.get_configurable_traits(
             WaveformsComponent)
-        # pedestalFilterAlgorithm_configurable_traits = ComponentUtils.get_configurable_traits(
-        #     eval(self.PedestalFilterAlgorithm)
-        # )
 
         for key in kwargs.keys():
             if key in waveformsComponent_configurable_traits.keys():
                 waveformsComponent_kwargs[key] = kwargs[key]
-            # elif key in waveformsComponent_configurable_traits.keys():
-            #     self._SPEfitalgorithm_kwargs[key] = kwargs[key]
             else:
                 other_kwargs[key] = kwargs[key]
 
         super().__init__(subarray=subarray, config=config, parent=parent, *args, **kwargs)
 
         self.waveformsComponent = WaveformsComponent(subarray=subarray, config=config,
-            parent=parent, *args, **waveformsComponent_kwargs, )
+                                                     parent=parent, *args,
+                                                     **waveformsComponent_kwargs, )
 
         # initialize members
         self._waveformsContainers = None
@@ -120,7 +127,14 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
     def timestamp_mask(self, tmin, tmax):
         """
-        Generates a mask to filter out events in the valid time interval
+        Generates a mask to filter waveforms outside the required time interval
+
+        Parameters
+        ----------
+        tmin : int
+            Minimum time of the required interval
+        tmax : int
+            Maximum time of the required interval
 
         Returns
         ----------
@@ -133,21 +147,56 @@ class PedestalEstimationComponent(NectarCAMComponent):
                 f"Apply time interval selection: UCTS timestamps in interval {tmin}-{tmax}")
             # Define the mask on UCTS timestamps
             t_mask = ((self._waveformsContainers.ucts_timestamp < tmin) | (
-                        self._waveformsContainers.ucts_timestamp > tmax))
+                    self._waveformsContainers.ucts_timestamp > tmax))
             # Log information
             nonzero = np.count_nonzero(t_mask)
-            log.info(f"{len(t_mask) - nonzero}/{len(t_mask)} events pass time selection.")
-
+            log.info(f"{len(t_mask) - nonzero}/{len(t_mask)} waveforms pass time selection.")
             # Create waveforms mask to apply time selection
             new_mask = np.logical_or(self._wfs_mask, t_mask[:, np.newaxis, np.newaxis])
-
-            # Put some information in log to say how many events pass time selection
         else:
             log.info(
                 f"The entire time interval will be used: UCTS timestamps in {tmin}-{tmax}")
             new_mask = self._wfs_mask
 
         # Return waveforms mask
+        return new_mask
+
+    def waveformsStdFilter_mask(self, threshold):
+        """
+        Generates a mask to filter waveforms that have a standard deviation above a threshold.
+        This option is effective for dark room verification data.
+
+        Parameters
+        ----------
+        threshold : float
+            Waveform standard deviation (in ADC counts) above which the waveform is filtered out
+
+        Returns
+        ----------
+        mask : `~numpy.ndarray`
+            A boolean array of shape (n_events,n_pixels,n_samples) that identifies waveforms to be masked
+        """
+
+        # Log
+        log.info(f"apply {self.filter_method} method with threshold = {threshold} ADC counts")
+
+        # For each event and pixel calculate the waveform std
+        wfs_std = np.std(self._waveformsContainers.wfs_hg, axis=2)
+
+        # Mask events/pixels that exceed the threshold
+        std_mask = (wfs_std > threshold)
+        # Log information
+        # number of masked waveforms
+        nonzero = np.count_nonzero(std_mask)
+        # number of total waveforms
+        tot_wfs = self._waveformsContainers.nevents * self._waveformsContainers.npixels
+        # fraction of waveforms masked (%)
+        frac = 100 * nonzero / tot_wfs
+        log.info(f"{frac:.2f}% of the waveforms filtered out based on standard deviation.")
+
+        # Create waveforms mask to apply time selection
+        new_mask = np.logical_or(self._wfs_mask, std_mask[:, :, np.newaxis])
+
         return new_mask
 
     def finish(self, *args, **kwargs):
@@ -159,12 +208,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
             is_empty = self._waveformsContainers.is_empty()
             if is_empty:
                 log.warning("empty waveforms container, pedestals cannot be evaluated")
-
                 # container with no results
-                output = NectarCAMPedestalContainer(
-                    nsamples=self._waveformsContainers.nsamples,
-                    nevents=self._waveformsContainers.nevents,
-                    pixels_id=self._waveformsContainers.pixels_id, )
+                return None
             else:
                 # container merging
                 self._waveformsContainers = merge_map_ArrayDataContainer(
@@ -174,22 +219,39 @@ class PedestalEstimationComponent(NectarCAMComponent):
             # Build mask to filter the waveforms
             # Mask based on the high gain channel that is most sensitive to signals
             # Initialize empty mask
-            self._wfs_mask = np.zeros(np.shape(self._waveformsContainers.wfs_hg), dtype=bool)
+            self._wfs_mask = np.zeros(np.shape(self._waveformsContainers.wfs_hg),
+                                      dtype=bool)
 
-            # Time mask
+            # Time selection
             # set the minimum time
-            tmin = np.maximum(self.ucts_tmin or self._waveformsContainers.ucts_timestamp.min(),
+            print('time filter')
+            tmin = np.maximum(
+                self.ucts_tmin or self._waveformsContainers.ucts_timestamp.min(),
                 self._waveformsContainers.ucts_timestamp.min())
             # set the maximum time
-            tmax = np.minimum(self.ucts_tmax or self._waveformsContainers.ucts_timestamp.max(),
+            tmax = np.minimum(
+                self.ucts_tmax or self._waveformsContainers.ucts_timestamp.max(),
                 self._waveformsContainers.ucts_timestamp.max())
-            # Build mask
+            # Add time selection to mask
             self._wfs_mask = self.timestamp_mask(tmin, tmax)
+
+            # Filter Waveforms
+            if self.filter_method is None:
+                log.info('no filtering applied to waveforms')
+            elif self.filter_method == 'WaveformsStdFilter':
+                self._wfs_mask = self.waveformsStdFilter_mask(self.wfs_std_threshold)
+            elif self.filter_method == 'ChargeDistributionFilter':
+                log.info(f"method {self.filter_method} not implemented yet")
+            else:
+                log.warning(
+                    f"required filtering method {self.filter_method} not available")
+                log.warning("no filtering applied to waveforms")
 
             # compute statistics for the pedestals
             # the statistic names must be valid numpy.ma attributes
             statistics = ['mean', 'median', 'std']
-            self._ped_stats = self.calculate_stats(self._waveformsContainers, self._wfs_mask,
+            self._ped_stats = self.calculate_stats(self._waveformsContainers,
+                                                   self._wfs_mask,
                                                    statistics)
 
             # Fill and return output container
@@ -207,4 +269,4 @@ class PedestalEstimationComponent(NectarCAMComponent):
                 pedestal_std_hg=self._ped_stats['std'][HIGH_GAIN],
                 pedestal_std_lg=self._ped_stats['std'][LOW_GAIN], )
 
-        return output
+            return output
