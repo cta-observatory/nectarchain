@@ -10,10 +10,11 @@ import numpy.ma as ma
 from .core import NectarCAMComponent
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from ctapipe_io_nectarcam.constants import N_GAINS, HIGH_GAIN, LOW_GAIN
-from ctapipe.core.traits import Integer, Unicode, Float
+from ctapipe.core.traits import Integer, Unicode, Float, Dict
 from ...data.container import NectarCAMPedestalContainer, merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
 from .waveformsComponent import WaveformsComponent
+from .chargesComponent import ChargesComponent
 
 import numpy as np
 
@@ -27,12 +28,10 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
     ucts_tmin = Integer(None,
                         help="Minimum UCTS timestamp for events used in pedestal estimation",
-                        read_only=False,
                         allow_none=True, ).tag(config=True)
 
     ucts_tmax = Integer(None,
                         help="Maximum UCTS timestamp for events used in pedestal estimation",
-                        read_only=False,
                         allow_none=True, ).tag(config=True)
 
     filter_method = Unicode(
@@ -45,40 +44,59 @@ class PedestalEstimationComponent(NectarCAMComponent):
     ).tag(config=True)
 
     wfs_std_threshold = Float(
-        4,
+        4.,
         help="Threshold of waveforms standard deviation in ADC counts above which a waveform is excluded from pedestal computation.",
-        read_only=False,
-    )
+    ).tag(config=True)
 
-    SubComponents = copy.deepcopy(NectarCAMComponent)
+    charge_sigma_high_thr = Float(
+        3.,
+        help="Threshold in charge distribution (number of sigmas above mean) beyond which a waveform is excluded from pedestal computation.",
+    ).tag(config=True)
+
+    charge_sigma_low_thr = Float(
+        3.,
+        help="Threshold in charge distribution (number of sigmas below mean) beyond which a waveform is excluded from pedestal computation.",
+    ).tag(config=True)
+
+    # I do not understand why but the ChargesComponents traits are not loaded
+    # FIXME
+    method = Unicode(
+        default_value="FullWaveformSum",
+        help="the charge extraction method",
+    ).tag(config=True)
+
+    extractor_kwargs = Dict(
+        default_value={},
+        help="The kwargs to be pass to the charge extractor method",
+    ).tag(config=True)
+
+    SubComponents = copy.deepcopy(NectarCAMComponent.SubComponents)
     SubComponents.default_value = ["WaveformsComponent",
-                                   # f"{PedestalFilterAlgorithm.default_value}",
-                                   ]
+                                   "ChargesComponent"]
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
 
-        waveformsComponent_kwargs = {}
-        other_kwargs = {}
-        waveformsComponent_configurable_traits = ComponentUtils.get_configurable_traits(
-            WaveformsComponent)
-
-        for key in kwargs.keys():
-            if key in waveformsComponent_configurable_traits.keys():
-                waveformsComponent_kwargs[key] = kwargs[key]
-            else:
-                other_kwargs[key] = kwargs[key]
-
         super().__init__(subarray=subarray, config=config, parent=parent, *args, **kwargs)
-
-        self.waveformsComponent = WaveformsComponent(subarray=subarray, config=config,
-                                                     parent=parent, *args,
-                                                     **waveformsComponent_kwargs, )
 
         # initialize members
         self._waveformsContainers = None
+        self._chargesContainers = None
         self._wfs_mask = None
         self._ped_stats = {}
+
+        # initialize waveforms component
+        waveformsComponent_kwargs = {}
+        waveformsComponent_configurable_traits = ComponentUtils.get_configurable_traits(
+            WaveformsComponent)
+        for key in kwargs.keys():
+            if key in waveformsComponent_configurable_traits.keys():
+                waveformsComponent_kwargs[key] = kwargs[key]
+        self.waveformsComponent = WaveformsComponent(
+            subarray=subarray,
+            config=config,
+            parent=parent, *args,
+            **waveformsComponent_kwargs, )
 
     @staticmethod
     def calculate_stats(waveformsContainers, wfs_mask, statistics):
@@ -199,6 +217,62 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
         return new_mask
 
+    def chargeDistributionFilter_mask(self, sigma_low, sigma_high):
+        """
+        Generates a mask to filter waveforms that have a charge in the tails of the distribution.
+        This option is useful for data with NSB.
+
+        Parameters
+        ----------
+        sigma_low : float
+            Number of standard deviation below mean charge beyond which waveforms are filtered out
+        sigma_high : float
+            Number of standard deviation above mean charge beyond which waveforms are filtered out
+
+        Returns
+        ----------
+        mask : `~numpy.ndarray`
+            A boolean array of shape (n_events,n_pixels,n_samples) that identifies waveforms to be masked
+        """
+
+        # Log
+        log.info(f"apply {self.filter_method} method to filter waveforms with charge outside "
+                 f"the interval -{sigma_low}-{sigma_high} standard deviations around the mean value")
+
+        # Check if waveforms and charges have the same shape
+        wfs_shape = np.shape(self._waveformsContainers.wfs_hg)
+        charges_shape = np.shape(self._chargesContainers.charges_hg)
+        if wfs_shape[0] == charges_shape[0] and wfs_shape[1] == charges_shape[1]:
+
+            # For each event and pixel calculate the charge mean and std over all events
+            charge_mean = np.mean(self._chargesContainers.charges_hg, axis=0)
+            charge_std = np.std(self._chargesContainers.charges_hg, axis=0)
+
+            # Mask events/pixels that are outside the core of the distribution
+            low_threshold = charge_mean - sigma_low * charge_std
+            low_mask = (self._chargesContainers.charges_hg < low_threshold[np.newaxis, :])
+            high_threshold = charge_mean + sigma_high * charge_std
+            high_mask = (self._chargesContainers.charges_hg > high_threshold[np.newaxis, :])
+            charge_mask = np.logical_or(low_mask, high_mask)
+            # Log information
+            # number of masked waveforms
+            nonzero = np.count_nonzero(charge_mask)
+            # number of total waveforms
+            tot_wfs = self._waveformsContainers.nevents * self._waveformsContainers.npixels
+            # fraction of waveforms masked (%)
+            frac = 100 * nonzero / tot_wfs
+            log.info(
+                f"{frac:.2f}% of the waveforms filtered out based on charge distribution.")
+
+            # Create waveforms mask to apply time selection
+            new_mask = np.logical_or(self._wfs_mask, charge_mask[:, :, np.newaxis])
+        else:
+            log.warning(
+                "Waveforms and charges have incompatible shapes. No filtering applied.")
+            new_mask = self._wfs_mask
+
+        return new_mask
+
     def finish(self, *args, **kwargs):
 
         # Make sure that waveforms container is properly filled
@@ -216,6 +290,25 @@ class PedestalEstimationComponent(NectarCAMComponent):
                     self._waveformsContainers)
 
         if not is_empty:
+
+            # If we want to filter based on charges distribution
+            # make sure that the charge distribution container is filled
+            if self.filter_method == "ChargeDistributionFilter" and \
+                    self._chargesContainers is None:
+                log.debug("Compute charges from waveforms")
+                chargesComponent_kwargs = {}
+                chargesComponent_configurable_traits = ComponentUtils.get_configurable_traits(
+                    ChargesComponent)
+                for key in kwargs.keys():
+                    if key in chargesComponent_configurable_traits.keys():
+                        chargesComponent_kwargs[key] = kwargs[key]
+                self._chargesContainers = ChargesComponent.create_from_waveforms(
+                    waveformsContainer=self._waveformsContainers,
+                    subarray=self.subarray,
+                    config=self.config,
+                    parent=self.parent, *args,
+                    **chargesComponent_kwargs, )
+
             # Build mask to filter the waveforms
             # Mask based on the high gain channel that is most sensitive to signals
             # Initialize empty mask
@@ -241,7 +334,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
             elif self.filter_method == 'WaveformsStdFilter':
                 self._wfs_mask = self.waveformsStdFilter_mask(self.wfs_std_threshold)
             elif self.filter_method == 'ChargeDistributionFilter':
-                log.info(f"method {self.filter_method} not implemented yet")
+                self._wfs_mask = self.chargeDistributionFilter_mask(self.charge_sigma_low_thr,
+                                                                    self.charge_sigma_high_thr)
             else:
                 log.warning(
                     f"required filtering method {self.filter_method} not available")

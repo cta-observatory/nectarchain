@@ -9,7 +9,11 @@ import pathlib
 from ctapipe.core.traits import ComponentNameList, Bool
 
 from .core import NectarCAMCalibrationTool
-from ...data.container import WaveformsContainer, WaveformsContainers
+from ...data.container import (WaveformsContainer,
+                               WaveformsContainers,
+                               ChargesContainer,
+                               ChargesContainers,
+                               )
 from ...data.management import DataManagement
 from ...data.container.core import merge_map_ArrayDataContainer
 from ..component import ArrayDataComponent, NectarCAMComponent
@@ -34,9 +38,6 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
-        # str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-        #     self.extractor_kwargs
-        # )
         if self.events_per_slice is None:
             ext = ".h5"
         else:
@@ -58,10 +59,13 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             **kwargs,
     ):
 
+        # Waveforms
+        # Search files
         files = DataManagement.find_waveforms(
             run_number=self.run_number,
             max_events=self.max_events,
         )
+        # Load Waveforms from events
         if self.reload_events or len(files) != 1:
             if len(files) != 1:
                 self.log.info(
@@ -72,6 +76,7 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 *args,
                 **kwargs,
             )
+        # Load waveforms from file
         else:
             self.log.info(f"reading waveforms from files {files[0]}")
             waveformsContainers = WaveformsContainer.from_hdf5(files[0])
@@ -93,3 +98,41 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 self.components[0]._waveformsContainers = merge_map_ArrayDataContainer(
                     waveformsContainers_merges_along_slices
                 )
+
+        # Charges
+        if self.filter_method == 'ChargeDistributionFilter':
+            # Search on disk
+            charge_files = DataManagement.find_charges(
+                run_number=self.run_number,
+                max_events=self.max_events,
+                #use the standard extraction method, that is FullWaveformSum
+            )
+            # Compute charges from waveforms
+            if self.reload_events or len(charge_files) != 1:
+                if len(charge_files) != 1:
+                    self.log.info(
+                        f"{len(files)} computed charges files found with max_events > {self.max_events} for run {self.run_number}"
+                        f"charges will be computed from waveforms"
+                    )
+            else:
+                self.log.info(f"reading charges from files {charge_files[0]}")
+                chargesContainers = ChargesContainer.from_hdf5(charge_files[0])
+                if isinstance(chargesContainers, ChargesContainer):
+                    self.components[0]._chargesContainers = chargesContainers
+                elif isinstance(chargesContainers, ChargesContainers):
+                    self.log.debug("merging along TriggerType")
+                    self.components[0]._chargesContainers = merge_map_ArrayDataContainer(
+                        chargesContainers
+                    )
+                else:
+                    self.log.debug("merging along slices")
+                    chargesContainers_merges_along_slices = (
+                        ArrayDataComponent.merge_along_slices(
+                            containers_generator=chargesContainers
+                        )
+                    )
+                    self.log.debug("merging along TriggerType")
+                    self.components[0]._chargesContainers = merge_map_ArrayDataContainer(
+                        chargesContainers_merges_along_slices
+                    )
+
