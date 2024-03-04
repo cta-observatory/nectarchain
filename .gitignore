@@ -96,4 +96,4 @@ src/nectarchain/user_scripts/**/test
 
 #VScode
 .vscode/
-
+*.code-workspace
