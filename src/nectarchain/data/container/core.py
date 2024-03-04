@@ -23,6 +23,23 @@ __all__ = [
 
 
 def get_array_keys(container: Container):
+    """
+    Return a list of keys corresponding to fields which are array type in the given container.
+
+    Parameters:
+        container (Container): The container object to search for array fields.
+
+    Returns:
+        list: A list of keys corresponding to array fields in the container.
+
+    Example:
+        >>> container = Container()
+        >>> container.field1 = np.array([1, 2, 3])
+        >>> container.field2 = 5
+        >>> container.field3 = np.array([4, 5, 6])
+        >>> get_array_keys(container)
+        ['field1', 'field3']
+    """
     keys = []
     for field in container.fields:
         if field.type == np.ndarray:
@@ -31,11 +48,26 @@ def get_array_keys(container: Container):
 
 
 class NectarCAMContainer(Container):
-    """base class for the NectarCAM containers. This contaner cannot berecursive,
-    to be directly written with a HDF5TableWriter"""
+    """
+    Base class for the NectarCAM containers. This container cannot be recursive,
+    to be directly written with a HDF5TableWriter.
+    """
 
     @staticmethod
     def _container_from_hdf5(path, container_class):
+        """
+        Static method to read a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        container_class (Container): The class of the container to be filled with data.
+
+        Yields:
+        Container: The container from the data in the HDF5 file.
+
+        Example:
+        >>> container = NectarCAMContainer._container_from_hdf5('path_to_file.h5', MyContainerClass)
+        """
         if isinstance(path, str):
             path = Path(path)
 
@@ -120,6 +152,31 @@ class ArrayDataContainer(NectarCAMContainer):
 
     @staticmethod
     def _container_from_hdf5(path, container_class, slice_index=None):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        container_class (Container): The class of the container to be read.
+        slice_index (int, optional): The index of the slice of data within the hdf5 file to read. Default is None.
+
+        This method first checks if the path is a string and converts it to a Path object if it is.
+        It then imports the module of the container class and creates an instance of the container class.
+
+        If the HDF5 file contains more than one slice and no slice index is provided,
+        it reads all slices and yields a generator of containers.
+        If a slice index is provided, it reads only the specified slice and returns the container instance.
+
+        Yields:
+        Container: The container associated to the HDF5 file.
+
+        Raises:
+        NoSuchNodeError: If the specified node does not exist in the HDF5 file.
+        Exception: If any other error occurs.
+
+        Example:
+        >>> container = ArrayDataContainer._container_from_hdf5('path_to_file.h5', MyContainerClass)
+        """
         if isinstance(path, str):
             path = Path(path)
         module = importlib.import_module(f"{container_class.__module__}")
@@ -199,21 +256,67 @@ class ArrayDataContainer(NectarCAMContainer):
 
     @classmethod
     def from_hdf5(cls, path, slice_index=None):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        slice_index (int, optional): The index of the slice of data within the hdf5 file to read. Default is None.
+
+        This method will call the _container_from_hdf5 method with the container argument associated to its own class (ArrayDataContainer)
+
+        Yields:
+        Container: The container generator linked to the HDF5 file.
+
+        Example:
+        >>> container = ArrayDataContainer.from_hdf5('path_to_file.h5')
+        """
+
         return cls._container_from_hdf5(
             path, slice_index=slice_index, container_class=cls
         )
 
 
 class TriggerMapContainer(Container):
+    """
+    Class representing a TriggerMapContainer.
+
+    This class inherits from the `Container` class and is used to store trigger mappings of containers.
+
+    Attributes:
+        containers (Field): A field representing the trigger mapping of containers.
+
+    Methods:
+        is_empty(): Checks if the TriggerMapContainer is empty.
+        validate(): Validates the TriggerMapContainer by checking if all the containers mapped are filled by correct type.
+
+    Example:
+        >>> container = TriggerMapContainer()
+        >>> container.is_empty()
+        True
+        >>> container.validate()
+        None
+    """
+
     containers = Field(
         default_factory=partial(Map, Container),
         description="trigger mapping of Container",
     )
 
     def is_empty(self):
+        """This method check if the container is empty
+
+        Returns:
+            bool: True if the container is empty, False otherwise.
+        """
         return len(self.containers.keys()) == 0
 
     def validate(self):
+        """apply the validate method recursively to all the containers that are mapped within the TriggerMapContainer
+
+        Raises:
+            FieldValidationError: if one container is not valid.
+        """
         super().validate()
         for i, container in enumerate(self.containers):
             if i == 0:
@@ -226,6 +329,39 @@ class TriggerMapContainer(Container):
 
 
 def merge_map_ArrayDataContainer(triggerMapContainer: TriggerMapContainer):
+    """
+    Merge and map ArrayDataContainer
+
+    This function takes a TriggerMapContainer as input and merges the array fields of the containers mapped within the TriggerMapContainer. The merged array fields are concatenated along the 0th axis. The function also updates the 'nevents' field of the output container by summing the 'nevents' field of all the mapped containers.
+
+    Parameters:
+        triggerMapContainer (TriggerMapContainer): The TriggerMapContainer object containing the containers to be merged and mapped.
+
+    Returns:
+        ArrayDataContainer: The merged and mapped ArrayDataContainer object.
+
+    Example:
+        >>> triggerMapContainer = TriggerMapContainer()
+        >>> container1 = ArrayDataContainer()
+        >>> container1.field1 = np.array([1, 2, 3])
+        >>> container1.field2 = np.array([4, 5, 6])
+        >>> container1.nevents
+        3
+        >>> container2 = ArrayDataContainer()
+        >>> container2.field1 = np.array([7, 8, 9])
+        >>> container2.field2 = np.array([10, 11, 12])
+        >>> container2.nevents
+        3
+        >>> triggerMapContainer.containers['container1'] = container1
+        >>> triggerMapContainer.containers['container2'] = container2
+        >>> merged_container = merge_map_ArrayDataContainer(triggerMapContainer)
+        >>> merged_container.field1
+        array([1, 2, 3, 7, 8, 9])
+        >>> merged_container.field2
+        array([ 4,  5,  6, 10, 11, 12])
+        >>> merged_container.nevents
+        6
+    """
     triggerMapContainer.validate()
     keys = list(triggerMapContainer.containers.keys())
     output_container = copy.deepcopy(triggerMapContainer.containers[keys[0]])

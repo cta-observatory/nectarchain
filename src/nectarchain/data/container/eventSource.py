@@ -26,16 +26,31 @@ from ctapipe_io_nectarcam.containers import NectarCAMEventContainer
 
 __all__ = ["LightNectarCAMEventSource"]
 
-# DONE event.trigger.event_type
-# DONE event.index.event_id
-# DONE event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_timestamp
-# DONE event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_busy_counter
-# DONE event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_event_counter
-# DONE event.nectarcam.tel[__class__.TEL_ID.default_value].evt.trigger_pattern
-# DONE event.r0.tel[0].waveform
-
 
 def fill_nectarcam_event_container_from_zfile(self, array_event, event):
+    """
+    Fill the NectarCAM event container from the zfile event data.
+
+    Parameters:
+    - array_event: The NectarCAMDataContainer object to fill with event data.
+    - event: The event data from the zfile.
+
+    Returns:
+    - None
+
+    This function fills the NectarCAM event container in the NectarCAMDataContainer object with the event data from the zfile. It unpacks the necessary data from the event and assigns it to the corresponding fields in the event container.
+
+    The function performs the following steps:
+    1. Assigns the tel_id to the local variable.
+    2. Creates a new NectarCAMEventContainer object and assigns it to the event_container field of the NectarCAMDataContainer object.
+    3. Assigns the extdevices_presence field of the event to the extdevices_presence field of the event_container.
+    4. Assigns the counters field of the event to the counters field of the event_container.
+    5. Unpacks the TIB data from the event and assigns it to the corresponding fields in the event_container.
+    6. Unpacks the CDTS data from the event and assigns it to the corresponding fields in the event_container.
+    7. Calls the unpack_feb_data function to unpack the FEB counters and trigger pattern from the event and assign them to the corresponding fields in the event_container.
+
+    """
+
     tel_id = self.tel_id
     event_container = NectarCAMEventContainer()
     array_event.nectarcam.tel[tel_id].evt = event_container
@@ -160,6 +175,19 @@ def unpack_feb_data(self, event_container, event):
 
 
 def fill_trigger_info(self, array_event):
+    """
+    Fill the trigger information for a given event.
+
+    Parameters:
+        array_event (NectarCAMEventContainer): The NectarCAMEventContainer object to fill with trigger information.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
     tel_id = self.tel_id
     nectarcam = array_event.nectarcam.tel[tel_id]
     tib_available = nectarcam.evt.extdevices_presence & 1
@@ -216,7 +244,38 @@ def fill_trigger_info(self, array_event):
 
 
 class LightNectarCAMEventSource(NectarCAMEventSource):
+    """
+    LightNectarCAMEventSource is a subclass of NectarCAMEventSource that provides a generator for iterating over NectarCAM events.
+
+    This implementation of the NectarCAMEventSource is mucvh lighter than the one within ctapipe_io_nectarcam, only the fileds interesting
+    for nectachain are kept.
+
+    Attributes:
+        input_url (str): The input URL of the data source.
+        max_events (int): The maximum number of events to process.
+        tel_id (int): The telescope ID.
+        nectarcam_service (NectarCAMService): The service container for NectarCAM.
+        trigger_information (bool): Flag indicating whether to fill trigger information in the event container.
+        obs_ids (list): The list of observation IDs.
+        multi_file (MultiFileReader): The multi-file reader for reading the data source.
+        r0_r1_calibrator (R0R1Calibrator): The calibrator for R0 to R1 conversion.
+        calibrate_flatfields_and_pedestals (bool): Flag indicating whether to calibrate flatfield and pedestal events.
+
+    Methods:
+        _generator: The generator function that yields NectarCAMDataContainer objects representing each event.
+
+    """
+
     def _generator(self):
+        """
+        The generator function that yields NectarCAMDataContainer objects representing each event.
+
+        Yields:
+            NectarCAMDataContainer: The NectarCAMDataContainer object representing each event.
+
+        Raises:
+            None
+        """
         # container for NectarCAM data
         array_event = NectarCAMDataContainer()
         array_event.meta["input_url"] = self.input_url

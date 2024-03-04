@@ -40,6 +40,15 @@ class ChargesContainer(ArrayDataContainer):
 
 
 class ChargesContainers(TriggerMapContainer):
+    """
+    Class representing a ChargesContainers.
+
+    This class inherits from the `TriggerMapContainer` class and is used to store trigger or slices of data mappings of `ChargesContainer`.
+
+    Attributes:
+        containers (Field): A field representing the trigger or slices of data mapping of `ChargesContainer`.
+    """
+
     containers = Field(
         default_factory=partial(Map, ChargesContainer),
         description="trigger or slices of data mapping of ChargesContainer",
