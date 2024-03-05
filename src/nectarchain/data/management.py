@@ -18,9 +18,10 @@ __all__ = ["DataManagement"]
 
 # The DIRAC magic 2 lines !
 try:
-    import DIRAC
+    with KeepLoggingUnchanged():
+        import DIRAC
 
-    DIRAC.initialize()
+        DIRAC.initialize()
 except ImportError:
     log.warning("DIRAC probably not installed")
     pass
