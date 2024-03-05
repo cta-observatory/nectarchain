@@ -41,9 +41,9 @@ def get_array_keys(container: Container):
         ['field1', 'field3']
     """
     keys = []
-    for field in container.fields:
+    for key, field in container.fields.items():
         if field.type == np.ndarray:
-            keys.append(field.key)
+            keys.append(key)
     return keys
 
 
@@ -85,7 +85,6 @@ class NectarCAMContainer(Container):
 class ArrayDataContainer(NectarCAMContainer):
     """
     A container that holds information about waveforms from a specific run.
-
     Attributes:
         run_number (int): The run number associated with the waveforms.
         nevents (int): The number of events.
