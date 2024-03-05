@@ -13,7 +13,7 @@ from nectarchain.makers.calibration import (
 )
 
 run_number = 3938
-max_events= 100
+max_events= 300
 outfile = "/Users/ltibaldo/tmp/test_pedestal/pedestal_{}.h5".format(run_number)
 
 tool = PedestalNectarCAMCalibrationTool(
@@ -21,11 +21,11 @@ tool = PedestalNectarCAMCalibrationTool(
     run_number=run_number,
     max_events=max_events,
     log_level=20,
-    reload_events=False,
+    reload_events=True,
     output_path=outfile,
     overwrite = True,
-    ucts_tmin = 1674462932650000000,
-    filter_method = "ChargeDistributionFilter",
+    filter_method = 'WaveformsStdFilter',
+    events_per_slice = 100,
 )
 
 tool.initialize()

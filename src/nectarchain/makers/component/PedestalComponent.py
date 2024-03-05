@@ -8,10 +8,11 @@ import copy
 import numpy.ma as ma
 
 from .core import NectarCAMComponent
+from ctapipe.containers import EventType
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from ctapipe_io_nectarcam.constants import N_GAINS, HIGH_GAIN, LOW_GAIN
 from ctapipe.core.traits import Integer, Unicode, Float, Dict
-from ...data.container import NectarCAMPedestalContainer, merge_map_ArrayDataContainer
+from ...data.container import NectarCAMPedestalContainer
 from ...utils import ComponentUtils
 from .waveformsComponent import WaveformsComponent
 from .chargesComponent import ChargesComponent
@@ -140,8 +141,11 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
 
-        # fill the waveform container looping over the events
-        self.waveformsComponent(event=event, *args, **kwargs)
+        # fill the waveform container looping over the events of type SKY_PEDESTAL
+        if event.trigger.event_type == EventType.SKY_PEDESTAL:
+            self.waveformsComponent(event=event, *args, **kwargs)
+        else:
+            pass
 
     def timestamp_mask(self, tmin, tmax):
         """
@@ -273,42 +277,40 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
         return new_mask
 
-    def finish(self, *args, **kwargs):
+    def finish(self):
 
-        # Make sure that waveforms container is properly filled
-        is_empty = False
+        # Use only pedestal type events
+        waveformsContainers = self.waveformsComponent.finish()
+        self._waveformsContainers = waveformsContainers.containers[EventType.SKY_PEDESTAL]
+
+        # If we want to filter based on charges distribution
+        # make sure that the charge distribution container is filled
+        if self.filter_method == "ChargeDistributionFilter" and \
+                self._chargesContainers is None:
+            log.debug("Compute charges from waveforms")
+            chargesComponent_kwargs = {}
+            chargesComponent_configurable_traits = ComponentUtils.get_configurable_traits(
+                ChargesComponent)
+            for key in kwargs.keys():
+                if key in chargesComponent_configurable_traits.keys():
+                    chargesComponent_kwargs[key] = kwargs[key]
+            self._chargesContainers = ChargesComponent.create_from_waveforms(
+                waveformsContainer=self._waveformsContainers,
+                subarray=self.subarray,
+                config=self.config,
+                parent=self.parent, *args,
+                **chargesComponent_kwargs, )
+
+        # Check if waveforms container is empty
         if self._waveformsContainers is None:
-            self._waveformsContainers = self.waveformsComponent.finish(*args, **kwargs)
-            is_empty = self._waveformsContainers.is_empty()
-            if is_empty:
-                log.warning("empty waveforms container, pedestals cannot be evaluated")
-                # container with no results
-                return None
-            else:
-                # container merging
-                self._waveformsContainers = merge_map_ArrayDataContainer(
-                    self._waveformsContainers)
-
-        if not is_empty:
-
-            # If we want to filter based on charges distribution
-            # make sure that the charge distribution container is filled
-            if self.filter_method == "ChargeDistributionFilter" and \
-                    self._chargesContainers is None:
-                log.debug("Compute charges from waveforms")
-                chargesComponent_kwargs = {}
-                chargesComponent_configurable_traits = ComponentUtils.get_configurable_traits(
-                    ChargesComponent)
-                for key in kwargs.keys():
-                    if key in chargesComponent_configurable_traits.keys():
-                        chargesComponent_kwargs[key] = kwargs[key]
-                self._chargesContainers = ChargesComponent.create_from_waveforms(
-                    waveformsContainer=self._waveformsContainers,
-                    subarray=self.subarray,
-                    config=self.config,
-                    parent=self.parent, *args,
-                    **chargesComponent_kwargs, )
-
+            log.warning("Waveforms container is none, pedestals cannot be evaluated")
+            # container with no results
+            return None
+        elif self._waveformsContainers.nevents is None or self._waveformsContainers.nevents == 0:
+            log.warning("Waveforms container is empty, pedestals cannot be evaluated")
+            # container with no results
+            return None
+        else:
             # Build mask to filter the waveforms
             # Mask based on the high gain channel that is most sensitive to signals
             # Initialize empty mask
