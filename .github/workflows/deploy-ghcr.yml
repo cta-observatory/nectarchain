@@ -67,7 +67,7 @@ jobs:
       - name: Deploy ${{ env.container }} container ${{ matrix.deffiles[1] }}
         # Otherwise, the container tag is "latest" by default.
         # Don't push the container on a pull request.
-        if: github.event_name != 'pull_request'
+        if: ${{ (github.event_name != 'release') && (github.event_name != 'pull_request') }}
         run: |  
           apptainer push ${{ env.container }}.sif oras://${{ env.registry }}/${{ github.repository }}:${{ matrix.deffiles[1] }}
 
