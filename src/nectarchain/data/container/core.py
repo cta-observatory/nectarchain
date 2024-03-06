@@ -372,6 +372,9 @@ def merge_map_ArrayDataContainer(triggerMapContainer: TriggerMapContainer):
         6
     """
     triggerMapContainer.validate()
+    log.warning(
+        "TAKE CARE TO MERGE CONTAINERS ONLY IF PIXELS ID, RUN_NUMBER (OR ANY FIELD THAT ARE NOT ARRAY) ARE THE SAME"
+    )
     keys = list(triggerMapContainer.containers.keys())
     output_container = copy.deepcopy(triggerMapContainer.containers[keys[0]])
     for key in keys[1:]:

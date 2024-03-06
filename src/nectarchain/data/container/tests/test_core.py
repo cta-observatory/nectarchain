@@ -8,7 +8,7 @@ from nectarchain.data.container import (
     NectarCAMContainer,
     TriggerMapContainer,
 )
-from nectarchain.data.container.core import get_array_keys
+from nectarchain.data.container.core import get_array_keys, merge_map_ArrayDataContainer
 
 
 class Container_test(NectarCAMContainer):
@@ -159,3 +159,17 @@ class TestTriggerMapContainer:
             EventType.MUON
         ] = create_fake_NectarCAMContainer()
         assert isinstance(triggerMapContainer, TriggerMapContainer)
+
+    def test_merge_map_ArrayDataContainer(self):
+        triggerMapContainer = TriggerMapContainer()
+        arrayDataContainer1 = create_fake_ArrayDataContainer()
+        arrayDataContainer2 = create_fake_ArrayDataContainer()
+
+        triggerMapContainer.containers["1"] = arrayDataContainer1
+        triggerMapContainer.containers["2"] = arrayDataContainer2
+
+        merged = merge_map_ArrayDataContainer(triggerMapContainer)
+
+        assert (
+            merged.nevents == arrayDataContainer1.nevents + arrayDataContainer2.nevents
+        )

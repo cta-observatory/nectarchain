@@ -48,7 +48,6 @@ class DataManagement:
         )
         list_path = [Path(chemin) for chemin in list]
         if len(list_path) == 0:
-            #############
             e = FileNotFoundError(f"run {run_number} is not present in {basepath}")
             if search_on_GRID:
                 log.warning(e, exc_info=True)
@@ -62,7 +61,6 @@ class DataManagement:
             else:
                 log.error(e, exc_info=True)
                 raise e
-            # the pb is here !!!!!!
 
         name = list_path[0].name.split(".")
         name[2] = "*"
