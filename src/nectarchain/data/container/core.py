@@ -81,6 +81,26 @@ class NectarCAMContainer(Container):
 
         yield container
 
+    @classmethod
+    def from_hdf5(cls, path):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+
+        This method will call the _container_from_hdf5 method with the container
+          argument associated to its own class (ArrayDataContainer)
+
+        Yields:
+        Container: The container generator linked to the HDF5 file.
+
+        Example:
+        >>> container = NectarCAMContainer.from_hdf5('path_to_file.h5')
+        """
+
+        return cls._container_from_hdf5(path, container_class=cls)
+
 
 class ArrayDataContainer(NectarCAMContainer):
     """
@@ -149,6 +169,55 @@ class ArrayDataContainer(NectarCAMContainer):
         type=np.ndarray, dtype=np.uint16, ndim=1, description="events multiplicity"
     )
 
+
+class TriggerMapContainer(Container):
+    """
+    Class representing a TriggerMapContainer.
+
+    This class inherits from the `Container` class and is used to store trigger mappings of containers.
+
+    Attributes:
+        containers (Field): A field representing the trigger mapping of containers.
+
+    Methods:
+        is_empty(): Checks if the TriggerMapContainer is empty.
+        validate(): Validates the TriggerMapContainer by checking if all the containers mapped are filled by correct type.
+
+    Example:
+        >>> container = TriggerMapContainer()
+        >>> container.is_empty()
+        True
+        >>> container.validate()
+        None
+    """
+
+    containers = Field(
+        default_factory=partial(Map, Container),
+        description="trigger mapping of Container",
+    )
+
+    @classmethod
+    def from_hdf5(cls, path, slice_index=None):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        slice_index (int, optional): The index of the slice of data within the hdf5 file to read. Default is None.
+
+        This method will call the _container_from_hdf5 method with the container argument associated to its own class (ArrayDataContainer)
+
+        Yields:
+        Container: The container generator linked to the HDF5 file.
+
+        Example:
+        >>> container = ArrayDataContainer.from_hdf5('path_to_file.h5')
+        """
+
+        return cls._container_from_hdf5(
+            path, slice_index=slice_index, container_class=cls
+        )
+
     @staticmethod
     def _container_from_hdf5(path, container_class, slice_index=None):
         """
@@ -179,12 +248,12 @@ class ArrayDataContainer(NectarCAMContainer):
         if isinstance(path, str):
             path = Path(path)
         module = importlib.import_module(f"{container_class.__module__}")
-        container = eval(f"module.{container_class.__name__}s")()
+        container = eval(f"module.{container_class.__name__}")()
 
         with HDF5TableReader(path) as reader:
             if len(reader._h5file.root.__members__) > 1 and slice_index is None:
                 log.info(
-                    f"reading {container_class.__name__}s containing {len(reader._h5file.root.__members__)} slices, will return a generator"
+                    f"reading {container_class.__name__} containing {len(reader._h5file.root.__members__)} slices, will return a generator"
                 )
                 for data in reader._h5file.root.__members__:
                     # container.containers[data] = eval(f"module.{container_class.__name__}s")()
@@ -219,88 +288,29 @@ class ArrayDataContainer(NectarCAMContainer):
             else:
                 if slice_index is None:
                     log.info(
-                        f"reading {container_class.__name__}s containing a single slice, will return the {container_class.__name__}s instance"
+                        f"reading {container_class.__name__} containing a single slice, will return the {container_class.__name__} instance"
                     )
                     data = "data"
                 else:
                     log.info(
-                        f"reading slice {slice_index} of {container_class.__name__}s, will return the {container_class.__name__}s instance"
+                        f"reading slice {slice_index} of {container_class.__name__}, will return the {container_class.__name__} instance"
                     )
                     data = f"data_{slice_index}"
                 for key, trigger in EventType.__members__.items():
                     try:
-                        container_data = eval(f"reader._h5file.root.{data}.__members__")
-                        _mask = [
-                            container_class.__name__ in _word
-                            for _word in container_data
-                        ]
-                        _container_data = np.array(container_data)[_mask]
-                        if len(_container_data) == 1:
-                            tableReader = reader.read(
-                                table_name=f"/{data}/{_container_data[0]}/{trigger.name}",
-                                containers=container_class,
-                            )
-                            container.containers[trigger] = next(tableReader)
-                        else:
-                            log.info(
-                                f"there is {len(_container_data)} entry corresponding to a {container_class} table save, unable to load"
-                            )
+                        tableReader = reader.read(
+                            table_name=f"/{data}/{trigger.name}",
+                            containers=eval(
+                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                            ),
+                        )
+                        container.containers[trigger] = next(tableReader)
                     except NoSuchNodeError as err:
                         log.warning(err)
                     except Exception as err:
                         log.error(err, exc_info=True)
                         raise err
                 yield container
-        return container
-
-    @classmethod
-    def from_hdf5(cls, path, slice_index=None):
-        """
-        Reads a container from an HDF5 file.
-
-        Parameters:
-        path (str or Path): The path to the HDF5 file.
-        slice_index (int, optional): The index of the slice of data within the hdf5 file to read. Default is None.
-
-        This method will call the _container_from_hdf5 method with the container argument associated to its own class (ArrayDataContainer)
-
-        Yields:
-        Container: The container generator linked to the HDF5 file.
-
-        Example:
-        >>> container = ArrayDataContainer.from_hdf5('path_to_file.h5')
-        """
-
-        return cls._container_from_hdf5(
-            path, slice_index=slice_index, container_class=cls
-        )
-
-
-class TriggerMapContainer(Container):
-    """
-    Class representing a TriggerMapContainer.
-
-    This class inherits from the `Container` class and is used to store trigger mappings of containers.
-
-    Attributes:
-        containers (Field): A field representing the trigger mapping of containers.
-
-    Methods:
-        is_empty(): Checks if the TriggerMapContainer is empty.
-        validate(): Validates the TriggerMapContainer by checking if all the containers mapped are filled by correct type.
-
-    Example:
-        >>> container = TriggerMapContainer()
-        >>> container.is_empty()
-        True
-        >>> container.validate()
-        None
-    """
-
-    containers = Field(
-        default_factory=partial(Map, Container),
-        description="trigger mapping of Container",
-    )
 
     def is_empty(self):
         """This method check if the container is empty
