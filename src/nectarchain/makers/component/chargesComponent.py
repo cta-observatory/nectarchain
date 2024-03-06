@@ -168,8 +168,8 @@ class ChargesComponent(ArrayDataComponent):
         broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
             event, self._pixels_id
         )
-        self._broken_pixels_hg[f"{name}"].append(broken_pixels_hg.tolist())
-        self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg.tolist())
+        self._broken_pixels_hg[f"{name}"].append(broken_pixels_hg)
+        self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
 
         imageExtractor = __class__._get_imageExtractor(
             self.method, self.subarray, **self.extractor_kwargs
@@ -180,16 +180,16 @@ class ChargesComponent(ArrayDataComponent):
                 wfs_hg_tmp, self.TEL_ID, constants.HIGH_GAIN, broken_pixels_hg
             )
         )
-        self.__charges_hg[f"{name}"].append(__image[0].tolist())
-        self.__peak_hg[f"{name}"].append(__image[1].tolist())
+        self.__charges_hg[f"{name}"].append(__image[0])
+        self.__peak_hg[f"{name}"].append(__image[1])
 
         __image = CtapipeExtractor.get_image_peak_time(
             imageExtractor(
                 wfs_lg_tmp, self.TEL_ID, constants.LOW_GAIN, broken_pixels_lg
             )
         )
-        self.__charges_lg[f"{name}"].append(__image[0].tolist())
-        self.__peak_lg[f"{name}"].append(__image[1].tolist())
+        self.__charges_lg[f"{name}"].append(__image[0])
+        self.__peak_lg[f"{name}"].append(__image[1])
 
     @staticmethod
     def _get_extractor_kwargs_from_method_and_kwargs(method: str, kwargs: dict):
