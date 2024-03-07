@@ -12,7 +12,7 @@ run_number = 3938
 tool = WaveformsNectarCAMCalibrationTool(
     progress_bar=True,
     run_number=run_number,
-    max_events=300,
+    max_events=499,
     log_level=20,
     events_per_slice = 100,
 )

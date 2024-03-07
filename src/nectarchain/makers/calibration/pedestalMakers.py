@@ -30,6 +30,10 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
+        """
+        Initialize output path
+        """
+
         if self.events_per_slice is None:
             ext = ".h5"
         else:
@@ -113,7 +117,7 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
     def finish(self, return_output_component=False, *args, **kwargs):
         """
-        Redefine finish method to combine sliced results
+        Redefines finish method to combine sliced results
         """
 
         self.log.info("finishing Tool")

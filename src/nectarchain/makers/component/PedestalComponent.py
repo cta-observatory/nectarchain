@@ -25,6 +25,29 @@ __all__ = ["PedestalEstimationComponent", ]
 class PedestalEstimationComponent(NectarCAMComponent):
     """
     Component that computes calibration pedestal coefficients from raw data.
+    Waveforms can be filtered based on time, stanndard deviation of the waveforms
+    or charge distribution within the sample.
+    Use the `events_per_slice' parameter of `NectarCAMComponent' to reduce memory load.
+
+    Parameters
+    ----------
+    ucts_tmin : int
+        Minimum UCTS timestamp for events used in pedestal estimation
+    ucts_tmax : int
+        Maximum UCTS timestamp for events used in pedestal estimation
+    filter_method : str
+        The waveforms filter method to be used.
+        Inplemented methods: WaveformsStdFilter (standard deviation of waveforms),
+        ChargeDistributionFilter (charge distribution).
+    wfs_std_threshold : float
+        Threshold of waveforms standard deviation in ADC counts above which a waveform is
+        excluded from pedestal computation.
+    charge_sigma_high_thr : float
+        Threshold in charge distribution (number of sigmas above mean) beyond which a waveform
+        is excluded from pedestal computation.
+    charge_sigma_low_thr : float
+        Threshold in charge distribution (number of sigmas below mean) beyond which a waveform
+        is excluded from pedestal computation.
     """
 
     ucts_tmin = Integer(None,
@@ -77,6 +100,32 @@ class PedestalEstimationComponent(NectarCAMComponent):
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """
+        Component that computes calibration pedestal coefficients from raw data.
+        Waveforms can be filtered based on time, stanndard deviation of the waveforms
+        or charge distribution within the sample.
+        Use the `events_per_slice' parameter of `NectarCAMComponent' to reduce memory load.
+
+        Parameters
+        ----------
+        ucts_tmin : int
+            Minimum UCTS timestamp for events used in pedestal estimation
+        ucts_tmax : int
+            Maximum UCTS timestamp for events used in pedestal estimation
+        filter_method : str
+            The waveforms filter method to be used.
+            Inplemented methods: WaveformsStdFilter (standard deviation of waveforms),
+            ChargeDistributionFilter (charge distribution).
+        wfs_std_threshold : float
+            Threshold of waveforms standard deviation in ADC counts above which a waveform is
+            excluded from pedestal computation.
+        charge_sigma_high_thr : float
+            Threshold in charge distribution (number of sigmas above mean) beyond which a waveform
+            is excluded from pedestal computation.
+        charge_sigma_low_thr : float
+            Threshold in charge distribution (number of sigmas below mean) beyond which a waveform
+            is excluded from pedestal computation.
+        """
 
         super().__init__(subarray=subarray, config=config, parent=parent, *args, **kwargs)
 
@@ -140,8 +189,10 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return ped_stats
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """
+        Fill the waveform container looping over the events of type SKY_PEDESTAL.
+        """
 
-        # fill the waveform container looping over the events of type SKY_PEDESTAL
         if event.trigger.event_type == EventType.SKY_PEDESTAL:
             self.waveformsComponent(event=event, *args, **kwargs)
         else:
@@ -280,6 +331,9 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return new_mask
 
     def finish(self):
+        """
+        Finish the component and, in sliced mode, produce the combined pedestal estimation.
+        """
 
         # Use only pedestal type events
         waveformsContainers = self.waveformsComponent.finish()

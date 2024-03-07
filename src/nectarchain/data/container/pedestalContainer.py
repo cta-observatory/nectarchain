@@ -16,14 +16,12 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
 
     Fields:
         nsamples (int): The number of samples in the waveforms.
-        nevents (int): The number of events used to estimate the pedestals.
+        nevents (np.ndarray): The number of events used to estimate the pedestals for each pixel.
         pixels_id (np.ndarray): An array of pixel IDs.
         ucts_timestamp_min (int): The minimum of the input events UCTS timestamps.
         ucts_timestamp_max (int): The maximum of the input events UCTS timestamps.
         pedestal_mean_hg (np.ndarray): An array of high gain mean pedestals.
         pedestal_mean_lg (np.ndarray): An array of low gain mean pedestals.
-        pedestal_median_hg (np.ndarray): An array of high gain median pedestals.
-        pedestal_median_lg (np.ndarray): An array of low gain median pedestals.
         pedestal_std_hg (np.ndarray): An array of standard deviations of high gain pedestals.
         pedestal_std_lg (np.ndarray): An array of standard deviations of low gain pedestals.
     """
