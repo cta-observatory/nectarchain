@@ -34,8 +34,8 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
     )
 
     nevents = Field(
-        type=np.uint64,
-        description="number of events used to estimate the pedestals",
+        type=np.ndarray, dtype=np.float64, ndim=1,
+        description="number of events used to estimate the pedestals for each pixel",
     )
 
     pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
@@ -56,13 +56,6 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
 
     pedestal_mean_lg = Field(
         type=np.ndarray, dtype=np.float64, ndim=2, description="low gain mean pedestals"
-    )
-
-    pedestal_median_hg = Field(
-        type=np.ndarray, dtype=np.float64, ndim=2, description="high gain median pedestals"
-    )
-    pedestal_median_lg = Field(
-        type=np.ndarray, dtype=np.float64, ndim=2, description="low gain median pedestals"
     )
 
     pedestal_std_hg = Field(

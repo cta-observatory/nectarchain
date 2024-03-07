@@ -249,8 +249,10 @@ class PedestalEstimationComponent(NectarCAMComponent):
         if wfs_shape[0] == charges_shape[0] and wfs_shape[1] == charges_shape[1]:
 
             # For each event and pixel calculate the charge mean and std over all events
-            charge_mean = np.mean(self._chargesContainers.charges_hg, axis=0)
-            charge_std = np.std(self._chargesContainers.charges_hg, axis=0)
+            # taking into account the mask already calculated
+            charge_array = ma.masked_array(self._chargesContainers.charges_hg, self._wfs_mask)
+            charge_mean = ma.mean(charge_array, axis=0)
+            charge_std = ma.std(charge_array, axis=0)
 
             # Mask events/pixels that are outside the core of the distribution
             low_threshold = charge_mean - sigma_low * charge_std
@@ -345,23 +347,29 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
             # compute statistics for the pedestals
             # the statistic names must be valid numpy.ma attributes
-            statistics = ['mean', 'median', 'std']
+            statistics = ['mean', 'std']
             self._ped_stats = self.calculate_stats(self._waveformsContainers,
                                                    self._wfs_mask,
                                                    statistics)
 
+            # calculate the number of events per pixel used to compute te quantitites
+            # start wit total number of events
+            nevents = np.ones(len(self._waveformsContainers.pixels_id))
+            nevents *= self._waveformsContainers.nevents
+            # subtract masked events
+            # use the first sample for each event/pixel
+            # assumes that a waveform is either fully masked or not
+            nevents -= np.sum(self._wfs_mask[:, :, 0], axis=0)
+
             # Fill and return output container
-            # metadata = {} # store information about filtering method and params
             output = NectarCAMPedestalContainer(
                 nsamples=self._waveformsContainers.nsamples,
-                nevents=self._waveformsContainers.nevents,
+                nevents=nevents,
                 pixels_id=self._waveformsContainers.pixels_id,
                 ucts_timestamp_min=np.uint64(tmin),
                 ucts_timestamp_max=np.uint64(tmax),
                 pedestal_mean_hg=self._ped_stats['mean'][HIGH_GAIN],
                 pedestal_mean_lg=self._ped_stats['mean'][LOW_GAIN],
-                pedestal_median_hg=self._ped_stats['median'][HIGH_GAIN],
-                pedestal_median_lg=self._ped_stats['median'][LOW_GAIN],
                 pedestal_std_hg=self._ped_stats['std'][HIGH_GAIN],
                 pedestal_std_lg=self._ped_stats['std'][LOW_GAIN], )
 
