@@ -102,7 +102,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
         """
         Component that computes calibration pedestal coefficients from raw data.
-        Waveforms can be filtered based on time, stanndard deviation of the waveforms
+        Waveforms can be filtered based on time, standard deviation of the waveforms
         or charge distribution within the sample.
         Use the `events_per_slice' parameter of `NectarCAMComponent' to reduce memory load.
 
