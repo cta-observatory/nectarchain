@@ -301,7 +301,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
             # For each event and pixel calculate the charge mean and std over all events
             # taking into account the mask already calculated
-            charge_array = ma.masked_array(self._chargesContainers.charges_hg, self._wfs_mask)
+            charge_array = ma.masked_array(self._chargesContainers.charges_hg,
+                                           np.any(self._wfs_mask, axis=2))
             charge_mean = ma.mean(charge_array, axis=0)
             charge_std = ma.std(charge_array, axis=0)
 
@@ -330,9 +331,9 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
         return new_mask
 
-    def finish(self):
+    def finish(self,*args,**kwargs):
         """
-        Finish the component and, in sliced mode, produce the combined pedestal estimation.
+        Finish the component by filtering the waveforms and calculating the pedestal quantities
         """
 
         # Use only pedestal type events
@@ -375,14 +376,15 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
             # Time selection
             # set the minimum time
-            print('time filter')
             tmin = np.maximum(
                 self.ucts_tmin or self._waveformsContainers.ucts_timestamp.min(),
                 self._waveformsContainers.ucts_timestamp.min())
+            print('TMIN',self.ucts_tmin,self._waveformsContainers.ucts_timestamp.min(),tmin)
             # set the maximum time
             tmax = np.minimum(
                 self.ucts_tmax or self._waveformsContainers.ucts_timestamp.max(),
                 self._waveformsContainers.ucts_timestamp.max())
+            print('TMAX', self.ucts_tmax, self._waveformsContainers.ucts_timestamp.max(), tmax)
             # Add time selection to mask
             self._wfs_mask = self.timestamp_mask(tmin, tmax)
 
