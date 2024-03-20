@@ -32,12 +32,11 @@ class TestPedestalCalibrationTool:
 
             # run tool
             tool = PedestalNectarCAMCalibrationTool(
-                progress_bar=True,
                 run_number=run_number,
                 run_file=run_file,
                 max_events=max_events,
                 events_per_slice=events_per_slice,
-                log_level=20,
+                log_level=0,
                 output_path=outfile,
                 overwrite=True,
                 filter_method=None,
@@ -112,12 +111,11 @@ class TestPedestalCalibrationTool:
 
             # run tool
             tool = PedestalNectarCAMCalibrationTool(
-                progress_bar=True,
                 run_number=run_number,
                 run_file=run_file,
                 max_events=max_events,
                 events_per_slice=events_per_slice,
-                log_level=20,
+                log_level=0,
                 output_path=outfile,
                 ucts_tmin = tmin,
                 ucts_tmax = tmax,
@@ -160,12 +158,11 @@ class TestPedestalCalibrationTool:
 
             # run tool
             tool = PedestalNectarCAMCalibrationTool(
-                progress_bar=True,
                 run_number=run_number,
                 run_file=run_file,
                 max_events=max_events,
                 events_per_slice=events_per_slice,
-                log_level=20,
+                log_level=0,
                 output_path=outfile,
                 overwrite=True,
                 filter_method='WaveformsStdFilter',
@@ -206,12 +203,11 @@ class TestPedestalCalibrationTool:
 
             # run tool
             tool = PedestalNectarCAMCalibrationTool(
-                progress_bar=True,
                 run_number=run_number,
                 run_file=run_file,
                 max_events=max_events,
                 events_per_slice=events_per_slice,
-                log_level=20,
+                log_level=0,
                 output_path=outfile,
                 overwrite=True,
                 filter_method='ChargeDistributionFilter',
