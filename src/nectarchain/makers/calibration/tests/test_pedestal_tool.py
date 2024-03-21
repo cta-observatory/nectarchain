@@ -1,17 +1,14 @@
 import tempfile
-import os
+
 import numpy as np
 import tables
-#from ctapipe.utils import get_dataset_path
+from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import N_SAMPLES
 from nectarchain.data.container import NectarCAMPedestalContainer
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 
-# FIXME
-# For the moment rely on file stored on disk located at $NECTARCAMDATA/runs/
 run_number = 3938
-run_file = os.environ['NECTARCAMDATA']+'/runs/NectarCAM.Run3938.30events.fits.fz'
-#run_file = get_dataset_path('NectarCAM.Run3938.30events.fits.fz')
+run_file = get_dataset_path('NectarCAM.Run3938.30events.fits.fz')
 # number of working pixels in run
 n_pixels = 1834
 
@@ -72,7 +69,7 @@ class TestPedestalCalibrationTool:
                     assert group_name in h5file.root.__members__
                     table = h5file.root[group_name][NectarCAMPedestalContainer.__name__][0]
                     assert table['nsamples'] == N_SAMPLES
-                    #assert np.all(table['nevents'] == events_per_slice)
+                    assert np.all(table['nevents'] == events_per_slice)
                     assert np.shape(table['pixels_id']) == (n_pixels,)
                     assert np.shape(table['pedestal_mean_hg']) == (n_pixels, N_SAMPLES)
                     assert np.shape(table['pedestal_mean_lg']) == (n_pixels, N_SAMPLES)
@@ -117,8 +114,8 @@ class TestPedestalCalibrationTool:
                 events_per_slice=events_per_slice,
                 log_level=0,
                 output_path=outfile,
-                ucts_tmin = tmin,
-                ucts_tmax = tmax,
+                ucts_tmin=tmin,
+                ucts_tmax=tmax,
                 overwrite=True,
                 filter_method=None,
             )
@@ -166,7 +163,7 @@ class TestPedestalCalibrationTool:
                 output_path=outfile,
                 overwrite=True,
                 filter_method='WaveformsStdFilter',
-                wfs_std_threshold = 4.,
+                wfs_std_threshold=4.,
             )
 
             tool.initialize()
