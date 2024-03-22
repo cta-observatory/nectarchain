@@ -39,6 +39,7 @@ dynamic = ["version"]
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
 ]
 dev = [
     "setuptools_scm",
