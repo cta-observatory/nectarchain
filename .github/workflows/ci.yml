@@ -77,7 +77,7 @@ jobs:
           echo "Installing additional pip packages"
           # we install ctapipe using pip to be able to select any commit, e.g. the current main
           pip install \
-             "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION" \
+             "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION"
 
           echo "pip install -e ."
           pip install -e .[test]
