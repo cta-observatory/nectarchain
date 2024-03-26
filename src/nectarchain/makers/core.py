@@ -217,31 +217,31 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 output_component_kwargs[key] = getattr(self, key)
         return output_component_kwargs
 
-    def _init_writer(self, sliced: bool = False, slice_index: int = 0):
+    def _init_writer(self, sliced: bool = False, slice_index: int = 0, group_name = None):
         if hasattr(self, "writer"):
             self.writer.close()
 
         if sliced:
-            if slice_index == 0:
-                if self.overwrite:
-                    try:
-                        log.info(
-                            f"overwrite set to true, trying to remove file {self.output_path}"
-                        )
-                        os.remove(self.output_path)
-                        log.info(f"{self.output_path} removed")
-                    except OSError:
-                        pass
-                else:
-                    if os.path.exists(self.output_path):
-                        raise Exception(
-                            f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
-                        )
+            if group_name is None:
+                if slice_index == 0:
+                    if self.overwrite:
+                        try:
+                            log.info(
+                                f"overwrite set to true, trying to remove file {self.output_path}"
+                            )
+                            os.remove(self.output_path)
+                            log.info(f"{self.output_path} removed")
+                        except OSError:
+                            pass
+                    else:
+                        if os.path.exists(self.output_path):
+                            raise Exception(
+                                f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
+                            )
+                group_name = f"data_{slice_index}"
             self.log.info(
-                f"initilization of writter in sliced mode (slice index = {slice_index})"
+                f"initilization of writer in sliced mode (output written to {group_name})"
             )
-            # self.output_path = pathlib.Path(f"{self.output_path.parent)}/{self.output_path.stem}_1{self.output_path.suffix}"
-            group_name = f"data_{slice_index}"
             mode = "a"
         else:
             self.log.info("initilization of writter in full mode")
@@ -259,7 +259,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     raise Exception(
                         f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
                     )
-            group_name = "data"
+            if group_name is None:
+                group_name = "data"
             mode = "w"
         try:
             os.makedirs(self.output_path.parent, exist_ok=True)
