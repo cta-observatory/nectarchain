@@ -35,6 +35,15 @@ class WaveformsContainer(ArrayDataContainer):
 
 
 class WaveformsContainers(TriggerMapContainer):
+    """
+    Class representing a container for waveforms from specific runs.
+
+    This class inherits from the `TriggerMapContainer` class and is used to store trigger or slices of data mappings of `WaveformsContainer` instances.
+
+    Attributes:
+        containers (Field): A field representing the trigger or slices of data mapping of `WaveformsContainer` instances.
+    """
+
     containers = Field(
         default_factory=partial(Map, WaveformsContainer),
         description="trigger or slices of data mapping of WaveformContainer",

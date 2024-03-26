@@ -23,19 +23,51 @@ __all__ = [
 
 
 def get_array_keys(container: Container):
+    """
+    Return a list of keys corresponding to fields which are array type in the given container.
+
+    Parameters:
+        container (Container): The container object to search for array fields.
+
+    Returns:
+        list: A list of keys corresponding to array fields in the container.
+
+    Example:
+        >>> container = Container()
+        >>> container.field1 = np.array([1, 2, 3])
+        >>> container.field2 = 5
+        >>> container.field3 = np.array([4, 5, 6])
+        >>> get_array_keys(container)
+        ['field1', 'field3']
+    """
     keys = []
-    for field in container.fields:
+    for key, field in container.fields.items():
         if field.type == np.ndarray:
-            keys.append(field.key)
+            keys.append(key)
     return keys
 
 
 class NectarCAMContainer(Container):
-    """base class for the NectarCAM containers. This contaner cannot berecursive,
-    to be directly written with a HDF5TableWriter"""
+    """
+    Base class for the NectarCAM containers. This container cannot be recursive,
+    to be directly written with a HDF5TableWriter.
+    """
 
     @staticmethod
     def _container_from_hdf5(path, container_class):
+        """
+        Static method to read a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        container_class (Container): The class of the container to be filled with data.
+
+        Yields:
+        Container: The container from the data in the HDF5 file.
+
+        Example:
+        >>> container = NectarCAMContainer._container_from_hdf5('path_to_file.h5', MyContainerClass)
+        """
         if isinstance(path, str):
             path = Path(path)
 
@@ -49,11 +81,30 @@ class NectarCAMContainer(Container):
 
         yield container
 
+    @classmethod
+    def from_hdf5(cls, path):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+
+        This method will call the _container_from_hdf5 method with the container
+          argument associated to its own class (ArrayDataContainer)
+
+        Yields:
+        Container: The container generator linked to the HDF5 file.
+
+        Example:
+        >>> container = NectarCAMContainer.from_hdf5('path_to_file.h5')
+        """
+
+        return cls._container_from_hdf5(path, container_class=cls)
+
 
 class ArrayDataContainer(NectarCAMContainer):
     """
     A container that holds information about waveforms from a specific run.
-
     Attributes:
         run_number (int): The run number associated with the waveforms.
         nevents (int): The number of events.
@@ -118,17 +169,91 @@ class ArrayDataContainer(NectarCAMContainer):
         type=np.ndarray, dtype=np.uint16, ndim=1, description="events multiplicity"
     )
 
+
+class TriggerMapContainer(Container):
+    """
+    Class representing a TriggerMapContainer.
+
+    This class inherits from the `Container` class and is used to store trigger mappings of containers.
+
+    Attributes:
+        containers (Field): A field representing the trigger mapping of containers.
+
+    Methods:
+        is_empty(): Checks if the TriggerMapContainer is empty.
+        validate(): Validates the TriggerMapContainer by checking if all the containers mapped are filled by correct type.
+
+    Example:
+        >>> container = TriggerMapContainer()
+        >>> container.is_empty()
+        True
+        >>> container.validate()
+        None
+    """
+
+    containers = Field(
+        default_factory=partial(Map, Container),
+        description="trigger mapping of Container",
+    )
+
+    @classmethod
+    def from_hdf5(cls, path, slice_index=None):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        slice_index (int, optional): The index of the slice of data within the hdf5 file to read. Default is None.
+
+        This method will call the _container_from_hdf5 method with the container argument associated to its own class (ArrayDataContainer)
+
+        Yields:
+        Container: The container generator linked to the HDF5 file.
+
+        Example:
+        >>> container = ArrayDataContainer.from_hdf5('path_to_file.h5')
+        """
+
+        return cls._container_from_hdf5(
+            path, slice_index=slice_index, container_class=cls
+        )
+
     @staticmethod
     def _container_from_hdf5(path, container_class, slice_index=None):
+        """
+        Reads a container from an HDF5 file.
+
+        Parameters:
+        path (str or Path): The path to the HDF5 file.
+        container_class (Container): The class of the container to be read.
+        slice_index (int, optional): The index of the slice of data within the hdf5 file to read. Default is None.
+
+        This method first checks if the path is a string and converts it to a Path object if it is.
+        It then imports the module of the container class and creates an instance of the container class.
+
+        If the HDF5 file contains more than one slice and no slice index is provided,
+        it reads all slices and yields a generator of containers.
+        If a slice index is provided, it reads only the specified slice and returns the container instance.
+
+        Yields:
+        Container: The container associated to the HDF5 file.
+
+        Raises:
+        NoSuchNodeError: If the specified node does not exist in the HDF5 file.
+        Exception: If any other error occurs.
+
+        Example:
+        >>> container = ArrayDataContainer._container_from_hdf5('path_to_file.h5', MyContainerClass)
+        """
         if isinstance(path, str):
             path = Path(path)
         module = importlib.import_module(f"{container_class.__module__}")
-        container = eval(f"module.{container_class.__name__}s")()
+        container = eval(f"module.{container_class.__name__}")()
 
         with HDF5TableReader(path) as reader:
             if len(reader._h5file.root.__members__) > 1 and slice_index is None:
                 log.info(
-                    f"reading {container_class.__name__}s containing {len(reader._h5file.root.__members__)} slices, will return a generator"
+                    f"reading {container_class.__name__} containing {len(reader._h5file.root.__members__)} slices, will return a generator"
                 )
                 for data in reader._h5file.root.__members__:
                     # container.containers[data] = eval(f"module.{container_class.__name__}s")()
@@ -163,57 +288,44 @@ class ArrayDataContainer(NectarCAMContainer):
             else:
                 if slice_index is None:
                     log.info(
-                        f"reading {container_class.__name__}s containing a single slice, will return the {container_class.__name__}s instance"
+                        f"reading {container_class.__name__} containing a single slice, will return the {container_class.__name__} instance"
                     )
                     data = "data"
                 else:
                     log.info(
-                        f"reading slice {slice_index} of {container_class.__name__}s, will return the {container_class.__name__}s instance"
+                        f"reading slice {slice_index} of {container_class.__name__}, will return the {container_class.__name__} instance"
                     )
                     data = f"data_{slice_index}"
                 for key, trigger in EventType.__members__.items():
                     try:
-                        container_data = eval(f"reader._h5file.root.{data}.__members__")
-                        _mask = [
-                            container_class.__name__ in _word
-                            for _word in container_data
-                        ]
-                        _container_data = np.array(container_data)[_mask]
-                        if len(_container_data) == 1:
-                            tableReader = reader.read(
-                                table_name=f"/{data}/{_container_data[0]}/{trigger.name}",
-                                containers=container_class,
-                            )
-                            container.containers[trigger] = next(tableReader)
-                        else:
-                            log.info(
-                                f"there is {len(_container_data)} entry corresponding to a {container_class} table save, unable to load"
-                            )
+                        tableReader = reader.read(
+                            table_name=f"/{data}/{trigger.name}",
+                            containers=eval(
+                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                            ),
+                        )
+                        container.containers[trigger] = next(tableReader)
                     except NoSuchNodeError as err:
                         log.warning(err)
                     except Exception as err:
                         log.error(err, exc_info=True)
                         raise err
                 yield container
-        return container
-
-    @classmethod
-    def from_hdf5(cls, path, slice_index=None):
-        return cls._container_from_hdf5(
-            path, slice_index=slice_index, container_class=cls
-        )
-
-
-class TriggerMapContainer(Container):
-    containers = Field(
-        default_factory=partial(Map, Container),
-        description="trigger mapping of Container",
-    )
 
     def is_empty(self):
+        """This method check if the container is empty
+
+        Returns:
+            bool: True if the container is empty, False otherwise.
+        """
         return len(self.containers.keys()) == 0
 
     def validate(self):
+        """apply the validate method recursively to all the containers that are mapped within the TriggerMapContainer
+
+        Raises:
+            FieldValidationError: if one container is not valid.
+        """
         super().validate()
         for i, container in enumerate(self.containers):
             if i == 0:
@@ -226,7 +338,43 @@ class TriggerMapContainer(Container):
 
 
 def merge_map_ArrayDataContainer(triggerMapContainer: TriggerMapContainer):
+    """
+    Merge and map ArrayDataContainer
+
+    This function takes a TriggerMapContainer as input and merges the array fields of the containers mapped within the TriggerMapContainer. The merged array fields are concatenated along the 0th axis. The function also updates the 'nevents' field of the output container by summing the 'nevents' field of all the mapped containers.
+
+    Parameters:
+        triggerMapContainer (TriggerMapContainer): The TriggerMapContainer object containing the containers to be merged and mapped.
+
+    Returns:
+        ArrayDataContainer: The merged and mapped ArrayDataContainer object.
+
+    Example:
+        >>> triggerMapContainer = TriggerMapContainer()
+        >>> container1 = ArrayDataContainer()
+        >>> container1.field1 = np.array([1, 2, 3])
+        >>> container1.field2 = np.array([4, 5, 6])
+        >>> container1.nevents
+        3
+        >>> container2 = ArrayDataContainer()
+        >>> container2.field1 = np.array([7, 8, 9])
+        >>> container2.field2 = np.array([10, 11, 12])
+        >>> container2.nevents
+        3
+        >>> triggerMapContainer.containers['container1'] = container1
+        >>> triggerMapContainer.containers['container2'] = container2
+        >>> merged_container = merge_map_ArrayDataContainer(triggerMapContainer)
+        >>> merged_container.field1
+        array([1, 2, 3, 7, 8, 9])
+        >>> merged_container.field2
+        array([ 4,  5,  6, 10, 11, 12])
+        >>> merged_container.nevents
+        6
+    """
     triggerMapContainer.validate()
+    log.warning(
+        "TAKE CARE TO MERGE CONTAINERS ONLY IF PIXELS ID, RUN_NUMBER (OR ANY FIELD THAT ARE NOT ARRAY) ARE THE SAME"
+    )
     keys = list(triggerMapContainer.containers.keys())
     output_container = copy.deepcopy(triggerMapContainer.containers[keys[0]])
     for key in keys[1:]:
