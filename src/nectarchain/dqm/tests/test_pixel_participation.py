@@ -1,3 +1,5 @@
+import os
+import sys
 import unittest
 
 import numpy as np
@@ -5,6 +7,11 @@ from ctapipe.io import EventSource
 from traitlets.config import Config
 
 from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+dqm_dir = os.path.abspath(os.path.join(script_dir, "../../dqm"))
+# Add the directory to sys.path
+sys.path.insert(0, dqm_dir)
 
 
 class TestPixelParticipation(unittest.TestCase):
@@ -15,7 +22,7 @@ class TestPixelParticipation(unittest.TestCase):
         # NectarPath = "/Users/hashkar/Desktop/ashkar_nectar/data/"
         # path1 = "NectarCAM.Run3731.0000.fits.fz"
         # path = f"{NectarPath}/runs/{path1}"
-        path1 = "$NECTARDATA/runs/NectarCAM.Run3080.0000.fits.fz"
+        path1 = "$NECTARDATA/runs/NectarCAM.Run3794.0000.fits.fz"
 
         config = None
         config = Config(
