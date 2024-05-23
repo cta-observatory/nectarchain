@@ -13,8 +13,8 @@ dependencies:
   - pytest-runner
   - pip
   - pandas
-  - zeo
-  - zodb
+  - openssl
+  - libexpat
   - pip:
       - mechanize
       - browser-cookie3

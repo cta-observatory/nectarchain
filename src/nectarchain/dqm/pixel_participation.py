@@ -4,6 +4,8 @@ from ctapipe.visualization import CameraDisplay
 from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
 
+__all__ = ["PixelParticipationHighLowGain"]
+
 
 class PixelParticipationHighLowGain(DQMSummary):
     def __init__(self, gaink):
