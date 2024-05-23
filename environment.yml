@@ -13,6 +13,8 @@ dependencies:
   - pytest-runner
   - pip
   - pandas
+  - zeo
+  - zodb
   - openssl
   - libexpat
   - pip:
