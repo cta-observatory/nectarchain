@@ -1,10 +1,5 @@
-import logging
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import copy
+import logging
 import os
 import pathlib
 from datetime import datetime
@@ -31,18 +26,23 @@ from ..data import DataManagement
 from ..data.container import LightNectarCAMEventSource
 from ..data.container.core import NectarCAMContainer, TriggerMapContainer
 from ..utils import ComponentUtils
-from .component import *
 from .component import NectarCAMComponent, get_valid_component
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["EventsLoopNectarCAMCalibrationTool"]
 
-"""The code snippet is a part of a class hierarchy for data processing. 
-It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and `ArrayDataMaker` subclasses. 
+"""The code snippet is a part of a class hierarchy for data processing.
+It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and `ArrayDataMaker`
+subclasses.
 These classes are used to perform computations on data from a specific run."""
 
 
 class BaseNectarCAMCalibrationTool(Tool):
-    """Mother class for all the makers, the role of makers is to do computation on the data."""
+    """Mother class for all the makers, the role of makers is to do computation on the
+    data."""
 
     name = "BaseNectarCAMCalibration"
 
@@ -52,24 +52,33 @@ class BaseNectarCAMCalibrationTool(Tool):
 
     @default("provenance_log")
     def _default_provenance_log(self):
-        return f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{self.name}_{os.getpid()}_{datetime.now()}.provenance.log"
+        return (
+            f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/"
+            f"{self.name}_{os.getpid()}_{datetime.now()}.provenance.log"
+        )
 
     @default("log_file")
     def _default_log_file(self):
-        return f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{self.name}_{os.getpid()}_{datetime.now()}.log"
+        return (
+            f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/"
+            f"{self.name}_{os.getpid()}_{datetime.now()}.log"
+        )
 
     @staticmethod
     def load_run(
         run_number: int, max_events: int = None, run_file: str = None
     ) -> LightNectarCAMEventSource:
-        """Static method to load from $NECTARCAMDATA directory data for specified run with max_events
+        """Static method to load from $NECTARCAMDATA directory data for specified run
+        with max_events.
 
         Args:self.__run_number = run_number
             run_number (int): run_id
-            maxevents (int, optional): max of events to be loaded. Defaults to -1, to load everythings.
+            maxevents (int, optional): max of events to be loaded. Defaults to -1, to
+            load everything.
             run_file (optional) : if provided, will load this run file
         Returns:
-            List[ctapipe_io_nectarcam.LightNectarCAMEventSource]: List of EventSource for each run files
+            List[ctapipe_io_nectarcam.LightNectarCAMEventSource]: List of EventSource
+            for each run files.
         """
         # Load the data from the run file.
         if run_file is None:
@@ -92,7 +101,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     Args:
         run_number (int): The ID of the run to be processed.
-        max_events (int, optional): The maximum number of events to be loaded. Defaults to None.
+        max_events (int, optional): The maximum number of events to be loaded.
+        Defaults to None.
         run_file (optional): The specific run file to be loaded.
 
     Example Usage:
@@ -145,7 +155,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     output_path = Path(
         help="output filename",
         default_value=pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{name}_run{run_number.default_value}.h5"
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
+            f"{name}_run{run_number.default_value}.h5"
         ),
     ).tag(config=True)
 
@@ -167,21 +178,25 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     ).tag(config=True)
 
     events_per_slice = Integer(
-        help="number of events that will be treat before to pull the buffer and write to disk, if None, all the events will be loaded",
+        help="number of events that will be treat before to pull the buffer and write"
+        "to disk, if None, all the events will be loaded",
         default_value=None,
         allow_none=True,
     ).tag(config=True)
 
     def __new__(cls, *args, **kwargs):
-        """This method is used to pass to the current instance of Tool the traits defined
-        in the components provided in the componentsList trait.
-        WARNING : This method is maybe not the best way to do it, need to discuss with ctapipe developpers.
+        """This method is used to pass to the current instance of Tool the traits
+        defined in the components provided in the componentsList trait.
+        WARNING : This method is maybe not the best way to do it, need to discuss with
+        ctapipe developers.
         """
         _cls = super(EventsLoopNectarCAMCalibrationTool, cls).__new__(
             cls, *args, **kwargs
         )
         log.warning(
-            "the componentName in componentsList must be defined in the nectarchain.makers.component module, otherwise the import of the componentName will raise an error"
+            "the componentName in componentsList must be defined in the "
+            "nectarchain.makers.component module, otherwise the import of the "
+            "componentName will raise an error"
         )
         for componentName in _cls.componentsList:
             class_name = ComponentUtils.get_class_name_from_ComponentName(componentName)
@@ -199,7 +214,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     def _init_output_path(self):
         self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/{self.name}_run{self.run_number}.h5"
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/"
+            f"runs/{self.name}_run{self.run_number}.h5"
         )
 
     def _load_eventsource(self, *args, **kwargs):
@@ -217,7 +233,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 output_component_kwargs[key] = getattr(self, key)
         return output_component_kwargs
 
-    def _init_writer(self, sliced: bool = False, slice_index: int = 0, group_name = None):
+    def _init_writer(self, sliced: bool = False, slice_index: int = 0, group_name=None):
         if hasattr(self, "writer"):
             self.writer.close()
 
@@ -227,7 +243,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     if self.overwrite:
                         try:
                             log.info(
-                                f"overwrite set to true, trying to remove file {self.output_path}"
+                                f"overwrite set to true, trying to "
+                                f"remove file {self.output_path}"
                             )
                             os.remove(self.output_path)
                             log.info(f"{self.output_path} removed")
@@ -236,11 +253,13 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     else:
                         if os.path.exists(self.output_path):
                             raise Exception(
-                                f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
+                                f"file {self.output_path} does exist,\n set overwrite "
+                                f"to True if you want to overwrite"
                             )
                 group_name = f"data_{slice_index}"
             self.log.info(
-                f"initilization of writer in sliced mode (output written to {group_name})"
+                f"initilization of writer in sliced mode (output written "
+                f"to {group_name})"
             )
             mode = "a"
         else:
@@ -248,7 +267,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             if self.overwrite:
                 try:
                     log.info(
-                        f"overwrite set to true, trying to remove file {self.output_path}"
+                        f"overwrite set to true, trying to remove "
+                        f"file {self.output_path}"
                     )
                     os.remove(self.output_path)
                     log.info(f"{self.output_path} removed")
@@ -257,7 +277,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             else:
                 if os.path.exists(self.output_path):
                     raise Exception(
-                        f"file {self.output_path} does exist,\n set overwrite to True if you want to overwrite"
+                        f"file {self.output_path} does exist,\n set overwrite to True "
+                        f"if you want to overwrite"
                     )
             if group_name is None:
                 group_name = "data"
@@ -266,7 +287,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             os.makedirs(self.output_path.parent, exist_ok=True)
             self.writer = self.enter_context(
                 HDF5TableWriter(
-                    filename=self.output_path,  # pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
+                    filename=self.output_path,
                     parent=self,
                     mode=mode,
                     group_name=group_name,
@@ -277,7 +298,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self.log.warning("retry with w mode instead of a")
             self.writer = self.enter_context(
                 HDF5TableWriter(
-                    filename=self.output_path,  # pathlib.Path(f"{os.environ.get('NECTARCAMDATA',self.output_path.parent)}/{self.output_path.stem}_run{self.run_number}{self.output_path.suffix}"),
+                    filename=self.output_path,
                     parent=self,
                     mode="w",
                     group_name=group_name,
@@ -310,7 +331,10 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     def _setup_eventsource(self, *args, **kwargs):
         self._load_eventsource(*args, **kwargs)
         self.__npixels = self._event_source.camera_config.num_pixels
-        self.__pixels_id = self._event_source.camera_config.expected_pixels_id
+        try:
+            self.__pixels_id = self._event_source.camera_config.expected_pixels_id
+        except AttributeError:
+            self.__pixels_id = self._event_source.camera_config.pixel_id_map
 
     def _setup_components(self, *args, **kwargs):
         self.log.info("setup of components")
@@ -341,8 +365,10 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         Method to extract data from the EventSource.
 
         Args:
-            n_events (int, optional): The maximum number of events to process. Default is np.inf.
-            restart_from_begining (bool, optional): Whether to restart the event source reader. Default is False.
+            n_events (int, optional): The maximum number of events to process.
+            Default is np.inf.
+            restart_from_begining (bool, optional): Whether to restart the event source
+            reader. Default is False.
             *args: Additional arguments that can be passed to the method.
             **kwargs: Additional keyword arguments that can be passed to the method.
 
@@ -351,7 +377,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         """
         if ~np.isfinite(n_events) and (self.events_per_slice is None):
             self.log.warning(
-                "neither needed events number specified or events per slice, it may cause a memory error"
+                "neither needed events number specified or events per slice, it may "
+                "cause a memory error"
             )
         # if isinstance(trigger_type, EventType) or trigger_type is None:
         #    trigger_type = [trigger_type]
@@ -428,12 +455,14 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             elif isinstance(container, TriggerMapContainer):
                 for key in container.containers.keys():
                     self.writer.write(
-                        table_name=f"{container.containers[key].__class__.__name__}_{index_component}/{key.name}",
+                        table_name=f"{container.containers[key].__class__.__name__}_"
+                        f"{index_component}/{key.name}",
                         containers=container.containers[key],
                     )
             else:
                 raise TypeError(
-                    "component output must be an instance of TriggerMapContainer or NectarCAMContainer"
+                    "component output must be an instance of TriggerMapContainer or "
+                    "NectarCAMContainer"
                 )
         except FieldValidationError as e:
             log.warning(e, exc_info=True)
