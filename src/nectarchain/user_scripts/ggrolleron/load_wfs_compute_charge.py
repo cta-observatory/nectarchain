@@ -39,6 +39,12 @@ parser.add_argument(
     type=int,
 )
 
+parser.add_argument(
+    "--only_wfs",
+    action="store_true",
+    default=False,
+    help="to only reload wfs",
+)
 # boolean arguments
 parser.add_argument(
     "--reload_wfs",
@@ -124,7 +130,7 @@ def main(
 
     for _run_number, _max_events in zip(run_number, max_events):
         try:
-            if kwargs.get("reload_wfs", False):
+            if kwargs.get("only_wfs", False) or kwargs.get("reload_wfs", False):
                 log.info("reloading waveforms")
                 tool = WaveformsNectarCAMCalibrationTool(
                     progress_bar=True,
@@ -136,16 +142,17 @@ def main(
                 tool.start()
                 tool.finish()
 
-                tool = ChargesNectarCAMCalibrationTool(
-                    progress_bar=True,
-                    run_number=_run_number,
-                    max_events=_max_events,
-                    from_computed_waveforms=True,
-                    **charges_kwargs,
-                )
-                tool.setup()
-                tool.start()
-                tool.finish()
+                if not (kwargs.get("only_wfs", False)):
+                    tool = ChargesNectarCAMCalibrationTool(
+                        progress_bar=True,
+                        run_number=_run_number,
+                        max_events=_max_events,
+                        from_computed_waveforms=True,
+                        **charges_kwargs,
+                    )
+                    tool.setup()
+                    tool.start()
+                    tool.finish()
             else:
                 log.info("trying to compute charges from waveforms yet extracted")
                 tool = ChargesNectarCAMCalibrationTool(
@@ -203,5 +210,8 @@ if __name__ == "__main__":
     kwargs.pop("verbosity")
 
     log.info(f"arguments passed to main are : {kwargs}")
-
+    # kwargs['reload_wfs'] = True
+    # kwargs['run_number'] = [3938]
+    # kwargs['overwrite'] = True
+    # kwargs['events_per_slice'] = 2000
     main(log=log, **kwargs)
