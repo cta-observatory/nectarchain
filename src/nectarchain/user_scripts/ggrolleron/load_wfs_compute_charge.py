@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     log.info(f"arguments passed to main are : {kwargs}")
     # kwargs['reload_wfs'] = True
-    # kwargs['run_number'] = [3784]#[5436]
+    # kwargs['run_number'] = [3938]
     # kwargs['overwrite'] = True
     # kwargs['events_per_slice'] = 2000
     main(log=log, **kwargs)
