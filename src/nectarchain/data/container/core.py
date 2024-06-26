@@ -54,7 +54,7 @@ class NectarCAMContainer(Container):
     """
 
     @staticmethod
-    def _container_from_hdf5(path, container_class):
+    def _container_from_hdf5(path, container_class, index_component=0):
         """
         Static method to read a container from an HDF5 file.
 
@@ -74,7 +74,7 @@ class NectarCAMContainer(Container):
         container = container_class()
         with HDF5TableReader(path) as reader:
             tableReader = reader.read(
-                table_name=f"/data/{container_class.__name__}",
+                table_name=f"/data/{container_class.__name__}_{index_component}",
                 containers=container_class,
             )
             container = next(tableReader)
@@ -82,7 +82,7 @@ class NectarCAMContainer(Container):
         yield container
 
     @classmethod
-    def from_hdf5(cls, path):
+    def from_hdf5(cls, path, index_component=0):
         """
         Reads a container from an HDF5 file.
 
@@ -99,7 +99,9 @@ class NectarCAMContainer(Container):
         >>> container = NectarCAMContainer.from_hdf5('path_to_file.h5')
         """
 
-        return cls._container_from_hdf5(path, container_class=cls)
+        return cls._container_from_hdf5(
+            path, container_class=cls, index_component=index_component
+        )
 
 
 class ArrayDataContainer(NectarCAMContainer):
@@ -197,7 +199,7 @@ class TriggerMapContainer(Container):
     )
 
     @classmethod
-    def from_hdf5(cls, path, slice_index=None):
+    def from_hdf5(cls, path, slice_index=None, index_component=0):
         """
         Reads a container from an HDF5 file.
 
@@ -215,11 +217,16 @@ class TriggerMapContainer(Container):
         """
 
         return cls._container_from_hdf5(
-            path, slice_index=slice_index, container_class=cls
+            path,
+            slice_index=slice_index,
+            container_class=cls,
+            index_component=index_component,
         )
 
     @staticmethod
-    def _container_from_hdf5(path, container_class, slice_index=None):
+    def _container_from_hdf5(
+        path, container_class, slice_index=None, index_component=0
+    ):
         """
         Reads a container from an HDF5 file.
 
@@ -259,18 +266,20 @@ class TriggerMapContainer(Container):
                     # container.containers[data] = eval(f"module.{container_class.__name__}s")()
                     for key, trigger in EventType.__members__.items():
                         try:
+                            _container = eval(
+                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                            )
                             waveforms_data = eval(
                                 f"reader._h5file.root.{data}.__members__"
                             )
                             _mask = [
-                                container_class.__name__ in _word
-                                for _word in waveforms_data
+                                _container.__name__ in _word for _word in waveforms_data
                             ]
                             _waveforms_data = np.array(waveforms_data)[_mask]
                             if len(_waveforms_data) == 1:
                                 tableReader = reader.read(
                                     table_name=f"/{data}/{_waveforms_data[0]}/{trigger.name}",
-                                    containers=container_class,
+                                    containers=_container,
                                 )
                                 # container.containers[data].containers[trigger] = next(tableReader)
                                 container.containers[trigger] = next(tableReader)
@@ -298,11 +307,12 @@ class TriggerMapContainer(Container):
                     data = f"data_{slice_index}"
                 for key, trigger in EventType.__members__.items():
                     try:
+                        _container = eval(
+                            f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                        )
                         tableReader = reader.read(
-                            table_name=f"/{data}/{trigger.name}",
-                            containers=eval(
-                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
-                            ),
+                            table_name=f"/{data}/{_container.__name__}_{index_component}/{trigger.name}",
+                            containers=_container,
                         )
                         container.containers[trigger] = next(tableReader)
                     except NoSuchNodeError as err:

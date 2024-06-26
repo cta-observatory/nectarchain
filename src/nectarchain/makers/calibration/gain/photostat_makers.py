@@ -115,46 +115,72 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             )
         else:
             self.log.info(f"reading computed charge from FF file {FF_files[0]}")
-            chargesContainers = ChargesContainer.from_hdf5(FF_files[0])
+            chargesContainers = ChargesContainers.from_hdf5(FF_files[0])
             if isinstance(chargesContainers, ChargesContainer):
                 self.components[0]._FF_chargesContainers = chargesContainers
-            elif isinstance(chargesContainers, ChargesContainers):
-                self.log.debug("merging along TriggerType")
-                self.components[0]._FF_chargesContainers = merge_map_ArrayDataContainer(
-                    chargesContainers
-                )
             else:
-                self.log.debug("merging along slices")
-                chargesContaienrs_merdes_along_slices = (
-                    ArrayDataComponent.merge_along_slices(chargesContainers)
-                )
-                self.log.debug("merging along TriggerType")
-                self.components[0]._FF_chargesContainers = merge_map_ArrayDataContainer(
-                    chargesContaienrs_merdes_along_slices
-                )
+                n_slices = 0
+                try:
+                    while True:
+                        next(chargesContainers)
+                        n_slices += 1
+                except StopIteration:
+                    pass
+                chargesContainers = ChargesContainers.from_hdf5(FF_files[0])
+                if n_slices == 1:
+                    self.log.info("merging along TriggerType")
+                    self.components[
+                        0
+                    ]._FF_chargesContainers = merge_map_ArrayDataContainer(
+                        chargesContainers
+                    )
+                else:
+                    self.log.info("merging along slices")
+                    chargesContaienrs_merdes_along_slices = (
+                        ArrayDataComponent.merge_along_slices(
+                            containers_generator=chargesContainers
+                        )
+                    )
+                    self.log.info("merging along TriggerType")
+                    self.components[
+                        0
+                    ]._FF_chargesContainers = merge_map_ArrayDataContainer(
+                        chargesContaienrs_merdes_along_slices
+                    )
 
             self.log.info(f"reading computed charge from Ped file {Ped_files[0]}")
-            chargesContainers = ChargesContainer.from_hdf5(Ped_files[0])
+            chargesContainers = ChargesContainers.from_hdf5(Ped_files[0])
             if isinstance(chargesContainers, ChargesContainer):
                 self.components[0]._Ped_chargesContainers = chargesContainers
-            elif isinstance(chargesContainers, ChargesContainers):
-                self.log.debug("merging along TriggerType")
-                self.components[
-                    0
-                ]._Ped_chargesContainers = merge_map_ArrayDataContainer(
-                    chargesContainers
-                )
             else:
-                self.log.debug("merging along slices")
-                chargesContaienrs_merdes_along_slices = (
-                    ArrayDataComponent.merge_along_slices(chargesContainers)
-                )
-                self.log.debug("merging along TriggerType")
-                self.components[
-                    0
-                ]._Ped_chargesContainers = merge_map_ArrayDataContainer(
-                    chargesContaienrs_merdes_along_slices
-                )
+                n_slices = 0
+                try:
+                    while True:
+                        next(chargesContainers)
+                        n_slices += 1
+                except StopIteration:
+                    pass
+                chargesContainers = ChargesContainers.from_hdf5(Ped_files[0])
+                if n_slices == 1:
+                    self.log.info("merging along TriggerType")
+                    self.components[
+                        0
+                    ]._Ped_chargesContainers = merge_map_ArrayDataContainer(
+                        chargesContainers
+                    )
+                else:
+                    self.log.info("merging along slices")
+                    chargesContaienrs_merdes_along_slices = (
+                        ArrayDataComponent.merge_along_slices(
+                            containers_generator=chargesContainers
+                        )
+                    )
+                    self.log.info("merging along TriggerType")
+                    self.components[
+                        0
+                    ]._Ped_chargesContainers = merge_map_ArrayDataContainer(
+                        chargesContaienrs_merdes_along_slices
+                    )
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
         # if isinstance(container,SPEfitContainer) :

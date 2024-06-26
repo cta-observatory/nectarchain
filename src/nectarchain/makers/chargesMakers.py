@@ -8,6 +8,7 @@ import os
 import pathlib
 
 import numpy as np
+from ctapipe.containers import EventType
 from ctapipe.core.traits import Bool, ComponentNameList
 from ctapipe.image.extractor import (
     BaselineSubtractedNeighborPeakWindowSum,
@@ -20,7 +21,12 @@ from ctapipe.image.extractor import (
     TwoPassWindowSum,
 )
 
-from ..data.container import ChargesContainers, WaveformsContainer, WaveformsContainers
+from ..data.container import (
+    ChargesContainers,
+    TriggerMapContainer,
+    WaveformsContainer,
+    WaveformsContainers,
+)
 from ..data.management import DataManagement
 from .component import ChargesComponent, NectarCAMComponent
 from .core import EventsLoopNectarCAMCalibrationTool
@@ -69,6 +75,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         *args,
         **kwargs,
     ):
+        ##cette implémentation est complétement nulle
         if self.from_computed_waveforms:
             files = DataManagement.find_waveforms(
                 run_number=self.run_number, max_events=self.max_events
@@ -87,17 +94,21 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                 self.log.info(
                     f"{files[0]} is the computed wavforms files found with max_events >= {self.max_events}  for run {self.run_number}"
                 )
-                waveformsContainers = WaveformsContainer.from_hdf5(files[0])
+                waveformsContainers = WaveformsContainers.from_hdf5(files[0])
                 if not (isinstance(waveformsContainers, WaveformsContainer)):
-                    chargesContainers = ChargesContainers()
-                    if isinstance(waveformsContainers, WaveformsContainers):
-                        self.log.debug(
-                            "WaveformsContainer file container multiple trigger type"
-                        )
+                    n_slices = 0
+                    try:
+                        while True:
+                            next(waveformsContainers)
+                            n_slices += 1
+                    except StopIteration:
+                        pass
+                    waveformsContainers = WaveformsContainers.from_hdf5(files[0])
+                    if n_slices == 1:
                         self._init_writer(sliced=False)
                         chargesContainers = (
                             ChargesComponent._create_from_waveforms_looping_eventType(
-                                waveformsContainers=waveformsContainers,
+                                waveformsContainers=next(waveformsContainers),
                                 subarray=self.event_source.subarray,
                                 method=self.method,
                                 **self.extractor_kwargs,
@@ -106,7 +117,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                         self._write_container(container=chargesContainers)
                     else:
                         self.log.debug(
-                            "WaveformsContainer file container multiple slices of the run events"
+                            f"WaveformsContainer file contains {n_slices} slices of the run events"
                         )
                         for slice_index, _waveformsContainers in enumerate(
                             waveformsContainers
