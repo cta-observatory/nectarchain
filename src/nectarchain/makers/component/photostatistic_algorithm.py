@@ -169,7 +169,7 @@ class PhotoStatisticAlgorithm(Component):
         Returns:
             fig (plt.Figure): The figure object containing the scatter plot and the linear fit line.
         """
-        matplotlib.use("TkAgg")
+        # matplotlib.use("TkAgg")
         # Create a mask to filter the data points based on certain criteria
         mask = (photoStat_gain > 20) * (SPE_gain > 0) * (photoStat_gain < 80)
 

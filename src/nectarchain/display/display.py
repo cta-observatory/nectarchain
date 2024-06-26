@@ -29,7 +29,7 @@ class ContainerDisplay(ABC):
             image = container.charges_hg
             pixels_id = container.pixels_id
         elif isinstance(container, WaveformsContainer):
-            image = container.wfs_hg.sum(axis=2)
+            image = container.wfs_hg.mean(axis=2)
             pixels_id = container.pixels_id
         else:
             log.error(
@@ -55,8 +55,8 @@ class ContainerDisplay(ABC):
 
         disp = CameraDisplay(geometry=geometry, image=image[evt], cmap=cmap)
         disp.highlight_pixels(highlighten_pixels, color="r", linewidth=2)
-        disp.add_colorbar()
-        return disp
+        disp.add_colorbar(label="ADC")
+        return {"disp": disp, "highlighten_pixels": highlighten_pixels}
 
     @staticmethod
     def plot_waveform(waveformsContainer: WaveformsContainer, evt, **kwargs):

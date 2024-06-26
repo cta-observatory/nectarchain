@@ -641,7 +641,7 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         for i, _id in enumerate(pixels_id):
             index = np.where(self.pixels_id == _id)[0][0]
-            parameters = __class__._update_parameters(
+            parameters = self._update_parameters(
                 self.parameters,
                 self._charge[index].data[~self._charge[index].mask],
                 self._counts[index].data[~self._charge[index].mask],
@@ -893,6 +893,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         pedestalWidth: float,
         luminosity: float,
         likelihood: float,
+        **kwargs,
     ) -> tuple:
         """
         Generate a plot of the data and a model fit for a specific pixel.
@@ -914,7 +915,11 @@ class SPEnominalalgorithm(SPEalgorithm):
         Returns:
             tuple: A tuple containing the generated plot figure and the axes of the plot.
         """
-        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        if kwargs.get("ax", False) and kwargs.get("fig", False):
+            fig = kwargs.get("fig")
+            ax = kwargs.get("ax")
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         ax.errorbar(charge, counts, np.sqrt(counts), zorder=0, fmt=".", label="data")
         ax.plot(
             charge,
@@ -1018,7 +1023,7 @@ class SPEHHValgorithm(SPEnominalalgorithm):
         help="The name of the SPE fit parameters file",
     ).tag(config=True)
     tol = Float(
-        1e40,
+        1e5,
         help="The tolerance used for minuit",
         read_only=True,
     ).tag(config=True)
@@ -1079,7 +1084,7 @@ class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
         help="The name of the SPE fit parameters file",
     ).tag(config=True)
     tol = Float(
-        1e40,
+        1e5,
         help="The tolerance used for minuit",
         read_only=True,
     ).tag(config=True)
@@ -1093,7 +1098,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
     ).tag(config=True)
 
     tol = Float(
-        1e5,
+        1e-1,
         help="The tolerance used for minuit",
         read_only=True,
     ).tag(config=True)
@@ -1135,7 +1140,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         )
 
         self.__fix_parameters()
-        self._nectarGainSPEresult = SPEfitContainer.from_hdf5(self.SPE_result)
+        self._nectarGainSPEresult = next(SPEfitContainer.from_hdf5(self.SPE_result))
         if (
             len(
                 pixels_id[
@@ -1172,7 +1177,9 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
             luminosity = self._parameters["luminosity"]
             luminosity.frozen = True
 
-    def _make_fit_array_from_parameters(self, pixels_id=None, **kwargs):
+    def _make_minuitParameters_array_from_parameters(
+        self, pixels_id: np.ndarray = None, **kwargs
+    ) -> np.ndarray:
         """
         Generates the fit array from the fixed parameters and the fitted data obtained from a 1400V run.
 
@@ -1183,7 +1190,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         Returns:
             array-like: The fit array.
         """
-        return super()._make_fit_array_from_parameters(
+        return super()._make_minuitParameters_array_from_parameters(
             pixels_id=pixels_id,
             nectarGainSPEresult=self._nectarGainSPEresult,
             **kwargs,
@@ -1222,9 +1229,9 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
 
         index = np.where(pixel_id == nectarGainSPEresult.pixels_id)[0][0]
 
-        resolution.value = nectarGainSPEresult.resolution[index]
-        pp.value = nectarGainSPEresult.pp[index]
-        n.value = nectarGainSPEresult.n[index]["n"]
+        resolution.value = nectarGainSPEresult.resolution[index][0]
+        pp.value = nectarGainSPEresult.pp[index][0]
+        n.value = nectarGainSPEresult.n[index][0]
 
         if luminosity.frozen:
             luminosity.value = nectarGainSPEresult.luminosity[index].value
