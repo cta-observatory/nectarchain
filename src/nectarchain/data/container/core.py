@@ -55,7 +55,8 @@ class NectarCAMContainer(Container):
 
     @staticmethod
     def _container_from_hdf5(path, container_class, index_component=0):
-        """Static method to read a container from an HDF5 file.
+        """
+        Static method to read a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -83,7 +84,8 @@ class NectarCAMContainer(Container):
 
     @classmethod
     def from_hdf5(cls, path, index_component=0):
-        """Reads a container from an HDF5 file.
+        """
+        Reads a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -200,7 +202,8 @@ class TriggerMapContainer(Container):
 
     @classmethod
     def from_hdf5(cls, path, slice_index=None, index_component=0):
-        """Reads a container from an HDF5 file.
+        """
+        Reads a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -226,10 +229,8 @@ class TriggerMapContainer(Container):
     def _container_from_hdf5(
         path, container_class, slice_index=None, index_component=0
     ):
-        # The way this method is coded is bad, there are confliuct behavior bettween
-        # containers inherited from TriggerMapContainer to truly be mapped with trigger,
-        # and those mapped with slices
-        """Reads a container from an HDF5 file.
+        """
+        Reads a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -335,12 +336,28 @@ class TriggerMapContainer(Container):
                 ):
                     for key, trigger in EventType.__members__.items():
                         try:
-                            tableReader = reader.read(
-                                table_name=f"/{data}/{_container.__name__}_"
-                                f"{index_component}/{trigger.name}",
-                                containers=_container,
+                            _container = eval(
+                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
                             )
-                            container.containers[trigger] = next(tableReader)
+                            waveforms_data = eval(
+                                f"reader._h5file.root.{data}.__members__"
+                            )
+                            _mask = [
+                                _container.__name__ in _word for _word in waveforms_data
+                            ]
+                            _waveforms_data = np.array(waveforms_data)[_mask]
+                            if len(_waveforms_data) == 1:
+                                tableReader = reader.read(
+                                    table_name=f"/{data}/{_waveforms_data[0]}/{trigger.name}",
+                                    containers=_container,
+                                )
+                                # container.containers[data].containers[trigger] = next(tableReader)
+                                container.containers[trigger] = next(tableReader)
+
+                            else:
+                                log.info(
+                                    f"there is {len(_waveforms_data)} entry corresponding to a {container_class} table save, unable to load"
+                                )
                         except NoSuchNodeError as err:
                             log.warning(err)
                         except Exception as err:
@@ -352,7 +369,22 @@ class TriggerMapContainer(Container):
                         f"{index_component}",
                         containers=_container,
                     )
-                    container.containers[data] = next(tableReader)
+                    data = f"data_{slice_index}"
+                for key, trigger in EventType.__members__.items():
+                    try:
+                        _container = eval(
+                            f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                        )
+                        tableReader = reader.read(
+                            table_name=f"/{data}/{_container.__name__}_{index_component}/{trigger.name}",
+                            containers=_container,
+                        )
+                        container.containers[trigger] = next(tableReader)
+                    except NoSuchNodeError as err:
+                        log.warning(err)
+                    except Exception as err:
+                        log.error(err, exc_info=True)
+                        raise err
                 yield container
 
     def is_empty(self):
