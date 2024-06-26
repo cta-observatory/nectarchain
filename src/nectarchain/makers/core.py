@@ -339,7 +339,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     def _setup_eventsource(self, *args, **kwargs):
         self._load_eventsource(*args, **kwargs)
-        self.__npixels = self._event_source.nectarcam_service.num_pixels
+        self.__npixels = self._event_source.camera_config.num_pixels
         self.__pixels_id = self._event_source.nectarcam_service.pixel_ids
 
     def _setup_components(self, *args, **kwargs):
