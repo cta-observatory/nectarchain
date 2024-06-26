@@ -261,14 +261,45 @@ class DataManagement:
             data_type="charges",
         )
 
-    def find_SPE_HHV(run_number, method="FullWaveformSum", str_extractor_kwargs=""):
+    def find_SPE_combined(
+        run_number, method="FullWaveformSum", str_extractor_kwargs=""
+    ):
+        return __class__.find_SPE_HHV(
+            run_number=run_number,
+            method=method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            keyword="FlatFieldCombined",
+        )
+
+    def find_SPE_nominal(
+        run_number, method="FullWaveformSum", str_extractor_kwargs="", free_pp_n=False
+    ):
+        return __class__.find_SPE_HHV(
+            run_number=run_number,
+            method=method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            free_pp_n=free_pp_n,
+            keyword="FlatFieldSPENominal",
+        )
+
+    def find_SPE_HHV(
+        run_number,
+        method="FullWaveformSum",
+        str_extractor_kwargs="",
+        free_pp_n=False,
+        **kwargs,
+    ):
+        keyword = kwargs.get("keyword", "FlatFieldSPEHHV")
+        std_key = "" if free_pp_n else "Std"
         full_file = glob.glob(
             pathlib.Path(
                 f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
-                f"FlatFieldSPEHHVStdNectarCAM_run{run_number}_{method}"
+                f"{keyword}{std_key}NectarCAM_run{run_number}*_{method}"
                 f"_{str_extractor_kwargs}.h5"
             ).__str__()
         )
+        ###need to improve the files search !!
+        #       -> unstable behavior with SPE results computed with maxevents not to None
         if len(full_file) != 1:
             all_files = glob.glob(
                 pathlib.Path(
