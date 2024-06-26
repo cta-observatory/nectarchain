@@ -275,27 +275,6 @@ class DataManagement:
             data_type="charges",
         )
 
-    @staticmethod
-    def find_photostat(
-        FF_run_number,
-        ped_run_number,
-        FF_method="FullWaveformSum",
-        ped_method="FullWaveformSum",
-        str_extractor_kwargs="",
-    ):
-        full_file = glob.glob(
-            pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/"
-                f"PhotoStatisticNectarCAM_FFrun{FF_run_number}_{FF_method}"
-                f"_{str_extractor_kwargs}_Pedrun{ped_run_number}_{ped_method}.h5"
-            ).__str__()
-        )
-        log.debug("for now it does not check if there are files with max events")
-        if len(full_file) != 1:
-            raise Exception(f"the files is {full_file}")
-        return full_file
-
-    @staticmethod
     def find_SPE_combined(
         run_number, method="FullWaveformSum", str_extractor_kwargs=""
     ):
@@ -306,7 +285,6 @@ class DataManagement:
             keyword="FlatFieldCombined",
         )
 
-    @staticmethod
     def find_SPE_nominal(
         run_number, method="FullWaveformSum", str_extractor_kwargs="", free_pp_n=False
     ):
@@ -318,7 +296,6 @@ class DataManagement:
             keyword="FlatFieldSPENominal",
         )
 
-    @staticmethod
     def find_SPE_HHV(
         run_number,
         method="FullWaveformSum",
@@ -335,9 +312,8 @@ class DataManagement:
                 f"_{str_extractor_kwargs}.h5"
             ).__str__()
         )
-        # need to improve the files search !!
-        #       -> unstable behavior with SPE results computed
-        #           with maxevents not to None
+        ###need to improve the files search !!
+        #       -> unstable behavior with SPE results computed with maxevents not to None
         if len(full_file) != 1:
             all_files = glob.glob(
                 pathlib.Path(
