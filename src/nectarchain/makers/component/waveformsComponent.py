@@ -230,7 +230,8 @@ class WaveformsComponent(ArrayDataComponent):
 
     @staticmethod
     def select_waveforms_hg(
-        waveformsContainer: WaveformsContainer, pixel_id: np.ndarray
+        waveformsContainer: WaveformsContainer,
+        pixel_id: np.ndarray,
     ):
         """Select HIGH GAIN waveforms from the container.
 

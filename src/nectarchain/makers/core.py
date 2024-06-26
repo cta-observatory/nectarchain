@@ -217,7 +217,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 output_component_kwargs[key] = getattr(self, key)
         return output_component_kwargs
 
-    def _init_writer(self, sliced: bool = False, slice_index: int = 0, group_name = None):
+    def _init_writer(self, sliced: bool = False, slice_index: int = 0, group_name=None):
         if hasattr(self, "writer"):
             self.writer.close()
 
@@ -310,7 +310,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     def _setup_eventsource(self, *args, **kwargs):
         self._load_eventsource(*args, **kwargs)
         self.__npixels = self._event_source.camera_config.num_pixels
-        self.__pixels_id = self._event_source.camera_config.expected_pixels_id
+        self.__pixels_id = self._event_source.nectarcam_service.pixel_ids
 
     def _setup_components(self, *args, **kwargs):
         self.log.info("setup of components")
@@ -422,7 +422,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             container.validate()
             if isinstance(container, NectarCAMContainer):
                 self.writer.write(
-                    table_name=str(container.__class__.__name__),
+                    table_name=f"{container.__class__.__name__}_{index_component}",
                     containers=container,
                 )
             elif isinstance(container, TriggerMapContainer):

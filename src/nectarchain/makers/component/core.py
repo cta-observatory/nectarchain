@@ -54,7 +54,7 @@ class NectarCAMComponent(TelescopeComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        self.__pixels_id = parent._event_source.camera_config.expected_pixels_id
+        self.__pixels_id = parent._event_source.nectarcam_service.pixel_ids
         self.__run_number = parent.run_number
         self.__npixels = parent.npixels
 
@@ -111,7 +111,7 @@ class ArrayDataComponent(NectarCAMComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        self.__nsamples = parent._event_source.camera_config.num_samples
+        self.__nsamples = parent._event_source.nectarcam_service.num_samples
 
         self.trigger_list = []
 
