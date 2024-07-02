@@ -5,6 +5,7 @@ API Docs
 
 .. automodule:: nectarchain
    :members:
+   :imported-members:
 
 .. toctree::
   :maxdepth: 1
