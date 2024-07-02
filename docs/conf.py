@@ -72,6 +72,7 @@ templates_path = []  # ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # have all links automatically associated with the right domain.
 default_role = "py:obj"
+
 autosummary_generate = True
 
 # intersphinx allows referencing other packages sphinx docs
@@ -92,8 +93,7 @@ html_theme = "pydata_sphinx_theme"
 html_logo = "_static/nectarcam.png"
 html_theme_options = {
     "navigation_with_keys": False,
-    "github_url": "https://github.com/cta-observatory/nectarchain",
-    "header_links_before_dropdown": 6,
+    "github_url": f"https://github.com/cta-observatory/{project}",
     "navbar_start": ["navbar-logo", "version-switcher"],
     "announcement": """
         <p>nectarchain is not stable yet, so expect large and rapid
@@ -117,7 +117,4 @@ html_file_suffix = ".html"
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = f"{project} v{release}"
-
-# Output file base name for HTML help builder.
-htmlhelp_basename = project + "doc"
+# html_title = f"{project} v{release}"
