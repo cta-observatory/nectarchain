@@ -6,10 +6,15 @@
 Welcome to nectarchain's documentation!
 =======================================
 
+.. currentmodule:: nectarchain
+
+**version**:  |version| **Date**: |today|
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
+   reference
 
 
 Indices and tables
