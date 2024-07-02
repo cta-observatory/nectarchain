@@ -7,8 +7,8 @@ on:
     # Remove comment: just a test to force CI on push in my fork
     # branches:
     #   - main
-    tags:
-      - '**'
+    # tags:
+    #   - '**'
   pull_request:
 
 env:
