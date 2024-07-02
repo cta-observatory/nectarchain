@@ -140,6 +140,6 @@ jobs:
         if: ${{ github.event_name == 'push' }}  # && github.ref == 'refs/heads/main' }}
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: build/html
+          folder: _build/html
           clean: true
           single_commit: true
