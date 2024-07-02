@@ -78,7 +78,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # have all links automatically associated with the right domain.
 default_role = "py:obj"
 
-autosummary_generate = False
+autosummary_generate = True
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
