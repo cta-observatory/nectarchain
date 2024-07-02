@@ -61,6 +61,9 @@ extensions = [
     "numpydoc",
 ]
 
+numpydoc_show_class_members = False
+numpydoc_class_members_toctree = False
+
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
@@ -75,7 +78,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # have all links automatically associated with the right domain.
 default_role = "py:obj"
 
-autosummary_generate = True
+autosummary_generate = False
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
