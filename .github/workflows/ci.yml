@@ -133,7 +133,7 @@ jobs:
           python -c 'import nectarchain; print(nectarchain.__version__)'
 
       - name: Build docs
-        run: make html SPHINXOPTS="-W --keep-going -n --color -j auto"
+        run: make -C docs html SPHINXOPTS="-W --keep-going -n --color -j auto"
 
       - name: Deploy to github pages
         # only run on push to master
