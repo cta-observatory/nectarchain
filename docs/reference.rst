@@ -7,5 +7,8 @@ API Docs
    :members:
    :imported-members:
 
+.. automodapi:: nectarchain.data
+    :no-inheritance-diagram:
+
 .. toctree::
   :maxdepth: 1
