@@ -3,8 +3,20 @@ API Docs
 
 .. currentmodule:: nectarchain
 
-.. autosummary::
-   :toctree: _autosummary
-   :recursive:
+.. automodapi:: nectarchain.data
+    :no-inheritance-diagram:
 
-   nectarchain
+.. automodapi:: nectarchain.display
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.dqm
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.makers
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.tools
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.utils
+    :no-inheritance-diagram:
