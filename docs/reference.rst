@@ -7,4 +7,5 @@ API Docs
    :toctree: _autosummary
    :recursive:
 
-   nectarchain
+.. automodapi:: nectarchain.data
+   :no-inheritance-diagram:
