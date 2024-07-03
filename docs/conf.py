@@ -63,7 +63,6 @@ extensions = [
 
 numpydoc_show_class_members = False
 numpydoc_class_members_toctree = False
-autosummary_generate = True
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -79,34 +78,14 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # have all links automatically associated with the right domain.
 default_role = "py:obj"
 
+autosummary_generate = False
+
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.8", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.2/", None),
 }
-
-# These links are ignored in the checks, necessary due to broken intersphinx for
-# these
-nitpick_ignore = [
-    ("py:class", "ctapipe.instrument.camera.geometry.CameraGeometry"),
-    ("py:class", "ctapipe.core.tool.Tool"),
-    ("py:class", "ctapipe.core.component.Component"),
-    ("py:class", "ctapipe.core.container.Container"),
-    ("py:class", "ctapipe.calib.camera.flatfield.FlatFieldCalculator"),
-    ("py:class", "ctapipe.calib.camera.pedestals.PedestalCalculator"),
-    # coming from inherited traitlets docs
-    ("py:class", "t.Union"),
-    ("py:class", "t.Dict"),
-    ("py:class", "t.Tuple"),
-    ("py:class", "t.List"),
-    ("py:class", "t.Any"),
-    ("py:class", "t.Type"),
-    ("py:class", "Config"),
-    ("py:class", "Unicode"),
-    ("py:class", "StrDict"),
-    ("py:class", "ClassesType"),
-]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
@@ -144,6 +123,3 @@ html_file_suffix = ".html"
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
 # html_title = f"{project} v{release}"
-
-# Output file base name for HTML help builder.
-htmlhelp_basename = f"{project}doc"
