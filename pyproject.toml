@@ -48,6 +48,7 @@ dev = [
 
 doc = [
     "sphinx",
+    "sphinx-automodapi",
     "pydata_sphinx_theme",
     "numpydoc",
     "tomli; python_version < '3.11'"
