@@ -6,7 +6,6 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import datetime
-import os
 import sys
 from pathlib import Path
 
@@ -17,7 +16,7 @@ if sys.version_info < (3, 11):
 else:
     import tomllib
 
-sys.path.insert(0, os.path.abspath("../src"))
+# sys.path.insert(0, os.path.abspath("../../src/nectarchain/"))
 
 pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = tomllib.loads(pyproject_path.read_text())
