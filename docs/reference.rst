@@ -6,3 +6,5 @@ API Docs
 .. autosummary::
    :toctree: _autosummary
    :recursive:
+
+   nectarchain
