@@ -108,16 +108,14 @@ class DataManagement:
         username=None,
         password=None,
     ):
-        """method to get run location on GRID from Elog (work in progress!)
+        """
+        Method to get run location on GRID from Elog (work in progress!)
 
         Args:
             run_number (int): run number
-            output_lfns (bool, optional): if True, return lfns path of fits.gz files,
-                else return parent directory of run location. Defaults to True.
-            basepath (str) : the path on GRID where nectarCAM data are stored.
-                Default to /vo.cta.in2p3.fr/nectarcam/.
-            fromElog (bool,optionnl): To force to use the method which read the Elog.
-                Default to False. To use the method with DIRAC API.
+            output_lfns (bool, optional): if True, return lfns path of fits.gz files, else return parent directory of run location. Defaults to True.
+            basepath (str) : the path on GRID where nectarCAM data are stored. Default to /vo.cta.in2p3.fr/nectarcam/.
+            fromElog (bool,optional): To force to use the method which read the Elog. Default to False. To use the method with DIRAC API.
             username (_type_, optional): username for Elog login. Defaults to None.
             password (_type_, optional): password for Elog login. Defaults to None.
 
