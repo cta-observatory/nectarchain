@@ -112,7 +112,9 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             pedestal_mean_hg=pedestal_mean_hg,
             pedestal_mean_lg=pedestal_mean_lg,
             pedestal_std_hg=pedestal_std_hg,
-            pedestal_std_lg=pedestal_std_lg, )
+            pedestal_std_lg=pedestal_std_lg,
+            pixel_mask=np.int8(np.zeros([2,len(pixels_id)])),#FIXME placeholder
+        )
 
         return output
 
