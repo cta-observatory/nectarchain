@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import datetime
+import os
 import sys
 from pathlib import Path
 
@@ -16,7 +17,7 @@ if sys.version_info < (3, 11):
 else:
     import tomllib
 
-# sys.path.insert(0, os.path.abspath("../src"))
+sys.path.insert(0, os.path.abspath("../src"))
 
 pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = tomllib.loads(pyproject_path.read_text())
@@ -69,6 +70,8 @@ master_doc = "index"
 
 templates_path = []  # ["_templates"]
 exclude_patterns = ["_build"]
+# have all links automatically associated with the right domain.
+default_role = "py:obj"
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
@@ -83,19 +86,18 @@ todo_include_todos = True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-# html_theme = "pydata_sphinx_theme"
-html_theme = "alabaster"
+html_theme = "pydata_sphinx_theme"
 
 html_logo = "_static/nectarcam.png"
 html_theme_options = {
     "navigation_with_keys": False,
-    # "github_url": f"https://github.com/cta-observatory/{project}",
-    # "navbar_start": ["navbar-logo", "version-switcher"],
-    # "announcement": """
-    #     <p>nectarchain is not stable yet, so expect large and rapid
-    #     changes to structure and functionality as we explore various
-    #     design choices before the 1.0 release.</p>
-    # """,
+    "github_url": f"https://github.com/cta-observatory/{project}",
+    "navbar_start": ["navbar-logo", "version-switcher"],
+    "announcement": """
+        <p>nectarchain is not stable yet, so expect large and rapid
+        changes to structure and functionality as we explore various
+        design choices before the 1.0 release.</p>
+    """,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
