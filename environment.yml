@@ -15,7 +15,7 @@ dependencies:
   - pandas
   - scipy=1.11
   - sphinx
-  - sphinx-automodapi
+  - sphinx-autoapi
   - pydata-sphinx-theme
   - pip:
       - zeo
