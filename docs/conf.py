@@ -83,19 +83,19 @@ todo_include_todos = True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-# html_theme = "pydata_sphinx_theme"
-html_theme = "alabaster"
+html_theme = "pydata_sphinx_theme"
+# html_theme = "alabaster"
 
 html_logo = "_static/nectarcam.png"
 html_theme_options = {
     "navigation_with_keys": False,
-    # "github_url": f"https://github.com/cta-observatory/{project}",
-    # "navbar_start": ["navbar-logo", "version-switcher"],
-    # "announcement": """
-    #     <p>nectarchain is not stable yet, so expect large and rapid
-    #     changes to structure and functionality as we explore various
-    #     design choices before the 1.0 release.</p>
-    # """,
+    "github_url": f"https://github.com/cta-observatory/{project}",
+    "navbar_start": ["navbar-logo", "version-switcher"],
+    "announcement": """
+        <p>nectarchain is not stable yet, so expect large and rapid
+        changes to structure and functionality as we explore various
+        design choices before the 1.0 release.</p>
+    """,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
