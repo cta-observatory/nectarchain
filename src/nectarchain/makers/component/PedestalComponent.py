@@ -101,7 +101,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
     ).tag(config=True)
 
     pixel_mask_nevents_min = Integer(
-        100,
+        1, #FIXME change to reasonable value later, once verified that this reproduces the previous behavior on test runs
         help="Minimum number of events below which the pixel is flagged as bad",
     ).tag(config=True)
 

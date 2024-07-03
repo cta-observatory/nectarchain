@@ -1,6 +1,6 @@
 import logging
-
 import os
+
 import numpy as np
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -11,6 +11,8 @@ import pathlib
 import tables
 
 from ctapipe.core.traits import ComponentNameList
+
+from ctapipe_io_nectarcam.constants import N_GAINS, HIGH_GAIN, LOW_GAIN
 
 from .core import NectarCAMCalibrationTool
 from ..component import NectarCAMComponent
@@ -63,37 +65,46 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                     log.error('Trying to combine results that already contain combined data')
                 table = h5file.root[result][NectarCAMPedestalContainer.__name__][0]
                 if i == 0:
-                    # fill/initialize fields for the combined results based on first slice
+                    # initialize fields for the combined results based on first slice
                     nsamples = table['nsamples']
-                    nevents = table['nevents']
+                    nevents = np.zeros(len(table['nevents']))
                     pixels_id = table['pixels_id']
                     ucts_timestamp_min = table['ucts_timestamp_min']
                     ucts_timestamp_max = table['ucts_timestamp_max']
-                    pedestal_mean_hg = table['pedestal_mean_hg'] * table['nevents'][:,
-                                                                   np.newaxis]
-                    pedestal_mean_lg = table['pedestal_mean_lg'] * table['nevents'][:,
-                                                                   np.newaxis]
-                    pedestal_std_hg = table['pedestal_std_hg'] ** 2 * table['nevents'][:,
-                                                                      np.newaxis]
-                    pedestal_std_lg = table['pedestal_std_lg'] ** 2 * table['nevents'][:,
-                                                                      np.newaxis]
+                    pedestal_mean_hg = np.zeros(np.shape(table['pedestal_mean_hg']))
+                    pedestal_mean_lg = np.zeros(np.shape(table['pedestal_mean_lg']))
+                    pedestal_std_hg = np.zeros(np.shape(table['pedestal_std_hg']))
+                    pedestal_std_lg = np.zeros(np.shape(table['pedestal_std_lg']))
                 else:
-                    # cumulated number of events
-                    nevents += table['nevents']
-                    # min/max of time interval
+                    # otherwise consider the overall time interval
                     ucts_timestamp_min = np.minimum(ucts_timestamp_min,
                                                     table['ucts_timestamp_min'])
                     ucts_timestamp_max = np.maximum(ucts_timestamp_max,
                                                     table['ucts_timestamp_max'])
-                    # add mean, std sum elements
-                    pedestal_mean_hg += table['pedestal_mean_hg'] * table['nevents'][:,
-                                                                    np.newaxis]
-                    pedestal_mean_lg += table['pedestal_mean_lg'] * table['nevents'][:,
-                                                                    np.newaxis]
-                    pedestal_std_hg += table['pedestal_std_hg'] ** 2 * table['nevents'][:,
-                                                                       np.newaxis]
-                    pedestal_std_lg += table['pedestal_std_lg'] ** 2 * table['nevents'][:,
-                                                                       np.newaxis]
+                # for all slices
+                # derive from pixel mask a mask that sets usable pixels
+                # accept only pixels for which no flags were raised
+                usable_pixels = table['pixel_mask'] == 0
+                # use a pixel only if it has no flag on either channel
+                usable_pixels = np.logical_and(usable_pixels[0],
+                                               usable_pixels[1])
+
+                # cumulated number of events
+                nevents += table['nevents'] * usable_pixels
+
+                # add mean, std sum elements
+                pedestal_mean_hg += table['pedestal_mean_hg']\
+                                    * table['nevents'][:,np.newaxis]\
+                                    * usable_pixels[:,np.newaxis]
+                pedestal_mean_lg += table['pedestal_mean_lg']\
+                                    * table['nevents'][:,np.newaxis]\
+                                    * usable_pixels[:,np.newaxis]
+                pedestal_std_hg += table['pedestal_std_hg'] ** 2\
+                                   * table['nevents'][:,np.newaxis]\
+                                   * usable_pixels[:, np.newaxis]
+                pedestal_std_lg += table['pedestal_std_lg'] ** 2\
+                                   * table['nevents'][:,np.newaxis]\
+                                   * usable_pixels[:, np.newaxis]
 
             # calculate final values of mean and std
             pedestal_mean_hg /= nevents[:, np.newaxis]
@@ -102,6 +113,24 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             pedestal_std_hg = np.sqrt(pedestal_std_hg)
             pedestal_std_lg /= nevents[:, np.newaxis]
             pedestal_std_lg = np.sqrt(pedestal_std_lg)
+
+        # flag bad pixels in overall results based on same criteria as for individual slides
+        # reconstitute dictionary with cumulated results consistently with
+        # PedestalComponent
+        ped_stats = {}
+        array_shape = np.append([N_GAINS], np.shape(pedestal_mean_hg))
+        for statistic in ['mean','std']:
+            ped_stat = np.zeros(array_shape)
+            if statistic == 'mean':
+                ped_stat[HIGH_GAIN] = pedestal_mean_hg
+                ped_stat[LOW_GAIN] = pedestal_mean_lg
+            elif statistic == 'std':
+                ped_stat[HIGH_GAIN] = pedestal_std_hg
+                ped_stat[LOW_GAIN] = pedestal_std_lg
+            # Store the result in the dictionary
+            ped_stats[statistic] = ped_stat
+        # use flagging method from PedestalComponent
+        pixel_mask = self.components[0].flag_bad_pixels(ped_stats, nevents)
 
         output = NectarCAMPedestalContainer(
             nsamples=nsamples,
@@ -113,7 +142,7 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             pedestal_mean_lg=pedestal_mean_lg,
             pedestal_std_hg=pedestal_std_hg,
             pedestal_std_lg=pedestal_std_lg,
-            pixel_mask=np.int8(np.zeros([2,len(pixels_id)])),#FIXME placeholder
+            pixel_mask=pixel_mask,
         )
 
         return output
