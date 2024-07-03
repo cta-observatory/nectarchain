@@ -2,8 +2,9 @@ import math
 
 import numpy as np
 from astropy import time as astropytime
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from nectarchain.dqm.dqm_summary_processor import DQMSummary
 
 
 class TriggerStatistics(DQMSummary):
@@ -28,7 +29,6 @@ class TriggerStatistics(DQMSummary):
         self.TriggerStat_Results_Dict = {}
         self.TriggerStat_Figures_Dict = {}
         self.TriggerStat_Figures_Names_Dict = {}
-
 
     def ConfigureForRun(self, path, Pix, Samp, Reader1):
         # define number of pixels and samples

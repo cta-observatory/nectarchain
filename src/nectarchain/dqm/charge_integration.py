@@ -3,9 +3,10 @@ import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image import LocalPeakWindowSum
 from ctapipe.visualization import CameraDisplay
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
 from traitlets.config.loader import Config
+
+from nectarchain.dqm.dqm_summary_processor import DQMSummary
 
 
 class ChargeIntegrationHighLowGain(DQMSummary):
@@ -87,8 +88,9 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         waveform = evt.r0.tel[0].waveform[self.k]
 
+        ped = np.mean(waveform[:, 20])
+
         if noped:
-            ped = np.mean(waveform[:, 20])
             w_noped = waveform - ped
             output = self.integrator(
                 w_noped, 0, np.zeros(self.Pix, dtype=int), self.pixelBAD

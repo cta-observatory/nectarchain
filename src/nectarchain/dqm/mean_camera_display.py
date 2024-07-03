@@ -1,11 +1,12 @@
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
 
+from nectarchain.dqm.dqm_summary_processor import DQMSummary
 
-class MeanCameraDisplay_HighLowGain(DQMSummary):
+
+class MeanCameraDisplayHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
         self.Pix = None
@@ -22,7 +23,7 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
         self.CameraAverage_ped1 = []
         self.CameraAverage_overEvents = None
         self.CameraAverage_overEvents_overSamp = None
-        self.CameraAverage_ped_overEvents  = None
+        self.CameraAverage_ped_overEvents = None
         self.CameraAverage_ped_overEvents_overSamp = None
         self.MeanCameraDisplay_Results_Dict = {}
         self.MeanCameraDisplay_Figures_Dict = {}
@@ -41,7 +42,6 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
         )
 
         self.cmap = "gnuplot2"
-
 
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
@@ -86,7 +86,6 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
             )
 
     def GetResults(self):
-
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -125,7 +124,6 @@ class MeanCameraDisplay_HighLowGain(DQMSummary):
         return self.MeanCameraDisplay_Results_Dict
 
     def PlotResults(self, name, FigPath):
-
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"

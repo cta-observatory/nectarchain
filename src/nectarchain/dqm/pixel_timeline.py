@@ -1,6 +1,7 @@
 import numpy as np
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from nectarchain.dqm.dqm_summary_processor import DQMSummary
 
 
 class PixelTimelineHighLowGain(DQMSummary):

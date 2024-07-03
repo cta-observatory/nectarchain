@@ -9,7 +9,7 @@ from ctapipe.io import EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
 from db_utils import DQMDB
 from matplotlib import pyplot as plt
-from mean_camera_display import MeanCameraDisplay_HighLowGain
+from mean_camera_display import MeanCameraDisplayHighLowGain
 from mean_waveforms import MeanWaveFormsHighLowGain
 from pixel_participation import PixelParticipationHighLowGain
 from pixel_timeline import PixelTimelineHighLowGain
@@ -145,8 +145,8 @@ ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 a = TriggerStatistics(HIGH_GAIN)
 b = MeanWaveFormsHighLowGain(HIGH_GAIN)
 c = MeanWaveFormsHighLowGain(LOW_GAIN)
-d = MeanCameraDisplay_HighLowGain(HIGH_GAIN)
-e = MeanCameraDisplay_HighLowGain(LOW_GAIN)
+d = MeanCameraDisplayHighLowGain(HIGH_GAIN)
+e = MeanCameraDisplayHighLowGain(LOW_GAIN)
 f = ChargeIntegrationHighLowGain(HIGH_GAIN)
 g = ChargeIntegrationHighLowGain(LOW_GAIN)
 h = CameraMonitoring(HIGH_GAIN)
