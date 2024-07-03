@@ -502,7 +502,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     """
     Class that will split data based on the EventType UNKNOWN. 
-    Each time this particular type is seen, it will trigger the current event to be splited.
+    Each time this particular type is seen, it will trigger the change of slice.
+    Note that the UNKONWN event will be seen by the component, so it must be filtered there.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
