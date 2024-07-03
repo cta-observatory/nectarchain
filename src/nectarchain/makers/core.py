@@ -10,7 +10,7 @@ import pathlib
 from datetime import datetime
 
 import numpy as np
-from ctapipe.containers import Container
+from ctapipe.containers import Container, EventType
 from ctapipe.core import Component, Tool
 from ctapipe.core.container import FieldValidationError
 from ctapipe.core.traits import (
@@ -328,7 +328,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     )
                     #    )
                 )
-
+    
     def start(
         self,
         n_events=np.inf,
@@ -383,10 +383,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 n_events_in_slice += 1
             if self._n_traited_events >= n_events:
                 break
-            if (
-                not (self.events_per_slice is None)
-                and n_events_in_slice >= self.events_per_slice
-            ):
+
+
+            if self.split_criteria_fullfiled(n_events_in_slice, event):
                 self.log.info(f"slice number {slice_index} is full, pulling buffer")
                 self._finish_components(*args, **kwargs)
                 self.writer.close()
@@ -394,6 +393,14 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 self._init_writer(sliced=True, slice_index=slice_index)
                 self._setup_components()
                 n_events_in_slice = 0
+
+
+    def split_criteria_fullfiled(self,n_events_in_slice, event):
+        """Method to decide if criteria to end a run slice is met"""
+        condition = self.events_per_slice is not None and n_events_in_slice>= self.events_per_slice
+        #not (self.events_per_slice is None)
+        #and n_events_in_slice >= self.events_per_slice
+        return condition
 
     def finish(self, return_output_component=False, *args, **kwargs):
         self.log.info("finishing Tool")
@@ -489,6 +496,22 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         Getter method for the pixels_id attribute.
         """
         return copy.deepcopy(self.__pixels_id)
+
+
+
+class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
+    """
+    Class that will split data based on the EventType UNKNOWN. 
+    Each time this particular type is seen, it will trigger the current event to be splited.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def split_criteria_fullfiled(self,n_events_in_slice, event):
+        """Method to decide if criteria to end a run slice is met"""
+        condition = event.trigger.event_type == EventType.UNKNOWN
+        return condition
+
 
 
 def main():
