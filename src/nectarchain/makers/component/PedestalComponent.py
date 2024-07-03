@@ -101,7 +101,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
     ).tag(config=True)
 
     pixel_mask_nevents_min = Integer(
-        1, #FIXME change to reasonable value later, once verified that this reproduces the previous behavior on test runs
+        100,
         help="Minimum number of events below which the pixel is flagged as bad",
     ).tag(config=True)
 
@@ -264,12 +264,16 @@ class PedestalEstimationComponent(NectarCAMComponent):
         pixel_mask = np.int8(np.zeros(np.shape(ped_stats['mean'])[:2]))
 
         # Flag on number of events
+        log.info(
+            f"Flag pixels with number of events below the acceptable minimum value {self.pixel_mask_nevents_min}")
         flag_nevents = np.int8(nevents < self.pixel_mask_nevents_min)
         # Bitwise OR
         pixel_mask = pixel_mask | flag_nevents[np.newaxis, :] * PedestalFlagBits.NEVENTS
 
         # Flag on mean pedestal value
         # Average over all samples for each channel/pixel
+        log.info(
+            f"Flag pixels with mean pedestal outside acceptable range {self.pixel_mask_mean_min}-{self.pixel_mask_mean_max}")
         ped_mean = np.mean(ped_stats['mean'], axis=2)
         # Apply thresholds
         flag_mean = np.int8(np.logical_or(ped_mean < self.pixel_mask_mean_min,
@@ -279,6 +283,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
         # Flag on standard deviation per sample
         # all samples in channel/pixel below threshold
+        log.info(
+            f"Flag pixels with pedestal standard deviation for all samples in channel/pixel below the minimum acceptable value {self.pixel_mask_std_sample_min}")
         flag_sample_std = np.int8(np.all(ped_stats['std'] < self.pixel_mask_std_sample_min,
                                          axis=2))
         # Bitwise OR
@@ -286,6 +292,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
         # Flag on standard deviation per pixel
         # Standard deviation of pedestal in channel/pixel above threshold
+        log.info(
+            f"Flag pixels with pedestal standard deviation in a chennel/pixel above the maximum acceptable value {self.pixel_mask_std_pixel_max}")
         flag_pixel_std = np.int8(
             np.std(ped_stats['mean'], axis=2) > self.pixel_mask_std_pixel_max)
         # Bitwise OR
