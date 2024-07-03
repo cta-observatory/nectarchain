@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import datetime
+import os
 import sys
 from pathlib import Path
 
@@ -15,6 +16,8 @@ if sys.version_info < (3, 11):
     import tomli as tomllib
 else:
     import tomllib
+
+sys.path.insert(0, os.path.abspath("../src"))
 
 pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = tomllib.loads(pyproject_path.read_text())
@@ -44,14 +47,17 @@ release = version
 extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.intersphinx",
-    "autoapi.extension",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
+    "sphinx_automodapi.automodapi",
+    "sphinx_automodapi.smart_resolver",
     "numpydoc",
 ]
 
-autoapi_dirs = ["../src"]
 numpydoc_show_class_members = False
 numpydoc_class_members_toctree = False
+autosummary_generate = True
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
