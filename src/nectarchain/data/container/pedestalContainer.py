@@ -64,3 +64,11 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
         type=np.ndarray, dtype=np.float64, ndim=2,
         description="low gain pedestals standard deviations"
     )
+
+    pixel_mask = Field(
+        type=np.ndarray, dtype=np.int8, ndim=2,
+        description="Flag that identifies bad pixels. The flag is a binary mask. \
+        Bits: 1) Insufficient number of events; 2) invalid average waveform; \
+        3) too small fluctuations per sample; \
+        4) too large fluctuations per channel/pixel."
+    )
