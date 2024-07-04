@@ -20,7 +20,7 @@ class PedestalFlagBits(IntFlag):
     MEAN_PEDESTAL:  Mean pedestal outside acceptable range
     STD_SAMPLE:     Pedestal standard deviation for all samples in channel/pixel below the
                     minimum acceptable value
-    STD_PIXEL:      Pedestal standard deviation in a chennel/pixel above the maximum
+    STD_PIXEL:      Pedestal standard deviation in a channel/pixel above the maximum
                     acceptable value
     '''
     NEVENTS = auto()

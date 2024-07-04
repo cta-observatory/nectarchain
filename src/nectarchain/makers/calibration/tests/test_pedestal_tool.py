@@ -5,7 +5,7 @@ import tables
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import N_SAMPLES
 
-from nectarchain.data.container import NectarCAMPedestalContainer
+from nectarchain.data.container import NectarCAMPedestalContainer, PedestalFlagBits
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 
 runs = {
@@ -49,6 +49,7 @@ class TestPedestalCalibrationTool:
                     output_path=outfile,
                     overwrite=True,
                     filter_method=None,
+                    pixel_mask_nevents_min=1,
                 )
 
                 tool.initialize()
@@ -162,6 +163,7 @@ class TestPedestalCalibrationTool:
                     ucts_tmax=tmax[i],
                     overwrite=True,
                     filter_method=None,
+                    pixel_mask_nevents_min=1,
                 )
 
                 tool.initialize()
@@ -201,45 +203,43 @@ class TestPedestalCalibrationTool:
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
 
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                outfile = tmpdirname + "/pedestal.h5"
+            # run tool
+            tool = PedestalNectarCAMCalibrationTool(
+                run_number=run_number,
+                run_file=run_file,
+                max_events=max_events[i],
+                events_per_slice=events_per_slice,
+                log_level=0,
+                output_path=outfile,
+                overwrite=True,
+                filter_method="WaveformsStdFilter",
+                wfs_std_threshold=4.0,
+                pixel_mask_nevents_min=1,
+            )
 
-                # run tool
-                tool = PedestalNectarCAMCalibrationTool(
-                    run_number=run_number,
-                    run_file=run_file,
-                    max_events=max_events[i],
-                    events_per_slice=events_per_slice,
-                    log_level=0,
-                    output_path=outfile,
-                    overwrite=True,
-                    filter_method="WaveformsStdFilter",
-                    wfs_std_threshold=4.0,
-                )
+            tool.initialize()
+            tool.setup()
 
-                tool.initialize()
-                tool.setup()
+            tool.start()
+            output = tool.finish(return_output_component=True)
 
-                tool.start()
-                output = tool.finish(return_output_component=True)
-
-                # check output
-                assert output.nsamples == N_SAMPLES
-                assert np.all(output.nevents <= max_events[i])
-                assert np.shape(output.pixels_id) == (n_pixels,)
-                assert np.shape(output.pedestal_mean_hg) == (n_pixels, N_SAMPLES)
-                assert np.shape(output.pedestal_mean_lg) == (n_pixels, N_SAMPLES)
-                assert np.shape(output.pedestal_std_hg) == (n_pixels, N_SAMPLES)
-                assert np.shape(output.pedestal_std_lg) == (n_pixels, N_SAMPLES)
-                assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
-                assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
-                # verify that fluctuations are reduced
-                assert np.allclose(
-                    output.pedestal_std_hg, 3.0, atol=2.0 if i == 0 else 4.0
-                )
-                assert np.allclose(
-                    output.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.6
-                )
+            # check output
+            assert output.nsamples == N_SAMPLES
+            assert np.all(output.nevents <= max_events[i])
+            assert np.shape(output.pixels_id) == (n_pixels,)
+            assert np.shape(output.pedestal_mean_hg) == (n_pixels, N_SAMPLES)
+            assert np.shape(output.pedestal_mean_lg) == (n_pixels, N_SAMPLES)
+            assert np.shape(output.pedestal_std_hg) == (n_pixels, N_SAMPLES)
+            assert np.shape(output.pedestal_std_lg) == (n_pixels, N_SAMPLES)
+            assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
+            assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
+            # verify that fluctuations are reduced
+            assert np.allclose(
+                output.pedestal_std_hg, 3.0, atol=2.0 if i == 0 else 4.0
+            )
+            assert np.allclose(
+                output.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.6
+            )
 
     def test_ChargeDistributionFilter(self):
         """
@@ -269,6 +269,7 @@ class TestPedestalCalibrationTool:
                     filter_method="ChargeDistributionFilter",
                     charge_sigma_low_thr=1.0,
                     charge_sigma_high_thr=2.0,
+                    pixel_mask_nevents_min=1,
                 )
 
                 tool.initialize()
@@ -291,3 +292,138 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(
                     output.pedestal_std_lg, 2.5 if i == 0 else 2.2, atol=3.0
                 )
+
+    def test_pixel_mask(self):
+        """
+        Test that bad pixels are correctly recognized and flagged
+        """
+
+        # Flag number
+        # setup
+        max_events = 10
+        # just test one run to be faster
+        run_number = runs["Run number"][0]
+        run_file = runs["Run file"][0]
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            outfile = tmpdirname + "/pedestal.h5"
+
+            # Condition on number of events
+            # run tool
+            tool = PedestalNectarCAMCalibrationTool(
+                max_events=max_events,
+                log_level=0,
+                output_path=outfile,
+                overwrite=True,
+                filter_method=None,
+            )
+
+            tool.initialize()
+            tool.setup()
+
+            tool.start()
+            output = tool.finish(return_output_component=True)[0]
+
+            # Check that all pixels were flagged as having not enough events
+            flag_bit = PedestalFlagBits.NEVENTS
+            assert np.all(output.pixel_mask & flag_bit == flag_bit)
+            # Check that other flags were not raised
+            flag_bits = [PedestalFlagBits.MEAN_PEDESTAL,
+                         PedestalFlagBits.STD_SAMPLE,
+                         PedestalFlagBits.STD_PIXEL]
+            for flag_bit in flag_bits:
+                assert np.all(output.pixel_mask & flag_bit == 0)
+
+            # For all the following tests we set the acceptable values to a range out of what
+            # is normal. Since our test run is good we expect to flag all pixels
+
+            # Condition on mean pedestal value
+            # run tool
+            tool = PedestalNectarCAMCalibrationTool(
+                run_number=run_number,
+                run_file=run_file,
+                max_events=max_events,
+                log_level=0,
+                output_path=outfile,
+                overwrite=True,
+                filter_method=None,
+                pixel_mask_nevents_min=1,
+                pixel_mask_mean_min=1000.,
+                pixel_mask_mean_max=1100.,
+            )
+
+            tool.initialize()
+            tool.setup()
+
+            tool.start()
+            output = tool.finish(return_output_component=True)[0]
+
+            # Check that all pixels were flagged as having a bad mean
+            flag_bit = PedestalFlagBits.MEAN_PEDESTAL
+            assert np.all(output.pixel_mask & flag_bit == flag_bit)
+            # Check that other flags were not raised
+            flag_bits = [PedestalFlagBits.NEVENTS,
+                         PedestalFlagBits.STD_SAMPLE,
+                         PedestalFlagBits.STD_PIXEL]
+            for flag_bit in flag_bits:
+                assert np.all(output.pixel_mask & flag_bit == 0)
+
+            # Condition on sample std
+            # run tool
+            tool = PedestalNectarCAMCalibrationTool(
+                run_number=run_number,
+                run_file=run_file,
+                max_events=max_events,
+                log_level=0,
+                output_path=outfile,
+                overwrite=True,
+                filter_method=None,
+                pixel_mask_nevents_min=1,
+                pixel_mask_std_sample_min=100.
+            )
+
+            tool.initialize()
+            tool.setup()
+
+            tool.start()
+            output = tool.finish(return_output_component=True)[0]
+
+            # Check that all pixels were flagged as having a small sample std
+            flag_bit = PedestalFlagBits.STD_SAMPLE
+            assert np.all(output.pixel_mask & flag_bit == flag_bit)
+            # Check that other flags were not raised
+            flag_bits = [PedestalFlagBits.NEVENTS,
+                         PedestalFlagBits.MEAN_PEDESTAL,
+                         PedestalFlagBits.STD_PIXEL]
+            for flag_bit in flag_bits:
+                assert np.all(output.pixel_mask & flag_bit == 0)
+
+            # Condition on pixel std
+            # run tool
+            tool = PedestalNectarCAMCalibrationTool(
+                run_number=run_number,
+                run_file=run_file,
+                max_events=max_events,
+                log_level=0,
+                output_path=outfile,
+                overwrite=True,
+                filter_method=None,
+                pixel_mask_nevents_min=1,
+                pixel_mask_std_pixel_max=0.01
+            )
+
+            tool.initialize()
+            tool.setup()
+
+            tool.start()
+            output = tool.finish(return_output_component=True)[0]
+
+            # Check that all pixels were flagged as having a large pixel std
+            flag_bit = PedestalFlagBits.STD_PIXEL
+            assert np.all(output.pixel_mask & flag_bit == flag_bit)
+            # Check that other flags were not raised
+            flag_bits = [PedestalFlagBits.NEVENTS,
+                         PedestalFlagBits.MEAN_PEDESTAL,
+                         PedestalFlagBits.STD_SAMPLE]
+            for flag_bit in flag_bits:
+                assert np.all(output.pixel_mask & flag_bit == 0)

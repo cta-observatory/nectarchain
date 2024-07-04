@@ -93,17 +93,17 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 nevents += table['nevents'] * usable_pixels
 
                 # add mean, std sum elements
-                pedestal_mean_hg += table['pedestal_mean_hg']\
-                                    * table['nevents'][:,np.newaxis]\
-                                    * usable_pixels[:,np.newaxis]
-                pedestal_mean_lg += table['pedestal_mean_lg']\
-                                    * table['nevents'][:,np.newaxis]\
-                                    * usable_pixels[:,np.newaxis]
-                pedestal_std_hg += table['pedestal_std_hg'] ** 2\
-                                   * table['nevents'][:,np.newaxis]\
+                pedestal_mean_hg += table['pedestal_mean_hg'] \
+                                    * table['nevents'][:, np.newaxis] \
+                                    * usable_pixels[:, np.newaxis]
+                pedestal_mean_lg += table['pedestal_mean_lg'] \
+                                    * table['nevents'][:, np.newaxis] \
+                                    * usable_pixels[:, np.newaxis]
+                pedestal_std_hg += table['pedestal_std_hg'] ** 2 \
+                                   * table['nevents'][:, np.newaxis] \
                                    * usable_pixels[:, np.newaxis]
-                pedestal_std_lg += table['pedestal_std_lg'] ** 2\
-                                   * table['nevents'][:,np.newaxis]\
+                pedestal_std_lg += table['pedestal_std_lg'] ** 2 \
+                                   * table['nevents'][:, np.newaxis] \
                                    * usable_pixels[:, np.newaxis]
 
             # calculate final values of mean and std
@@ -119,7 +119,7 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # PedestalComponent
         ped_stats = {}
         array_shape = np.append([N_GAINS], np.shape(pedestal_mean_hg))
-        for statistic in ['mean','std']:
+        for statistic in ['mean', 'std']:
             ped_stat = np.zeros(array_shape)
             if statistic == 'mean':
                 ped_stat[HIGH_GAIN] = pedestal_mean_hg
