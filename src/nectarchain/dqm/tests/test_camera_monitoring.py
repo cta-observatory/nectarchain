@@ -1,4 +1,5 @@
 from ctapipe.io import EventSource
+from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import HIGH_GAIN
 from traitlets.config import Config
 
@@ -10,9 +11,8 @@ class TestCameraMonitoring:
     max_events = 1
 
     def test_camera_monitoring(self):
-        path1 = "/Users/hashkar/Desktop/ashkar_nectar/"
-        path2 = "data/runs/NectarCAM.Run3798.0000.fits.fz"
-        path = path1 + path2
+        # run_number = 3938
+        path = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
 
         config = None
 
