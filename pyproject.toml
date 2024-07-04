@@ -24,6 +24,7 @@ dependencies = [
     "ctapipe~=0.19",
     "ctapipe-io-nectarcam",
     "pandas",
+    "scipy~=1.11",
     "zodb",
     "zeo",
 ]

@@ -13,6 +13,7 @@ dependencies:
   - pytest-runner
   - pip
   - pandas
+  - scipy=1.11
   - zeo
   - zodb
   - pip:
