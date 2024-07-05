@@ -34,7 +34,7 @@ from ..utils import ComponentUtils
 from .component import *
 from .component import NectarCAMComponent, get_valid_component
 
-__all__ = ["EventsLoopNectarCAMCalibrationTool"]
+__all__ = ["EventsLoopNectarCAMCalibrationTool","DelimiterLoopNectarCAMCalibrationTool"]
 
 """The code snippet is a part of a class hierarchy for data processing. 
 It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and `ArrayDataMaker` subclasses. 
