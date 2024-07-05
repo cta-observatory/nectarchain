@@ -537,8 +537,6 @@ class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     def split_criteria_fullfiled(self,n_events_in_slice, event):
         """Method to decide if criteria to end a run slice is met"""
         condition = event.trigger.event_type == EventType.UNKNOWN
-        #if condition:
-        #    print("HERE WE ARE AND WE SPLIT")
         return condition
 
 
