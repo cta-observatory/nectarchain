@@ -1,11 +1,4 @@
 import logging
-import sys
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
-
 import struct
 
 import numpy as np
@@ -21,8 +14,13 @@ from ctapipe_io_nectarcam.anyarray_dtypes import (
     CDTS_BEFORE_37201_DTYPE,
     TIB_DTYPE,
 )
-from ctapipe_io_nectarcam.constants import N_GAINS, N_PIXELS, N_SAMPLES
+from ctapipe_io_nectarcam.constants import N_PIXELS
 from ctapipe_io_nectarcam.containers import NectarCAMEventContainer
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 __all__ = ["LightNectarCAMEventSource"]
 
@@ -38,62 +36,48 @@ def fill_nectarcam_event_container_from_zfile(self, array_event, event):
     Returns:
     - None
 
-    This function fills the NectarCAM event container in the NectarCAMDataContainer object with the event data from the zfile. It unpacks the necessary data from the event and assigns it to the corresponding fields in the event container.
+    This function fills the NectarCAM event container in the NectarCAMDataContainer
+    object with the event data from the zfile. It unpacks the necessary data from the
+    event and assigns it to the corresponding fields in the event container.
 
     The function performs the following steps:
     1. Assigns the tel_id to the local variable.
-    2. Creates a new NectarCAMEventContainer object and assigns it to the event_container field of the NectarCAMDataContainer object.
-    3. Assigns the extdevices_presence field of the event to the extdevices_presence field of the event_container.
-    4. Assigns the counters field of the event to the counters field of the event_container.
-    5. Unpacks the TIB data from the event and assigns it to the corresponding fields in the event_container.
-    6. Unpacks the CDTS data from the event and assigns it to the corresponding fields in the event_container.
-    7. Calls the unpack_feb_data function to unpack the FEB counters and trigger pattern from the event and assign them to the corresponding fields in the event_container.
+    2. Creates a new NectarCAMEventContainer object and assigns it to the
+    event_container field of the NectarCAMDataContainer object.
+    3. Assigns the extdevices_presence field of the event to the extdevices_presence
+    field of the event_container.
+    4. Assigns the counters field of the event to the counters field of the
+    event_container.
+    5. Unpacks the TIB data from the event and assigns it to the corresponding fields in
+    the event_container.
+    6. Unpacks the CDTS data from the event and assigns it to the corresponding fields
+    in the event_container.
+    7. Calls the unpack_feb_data function to unpack the FEB counters and trigger pattern
+    from the event and assign them to the corresponding fields in the event_container.
 
     """
 
     tel_id = self.tel_id
     event_container = NectarCAMEventContainer()
     array_event.nectarcam.tel[tel_id].evt = event_container
-    # event_container.configuration_id = event.configuration_id
-    # event_container.event_id = event.event_id
-    # event_container.tel_event_id = event.tel_event_id
-    # event_container.pixel_status = event.pixel_status
-    # event_container.ped_id = event.ped_id
-    # event_container.module_status = event.nectarcam.module_status
     event_container.extdevices_presence = event.nectarcam.extdevices_presence
-    # event_container.swat_data = event.nectarcam.swat_data
     event_container.counters = event.nectarcam.counters
-    ## unpack TIB data
+    # unpack TIB data
     unpacked_tib = event.nectarcam.tib_data.view(TIB_DTYPE)[0]
-    # event_container.tib_event_counter = unpacked_tib[0]
-    # event_container.tib_pps_counter = unpacked_tib[1]
-    # event_container.tib_tenMHz_counter = unpacked_tib[2]
-    # event_container.tib_stereo_pattern = unpacked_tib[3]
     event_container.tib_masked_trigger = unpacked_tib[4]
     # unpack CDTS data
     is_old_cdts = len(event.nectarcam.cdts_data) < 36
     if is_old_cdts:
         unpacked_cdts = event.nectarcam.cdts_data.view(CDTS_BEFORE_37201_DTYPE)[0]
         event_container.ucts_event_counter = unpacked_cdts[0]
-        # event_container.ucts_pps_counter = unpacked_cdts[1]
-        # event_container.ucts_clock_counter = unpacked_cdts[2]
         event_container.ucts_timestamp = unpacked_cdts[3]
-        # event_container.ucts_camera_timestamp = unpacked_cdts[4]
         event_container.ucts_trigger_type = unpacked_cdts[5]
-        # event_container.ucts_white_rabbit_status = unpacked_cdts[6]
     else:
         unpacked_cdts = event.nectarcam.cdts_data.view(CDTS_AFTER_37201_DTYPE)[0]
         event_container.ucts_timestamp = unpacked_cdts[0]
-        # event_container.ucts_address = unpacked_cdts[1]  # new
         event_container.ucts_event_counter = unpacked_cdts[2]
-        event_container.ucts_busy_counter = unpacked_cdts[3]  # new
-        # event_container.ucts_pps_counter = unpacked_cdts[4]
-        # event_container.ucts_clock_counter = unpacked_cdts[5]
+        event_container.ucts_busy_counter = unpacked_cdts[3]
         event_container.ucts_trigger_type = unpacked_cdts[6]
-        # event_container.ucts_white_rabbit_status = unpacked_cdts[7]
-        # event_container.ucts_stereo_pattern = unpacked_cdts[8]  # new
-        # event_container.ucts_num_in_bunch = unpacked_cdts[9]  # new
-        # event_container.cdts_version = unpacked_cdts[10]  # new
         # Unpack FEB counters and trigger pattern
         self.unpack_feb_data(event_container, event)
 
@@ -102,53 +86,22 @@ def unpack_feb_data(self, event_container, event):
     """Unpack FEB counters and trigger pattern"""
     # Deduce data format version
     bytes_per_module = (
-        len(event.nectarcam.counters) // self.camera_config.nectarcam.num_modules
+        len(event.nectarcam.counters) // self.nectarcam_service.num_modules
     )
     # Remain compatible with data before addition of trigger pattern
     module_fmt = "IHHIBBBBBBBB" if bytes_per_module > 16 else "IHHIBBBB"
     n_fields = len(module_fmt)
-    rec_fmt = "=" + module_fmt * self.camera_config.nectarcam.num_modules
+    rec_fmt = "=" + module_fmt * self.nectarcam_service.num_modules
     # Unpack
     unpacked_feb = struct.unpack(rec_fmt, event.nectarcam.counters)
     # Initialize field containers
-    # n_camera_modules = N_PIXELS // 7
-    # event_container.feb_abs_event_id = np.zeros(shape=(n_camera_modules,), dtype=np.uint32)
-    # event_container.feb_event_id = np.zeros(shape=(n_camera_modules,), dtype=np.uint16)
-    # event_container.feb_pps_cnt = np.zeros(shape=(n_camera_modules,), dtype=np.uint16)
-    # event_container.feb_ts1 = np.zeros(shape=(n_camera_modules,), dtype=np.uint32)
-    # event_container.feb_ts2_trig = np.zeros(shape=(n_camera_modules,), dtype=np.int16)
-    # event_container.feb_ts2_pps = np.zeros(shape=(n_camera_modules,), dtype=np.int16)
     if bytes_per_module > 16:
         n_patterns = 4
         event_container.trigger_pattern = np.zeros(
             shape=(n_patterns, N_PIXELS), dtype=bool
         )
-    # Unpack absolute event ID
-    # event_container.feb_abs_event_id[
-    #    self.camera_config.nectarcam.expected_modules_id] = unpacked_feb[0::n_fields]
-    ## Unpack PPS counter
-    # event_container.feb_pps_cnt[
-    #    self.camera_config.nectarcam.expected_modules_id] = unpacked_feb[1::n_fields]
-    ## Unpack relative event ID
-    # event_container.feb_event_id[
-    #    self.camera_config.nectarcam.expected_modules_id] = unpacked_feb[2::n_fields]
-    ## Unpack TS1 counter
-    # event_container.feb_ts1[
-    #    self.camera_config.nectarcam.expected_modules_id] = unpacked_feb[3::n_fields]
-    ## Unpack TS2 counters
-    # ts2_decimal = lambda bits: bits - (1 << 8) if bits & 0x80 != 0 else bits
-    # ts2_decimal_vec = np.vectorize(ts2_decimal)
-    # event_container.feb_ts2_trig[
-    #    self.camera_config.nectarcam.expected_modules_id] = ts2_decimal_vec(
-    #    unpacked_feb[4::n_fields])
-    # event_container.feb_ts2_pps[
-    #    self.camera_config.nectarcam.expected_modules_id] = ts2_decimal_vec(
-    #    unpacked_feb[5::n_fields])
-    # Loop over modules
 
-    for module_idx, module_id in enumerate(
-        self.camera_config.nectarcam.expected_modules_id
-    ):
+    for module_idx, module_id in enumerate(self.nectarcam_service.module_ids):
         offset = module_id * 7
         if bytes_per_module > 16:
             field_id = 8
@@ -162,24 +115,14 @@ def unpack_feb_data(self, event_container, event):
                     pattern_id, offset : offset + 7
                 ] = module_pattern
 
-    # Unpack native charge
-    # if len(event.nectarcam.charges_gain1) > 0:
-    #    event_container.native_charge = np.zeros(shape=(N_GAINS, N_PIXELS),
-    #                                             dtype=np.uint16)
-    #    rec_fmt = '=' + 'H' * self.camera_config.num_pixels
-    #    for gain_id in range(N_GAINS):
-    #        unpacked_charge = struct.unpack(rec_fmt, getattr(event.nectarcam,
-    #                                                         f'charges_gain{gain_id + 1}'))
-    #        event_container.native_charge[
-    #            gain_id, self.camera_config.expected_pixels_id] = unpacked_charge
-
 
 def fill_trigger_info(self, array_event):
     """
     Fill the trigger information for a given event.
 
     Parameters:
-        array_event (NectarCAMEventContainer): The NectarCAMEventContainer object to fill with trigger information.
+        array_event (NectarCAMEventContainer): The NectarCAMEventContainer object to
+        fill with trigger information.
 
     Returns:
         None
@@ -238,16 +181,19 @@ def fill_trigger_info(self, array_event):
         trigger.event_type = EventType.SINGLE_PE
     else:
         self.log.warning(
-            f"Event {array_event.index.event_id} has unknown event type, trigger: {trigger_bits:08b}"
+            f"Event {array_event.index.event_id} has unknown event type, trigger: "
+            f"{trigger_bits:08b}"
         )
         trigger.event_type = EventType.UNKNOWN
 
 
 class LightNectarCAMEventSource(NectarCAMEventSource):
     """
-    LightNectarCAMEventSource is a subclass of NectarCAMEventSource that provides a generator for iterating over NectarCAM events.
+    LightNectarCAMEventSource is a subclass of NectarCAMEventSource that provides a
+    generator for iterating over NectarCAM events.
 
-    This implementation of the NectarCAMEventSource is mucvh lighter than the one within ctapipe_io_nectarcam, only the fileds interesting
+    This implementation of the NectarCAMEventSource is mucvh lighter than the one within
+    ctapipe_io_nectarcam, only the fileds interesting
     for nectachain are kept.
 
     Attributes:
@@ -255,23 +201,28 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
         max_events (int): The maximum number of events to process.
         tel_id (int): The telescope ID.
         nectarcam_service (NectarCAMService): The service container for NectarCAM.
-        trigger_information (bool): Flag indicating whether to fill trigger information in the event container.
+        trigger_information (bool): Flag indicating whether to fill trigger information
+        in the event container.
         obs_ids (list): The list of observation IDs.
         multi_file (MultiFileReader): The multi-file reader for reading the data source.
         r0_r1_calibrator (R0R1Calibrator): The calibrator for R0 to R1 conversion.
-        calibrate_flatfields_and_pedestals (bool): Flag indicating whether to calibrate flatfield and pedestal events.
+        calibrate_flatfields_and_pedestals (bool): Flag indicating whether to calibrate
+        flatfield and pedestal events.
 
     Methods:
-        _generator: The generator function that yields NectarCAMDataContainer objects representing each event.
+        _generator: The generator function that yields NectarCAMDataContainer objects
+        representing each event.
 
     """
 
     def _generator(self):
         """
-        The generator function that yields NectarCAMDataContainer objects representing each event.
+        The generator function that yields NectarCAMDataContainer objects representing
+        each event.
 
         Yields:
-            NectarCAMDataContainer: The NectarCAMDataContainer object representing each event.
+            NectarCAMDataContainer: The NectarCAMDataContainer object representing
+            each event.
 
         Raises:
             None
@@ -297,23 +248,9 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
             # fill R0/R1 data
             self.fill_r0r1_container(array_event, event)
             # fill specific NectarCAM event data
-            # fill specific NectarCAM event data
             self.fill_nectarcam_event_container_from_zfile(array_event, event)
 
             if self.trigger_information:
                 self.fill_trigger_info(array_event)
-
-            # fill general monitoring data
-            # self.fill_mon_container_from_zfile(array_event, event)
-            #
-            ## gain select and calibrate to pe
-            # if self.r0_r1_calibrator.calibration_path is not None:
-            #    # skip flatfield and pedestal events if asked
-            #    if (
-            #            self.calibrate_flatfields_and_pedestals
-            #            or array_event.trigger.event_type not in {EventType.FLATFIELD,
-            #                                                      EventType.SKY_PEDESTAL}
-            #    ):
-            #        self.r0_r1_calibrator.calibrate(array_event)
 
             yield array_event
