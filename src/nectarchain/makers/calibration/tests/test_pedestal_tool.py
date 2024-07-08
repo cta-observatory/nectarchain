@@ -202,44 +202,46 @@ class TestPedestalCalibrationTool:
             run_number = runs["Run number"][i]
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                outfile = tmpdirname + "/pedestal.h5"
 
-            # run tool
-            tool = PedestalNectarCAMCalibrationTool(
-                run_number=run_number,
-                run_file=run_file,
-                max_events=max_events[i],
-                events_per_slice=events_per_slice,
-                log_level=0,
-                output_path=outfile,
-                overwrite=True,
-                filter_method="WaveformsStdFilter",
-                wfs_std_threshold=4.0,
-                pixel_mask_nevents_min=1,
-            )
+                # run tool
+                tool = PedestalNectarCAMCalibrationTool(
+                    run_number=run_number,
+                    run_file=run_file,
+                    max_events=max_events[i],
+                    events_per_slice=events_per_slice,
+                    log_level=0,
+                    output_path=outfile,
+                    overwrite=True,
+                    filter_method="WaveformsStdFilter",
+                    wfs_std_threshold=4.0,
+                    pixel_mask_nevents_min=1,
+                )
 
-            tool.initialize()
-            tool.setup()
+                tool.initialize()
+                tool.setup()
 
-            tool.start()
-            output = tool.finish(return_output_component=True)
+                tool.start()
+                output = tool.finish(return_output_component=True)
 
-            # check output
-            assert output.nsamples == N_SAMPLES
-            assert np.all(output.nevents <= max_events[i])
-            assert np.shape(output.pixels_id) == (n_pixels,)
-            assert np.shape(output.pedestal_mean_hg) == (n_pixels, N_SAMPLES)
-            assert np.shape(output.pedestal_mean_lg) == (n_pixels, N_SAMPLES)
-            assert np.shape(output.pedestal_std_hg) == (n_pixels, N_SAMPLES)
-            assert np.shape(output.pedestal_std_lg) == (n_pixels, N_SAMPLES)
-            assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
-            assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
-            # verify that fluctuations are reduced
-            assert np.allclose(
-                output.pedestal_std_hg, 3.0, atol=2.0 if i == 0 else 4.0
-            )
-            assert np.allclose(
-                output.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.6
-            )
+                # check output
+                assert output.nsamples == N_SAMPLES
+                assert np.all(output.nevents <= max_events[i])
+                assert np.shape(output.pixels_id) == (n_pixels,)
+                assert np.shape(output.pedestal_mean_hg) == (n_pixels, N_SAMPLES)
+                assert np.shape(output.pedestal_mean_lg) == (n_pixels, N_SAMPLES)
+                assert np.shape(output.pedestal_std_hg) == (n_pixels, N_SAMPLES)
+                assert np.shape(output.pedestal_std_lg) == (n_pixels, N_SAMPLES)
+                assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
+                assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
+                # verify that fluctuations are reduced
+                assert np.allclose(
+                    output.pedestal_std_hg, 3.0, atol=2.0 if i == 0 else 4.0
+                )
+                assert np.allclose(
+                    output.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.6
+                )
 
     def test_ChargeDistributionFilter(self):
         """
@@ -311,6 +313,8 @@ class TestPedestalCalibrationTool:
             # Condition on number of events
             # run tool
             tool = PedestalNectarCAMCalibrationTool(
+                run_number=run_number,
+                run_file=run_file,
                 max_events=max_events,
                 log_level=0,
                 output_path=outfile,
