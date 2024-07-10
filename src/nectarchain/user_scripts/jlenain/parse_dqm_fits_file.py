@@ -49,6 +49,6 @@ for h in range(1, len(hdu)):
         keyname = hdu[extname].header[f"TTYPE{i+1}"]
         outdict[extname][keyname] = hdu[extname].data[keyname]
 
-db = DQMDB()
-db.insert("test", outdict)
+db = DQMDB(read_only=False)
+db.insert(f"test run {run}", outdict)
 db.commit_and_close()
