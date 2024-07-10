@@ -4,6 +4,7 @@ The idea is to parse a DQM FITS, in order to feed the ZODB locally from our Boke
 """
 
 import os
+import tarfile
 
 from astropy.io import fits
 from DIRAC.Interfaces.API.Dirac import Dirac
@@ -11,20 +12,30 @@ from ZODB import DB
 
 from nectarchain.dqm.db_utils import DQMDB
 
-dirac = Dirac()
-
 # example = "/tmp/jlenain/scratch/NectarCAM_DQM_Run4971/output/NectarCAM_Run4971
 # /NectarCAM_Run4971_calib/NectarCAM_Run4971_Results.fits"
-example = "/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm/NectarCAM_DQM_Run4971.tar.gz"
+run = 4971
+arch = f"/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm/NectarCAM_DQM_Run{run}.tar.gz"
 
 if not os.path.exists(os.path.basename(lfn)):
+    dirac = Dirac()
+
     dirac.getFile(
         lfn=lfn,
         destDir=f".",
         printOutput=True,
     )
 
-hdu = fits.open(example)
+with tarfile.open(arch, "r") as tar:
+    tar.extractall(".")
+
+fits_file = (
+    f"./NectarCAM_DQM_Run"
+    f"{run}/output/NectarCAM_Run{run}/NectarCAM_Run"
+    f"{run}_calib/NectarCAM_Run{run}_Results.fits"
+)
+
+hdu = fits.open(fits_file)
 
 # Explore FITS file structure
 hdu.info()
