@@ -15,7 +15,7 @@ from nectarchain.dqm.db_utils import DQMDB
 # example = "/tmp/jlenain/scratch/NectarCAM_DQM_Run4971/output/NectarCAM_Run4971
 # /NectarCAM_Run4971_calib/NectarCAM_Run4971_Results.fits"
 run = 4971
-arch = f"/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm/NectarCAM_DQM_Run{run}.tar.gz"
+lfn = f"/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm/NectarCAM_DQM_Run{run}.tar.gz"
 
 if not os.path.exists(os.path.basename(lfn)):
     dirac = Dirac()
@@ -26,7 +26,7 @@ if not os.path.exists(os.path.basename(lfn)):
         printOutput=True,
     )
 
-with tarfile.open(arch, "r") as tar:
+with tarfile.open(os.path.basename(lfn), "r") as tar:
     tar.extractall(".")
 
 fits_file = (
