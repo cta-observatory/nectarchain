@@ -3,12 +3,26 @@
 The idea is to parse a DQM FITS, in order to feed the ZODB locally from our Bokeh VM, once the DQM has run on DIRAC
 """
 
+import os
+
 from astropy.io import fits
+from DIRAC.Interfaces.API.Dirac import Dirac
 from ZODB import DB
 
 from nectarchain.dqm.db_utils import DQMDB
 
-example = "/tmp/jlenain/scratch/NectarCAM_DQM_Run4971/output/NectarCAM_Run4971/NectarCAM_Run4971_calib/NectarCAM_Run4971_Results.fits"
+dirac = Dirac()
+
+# example = "/tmp/jlenain/scratch/NectarCAM_DQM_Run4971/output/NectarCAM_Run4971
+# /NectarCAM_Run4971_calib/NectarCAM_Run4971_Results.fits"
+example = "/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm/NectarCAM_DQM_Run4971.tar.gz"
+
+if not os.path.exists(os.path.basename(lfn)):
+    dirac.getFile(
+        lfn=lfn,
+        destDir=f".",
+        printOutput=True,
+    )
 
 hdu = fits.open(example)
 
