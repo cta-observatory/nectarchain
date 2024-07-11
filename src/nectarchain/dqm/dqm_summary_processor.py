@@ -43,47 +43,36 @@ class DQMSummary:
             if (i == "Results_TriggerStatistics"):
                 for n2, m2 in j.items():
                     data2[n2] = m2
-                hdu2 = fits.BinTableHDU(data2)
-                hdu2.name = "Trigger"
+                    hdu2 = fits.BinTableHDU(data2)
+                    hdu2.name = n2
+                    hdulist.append(hdu2)
 
             elif (i == "Results_MeanWaveForms_HighGain") or (
                 i == "Results_MeanWaveForms_LowGain"
             ):
                 for n1, m1 in j.items():
                     data1[n1] = m1
-                hdu1 = fits.BinTableHDU(data1)
-                hdu1.name = "MWF"    
+                    hdu1 = fits.BinTableHDU(data1)
+                    hdu1.name = n1
+                    hdulist.append(hdu1)
 
-            elif (i == "Results_PixelTimeline_HighGain") or (i == "Results_PixelTimeline_LowGain"):
+            elif (i == "Results_PixelTimeline_HighGain") or (
+                i == "Results_PixelTimeline_LowGain"
+            ):
                 for n0, m0 in j.items():
-                    data0[n0] = m0 
-                hdu0 = fits.BinTableHDU(data0)
-                hdu0.name = "BPX"
+                    data0[n0] = m0
+                    hdu0 = fits.BinTableHDU(data0)
+                    hdulist.append(hdu0)
 
             else:
                 for n, m in j.items():
                     data[n] = m
-                hdu = fits.BinTableHDU(data)
-                hdu.name = "Camera"
-        if hdu2:
-            hdulist.append(hdu2)
-        else:
-            print("No trigger statistics requests")
-        if hdu1:
-            hdulist.append(hdu1)
-        else:
-            print("No MWF studies requests")
-        if hdu0:
-            hdulist.append(hdu0)
-        else:
-            print("No Pixel Timeline studies requests")
-        if hdu:
-            hdulist.append(hdu)
-        else:
-            print("No Camera studies requests")
+                    hdu = fits.BinTableHDU(data)
+                    hdu.name = n
+                    hdulist.append(hdu)
 
-        
-        FileName = path + '_Results.fits'
+        FileName = path + "_Results.fits"
         print(FileName)
         hdulist.writeto(FileName, overwrite=True)
+        hdulist.info()
         return None
