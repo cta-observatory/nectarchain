@@ -29,20 +29,17 @@ class TestPixelParticipation:
                 )
             )
         )
-        print(path)
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
 
         Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN).DefineForRun(reader1)
-        print("Pix, Samp", Pix, Samp)
 
         PixelParticipationHighLowGain(HIGH_GAIN).ConfigureForRun(
             path, Pix, Samp, reader1
         )
-        print("Pix, Samp", Pix, Samp)
 
         for evt in tqdm(reader1, total=1):
-            print("sum:", np.sum(evt.nectarcam.tel[0].svc.pixel_ids))
+            self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
             # PixelParticipationHighLowGain(HIGH_GAIN).ProcessEvent(evt, noped = False)
 
         PixelParticipationHighLowGain(HIGH_GAIN).FinishRun()
