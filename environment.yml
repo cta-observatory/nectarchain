@@ -3,7 +3,7 @@ channels:
   - default
   - conda-forge
 dependencies:
-  - python=3.11
+  - python>=3.9
   - ctapipe=0.19
   - ctapipe-io-nectarcam
   - jinja2=3.0.1
@@ -14,8 +14,9 @@ dependencies:
   - pip
   - pandas
   - scipy=1.11
-  - zeo
-  - zodb
+  - numba~=0.56.0
   - pip:
+      - zeo
+      - zodb
       - mechanize
       - browser-cookie3
