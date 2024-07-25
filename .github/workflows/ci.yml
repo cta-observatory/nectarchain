@@ -31,9 +31,12 @@ jobs:
           extra_args: --files $(git diff origin/main --name-only)
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    needs: lint
     strategy:
       matrix:
+        # macos 14 image is arm64 based
+        matrix-os: ["ubuntu-latest", "macos-14"]
         python-version: ["3.9", "3.10", "3.11"]
         ctapipe-version: [v0.19.3]
         install-method: [ "mamba", "pip" ]
@@ -52,7 +55,7 @@ jobs:
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
-          sed -i -e "s/- python.*/- python=$PYTHON_VERSION/g" environment.yml
+          sed -i -e "s/- python=.*/- python=$PYTHON_VERSION/g" environment.yml
 
       - name: Mamba setup
         if: matrix.install-method == 'mamba'
