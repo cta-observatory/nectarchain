@@ -52,7 +52,7 @@ jobs:
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
-          sed -i -e "s/- python=.*/- python=$PYTHON_VERSION/g" environment.yml
+          sed -i -e "s/- python.*/- python=$PYTHON_VERSION/g" environment.yml
 
       - name: Mamba setup
         if: matrix.install-method == 'mamba'
