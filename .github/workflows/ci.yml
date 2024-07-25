@@ -36,7 +36,7 @@ jobs:
     strategy:
       matrix:
         # macos 14 image is arm64 based
-        matrix-os: ["ubuntu-latest", "macos-14"]
+        os: ["ubuntu-latest", "macos-14"]
         python-version: ["3.9", "3.10", "3.11"]
         ctapipe-version: [v0.19.3]
         install-method: [ "mamba", "pip" ]
