@@ -159,8 +159,8 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
             Maximum UCTS timestamp for events used in pedestal estimation
         filter_method : str
             The waveforms filter method to be used.
-            Inplemented methods: WaveformsStdFilter (standard deviation of waveforms),
-            ChargeDistributionFilter (charge distribution).
+            Implemented methods: WaveformsStdFilter (standard deviation of
+            waveforms), ChargeDistributionFilter (charge distribution).
         wfs_std_threshold : float
             Threshold of waveforms standard deviation in ADC counts above which a
             waveform is excluded from pedestal computation.
@@ -254,6 +254,7 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
             for each pixel
 
         Returns
+        -------
         pixel_mask : `np.ndarray`
             An array that contains the binary mask of shape (nchannels,npixels)
             to flag bad pixels
