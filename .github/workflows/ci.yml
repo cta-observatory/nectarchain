@@ -61,6 +61,10 @@ jobs:
             python-version: "3.11"
             ctapipe-version: "v0.19.3"
             install-method: "mamba"
+          - os: "macos-14"
+            python-version: "3.11"
+            ctapipe-version: "v0.19.3"
+            install-method: "pip"
 
     defaults:
       run:
