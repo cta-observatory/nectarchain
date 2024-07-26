@@ -26,7 +26,7 @@ __all__ = [
 class PedestalEstimationComponent(NectarCAMComponent):
     """
     Component that computes calibration pedestal coefficients from raw data.
-    Waveforms can be filtered based on time, stanndard deviation of the waveforms
+    Waveforms can be filtered based on time, standard deviation of the waveforms
     or charge distribution within the sample.
     Use the `events_per_slice' parameter of `NectarCAMComponent' to reduce memory load.
 
@@ -38,7 +38,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         Maximum UCTS timestamp for events used in pedestal estimation
     filter_method : str
         The waveforms filter method to be used.
-        Inplemented methods: WaveformsStdFilter (standard deviation of waveforms),
+        Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
         ChargeDistributionFilter (charge distribution).
     wfs_std_threshold : float
         Threshold of waveforms standard deviation in ADC counts above which a
@@ -106,12 +106,12 @@ class PedestalEstimationComponent(NectarCAMComponent):
     ).tag(config=True)
 
     pixel_mask_mean_min = Float(
-        200.,
+        200.0,
         help="Minimum value of pedestal mean below which the pixel is flagged as bad",
     ).tag(config=True)
 
     pixel_mask_mean_max = Float(
-        300.,
+        300.0,
         help="Maximum value of pedestal mean above which the pixel is flagged as bad",
     ).tag(config=True)
 
@@ -261,11 +261,12 @@ class PedestalEstimationComponent(NectarCAMComponent):
         """
 
         # Initialize mask to False (all pixels are good)
-        pixel_mask = np.int8(np.zeros(np.shape(ped_stats['mean'])[:2]))
+        pixel_mask = np.int8(np.zeros(np.shape(ped_stats["mean"])[:2]))
 
         # Flag on number of events
         log.info(
-            f"Flag pixels with number of events below the acceptable minimum value {self.pixel_mask_nevents_min}")
+            f"Flag pixels with number of events below the acceptable minimum value {self.pixel_mask_nevents_min}"
+        )
         flag_nevents = np.int8(nevents < self.pixel_mask_nevents_min)
         # Bitwise OR
         pixel_mask = pixel_mask | flag_nevents[np.newaxis, :] * PedestalFlagBits.NEVENTS
@@ -273,29 +274,37 @@ class PedestalEstimationComponent(NectarCAMComponent):
         # Flag on mean pedestal value
         # Average over all samples for each channel/pixel
         log.info(
-            f"Flag pixels with mean pedestal outside acceptable range {self.pixel_mask_mean_min}-{self.pixel_mask_mean_max}")
-        ped_mean = np.mean(ped_stats['mean'], axis=2)
+            f"Flag pixels with mean pedestal outside acceptable range {self.pixel_mask_mean_min}-{self.pixel_mask_mean_max}"
+        )
+        ped_mean = np.mean(ped_stats["mean"], axis=2)
         # Apply thresholds
-        flag_mean = np.int8(np.logical_or(ped_mean < self.pixel_mask_mean_min,
-                                          ped_mean > self.pixel_mask_mean_max))
+        flag_mean = np.int8(
+            np.logical_or(
+                ped_mean < self.pixel_mask_mean_min, ped_mean > self.pixel_mask_mean_max
+            )
+        )
         # Bitwise OR
         pixel_mask = pixel_mask | flag_mean * PedestalFlagBits.MEAN_PEDESTAL
 
         # Flag on standard deviation per sample
         # all samples in channel/pixel below threshold
         log.info(
-            f"Flag pixels with pedestal standard deviation for all samples in channel/pixel below the minimum acceptable value {self.pixel_mask_std_sample_min}")
-        flag_sample_std = np.int8(np.all(ped_stats['std'] < self.pixel_mask_std_sample_min,
-                                         axis=2))
+            f"Flag pixels with pedestal standard deviation for all samples in channel/pixel below the minimum acceptable value {self.pixel_mask_std_sample_min}"
+        )
+        flag_sample_std = np.int8(
+            np.all(ped_stats["std"] < self.pixel_mask_std_sample_min, axis=2)
+        )
         # Bitwise OR
         pixel_mask = pixel_mask | flag_sample_std * PedestalFlagBits.STD_SAMPLE
 
         # Flag on standard deviation per pixel
         # Standard deviation of pedestal in channel/pixel above threshold
         log.info(
-            f"Flag pixels with pedestal standard deviation in a chennel/pixel above the maximum acceptable value {self.pixel_mask_std_pixel_max}")
+            f"Flag pixels with pedestal standard deviation in a chennel/pixel above the maximum acceptable value {self.pixel_mask_std_pixel_max}"
+        )
         flag_pixel_std = np.int8(
-            np.std(ped_stats['mean'], axis=2) > self.pixel_mask_std_pixel_max)
+            np.std(ped_stats["mean"], axis=2) > self.pixel_mask_std_pixel_max
+        )
         # Bitwise OR
         pixel_mask = pixel_mask | flag_pixel_std * PedestalFlagBits.STD_PIXEL
 
@@ -589,10 +598,10 @@ class PedestalEstimationComponent(NectarCAMComponent):
                 pixels_id=self._waveformsContainers.pixels_id,
                 ucts_timestamp_min=np.uint64(tmin),
                 ucts_timestamp_max=np.uint64(tmax),
-                pedestal_mean_hg=self._ped_stats['mean'][HIGH_GAIN],
-                pedestal_mean_lg=self._ped_stats['mean'][LOW_GAIN],
-                pedestal_std_hg=self._ped_stats['std'][HIGH_GAIN],
-                pedestal_std_lg=self._ped_stats['std'][LOW_GAIN],
+                pedestal_mean_hg=self._ped_stats["mean"][HIGH_GAIN],
+                pedestal_mean_lg=self._ped_stats["mean"][LOW_GAIN],
+                pedestal_std_hg=self._ped_stats["std"][HIGH_GAIN],
+                pedestal_std_lg=self._ped_stats["std"][LOW_GAIN],
                 pixel_mask=pixel_mask,
             )
 
