@@ -258,7 +258,6 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
         pixel_mask : `np.ndarray`
             An array that contains the binary mask of shape (nchannels,npixels)
             to flag bad pixels
-        ----------
         """
 
         # Initialize mask to False (all pixels are good)
