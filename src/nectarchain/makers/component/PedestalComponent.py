@@ -213,7 +213,7 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
             Names of the statistics (numpy.ma attributes) to compute
 
         Returns
-        ----------
+        -------
         ped_stats : `dict`
             A dictionary containing 3D (n_chan,n_pixels,n_samples) arrays for each
             statistic.
