@@ -2,15 +2,10 @@
 
 Data (`data`)
 =============
-
-.. currentmodule:: nectarchain.data
-
-Introduction
-============
-
 Module containing functions and classes holding NectarCAM data structure, and interaction with DIRAC.
 
 Reference/API
 =============
-.. automodapi:: nectarchain.data
-   :no-inheritance-diagram:
+.. automodule:: nectarchain.data
+   :members:
+   :undoc-members:
