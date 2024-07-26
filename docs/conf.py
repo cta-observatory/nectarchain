@@ -64,7 +64,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 templates_path = []  # ["_templates"]
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
@@ -82,17 +82,10 @@ todo_include_todos = True
 html_theme = "pydata_sphinx_theme"
 # html_theme = "alabaster"
 
+# Output file base name for HTML help builder.
+htmlhelp_basename = f"{project}doc"
+
 html_logo = "_static/nectarcam.png"
-html_theme_options = {
-    "navigation_with_keys": False,
-    "github_url": f"https://github.com/cta-observatory/{project}",
-    "navbar_start": ["navbar-logo", "version-switcher"],
-    "announcement": """
-        <p>nectarchain is not stable yet, so expect large and rapid
-        changes to structure and functionality as we explore various
-        design choices before the 1.0 release.</p>
-    """,
-}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -106,6 +99,17 @@ html_context = {
     "doc_path": "docs",
 }
 html_file_suffix = ".html"
+
+html_theme_options = {
+    "navigation_with_keys": False,
+    "github_url": f"https://github.com/cta-observatory/{project}",
+    "navbar_start": ["navbar-logo", "version-switcher"],
+    "announcement": """
+        <p>nectarchain is not stable yet, so expect large and rapid
+        changes to structure and functionality as we explore various
+        design choices before the 1.0 release.</p>
+    """,
+}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
