@@ -3,12 +3,10 @@ name: CI
 # by not building all branches on push, we avoid the duplicated builds in PRs
 on:
   push:
-    # TODO
-    # Remove comment: just a test to force CI on push in my fork
-    # branches:
-    #   - main
-    # tags:
-    #   - '**'
+    branches:
+      - main
+    tags:
+      - '**'
   pull_request:
 
 env:
