@@ -80,7 +80,7 @@ jobs:
 
       - name: Mamba setup
         if: matrix.install-method == 'mamba'
-        uses: mamba-org/provision-with-micromamba@v15
+        uses: mamba-org/provision-with-micromamba@v16
         with:
           environment-name: "ci"
           environment-file: environment.yml
