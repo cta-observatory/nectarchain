@@ -235,6 +235,7 @@ class ChargesComponent(ArrayDataComponent):
     def finish(self, *args, **kwargs):
         """
         Create an output container for the specified trigger type and method.
+
         Args:
             trigger_type (EventType): The type of trigger.
             method (str): The name of the charge extraction method.
@@ -347,6 +348,7 @@ class ChargesComponent(ArrayDataComponent):
     def charges_hg(self, trigger: EventType):
         """
         Returns the charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
+
         Args:
             trigger (EventType): The specific trigger type.
         Returns:
@@ -360,6 +362,7 @@ class ChargesComponent(ArrayDataComponent):
     def charges_lg(self, trigger: EventType):
         """
         Returns the charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
+
         Args:
             trigger (EventType): The specific trigger type.
         Returns:
@@ -373,6 +376,7 @@ class ChargesComponent(ArrayDataComponent):
     def peak_hg(self, trigger: EventType):
         """
         Returns the peak charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
+
         Args:
             trigger (EventType): The specific trigger type.
         Returns:
@@ -386,6 +390,7 @@ class ChargesComponent(ArrayDataComponent):
     def peak_lg(self, trigger: EventType):
         """
         Returns the peak charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
+
         Args:
             trigger (EventType): The specific trigger type.
         Returns:
@@ -416,6 +421,7 @@ class ChargesComponent(ArrayDataComponent):
     ) -> ChargesContainer:
         """
         Create a ChargesContainer object from waveforms using the specified charge extraction method.
+
         Args:
             waveformsContainer (WaveformsContainer): The waveforms container object.
             method (str, optional): The charge extraction method to use (default is "FullWaveformSum").
@@ -461,6 +467,7 @@ class ChargesComponent(ArrayDataComponent):
     ):
         """
         Compute charge from waveforms.
+
         Args:
             waveformContainer (WaveformsContainer): The waveforms container object.
             channel (int): The channel to compute charges for.
