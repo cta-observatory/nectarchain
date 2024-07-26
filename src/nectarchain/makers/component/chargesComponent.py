@@ -277,6 +277,7 @@ class ChargesComponent(ArrayDataComponent):
     def sort(chargesContainer: ChargesContainer, method: str = "event_id"):
         """
         Sorts the charges in a ChargesContainer object based on the specified method.
+
         Args:
             chargesContainer (ChargesContainer): The ChargesContainer object to be sorted.
             method (str, optional): The sorting method. Defaults to 'event_id'.
@@ -317,6 +318,7 @@ class ChargesComponent(ArrayDataComponent):
     def select_charges_hg(chargesContainer: ChargesContainer, pixel_id: np.ndarray):
         """
         Selects the charges from the ChargesContainer object for the given pixel_id and returns the result transposed.
+
         Args:
             chargesContainer (ChargesContainer): The ChargesContainer object.
             pixel_id (np.ndarray): An array of pixel IDs.
@@ -333,6 +335,7 @@ class ChargesComponent(ArrayDataComponent):
     def select_charges_lg(chargesContainer: ChargesContainer, pixel_id: np.ndarray):
         """
         Selects the charges from the ChargesContainer object for the given pixel_id and returns the result transposed.
+
         Args:
             chargesContainer (ChargesContainer): The ChargesContainer object.
             pixel_id (np.ndarray): An array of pixel IDs.
