@@ -5,6 +5,5 @@ Display (`display`)
 
 Reference/API
 =============
-.. automodule:: nectarchain.display
-   :members:
-   :undoc-members:
+.. automodapi:: nectarchain.display
+    :no-inheritance-diagram:

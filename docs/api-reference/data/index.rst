@@ -6,6 +6,11 @@ Module containing functions and classes holding NectarCAM data structure, and in
 
 Reference/API
 =============
-.. automodule:: nectarchain.data
-   :members:
-   :undoc-members:
+.. automodapi:: nectarchain.data
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.data.management
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.data.container
+    :no-inheritance-diagram:

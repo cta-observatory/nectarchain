@@ -7,6 +7,14 @@ Module for the `nectarchain` makers.
 
 Reference/API
 =============
-.. automodule:: nectarchain.makers
-   :members:
-   :undoc-members:
+.. automodapi:: nectarchain.makers
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.makers.calibration
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.makers.component
+    :no-inheritance-diagram:
+
+.. automodapi:: nectarchain.makers.extractor
+    :no-inheritance-diagram:
