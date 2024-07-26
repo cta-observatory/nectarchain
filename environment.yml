@@ -14,8 +14,8 @@ dependencies:
   - pip
   - pandas
   - scipy=1.11
-  - zeo
-  - zodb
   - pip:
+      - zeo
+      - zodb
       - mechanize
       - browser-cookie3
