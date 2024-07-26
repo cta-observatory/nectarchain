@@ -5,6 +5,7 @@ from nectarchain.data.container import NectarCAMPedestalContainer
 
 def generate_mock_pedestal_container():
     # fixed values
+    nchannels = 2
     npixels = 10
     nevents_max = 100
     nevents_min = 10
@@ -18,6 +19,7 @@ def generate_mock_pedestal_container():
     pedestal_mean_lg = np.float64(np.random.uniform(240, 260, size=(npixels, nsamples)))
     pedestal_std_hg = np.float64(np.random.normal(size=(npixels, nsamples)))
     pedestal_std_lg = np.float64(np.random.normal(size=(npixels, nsamples)))
+    pixel_mask = np.int8(np.random.randint(0,2,size=(nchannels,npixels)))
 
     # create pedestal container
     pedestal_container = NectarCAMPedestalContainer(
@@ -29,7 +31,8 @@ def generate_mock_pedestal_container():
         pedestal_mean_hg=pedestal_mean_hg,
         pedestal_mean_lg=pedestal_mean_lg,
         pedestal_std_hg=pedestal_std_hg,
-        pedestal_std_lg=pedestal_std_lg
+        pedestal_std_lg=pedestal_std_lg,
+        pixel_mask = pixel_mask
     )
     pedestal_container.validate()
 
@@ -43,6 +46,7 @@ def generate_mock_pedestal_container():
             'pedestal_mean_lg': pedestal_mean_lg,
             'pedestal_std_hg': pedestal_std_hg,
             'pedestal_std_lg': pedestal_std_lg,
+            'pixel_mask': pixel_mask
             }
 
     # return both container and input content
@@ -63,6 +67,7 @@ class TestNectarCAMPedestalContainer:
         assert np.allclose(pedestal_container.pedestal_mean_lg, dict['pedestal_mean_lg'])
         assert np.allclose(pedestal_container.pedestal_std_hg, dict['pedestal_std_hg'])
         assert np.allclose(pedestal_container.pedestal_std_lg, dict['pedestal_std_lg'])
+        assert np.allclose(pedestal_container.pixel_mask, dict['pixel_mask'])
 
     # FIXME
     # Guillaume is working on generalizing the fromhdf5 method to all containers

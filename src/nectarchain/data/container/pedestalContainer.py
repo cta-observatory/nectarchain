@@ -9,6 +9,25 @@ from ctapipe.containers import Field
 
 from .core import NectarCAMContainer
 
+from enum import IntFlag, auto, unique
+
+
+@unique
+class PedestalFlagBits(IntFlag):
+    '''
+    Define the bits corresponding to pedestal-related flags
+    NEVENTS:        Number of events below the acceptable minimum value
+    MEAN_PEDESTAL:  Mean pedestal outside acceptable range
+    STD_SAMPLE:     Pedestal standard deviation for all samples in channel/pixel below the
+                    minimum acceptable value
+    STD_PIXEL:      Pedestal standard deviation in a channel/pixel above the maximum
+                    acceptable value
+    '''
+    NEVENTS = auto()
+    MEAN_PEDESTAL = auto()
+    STD_SAMPLE = auto()
+    STD_PIXEL = auto()
+
 
 class NectarCAMPedestalContainer(NectarCAMContainer):
     """
@@ -63,4 +82,11 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
     pedestal_std_lg = Field(
         type=np.ndarray, dtype=np.float64, ndim=2,
         description="low gain pedestals standard deviations"
+    )
+
+    pixel_mask = Field(
+        type=np.ndarray, dtype=np.int8, ndim=2,
+        description="Flag that identifies bad pixels. The flag is a binary mask. \
+        The meaning of the mask bits is defined in the class\
+         ~nectarchain.data.container.PedestalFlagBits"
     )
