@@ -333,7 +333,7 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
             Maximum time of the required interval
 
         Returns
-        ----------
+        -------
         mask : `~numpy.ndarray`
             A boolean array of shape (n_events,n_pixels,n_samples) that identifies
             waveforms to be masked.
@@ -381,7 +381,7 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
             filtered out
 
         Returns
-        ----------
+        -------
         mask : `~numpy.ndarray`
             A boolean array of shape (n_events,n_pixels,n_samples) that identifies
             waveforms to be masked
@@ -429,7 +429,7 @@ Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
             filtered out
 
         Returns
-        ----------
+        -------
         mask : `~numpy.ndarray`
             A boolean array of shape (n_events,n_pixels,n_samples) that identifies
             waveforms to be masked
