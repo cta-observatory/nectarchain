@@ -33,14 +33,14 @@ except Exception as e:
 class DataManagement:
     @staticmethod
     def findrun(run_number: int, search_on_GRID=True) -> Tuple[Path, List[Path]]:
-        """method to find in NECTARCAMDATA the list of *.fits.fz files associated to
+        """method to find in NECTARCAMDATA the list of `*.fits.fz` files associated to
         run_number
 
         Args:
             run_number (int): the run number
 
         Returns:
-            (PosixPath,list): the path list of *fits.fz files
+            (PosixPath,list): the path list of `*fits.fz` files
         """
         basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
         list = glob.glob(
