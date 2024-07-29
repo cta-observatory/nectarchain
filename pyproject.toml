@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "nectarchain"
 description = "Analysis chain for the CTA MSTN NectarCAM prototype"
 readme = "README.md"
-authors = [{name = "NectarCAM collaboration"}]
+authors = [{name = "CTAO NectarCAM collaboration"}]
 license = {text = "BSD-3-Clause"}
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -46,9 +46,17 @@ dev = [
     "setuptools_scm",
 ]
 
+docs = [
+    "sphinx",
+    "sphinx-automodapi",
+    "pydata_sphinx_theme",
+    "numpydoc",
+    "tomli; python_version < '3.11'"
+]
+
 # we can use self-references to simplify all
 all = [
-    "nectarchain[test,dev]",
+    "nectarchain[test,docs,dev]",
 ]
 
 [tool.setuptools.packages.find]
