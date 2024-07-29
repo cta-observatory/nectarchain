@@ -48,6 +48,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
     "sphinx_automodapi.automodapi",
+    "sphinx_automodapi.smart_resolver",
     "numpydoc",
 ]
 
@@ -64,14 +65,35 @@ source_suffix = ".rst"
 master_doc = "index"
 
 templates_path = []  # ["_templates"]
+
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.8", None),
+    "python": ("https://docs.python.org/3.9", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
-    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.2/", None),
+    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
+    "matplotlib": ("https://matplotlib.org/", None),
+    "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
 }
+
+# These links are ignored in the checks, necessary due to broken intersphinx for these
+nitpick_ignore = [
+    ("py:obj", "enum.auto"),
+    ("py:obj", "enum.IntFlag"),
+    ("py:obj", "enum.unique"),
+    # coming from inherited traitlets docs
+    ("py:class", "t.Union"),
+    ("py:class", "t.Dict"),
+    ("py:class", "t.Tuple"),
+    ("py:class", "t.List"),
+    ("py:class", "t.Any"),
+    ("py:class", "t.Type"),
+    ("py:class", "Config"),
+    ("py:class", "Unicode"),
+    ("py:class", "StrDict"),
+    ("py:class", "ClassesType"),
+]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
