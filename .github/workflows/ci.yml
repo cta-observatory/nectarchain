@@ -113,6 +113,8 @@ jobs:
       - uses: codecov/codecov-action@v4
 
   docs:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
