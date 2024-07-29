@@ -79,8 +79,8 @@ todo_include_todos = True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "pydata_sphinx_theme"
-# html_theme = "alabaster"
+# html_theme = "pydata_sphinx_theme"
+html_theme = "alabaster"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = f"{project}doc"
