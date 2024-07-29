@@ -139,5 +139,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: docs/_build/html
+          branch: gh-pages
           clean: true
+          token: ${{ secrets.GITHUB_TOKEN }}
           single-commit: true
