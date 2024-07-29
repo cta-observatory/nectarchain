@@ -7,14 +7,14 @@ Welcome to nectarchain's documentation!
 
 **version**:  |version| **Date**: |today|
 
-.. _apic_docs:
+.. _nectarchain_docs:
 
 .. toctree::
-   :maxdepth: 1
-   :caption: API Documentation
-   :name: _api_docs
+    :maxdepth: 1
+    :hidden:
 
-   api-reference/index
+    developer-guide/index
+    api-reference/index
 
 
 Indices and tables
