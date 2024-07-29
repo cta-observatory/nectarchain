@@ -117,19 +117,21 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: 3.9
 
       - name: Install doc dependencies
         run: |
+          sudo apt update --yes && sudo apt install --yes git build-essential pandoc graphviz
+          pip install -U pip setuptools wheel
           pip install -e .[doc]
-          # git describe --tags
+          git describe --tags
           python -c 'import nectarchain; print(nectarchain.__version__)'
 
       - name: Build docs
@@ -140,8 +142,8 @@ jobs:
         # if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          FOLDER: docs/_build/html
-          BRANCH: gh-pages
-          CLEAN: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SINGLE_COMMIT: true
+          folder: docs/_build/html
+          branch: gh-pages
+          clean: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          single-commit: true
