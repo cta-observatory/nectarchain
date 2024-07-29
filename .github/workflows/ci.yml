@@ -140,4 +140,4 @@ jobs:
         with:
           folder: docs/_build/html
           clean: true
-          single_commit: true
+          single-commit: true
