@@ -131,7 +131,7 @@ jobs:
           python -c 'import nectarchain; print(nectarchain.__version__)'
 
       - name: Build docs
-        run: make -C docs html SPHINXOPTS="-W --keep-going -n --color -j 1 -vvv"  # auto"
+        run: make -C docs html SPHINXOPTS="-W --keep-going -n --color -j 1 -v"  # auto"
 
       - name: Deploy to github pages
         # only run on push to main
