@@ -131,7 +131,7 @@ jobs:
 
       - name: Install doc dependencies
         run: |
-          pip install -e .[doc]
+          pip install -e .[docs]
           # git describe --tags
           python -c 'import nectarchain; print(nectarchain.__version__)'
 

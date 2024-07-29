@@ -46,7 +46,7 @@ dev = [
     "setuptools_scm",
 ]
 
-doc = [
+docs = [
     "sphinx",
     "sphinx-automodapi",
     "pydata_sphinx_theme",
@@ -56,7 +56,7 @@ doc = [
 
 # we can use self-references to simplify all
 all = [
-    "nectarchain[test,doc,dev]",
+    "nectarchain[test,docs,dev]",
 ]
 
 [tool.setuptools.packages.find]
