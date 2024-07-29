@@ -129,10 +129,8 @@ jobs:
 
       - name: Install doc dependencies
         run: |
-          sudo apt update --yes && sudo apt install --yes git build-essential pandoc graphviz
-          pip install -U pip setuptools wheel
           pip install -e .[doc]
-          git describe --tags
+          # git describe --tags
           python -c 'import nectarchain; print(nectarchain.__version__)'
 
       - name: Build docs
