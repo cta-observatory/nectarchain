@@ -140,8 +140,8 @@ jobs:
         # if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: docs/_build/html
-          branch: gh-pages
-          clean: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          single-commit: true
+          FOLDER: docs/_build/html
+          BRANCH: gh-pages
+          CLEAN: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SINGLE_COMMIT: true
