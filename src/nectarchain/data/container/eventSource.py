@@ -218,7 +218,7 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
 
     Methods
     -------
-    _generator
+    _generator:
         The generator function that yields NectarCAMDataContainer objects representing each event.
 
     """
