@@ -48,6 +48,7 @@ dev = [
 
 docs = [
     "sphinx",
+    "sphinx-autodoc-typehints",
     "sphinx-automodapi",
     "pydata_sphinx_theme",
     "numpydoc",
