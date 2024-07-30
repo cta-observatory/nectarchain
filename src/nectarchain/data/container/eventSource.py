@@ -195,32 +195,26 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
     This implementation of the NectarCAMEventSource is much lighter than the one within
     ctapipe_io_nectarcam, only the fields interesting for nectarchain are kept.
 
-    Attributes
+    Parameters
     ----------
-    input_url: str
+    input_url : str
         The input URL of the data source.
-    max_events: int
+    max_events : int
         The maximum number of events to process.
-    tel_id: int
+    tel_id : int
         The telescope ID.
-    nectarcam_service: NectarCAMService
+    nectarcam_service : NectarCAMService
         The service container for NectarCAM.
-    trigger_information: bool
+    trigger_information : bool
         Flag indicating whether to fill trigger information in the event container.
-    obs_ids: list
+    obs_ids : list
         The list of observation IDs.
-    multi_file: MultiFileReader
+    multi_file : MultiFileReader
         The multi-file reader for reading the data source.
-    r0_r1_calibrator: R0R1Calibrator
+    r0_r1_calibrator : R0R1Calibrator
         The calibrator for R0 to R1 conversion.
-    calibrate_flatfields_and_pedestals: bool
+    calibrate_flatfields_and_pedestals : bool
         Flag indicating whether to calibrate flatfield and pedestal events.
-
-    Methods
-    -------
-    _generator:
-        The generator function that yields NectarCAMDataContainer objects representing each event.
-
     """
 
     def _generator(self):
@@ -228,12 +222,15 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
         The generator function that yields NectarCAMDataContainer objects representing
         each event.
 
-        Yields:
-            NectarCAMDataContainer: The NectarCAMDataContainer object representing
-            each event.
+        Yields
+        ------
+        NectarCAMDataContainer :
+            The NectarCAMDataContainer object representing each event.
 
-        Raises:
-            None
+        Raises
+        ------
+        None
+
         """
         # container for NectarCAM data
         array_event = NectarCAMDataContainer()
