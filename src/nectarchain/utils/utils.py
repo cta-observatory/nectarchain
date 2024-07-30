@@ -106,12 +106,12 @@ class UtilsMinuit:
 
     @staticmethod
     def set_minuit_parameters_limits_and_errors(m: Minuit, parameters: dict):
-        """function to set minuit parameter limits and errors with Minuit >2.0
+        """Function to set minuit parameter limits and errors with Minuit >2.0
 
         Args:
             m (Minuit): a Minuit instance
-            parameters (dict): dict containing parameters names, limits errors
-                and values
+            parameters (dict): dict containing parameters names, limits errors and
+            values.
         """
         for name in parameters["names"]:
             m.limits[name] = parameters[f"limit_{name}"]

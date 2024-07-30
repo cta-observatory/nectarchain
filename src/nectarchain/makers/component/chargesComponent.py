@@ -62,14 +62,17 @@ list_nectarchain_charge_extractor = ["gradient_extractor"]
     cache=True,
 )
 def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
-    """compute histogram of charge with numba
+    """
+    Compute histogram of charge with numba
 
-    Args:
+    Parameters
+    ----------
         charge (np.ndarray(pixels,nevents)): charge
         all_range (np.ndarray(nbins)): charge range
         mask_broken_pix (np.ndarray(pixels)): mask on broxen pixels
         _mask (np.ndarray(pixels,nbins)): mask
         hist_ma_data (np.ndarray(pixels,nbins)): histogram
+
     """
     # print(f"charge.shape = {charge.shape[0]}")
     # print(f"_mask.shape = {_mask.shape[0]}")
@@ -139,12 +142,15 @@ class ChargesComponent(ArrayDataComponent):
         """
         Initializes the ChargesMaker based on the trigger type.
 
-        Args:
+        Parameters
+        ----------
             trigger_type (EventType): The type of trigger.
-            **kwargs: Additional keyword arguments.
+            kwargs: Additional keyword arguments.
 
-        Returns:
+        Returns
+        -------
             None
+
         """
         super()._init_trigger_type(trigger_type, **kwargs)
         name = __class__._get_name_trigger(trigger_type)
@@ -209,12 +215,17 @@ class ChargesComponent(ArrayDataComponent):
     def _get_imageExtractor(method: str, subarray: SubarrayDescription, **kwargs):
         """
         Create an instance of a charge extraction method based on the provided method name and subarray description.
-        Args:
+
+        Parameters
+        ----------
             method (str): The name of the charge extraction method.
             subarray (SubarrayDescription): The description of the subarray.
-            **kwargs (dict): Additional keyword arguments for the charge extraction method.
-        Returns:
+            ``**kwargs`` (dict): Additional keyword arguments for the charge extraction method.
+
+        Returns
+        -------
             imageExtractor: An instance of the charge extraction method specified by `method` with the provided subarray description and keyword arguments.
+
         """
         if not (
             method in list_ctapipe_charge_extractor
@@ -236,13 +247,17 @@ class ChargesComponent(ArrayDataComponent):
         """
         Create an output container for the specified trigger type and method.
 
-        Args:
+        Parameters
+        ----------
             trigger_type (EventType): The type of trigger.
             method (str): The name of the charge extraction method.
-            *args: Additional positional arguments.
-            **kwargs: Additional keyword arguments.
-        Returns:
+            args: Additional positional arguments.
+            kwargs: Additional keyword arguments.
+
+        Returns
+        -------
             list: A list of ChargesContainer objects.
+
         """
         output = ChargesContainers()
         for i, trigger in enumerate(self.trigger_list):
@@ -278,14 +293,19 @@ class ChargesComponent(ArrayDataComponent):
         """
         Sorts the charges in a ChargesContainer object based on the specified method.
 
-        Args:
+        Parameters
+        ----------
             chargesContainer (ChargesContainer): The ChargesContainer object to be sorted.
             method (str, optional): The sorting method. Defaults to 'event_id'.
-        Returns:
+
+        Returns
+        -------
             ChargesContainer: A new ChargesContainer object with the charges sorted based on the specified method.
 
-        Raises:
+        Raises
+        ------
             ArgumentError: If the specified method is not valid.
+
         """
         output = ChargesContainer(
             run_number=chargesContainer.run_number,
@@ -319,11 +339,15 @@ class ChargesComponent(ArrayDataComponent):
         """
         Selects the charges from the ChargesContainer object for the given pixel_id and returns the result transposed.
 
-        Args:
+        Parameters
+        ----------
             chargesContainer (ChargesContainer): The ChargesContainer object.
             pixel_id (np.ndarray): An array of pixel IDs.
-        Returns:
+
+        Returns
+        -------
             np.ndarray: The selected charges from the ChargesContainer object for the given pixel_id, transposed.
+
         """
         res = __class__.select_container_array_field(
             container=chargesContainer, pixel_id=pixel_id, field="charges_hg"
@@ -336,11 +360,15 @@ class ChargesComponent(ArrayDataComponent):
         """
         Selects the charges from the ChargesContainer object for the given pixel_id and returns the result transposed.
 
-        Args:
+        Parameters
+        ----------
             chargesContainer (ChargesContainer): The ChargesContainer object.
             pixel_id (np.ndarray): An array of pixel IDs.
-        Returns:
+
+        Returns
+        -------
             np.ndarray: The selected charges from the ChargesContainer object for the given pixel_id, transposed.
+
         """
         res = __class__.select_container_array_field(
             container=chargesContainer, pixel_id=pixel_id, field="charges_lg"
@@ -352,10 +380,14 @@ class ChargesComponent(ArrayDataComponent):
         """
         Returns the charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
 
-        Args:
+        Parameters
+        ----------
             trigger (EventType): The specific trigger type.
-        Returns:
+
+        Returns
+        -------
             np.ndarray: The charges for the specific trigger type.
+
         """
         return np.array(
             self.__charges_hg[__class__._get_name_trigger(trigger)],
@@ -366,10 +398,14 @@ class ChargesComponent(ArrayDataComponent):
         """
         Returns the charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
 
-        Args:
+        Parameters
+        ----------
             trigger (EventType): The specific trigger type.
-        Returns:
+
+        Returns
+        -------
             np.ndarray: The charges for the specific trigger type.
+
         """
         return np.array(
             self.__charges_lg[__class__._get_name_trigger(trigger)],
@@ -380,10 +416,14 @@ class ChargesComponent(ArrayDataComponent):
         """
         Returns the peak charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
 
-        Args:
+        Parameters
+        ----------
             trigger (EventType): The specific trigger type.
-        Returns:
+
+        Returns
+        -------
             np.ndarray: The peak charges for the specific trigger type.
+
         """
         return np.array(
             self.__peak_hg[__class__._get_name_trigger(trigger)],
@@ -394,10 +434,14 @@ class ChargesComponent(ArrayDataComponent):
         """
         Returns the peak charges for a specific trigger type as a NumPy array of unsigned 16-bit integers.
 
-        Args:
+        Parameters
+        ----------
             trigger (EventType): The specific trigger type.
-        Returns:
+
+        Returns
+        -------
             np.ndarray: The peak charges for the specific trigger type.
+
         """
         return np.array(
             self.__peak_lg[__class__._get_name_trigger(trigger)],
@@ -428,7 +472,8 @@ class ChargesComponent(ArrayDataComponent):
         Args:
             waveformsContainer (WaveformsContainer): The waveforms container object.
             method (str, optional): The charge extraction method to use (default is "FullWaveformSum").
-            **kwargs: Additional keyword arguments to pass to the charge extraction method.
+            kwargs: Additional keyword arguments to pass to the charge extraction method.
+
         Returns:
             ChargesContainer: The charges container object containing the computed charges and peak times.
         """
@@ -475,10 +520,12 @@ class ChargesComponent(ArrayDataComponent):
             waveformContainer (WaveformsContainer): The waveforms container object.
             channel (int): The channel to compute charges for.
             method (str, optional): The charge extraction method to use (default is "FullWaveformSum").
-            **kwargs: Additional keyword arguments to pass to the charge extraction method.
+            ``**kwargs``: Additional keyword arguments to pass to the charge extraction method.
+
         Raises:
             ArgumentError: If the extraction method is unknown.
             ArgumentError: If the channel is unknown.
+
         Returns:
             tuple: A tuple containing the computed charges and peak times.
         """
