@@ -42,18 +42,24 @@ release = version
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.githubpages",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
-    "sphinx_automodapi.automodapi",
-    "sphinx_automodapi.smart_resolver",
-    "numpydoc",
+    "sphinx_autodoc_typehints",  # Automatically document param types (less noise in
+    # class signature)
 ]
 
-numpydoc_show_class_members = False
-autosummary_generate = True
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
+html_show_sourcelink = (
+    False  # Remove 'view source code' from top of page (for html, not python)
+)
+autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
+nbsphinx_allow_errors = True  # Continue through Jupyter errors
+# autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
+add_module_names = False  # Remove namespaces from class/method signatures
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -64,7 +70,7 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-templates_path = []  # ["_templates"]
+templates_path = ["_templates"]
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
@@ -73,7 +79,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3.9", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
-    "matplotlib": ("https://matplotlib.org/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
 }
 
