@@ -33,14 +33,19 @@ except Exception as e:
 class DataManagement:
     @staticmethod
     def findrun(run_number: int, search_on_GRID=True) -> Tuple[Path, List[Path]]:
-        """method to find in NECTARCAMDATA the list of `*.fits.fz` files associated to
+        """method to find in NECTARCAMDATA the list of ``*.fits.fz`` files associated to
         run_number
 
-        Args:
-            run_number (int): the run number
+        Parameters
+        ----------
+        run_number: int
+            the run number
 
-        Returns:
-            (PosixPath,list): the path list of `*fits.fz` files
+        Returns
+        -------
+        (PosixPath,list):
+            the path list of `*fits.fz` files
+
         """
         basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
         list = glob.glob(
@@ -77,10 +82,12 @@ class DataManagement:
 
     @staticmethod
     def getRunFromDIRAC(lfns: list):
-        """method do get run files from GRID-EGI from input lfns
+        """Method to get run files from the EGI grid from input lfns
 
-        Args:
-            lfns (list): list of lfns path
+        Parameters
+        ----------
+        lfns: list
+            list of lfns path
         """
         with KeepLoggingUnchanged():
             from DIRAC.Interfaces.API.Dirac import Dirac
@@ -111,16 +118,26 @@ class DataManagement:
         """
         Method to get run location on GRID from Elog (work in progress!)
 
-        Args:
-            run_number (int): run number
-            output_lfns (bool, optional): if True, return lfns path of fits.gz files, else return parent directory of run location. Defaults to True.
-            basepath (str) : the path on GRID where nectarCAM data are stored. Default to /vo.cta.in2p3.fr/nectarcam/.
-            fromElog (bool,optional): To force to use the method which read the Elog. Default to False. To use the method with DIRAC API.
-            username (_type_, optional): username for Elog login. Defaults to None.
-            password (_type_, optional): password for Elog login. Defaults to None.
+        Parameters
+        ----------
+        run_number: int
+            Run number
+        output_lfns: bool, optional
+            If True, return lfns path of fits.gz files, else return parent directory
+            of run location. Defaults to True.
+        basepath: str
+            The path on GRID where nectarCAM data are stored. Default to ``/vo.cta.in2p3.fr/nectarcam/``.
+        fromElog: bool, optional
+            To force to use the method which read the Elog. Default to False. To use the method with DIRAC API.
+        username: _type_, optional
+            username for Elog login. Defaults to None.
+        password: _type_, optional
+            password for Elog login. Defaults to None.
 
-        Returns:
-            _type_: _description_
+        Returns
+        -------
+        __get_GRID_location_ELog or __get_GRID_location_DIRAC
+
         """
         if fromElog:
             return __class__.__get_GRID_location_ELog(
