@@ -58,7 +58,8 @@ html_show_sourcelink = (
 autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
 nbsphinx_allow_errors = True  # Continue through Jupyter errors
-# autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
+# autodoc_typehints = "description" # Sphinx-native method. Not as good as
+# sphinx_autodoc_typehints
 add_module_names = False  # Remove namespaces from class/method signatures
 
 # The suffix(es) of source filenames.
@@ -77,10 +78,12 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.9", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
-    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
+    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
 # These links are ignored in the checks, necessary due to broken intersphinx for these
