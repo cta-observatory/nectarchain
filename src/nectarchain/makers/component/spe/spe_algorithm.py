@@ -931,22 +931,35 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         Parameters
         ----------
-        pixel_id (int): The ID of the pixel for which the plot is generated.
-        charge (np.ndarray): An array of charge values.
-        counts (np.ndarray): An array of event counts corresponding to the charge values.
-        pp (float): The value of the ``pp`` parameter.
-        resolution (float): The value of the ``resolution`` parameter.
-        gain (float): The value of the ``gain`` parameter.
-        gain_error (float): The value of the ``gain_error`` parameter.
-        n (float): The value of the ``n`` parameter.
-        pedestal (float): The value of the ``pedestal`` parameter.
-        pedestalWidth (float): The value of the ``pedestalWidth`` parameter.
-        luminosity (float): The value of the ``luminosity`` parameter.
-        likelihood (float): The value of the ``likelihood`` parameter.
+        pixel_id: int
+            The ID of the pixel for which the plot is generated.
+        charge: np.ndarray
+            An array of charge values.
+        counts: np.ndarray
+            An array of event counts corresponding to the charge values.
+        pp: float
+            The value of the ``pp`` parameter.
+        resolution: float
+            The value of the ``resolution`` parameter.
+        gain: float
+            The value of the ``gain`` parameter.
+        gain_error: float
+            The value of the ``gain_error`` parameter.
+        n: float
+            The value of the ``n`` parameter.
+        pedestal: float
+            The value of the ``pedestal`` parameter.
+        pedestalWidth: float
+            The value of the ``pedestalWidth`` parameter.
+        luminosity: float
+            The value of the ``luminosity`` parameter.
+        likelihood: float
+            The value of the ``likelihood`` parameter.
 
         Returns
         -------
-        tuple: A tuple containing the generated plot figure and the axes of the plot.
+        tuple:
+            A tuple containing the generated plot figure and the axes of the plot.
 
         """
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
@@ -981,12 +994,18 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         Parameters
         ----------
-        pixels_id (np.ndarray): An array of pixel IDs.
-        package (str): the package used to plot, can be matplotlib or pyqtgraph.
+        pixels_id: np.ndarray
+            An array of pixel IDs.
+        package: str
+            the package used to plot, can be matplotlib or pyqtgraph.
             Default to pyqtgraph
         kwargs: Additional keyword arguments.
-            figpath (str): The path to save the generated plot figures.
-            Defaults to "/tmp/NectarGain_pid{os.getpid()}".
+            figpath: str
+                The path to save the generated plot figures.
+                Defaults to ``/tmp/NectarGain_pid{os.getpid()}``.
+
+        Returns
+        -------
 
         """
         figpath = kwargs.get(
