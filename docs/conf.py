@@ -50,7 +50,7 @@ extensions = [
     # class signature)
 ]
 
-autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autosummary_generate = False  # Turn on sphinx.ext.autosummary
 autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = (
     False  # Remove 'view source code' from top of page (for html, not python)
@@ -83,7 +83,7 @@ intersphinx_mapping = {
     "astropy": ("https://docs.astropy.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
-    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
+    # "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
 # These links are ignored in the checks, necessary due to broken intersphinx for these
