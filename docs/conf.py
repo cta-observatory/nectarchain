@@ -42,18 +42,25 @@ release = version
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.githubpages",
-    "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "sphinx_automodapi.automodapi",
-    "sphinx_automodapi.smart_resolver",
-    "numpydoc",
+    "sphinx_autodoc_typehints",  # Automatically document param types (less noise in
+    # class signature)
 ]
 
-numpydoc_show_class_members = False
-autosummary_generate = True
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
+html_show_sourcelink = (
+    False  # Remove 'view source code' from top of page (for html, not python)
+)
+autodoc_inherit_docstrings = False  # If no docstring, inherit from base class
+set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
+nbsphinx_allow_errors = True  # Continue through Jupyter errors
+# autodoc_typehints = "description" # Sphinx-native method. Not as good as
+# sphinx_autodoc_typehints
+add_module_names = False  # Remove namespaces from class/method signatures
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -64,17 +71,19 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-templates_path = []  # ["_templates"]
+templates_path = ["_templates"]
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.9", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
-    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
-    "matplotlib": ("https://matplotlib.org/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
+    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
 # These links are ignored in the checks, necessary due to broken intersphinx for these
@@ -95,6 +104,8 @@ nitpick_ignore = [
     ("py:class", "ClassesType"),
 ]
 
+suppress_warnings = ["autosummary"]
+
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
@@ -106,8 +117,6 @@ html_theme = "pydata_sphinx_theme"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = f"{project}doc"
-
-html_logo = "_static/nectarcam.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -123,6 +132,11 @@ html_context = {
 html_file_suffix = ".html"
 
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/nectarcam_logo.webp",
+        "image_dark": "_static/nectarcam_logo_dark.webp",
+        "alt_text": "nectarchain",
+    },
     "navigation_with_keys": False,
     "github_url": f"https://github.com/cta-observatory/{project}",
     "navbar_start": ["navbar-logo", "version-switcher"],

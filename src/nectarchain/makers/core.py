@@ -74,14 +74,19 @@ class BaseNectarCAMCalibrationTool(Tool):
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
 
-        Args:self.__run_number = run_number
-            run_number (int): run_id
-            maxevents (int, optional): max of events to be loaded. Defaults to -1, to
-            load everything.
-            run_file (optional) : if provided, will load this run file
-        Returns:
-            List[ctapipe_io_nectarcam.LightNectarCAMEventSource]: List of EventSource
-            for each run files.
+        Parameters
+        ----------
+        run_number : int
+            run_id
+        maxevents : int, optional
+            max of events to be loaded. Defaults to -1, to load everything.
+        run_file : optional
+            if provided, will load this run file
+
+        Returns
+        -------
+        List[ctapipe_io_nectarcam.LightNectarCAMEventSource]
+            List of EventSource for each run files.
         """
         # Load the data from the run file.
         if run_file is None:

@@ -14,7 +14,7 @@ Welcome to nectarchain's documentation!
     :hidden:
 
     developer-guide/index
-    api-reference/index
+    API reference <_autosummary/nectarchain>
 
 
 Indices and tables
