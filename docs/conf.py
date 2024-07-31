@@ -116,8 +116,6 @@ html_theme = "pydata_sphinx_theme"
 # Output file base name for HTML help builder.
 htmlhelp_basename = f"{project}doc"
 
-html_logo = "_static/nectarcam.png"
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -132,6 +130,11 @@ html_context = {
 html_file_suffix = ".html"
 
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/nectarcam_logo.webp",
+        "image_dark": "_static/nectarcam_logo_dark.webp",
+        "alt_text": "nectarchain",
+    },
     "navigation_with_keys": False,
     "github_url": f"https://github.com/cta-observatory/{project}",
     "navbar_start": ["navbar-logo", "version-switcher"],
