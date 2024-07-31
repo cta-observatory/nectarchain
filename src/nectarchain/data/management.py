@@ -126,9 +126,11 @@ class DataManagement:
             If True, return lfns path of fits.gz files, else return parent directory
             of run location. Defaults to True.
         basepath: str
-            The path on GRID where nectarCAM data are stored. Default to ``/vo.cta.in2p3.fr/nectarcam/``.
+            The path on GRID where nectarCAM data are stored. Default to
+            ``/vo.cta.in2p3.fr/nectarcam/``.
         fromElog: bool, optional
-            To force to use the method which read the Elog. Default to False. To use the method with DIRAC API.
+            To force to use the method which read the Elog. Default to False. To use
+            the method with DIRAC API.
         username: _type_, optional
             username for Elog login. Defaults to None.
         password: _type_, optional
