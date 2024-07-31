@@ -104,6 +104,8 @@ nitpick_ignore = [
     ("py:class", "ClassesType"),
 ]
 
+suppress_warnings = ["autosummary"]
+
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
