@@ -629,8 +629,9 @@ class SPEnominalalgorithm(SPEalgorithm):
     ):
         """
         Calculates the chi-square value using the MPE2 function.
-        The different parameters are explained in
-        `Caroff et al. (2019)<https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC>`_
+        The different parameters are explained in `Caroff et al. (2019) <CAROFF>`_.
+
+        .. _CAROFF: https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC
 
         Parameters
         ----------
@@ -966,8 +967,9 @@ class SPEnominalalgorithm(SPEalgorithm):
     ) -> tuple:
         """
         Generate a plot of the data and a model fit for a specific pixel.
-        The different parameters are explained in
-        `Caroff et al. (2019)<https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC>`_
+        The different parameters are explained in `Caroff et al. (2019) <CAROFF>`_.
+
+        .. _CAROFF: https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC
 
         Parameters
         ----------
@@ -1042,9 +1044,9 @@ class SPEnominalalgorithm(SPEalgorithm):
             Default to pyqtgraph
         kwargs
             Additional keyword arguments.
-            figpath: str
-                The path to save the generated plot figures.
-                Defaults to ``/tmp/NectarGain_pid{os.getpid()}``.
+            figpath : str
+            The path to save the generated plot figures.
+            Defaults to ``/tmp/NectarGain_pid{os.getpid()}``.
         """
         figpath = kwargs.get(
             "figpath",
