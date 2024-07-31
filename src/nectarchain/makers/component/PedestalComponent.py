@@ -79,9 +79,9 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
     filter_method = Unicode(
         None,
-        help="""The waveforms filter method to be used.
-Implemented methods: WaveformsStdFilter (standard deviation of waveforms),
-                     ChargeDistributionFilter (charge distribution).""",
+        help="The waveforms filter method to be used. Implemented methods: "
+        "WaveformsStdFilter (standard deviation of waveforms), "
+        "ChargeDistributionFilter (charge distribution).",
         read_only=False,
         allow_none=True,
     ).tag(config=True)
