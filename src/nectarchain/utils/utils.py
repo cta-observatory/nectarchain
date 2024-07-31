@@ -3,6 +3,7 @@ import logging
 import math
 
 import numpy as np
+from ctapipe.core.component import Component
 from iminuit import Minuit
 from scipy import interpolate, signal
 from scipy.special import gammainc
@@ -12,15 +13,13 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-from ctapipe.core.component import Component
-
 
 class ComponentUtils:
     @staticmethod
     def is_in_non_abstract_subclasses(
         component: Component, motherClass="NectarCAMComponent"
     ):
-        from nectarchain.makers.component.core import NectarCAMComponent
+        from nectarchain.makers.component.core import NectarCAMComponent  # noqa: F401
 
         # module = importlib.import_module(f'nectarchain.makers.component.core')
         is_in = False
@@ -38,7 +37,7 @@ class ComponentUtils:
         if ComponentUtils.is_in_non_abstract_subclasses(
             component, "NectarCAMComponent"
         ) and not (component.SubComponents.default_value is None):
-            for component_name in component.SubComponents.default_value:  #####CPT
+            for component_name in component.SubComponents.default_value:  # CPT
                 _class = getattr(
                     importlib.import_module("nectarchain.makers.component"),
                     component_name,
@@ -66,7 +65,8 @@ class ComponentUtils:
                 return _class
 
         raise ValueError(
-            "componentName is not a valid component, this component is not known as a child of NectarCAMComponent"
+            "componentName is not a valid component, this component is not known as a "
+            "child of NectarCAMComponent"
         )
 
 
@@ -122,7 +122,8 @@ class UtilsMinuit:
 
 # Useful functions for the fit
 def gaussian(x, mu, sig):
-    # return (1./(sig*np.sqrt(2*math.pi)))*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    # return (1./(sig*np.sqrt(2*math.pi))) *
+    # np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     return norm.pdf(x, loc=mu, scale=sig)
 
 
@@ -304,12 +305,14 @@ def sigma2(n, p, res, mu2):
     else:
         return n * SigMax(p, res, mu2)
 
-    # The real final model callign all the above for luminosity (lum) + PED, wil return probability of number of Spe
+    # The real final model callign all the above for luminosity (lum) + PED, wil return
+    # probability of number of Spe
 
 
 def MPE2(x, pp, res, mu2, n, muped, sigped, lum, **kwargs):
     log.debug(
-        f"pp = {pp}, res = {res}, mu2 = {mu2}, n = {n}, muped = {muped}, sigped = {sigped}, lum = {lum}"
+        f"pp = {pp}, res = {res}, mu2 = {mu2}, n = {n}, muped = {muped}, "
+        f"sigped = {sigped}, lum = {lum}"
     )
     f = 0
     ntotalPE = kwargs.get("ntotalPE", 0)
@@ -322,7 +325,8 @@ def MPE2(x, pp, res, mu2, n, muped, sigped, lum, **kwargs):
     # print(ntotalPE)
     # about 8 sec, 1 sec by nPEPDF call
     # for i in range(ntotalPE):
-    #    f = f + ((lum**i)/math.factorial(i)) * np.exp(-lum) * nPEPDF(x,pp,res,mu2,n,muped,sigped,i,int(mu2*ntotalPE+10*mu2))
+    #    f = f + ((lum**i)/math.factorial(i)) * np.exp(-lum) *
+    #    nPEPDF(x,pp,res,mu2,n,muped,sigped,i,int(mu2*ntotalPE+10*mu2))
 
     f = np.sum(
         [

@@ -1,11 +1,5 @@
-import logging
-import sys
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import copy
+import logging
 import multiprocessing as mp
 import os
 import time
@@ -17,9 +11,6 @@ import astropy.units as u
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
-
-mplstyle.use("fast")
-
 import numpy as np
 import yaml
 from astropy.table import QTable
@@ -36,6 +27,12 @@ from ....data.container import ChargesContainer, SPEfitContainer
 from ....utils import MPE2, MeanValueError, Statistics, UtilsMinuit, weight_gaussian
 from ..chargesComponent import ChargesComponent
 from .parameters import Parameter, Parameters
+
+mplstyle.use("fast")
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = [
     "SPEHHValgorithm",
@@ -172,17 +169,16 @@ class SPEalgorithm(Component):
     # methods
     def read_param_from_yaml(self, parameters_file, only_update=False) -> None:
         """
-        Reads parameters from a YAML file and updates the internal parameters of the FlatFieldSPEMaker class.
+        Reads parameters from a YAML file and updates the internal parameters of the
+        FlatFieldSPEMaker class.
 
         Parameters
         ----------
-        parameters_file (str): The name of the YAML file containing the parameters.
-        only_update (bool, optional): If True, only the parameters that exist in the YAML file will be updated. Default is False.
-
-        Returns
-        -------
-        None
-
+        parameters_file : str
+            The name of the YAML file containing the parameters.
+        only_update : bool, optional
+            If True, only the parameters that exist in the YAML file will be updated.
+            Default is False.
         """
         with open(
             f"{os.path.dirname(os.path.abspath(__file__))}/{parameters_file}"
@@ -215,19 +211,26 @@ class SPEalgorithm(Component):
         parameters: Parameters, charge: np.ndarray, counts: np.ndarray, **kwargs
     ) -> Parameters:
         """
-        Update the parameters of the FlatFieldSPEMaker class based on the input charge and counts data.
+        Update the parameters of the FlatFieldSPEMaker class based on the input charge
+        and counts data.
 
         Parameters
         ----------
-        parameters (Parameters): An instance of the Parameters class that holds the internal parameters of the FlatFieldSPEMaker class.
-        charge (np.ndarray): An array of charge values.
-        counts (np.ndarray): An array of corresponding counts values.
-        ``**kwargs``: Additional keyword arguments.
+        parameters (Parameters):
+            An instance of the Parameters class that holds the internal parameters of
+            the FlatFieldSPEMaker class.
+        charge (np.ndarray):
+            An array of charge values.
+        counts (np.ndarray):
+            An array of corresponding counts values.
+        kwargs
+            Additional keyword arguments.
 
         Returns
         -------
-        Parameters: The updated parameters object with the pedestal and mean values and their corresponding limits.
-
+        parameters : Parameters
+            The updated parameters object with the pedestal and mean values and their
+            corresponding limits.
         """
         try:
             coeff_ped, coeff_mean = __class__._get_mean_gaussian_fit(
@@ -271,16 +274,21 @@ class SPEalgorithm(Component):
 
         Parameters
         ----------
-        charge (np.ndarray): An array of charge values.
-        counts (np.ndarray): An array of corresponding counts.
-        pixel_id (int): The id of the current pixel. Default to None
-        ``**kwargs``: Additional keyword arguments.
+        charge : np.ndarray
+            An array of charge values.
+        counts : np.ndarray
+            An array of corresponding counts.
+        pixel_id : int
+            The id of the current pixel. Default to None
+        kwargs
+            Additional keyword arguments.
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray]: A tuple of fit coefficients for the pedestal and mean.
+        Tuple[np.ndarray, np.ndarray]
+            A tuple of fit coefficients for the pedestal and mean.
 
-        Example Usage::
+        Example usage::
 
             flat_field_maker = FlatFieldSPEMaker()
             charge = np.array([1, 2, 3, 4, 5])
@@ -288,7 +296,6 @@ class SPEalgorithm(Component):
             coeff, coeff_mean = flat_field_maker._get_mean_gaussian_fit(charge, counts)
             print(coeff)  # Output: [norm,peak_value, peak_width]
             print(coeff_mean)  # Output: [norm,peak_value_mean, peak_width_mean]
-
         """
         windows_lenght = __class__.Windows_lenght.default_value
         order = __class__.Order.default_value
@@ -311,7 +318,8 @@ class SPEalgorithm(Component):
             ax.plot(
                 charge,
                 histo_smoothed,
-                label=f"smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})",
+                label=f"smoothed data with savgol filter (windows lenght : "
+                f"{windows_lenght}, order : {order})",
             )
             ax.plot(
                 charge,
@@ -338,14 +346,17 @@ class SPEalgorithm(Component):
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=7)
             os.makedirs(
-                f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/figures/",
+                f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/"
+                f"figures/",
                 exist_ok=True,
             )
             log.info(
-                f'figures of initialization of parameters will be accessible at {os.environ.get("NECTARCHAIN_LOG","/tmp")}/{os.getpid()}'
+                f"figures of initialization of parameters will be accessible at "
+                f'{os.environ.get("NECTARCHAIN_LOG","/tmp")}/{os.getpid()}'
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/initialization_pedestal_pixel{pixel_id}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/"
+                f"initialization_pedestal_pixel{pixel_id}_{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -375,7 +386,8 @@ class SPEalgorithm(Component):
             ax.plot(
                 charge,
                 histo_smoothed,
-                label=f"smoothed data with savgol filter (windows lenght : {windows_lenght}, order : {order})",
+                label=f"smoothed data with savgol filter (windows length : "
+                f"{windows_lenght}, order : {order})",
             )
             ax.plot(
                 charge,
@@ -402,11 +414,13 @@ class SPEalgorithm(Component):
             ax.set_ylabel("Events", size=15)
             ax.legend(fontsize=7)
             os.makedirs(
-                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/",
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/"
+                f"figures/",
                 exist_ok=True,
             )
             fig.savefig(
-                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/initialization_mean_pixel{pixel_id}_{os.getpid()}.pdf"
+                f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures/"
+                f"initialization_mean_pixel{pixel_id}_{os.getpid()}.pdf"
             )
             fig.clf()
             plt.close(fig)
@@ -456,11 +470,14 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         Parameters
         ----------
-        charge (np.ma.masked_array or array-like): The charge data.
-        counts (np.ma.masked_array or array-like): The counts data.
-        ``*args``: Additional positional arguments.
-        ``**kwargs``: Additional keyword arguments.
-
+        charge : np.ma.masked_array or array-like
+            The charge data.
+        counts : np.ma.masked_array or array-like
+            The counts data.
+        ``*args``
+            Additional positional arguments.
+        ``**kwargs``
+            Additional keyword arguments.
         """
         super().__init__(pixels_id=pixels_id, config=config, parent=parent, **kwargs)
         if isinstance(charge, np.ma.masked_array):
@@ -479,17 +496,20 @@ class SPEnominalalgorithm(SPEalgorithm):
         cls, signal: ChargesContainer, config=None, parent=None, **kwargs
     ):
         """
-        Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts data from a ChargesContainer object.
+        Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts data
+        from a ChargesContainer object.
 
         Parameters
         ----------
-        signal (ChargesContainer): The ChargesContainer object.
-        ``**kwargs``: Additional keyword arguments.
+        signal : ChargesContainer
+            The ChargesContainer object.
+        ``**kwargs``
+            Additional keyword arguments.
 
         Returns
         -------
-        FlatFieldSingleHHVSPEMaker: An instance of FlatFieldSingleHHVSPEMaker.
-
+        FlatFieldSingleHHVSPEMaker
+            An instance of FlatFieldSingleHHVSPEMaker.
         """
         histo = ChargesComponent.histo_hg(signal, autoscale=True)
         return cls(
@@ -535,19 +555,17 @@ class SPEnominalalgorithm(SPEalgorithm):
         self, dico: dict, pixels_id: np.ndarray, return_fit_array: bool = True
     ) -> None:
         """
-        Populates the results table with fit values and errors for each pixel based on the dictionary provided as input.
+        Populates the results table with fit values and errors for each pixel based on
+        the dictionary provided as input.
 
         Parameters
         ----------
-        dico (dict): A dictionary containing fit values and errors for each pixel.
-        pixels_id (np.ndarray): An array of pixel IDs.
-
-        Returns
-        -------
-        None
-
+        dico : dict
+            A dictionary containing fit values and errors for each pixel.
+        pixels_id : np.ndarray
+            An array of pixel IDs.
         """
-        ########NEED TO BE OPTIMIZED!!!###########
+        # ######### NEED TO BE OPTIMIZED!!! ###########
         chi2_sig = signature(_chi2)
         if return_fit_array:
             fit_array = np.empty(len(pixels_id), dtype=np.object_)
@@ -561,7 +579,8 @@ class SPEnominalalgorithm(SPEalgorithm):
                 index = np.argmax(self._results.pixels_id == pixels_id[i])
                 if len(values) != len(chi2_sig.parameters):
                     e = Exception(
-                        "the size out the minuit output parameters values array does not fit the signature of the minimized cost function"
+                        "the size out the minuit output parameters values array does "
+                        "not fit the signature of the minimized cost function"
                     )
                     log.error(e, exc_info=True)
                     raise e
@@ -581,7 +600,8 @@ class SPEnominalalgorithm(SPEalgorithm):
                 )
                 if fit_status["has_reached_call_limit"]:
                     self.log.warning(
-                        f"The minuit fit for pixel {pixels_id[i]} reached the call limit"
+                        f"The minuit fit for pixel {pixels_id[i]} reached the call "
+                        f"limit"
                     )
                 self._results.likelihood[index] = fit_status["values"]
                 ndof = (
@@ -609,24 +629,36 @@ class SPEnominalalgorithm(SPEalgorithm):
     ):
         """
         Calculates the chi-square value using the MPE2 function.
+        The different parameters are explained in
+        `Caroff et al. (2019)<https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC>`_
 
         Parameters
         ----------
-        pp (float): The pp parameter.
-        res (float): The res parameter.
-        mu2 (float): The mu2 parameter.
-        n (float): The n parameter.
-        muped (float): The muped parameter.
-        sigped (float): The sigped parameter.
-        lum (float): The lum parameter.
-        charge (np.ndarray): An array of charge values.
-        counts (np.ndarray): An array of count values.
-        ``**kwargs``: Additional keyword arguments.
+        pp : float
+            The pp parameter.
+        res : float
+            The res parameter.
+        mu2 : float
+            The mu2 parameter.
+        n : float
+            The n parameter.
+        muped : float
+            The muped parameter.
+        sigped : float
+            The sigped parameter.
+        lum : float
+            The lum parameter.
+        charge : np.ndarray
+            An array of charge values.
+        counts : np.ndarray
+            An array of count values.
+        ``**kwargs``
+            Additional keyword arguments.
 
         Returns
         -------
-        float: The chi-square value.
-
+        Lik : float
+            The chi-square value.
         """
         if not (kwargs.get("ntotalPE", False)):
             for i in range(1000):
@@ -649,16 +681,18 @@ class SPEnominalalgorithm(SPEalgorithm):
         self, pixels_id: np.ndarray = None, **kwargs
     ) -> np.ndarray:
         """
-        Create an array of Minuit fit instances based on the parameters and data for each pixel.
+        Create an array of Minuit fit instances based on the parameters and data for
+        each pixel.
 
         Parameters
         ----------
-        pixels_id (optional): An array of pixel IDs. If not provided, all pixels will be used.
+        pixels_id : optional
+            An array of pixel IDs. If not provided, all pixels will be used.
 
         Returns
         -------
-        np.ndarray: An array of Minuit fit instances, one for each pixel.
-
+        minuitParameters_array : np.ndarray:
+            An array of Minuit fit instances, one for each pixel.
         """
         if pixels_id is None:
             npix = self.npixels
@@ -696,13 +730,15 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         Parameters
         ----------
-        i (int): The index of the pixel to perform the fit on.
+        i : int
+            The index of the pixel to perform the fit on.
 
         Returns
         -------
-        dict: A dictionary containing the fit values and errors for the specified pixel.
-            The keys are ``values_i`` and ``errors_i``, where ``i`` is the index of the pixel.
-
+        : dict
+            A dictionary containing the fit values and errors for the specified pixel.
+            The keys are ``values_i`` and ``errors_i``, where ``i`` is the index of the
+            pixel.
         """
         log = logging.getLogger(__name__)
         log.setLevel(logging.INFO)
@@ -816,7 +852,8 @@ class SPEnominalalgorithm(SPEalgorithm):
                         log.error(e, exc_info=True)
                         raise e
                     self.log.info(
-                        f"total time for multiproc with starmap_async execution is {time.time() - t:.2e} sec"
+                        f"total time for multiproc with starmap_async execution is "
+                        f"{time.time() - t:.2e} sec"
                     )
 
                 else:
@@ -836,7 +873,8 @@ class SPEnominalalgorithm(SPEalgorithm):
                 t = time.time()
                 self.display(pixels_id, **kwargs)
                 log.info(
-                    f"time for plotting {len(pixels_id)} pixels : {time.time() - t:.2e} sec"
+                    f"time for plotting {len(pixels_id)} pixels : "
+                    f"{time.time() - t:.2e} sec"
                 )
 
             return output
@@ -856,13 +894,12 @@ class SPEnominalalgorithm(SPEalgorithm):
         likelihood: float,
     ) -> tuple:
         import pyqtgraph as pg
-        from pyqtgraph.Qt import QtCore, QtGui
 
-        # from pyqtgraph.Qt import QtGui
+        # from pyqtgraph.Qt import QtCore, QtGui
+        from pyqtgraph.Qt import QtGui
 
-        app = pg.mkQApp(name="minimal")
-        #
-        ## Create a window
+        # app = pg.mkQApp(name="minimal")
+        # Create a window
         win = pg.GraphicsLayoutWidget(show=False)
         win.setWindowTitle(f"SPE fit pixel id : {pixel_id}")
 
@@ -887,10 +924,11 @@ class SPEnominalalgorithm(SPEalgorithm):
                 pedestalWidth,
                 luminosity,
             ),
-            name=f"SPE model fit",
+            name="SPE model fit",
         )
         legend = pg.TextItem(
-            f"SPE model fit gain : {gain - gain_error:.2f} < {gain:.2f} < {gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
+            f"SPE model fit gain : {gain - gain_error:.2f} < {gain:.2f} < "
+            f"{gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
             color=(200, 200, 200),
         )
         legend.setPos(pedestal, np.max(counts) / 2)
@@ -928,6 +966,8 @@ class SPEnominalalgorithm(SPEalgorithm):
     ) -> tuple:
         """
         Generate a plot of the data and a model fit for a specific pixel.
+        The different parameters are explained in
+        `Caroff et al. (2019)<https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC>`_
 
         Parameters
         ----------
@@ -958,7 +998,7 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         Returns
         -------
-        tuple:
+        : tuple
             A tuple containing the generated plot figure and the axes of the plot.
 
         """
@@ -979,7 +1019,8 @@ class SPEnominalalgorithm(SPEalgorithm):
             ),
             zorder=1,
             linewidth=2,
-            label=f"SPE model fit \n gain : {gain - gain_error:.2f} < {gain:.2f} < {gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
+            label=f"SPE model fit \n gain : {gain - gain_error:.2f} < {gain:.2f} < "
+            f"{gain + gain_error:.2f} ADC/pe,\n likelihood :  {likelihood:.2f}",
         )
         ax.set_xlabel("Charge (ADC)", size=15)
         ax.set_ylabel("Events", size=15)
@@ -999,18 +1040,16 @@ class SPEnominalalgorithm(SPEalgorithm):
         package: str
             the package used to plot, can be matplotlib or pyqtgraph.
             Default to pyqtgraph
-        kwargs: Additional keyword arguments.
+        kwargs
+            Additional keyword arguments.
             figpath: str
                 The path to save the generated plot figures.
                 Defaults to ``/tmp/NectarGain_pid{os.getpid()}``.
-
-        Returns
-        -------
-
         """
         figpath = kwargs.get(
             "figpath",
-            f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/NectarGain_pid{os.getpid()}",
+            f"{os.environ.get('NECTARCHAIN_FIGURES','/tmp')}/"
+            f"NectarGain_pid{os.getpid()}",
         )
         self.log.debug(f"saving figures in {figpath}")
         os.makedirs(figpath, exist_ok=True)
@@ -1107,11 +1146,14 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
 
         Parameters
         ----------
-        charge (np.ndarray): The charge data.
-        counts (np.ndarray): The counts data.
-        ``*args``: Additional positional arguments.
-        ``**kwargs``: Additional keyword arguments.
-
+        charge : np.ndarray
+            The charge data.
+        counts : np.ndarray
+            The counts data.
+        ``*args``
+            Additional positional arguments.
+        ``**kwargs``
+            Additional keyword arguments.
         """
         super().__init__(
             pixels_id=pixels_id,
@@ -1125,7 +1167,8 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
 
     def __fix_parameters(self) -> None:
         """
-        Fixes the values of the ``n`` and ``pp`` parameters by setting their frozen attribute to True.
+        Fixes the values of the ``n`` and ``pp`` parameters by setting their frozen
+        attribute to True.
         """
         self.log.info("updating parameters by fixing pp and n")
         pp = self._parameters["pp"]
@@ -1161,7 +1204,8 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
     ).tag(config=True)
 
     SPE_result = Path(
-        help="the path of the SPE result container computed with very high voltage data",
+        help="the path of the SPE result container computed with "
+        "very high voltage data",
     ).tag(config=True)
 
     same_luminosity = Bool(
@@ -1183,11 +1227,14 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
 
         Parameters
         ----------
-        charge (np.ndarray): The charge data.
-        counts (np.ndarray): The counts data.
-        ``*args``: Additional positional arguments.
-        ``**kwargs``: Additional keyword arguments.
-
+        charge : np.ndarray
+            The charge data.
+        counts : np.ndarray
+            The counts data.
+        ``*args``
+            Additional positional arguments.
+        ``**kwargs``
+            Additional keyword arguments.
         """
         super().__init__(
             pixels_id=pixels_id,
@@ -1214,7 +1261,8 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
             == 0
         ):
             self.log.warning(
-                "The intersection between pixels id from the data and those valid from the SPE fit result is empty"
+                "The intersection between pixels id from the data and those valid from "
+                "the SPE fit result is empty"
             )
 
     def __fix_parameters(self) -> None:
@@ -1223,8 +1271,8 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
 
         Parameters
         ----------
-        same_luminosity (bool): Whether to fix the luminosity parameter.
-
+        same_luminosity : bool
+            Whether to fix the luminosity parameter.
         """
         self.log.info("updating parameters by fixing pp, n and res")
         pp = self._parameters["pp"]
@@ -1240,17 +1288,20 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
 
     def _make_fit_array_from_parameters(self, pixels_id=None, **kwargs):
         """
-        Generates the fit array from the fixed parameters and the fitted data obtained from a 1400V run.
+        Generates the fit array from the fixed parameters and the fitted data obtained
+        from a 1400V run.
 
         Parameters
         ----------
-        pixels_id (array-like, optional): The pixels to generate the fit array for. Defaults to None.
-        ``**kwargs``: Arbitrary keyword arguments.
+        pixels_id : array-like, optional
+            The pixels to generate the fit array for. Defaults to None.
+        ``**kwargs``
+            Arbitrary keyword arguments.
 
         Returns
         -------
-        array-like: The fit array.
-
+        : array-like
+            The fit array.
         """
         return super()._make_fit_array_from_parameters(
             pixels_id=pixels_id,
@@ -1268,21 +1319,28 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         **kwargs,
     ):
         """
-        Updates the parameters with the fixed values from the fitted data obtained from a 1400V run.
+        Updates the parameters with the fixed values from the fitted data obtained from
+        a 1400V run.
 
         Parameters
         ----------
-        parameters (Parameters): The parameters to update.
-        charge (np.ndarray): The charge values.
-        counts (np.ndarray): The counts values.
-        pixel_id (int): The pixel ID.
-        nectarGainSPEresult (QTable): The fitted data obtained from a 1400V run.
-        ``**kwargs``: Arbitrary keyword arguments.
+        parameters : Parameters
+            The parameters to update.
+        charge : np.ndarray
+            The charge values.
+        counts : np.ndarray
+            The counts values.
+        pixel_id : int
+            The pixel ID.
+        nectarGainSPEresult : QTable
+            The fitted data obtained from a 1400V run.
+        ``**kwargs``
+            Arbitrary keyword arguments.
 
         Returns
         -------
-        dict: The updated parameters.
-
+        param : dict
+            The updated parameters.
         """
         param = super(__class__, __class__)._update_parameters(
             parameters, charge, counts, **kwargs
