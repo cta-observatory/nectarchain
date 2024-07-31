@@ -83,7 +83,7 @@ intersphinx_mapping = {
     "astropy": ("https://docs.astropy.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
-    # "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
+    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
 # These links are ignored in the checks, necessary due to broken intersphinx for these
