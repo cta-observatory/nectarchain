@@ -32,7 +32,10 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-__all__ = ["EventsLoopNectarCAMCalibrationTool","DelimiterLoopNectarCAMCalibrationTool"]
+__all__ = [
+    "EventsLoopNectarCAMCalibrationTool",
+    "DelimiterLoopNectarCAMCalibrationTool",
+]
 
 """The code snippet is a part of a class hierarchy for data processing.
 It includes the `BaseMaker` abstract class, the `EventsLoopMaker` and `ArrayDataMaker`
@@ -258,12 +261,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                             )
                 group_name = f"data_{slice_index}"
             self.log.info(
-                f"initilization of writer in sliced mode (output written "
+                f"initialization of writer in sliced mode (output written "
                 f"to {group_name})"
             )
             mode = "a"
         else:
-            self.log.info("initilization of writter in full mode")
+            self.log.info("initialization of writer in full mode")
             if self.overwrite:
                 try:
                     log.info(
@@ -349,7 +352,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     )
                     #    )
                 )
-    
+
     def start(
         self,
         n_events=np.inf,
@@ -383,7 +386,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         #    self._init_trigger_type(_trigger_type)
 
         if restart_from_begining:
-            self.log.debug("restart from begining : creation of the EventSource reader")
+            self.log.debug(
+                "restart from beginning : creation of the EventSource " "reader"
+            )
             self._load_eventsource()
 
         n_events_in_slice = 0
@@ -408,8 +413,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             if self._n_traited_events >= n_events:
                 break
 
-
-            if self.split_criteria_fullfiled(n_events_in_slice, event):
+            if self.split_run(n_events_in_slice, event):
                 self.log.info(f"slice number {slice_index} is full, pulling buffer")
                 self._finish_components(*args, **kwargs)
                 self.writer.close()
@@ -418,12 +422,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 self._setup_components()
                 n_events_in_slice = 0
 
-
-    def split_criteria_fullfiled(self,n_events_in_slice, event):
-        """Method to decide if criteria to end a run slice is met"""
-        condition = self.events_per_slice is not None and n_events_in_slice>= self.events_per_slice
-        #not (self.events_per_slice is None)
-        #and n_events_in_slice >= self.events_per_slice
+    def split_run(self, n_events_in_slice, event):
+        """Method to decide if criteria to end a run slice are met"""
+        condition = (
+            self.events_per_slice is not None
+            and n_events_in_slice >= self.events_per_slice
+        )
         return condition
 
     def finish(self, return_output_component=False, *args, **kwargs):
@@ -438,7 +442,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             return output
 
     def _finish_components(self, *args, **kwargs):
-        self.log.info("finishing components and writting to output file")
+        self.log.info("finishing components and writing to output file")
         output = []
         for component in self.components:
             output.append(component.finish(*args, **kwargs))
@@ -524,21 +528,21 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         return copy.deepcopy(self.__pixels_id)
 
 
-
 class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     """
-    Class that will split data based on the EventType UNKNOWN. 
+    Class that will split data based on the EventType UNKNOWN.
     Each time this particular type is seen, it will trigger the change of slice.
-    Note that the UNKONWN event will be seen by the component, so it must be filtered there.
+    Note that the UNKONWN event will be seen by the component, so it must be filtered
+    there.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def split_criteria_fullfiled(self,n_events_in_slice, event):
+    def split_run(self, n_events_in_slice, event):
         """Method to decide if criteria to end a run slice is met"""
         condition = event.trigger.event_type == EventType.UNKNOWN
         return condition
-
 
 
 def main():
