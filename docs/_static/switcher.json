@@ -1,0 +1,12 @@
+[
+  {
+    "name": "dev",
+    "version": "latest",
+    "url": "https://nectarchain.readthedocs.io/en/latest/"
+  },
+  {
+    "name": "stable",
+    "version": "stable",
+    "url": "https://nectarchain.readthedocs.io/en/stable/"
+  }
+]

@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import datetime
+import os
 import sys
 from pathlib import Path
 
@@ -116,6 +117,27 @@ suppress_warnings = [
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
+
+# -- Version switcher -----------------------------------------------------
+
+# Define the json_url for our version switcher.
+json_url = "https://nectarchain.readthedocs.io/en/latest/_static/switcher.json"
+
+# Define the version we use for matching in the version switcher.,
+version_match = os.getenv("READTHEDOCS_VERSION")
+# If READTHEDOCS_VERSION doesn't exist, we're not on RTD
+# If it is an integer, we're in a PR build and the version isn't correct.
+if not version_match or version_match.isdigit():
+    # For local development, infer the version to match from the package.
+    if "dev" in release or "rc" in release:
+        version_match = "latest"
+    else:
+        version_match = release
+
+    # We want to keep the relative reference when on a pull request or locally
+    json_url = "_static/switcher.json"
+
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
@@ -146,7 +168,12 @@ html_theme_options = {
     },
     "navigation_with_keys": False,
     "github_url": f"https://github.com/cta-observatory/{project}",
+    "header_links_before_dropdown": 6,
     "navbar_start": ["navbar-logo", "version-switcher"],
+    "switcher": {
+        "version_match": version_match,
+        "json_url": json_url,
+    },
     "announcement": """
         <p>nectarchain is not stable yet, so expect large and rapid
         changes to structure and functionality as we explore various
