@@ -16,7 +16,7 @@ Welcome to nectarchain's documentation!
 
 **Python**: |python_requires|
 
-``nectarchain`` is intended for the high level analysis of the NectarCAM data. It is heavily based on [ctapipe](https://github.com/cta-observatory/ctapipe), adding custom code for NectarCAM calibration.
+``nectarchain`` is intended for the high level analysis of the NectarCAM data. It is heavily based on `ctapipe <https://github.com/cta-observatory/ctapipe>`_, adding custom code for NectarCAM calibration.
 
 .. _nectarchain_docs:
 
