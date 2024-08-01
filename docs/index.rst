@@ -28,6 +28,8 @@ Welcome to nectarchain's documentation!
     developer-guide/index
     API reference <_autosummary/nectarchain>
 
+
+
 .. grid:: 1 2 2 3
 
     .. grid-item-card::
@@ -90,6 +92,7 @@ Welcome to nectarchain's documentation!
             :click-parent:
 
             To the API docs
+
 
 Indices and tables
 ==================

@@ -39,7 +39,7 @@ Please follow the `same conventions as ctapipe <https://ctapipe.readthedocs.io/e
 Optional DIRAC support
 ----------------------
 
-*Note*: this is **not** needed if you are using ``nectarchain`` :ref:`as a container<as-a-container>`_, as DIRAC is already fully installed and configured within.
+*Note*: this is **not** needed if you are using ``nectarchain`` as a container :ref:`as-a-container`, as DIRAC is already fully installed and configured within.
 
 To enable support for DIRAC within the same environment, do the following after the installation of ``nectarchain`` described above:
 
@@ -67,7 +67,7 @@ one may try:
 
   $ mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
 
-or the :ref:`container alternative](#note-to-macos-users) as explained above.
+or the container alternative as explained in  :ref:`troubleshooting`.
 
 
 Building the documentation

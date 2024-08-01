@@ -48,6 +48,8 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_autodoc_typehints",  # Automatically document param types (less noise in
     # class signature)
+    "numpydoc",
+    "sphinx_design",
 ]
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
