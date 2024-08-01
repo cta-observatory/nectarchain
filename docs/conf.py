@@ -71,6 +71,9 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
+# have all links automatically associated with the right domain.
+default_role = "py:obj"
+
 templates_path = ["_templates"]
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -104,7 +107,9 @@ nitpick_ignore = [
     ("py:class", "ClassesType"),
 ]
 
-suppress_warnings = ["autosummary"]
+suppress_warnings = [
+    "autosummary",
+]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
