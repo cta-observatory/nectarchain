@@ -86,7 +86,7 @@ Welcome to nectarchain's documentation!
 
         +++
 
-        .. button-ref:: <_autosummary/nectarchain>
+        .. button-ref:: _autosummary/nectarchain
             :expand:
             :color: primary
             :click-parent:
