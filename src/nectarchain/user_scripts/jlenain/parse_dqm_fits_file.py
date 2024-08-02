@@ -60,7 +60,10 @@ if not os.path.exists(os.path.basename(lfn)):
 with tarfile.open(os.path.basename(lfn), "r") as tar:
     tar.extractall(".")
 
-fits_file = f"./NectarCAM_DQM_Run{args.run}/output/NectarCAM_Run{args.run}/NectarCAM_Run{args.run}_calib/NectarCAM_Run{args.run}_Results.fits"
+fits_file = (
+    f"./NectarCAM_DQM_Run{args.run}/output/NectarCAM_Run{args.run}/"
+    f"NectarCAM_Run{args.run}_calib/NectarCAM_Run{args.run}_Results.fits"
+)
 
 hdu = fits.open(fits_file)
 
