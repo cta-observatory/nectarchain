@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Option and argument parser
 parser = argparse.ArgumentParser(
-    description="Fetch a DQM output on DIRAC, parse it " "and feed ZODB",
+    description="Fetch a DQM output on DIRAC, parse it and feed ZODB",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
