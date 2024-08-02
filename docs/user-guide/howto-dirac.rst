@@ -57,6 +57,12 @@ Several possibilities exist to explore NectarCAM data on the grid:
 
   * ``dstat`` to list your active jobs on DIRAC.
 
+To use these commands, one should start a COMDIRAC session with:
+
+.. code-block:: console
+
+   $ dinit -p
+
 NectarCAM data can then be explored using ``dls``:
 
 .. code-block:: console
@@ -68,6 +74,10 @@ NectarCAM data can then be explored using ``dls``:
    NectarCAM.Run5568.0002.fits.fz
    NectarCAM.Run5568.0003.fits.fz
    NectarCAM.Run5568.0004.fits.fz
+
+The `~nectarchain.data.management.DataManagement.findrun` method will
+automatically localize NectarCAM data on DIRAC, given a run number, and fetch
+the run files for you.
 
 Tips
 ====
