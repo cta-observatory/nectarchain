@@ -1,9 +1,43 @@
 .. _troubleshooting:
 
+Troubleshooting
+===============
+
+.. _note_mac_users
+
 Note to macOS users
 -------------------
 
-macOS users may experience errors when trying to initialize a proxy to DIRAC when the DIRAC support is enabled :ref:`optional-dirac-support`, especially with recent hardware equipped with M1 or M2 Apple CPU chips. The container alternative can then help having an environment with CTADIRAC fully configured. However, `Apptainer <https://apptainer.org/>`_ is `not readily available on macOS <https://apptainer.org/docs/admin/main/installation.html#mac>`_, but there is a workaround using `lima virtualization technology <https://lima-vm.io/>`_ on a Mac.
+macOS users may experience errors when trying to initialize a proxy to DIRAC when the
+`DIRAC support <optional-dirac-support>`_ is enabled, especially with recent
+hardware equipped with M1 or M2 Apple CPU chips. Two possible workarounds are proposed
+below.
+
+Downgrading `voms`
+^^^^^^^^^^^^^^^^^^
+
+Some Mac OS users (running on M1 or M2 chips) may experience a ``M2Crypto.SSL.SSLError``
+error when trying to initiate a DIRAC proxy with ``dirac-proxy-init``. During the
+`installation process <optional-dirac-support>`_, instead of:
+
+.. code-block:: console
+
+   $ mamba install dirac-grid
+
+one may try:
+
+.. code-block:: console
+
+  $ mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
+
+
+Using a container
+^^^^^^^^^^^^^^^^^
+
+The container alternative can then help having an environment with CTADIRAC fully configured.
+However, `Apptainer <https://apptainer.org/>`_ is `not readily available on macOS <https://apptainer.org/docs/admin/main/installation.html#mac>`_,
+but there is a workaround using `lima virtualization technology <https://lima-vm.io/>`_
+on a Mac.
 
 **TL;DR**
 
@@ -14,12 +48,17 @@ macOS users may experience errors when trying to initialize a proxy to DIRAC whe
    $ limactl shell apptainer apptainer run --bind $HOME:/home/$USER.linux oras://ghcr.io/cta-observatory/nectarchain:latest
 
 
-If you are running a Mac which CPU is based on ARM architecture (M1 or M2 Apple chips), when starting the ``apptainer`` container (second line above), please select the ``Open an editor to review or modify the current configuration`` option and add the following line at the beginning of the configuration file:
+If you are running a Mac which CPU is based on ARM architecture (M1 or M2 Apple chips),
+when starting the ``apptainer`` container (second line above), please select the
+``Open an editor to review or modify the current configuration`` option and add the
+following line at the beginning of the configuration file:
 
 .. code-block:: console
 
    arch: "x86_64"
 
-otherwise, if your Mac is on an Intel CPU chip, please proceed with the ``Proceed with the current configuration`` option.
+otherwise, if your Mac is on an Intel CPU chip, please proceed with the
+``Proceed with the current configuration`` option.
 
-The mount point ``/tmp/lima`` is shared between the host machine and the ``apptainer`` container, and writable from both.
+The mount point ``/tmp/lima`` is shared between the host machine and the ``apptainer``
+container, and writable from both.
