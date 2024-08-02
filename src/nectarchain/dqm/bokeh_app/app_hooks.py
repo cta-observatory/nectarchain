@@ -12,7 +12,8 @@ NOTINDISPLAY = [
     "Results_TriggerStatistics",
     "Results_MeanWaveForms_HighGain",
     "Results_MeanWaveForms_LowGain",
-    "Results_CameraMonitoring",
+    "Results_PixelTimeline_HighGain",
+    "Results_PixelTimeline_LowGain",
 ]
 
 geom = CameraGeometry.from_name("NectarCam-003")
