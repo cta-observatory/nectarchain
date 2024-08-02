@@ -1,21 +1,49 @@
 """Parse a DQM FITS file as nested dictionary
 
-The idea is to parse a DQM FITS, in order to feed the ZODB locally from our Bokeh VM, once the DQM has run on DIRAC
+This script parses a DQM FITS output, in order to feed the ZODB locally from our Bokeh
+VM, once the DQM has run on DIRAC
 """
 
+import argparse
+import logging
 import os
+import sys
 import tarfile
 
 from astropy.io import fits
 from DIRAC.Interfaces.API.Dirac import Dirac
-from ZODB import DB
 
 from nectarchain.dqm.db_utils import DQMDB
 
-# example = "/tmp/jlenain/scratch/NectarCAM_DQM_Run4971/output/NectarCAM_Run4971
-# /NectarCAM_Run4971_calib/NectarCAM_Run4971_Results.fits"
-run = 4971
-lfn = f"/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm/NectarCAM_DQM_Run{run}.tar.gz"
+logging.basicConfig(format="[%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# Option and argument parser
+parser = argparse.ArgumentParser(
+    description="Fetch a DQM output on DIRAC, parse it " "and feed ZODB",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "-r",
+    "--run",
+    default=None,
+    help="process a specific run.",
+    type=str,
+)
+parser.add_argument(
+    "-p",
+    "--path",
+    default="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm",
+    help="path on DIRAC where to grab DQM outputs (optional).",
+    type=str,
+)
+args = parser.parse_args()
+
+if args.run is None:
+    logger.critical("A run number should be provided.")
+    sys.exit(1)
+
+lfn = f"{args.path}/NectarCAM_DQM_Run{args.run}.tar.gz"
 
 if not os.path.exists(os.path.basename(lfn)):
     dirac = Dirac()
@@ -31,8 +59,8 @@ with tarfile.open(os.path.basename(lfn), "r") as tar:
 
 fits_file = (
     f"./NectarCAM_DQM_Run"
-    f"{run}/output/NectarCAM_Run{run}/NectarCAM_Run"
-    f"{run}_calib/NectarCAM_Run{run}_Results.fits"
+    f"{args.run}/output/NectarCAM_Run{args.run}/NectarCAM_Run"
+    f"{args.run}_calib/NectarCAM_Run{args.run}_Results.fits"
 )
 
 hdu = fits.open(fits_file)
@@ -50,5 +78,5 @@ for h in range(1, len(hdu)):
         outdict[extname][keyname] = hdu[extname].data[keyname]
 
 db = DQMDB(read_only=False)
-db.insert(f"test run {run}", outdict)
+db.insert(f"NectarCAM_Run{args.run}", outdict)
 db.commit_and_close()
