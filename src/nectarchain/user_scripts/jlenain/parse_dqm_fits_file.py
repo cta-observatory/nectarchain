@@ -12,6 +12,7 @@ import sys
 import tarfile
 from pathlib import Path
 
+import DIRAC
 import ZEO
 from astropy.io import fits
 from DIRAC.Interfaces.API.Dirac import Dirac
@@ -49,6 +50,8 @@ if args.run is None:
 lfn = f"{args.path}/NectarCAM_DQM_Run{args.run}.tar.gz"
 
 if not os.path.exists(os.path.basename(lfn)):
+    DIRAC.initialize()
+
     dirac = Dirac()
 
     dirac.getFile(
