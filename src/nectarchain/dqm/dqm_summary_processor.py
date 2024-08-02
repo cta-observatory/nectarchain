@@ -40,7 +40,7 @@ class DQMSummary:
         hdu, hdu0, hdu1, hdu2 = None, None, None, None
         hdulist = fits.HDUList()
         for i, j in DICT.items():
-            if (i == "Results_TriggerStatistics"):
+            if i == "Results_TriggerStatistics":
                 for n2, m2 in j.items():
                     data2[n2] = m2
                     hdu2 = fits.BinTableHDU(data2)
