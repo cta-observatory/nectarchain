@@ -55,19 +55,8 @@ To enable support for DIRAC within the same environment, do the following after 
    $ dirac-configure
 
 
-Some Mac OS users (running on M1 chip) may experience a ``M2Crypto.SSL.SSLError`` error when trying to initiate a DIRAC proxy with ``dirac-proxy-init``. Instead of:
-
-.. code-block:: console
-
-   $ mamba install dirac-grid
-
-one may try:
-
-.. code-block:: console
-
-  $ mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
-
-or the container alternative as explained in  :ref:`troubleshooting`.
+Some Mac OS users (running on M1 or M2 CPU chips) may experience issues with DIRAC,
+please refer to :ref:`note_mac_users`.
 
 
 Building the documentation
