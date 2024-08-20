@@ -44,8 +44,12 @@ class DQMSummary:
         hdulist = fits.HDUList()
         for i, j in DICT.items():
             for name, content in j.items():
-                hdu = self._create_hdu(name, content)
-                hdulist.append(hdu)
+                try:
+                    hdu = self._create_hdu(name, content)
+                    hdulist.append(hdu)
+                except TypeError as e:
+                    print(f"DEBUG JPL: Got error {e}, skipping {name}")
+                    pass
 
         FileName = path + "_Results.fits"
         print(FileName)
