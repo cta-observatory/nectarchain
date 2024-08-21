@@ -3,7 +3,7 @@
 Troubleshooting
 ===============
 
-.. _note_mac_users
+.. _note_mac_users:
 
 Note to macOS users
 -------------------
@@ -13,8 +13,8 @@ macOS users may experience errors when trying to initialize a proxy to DIRAC whe
 hardware equipped with M1 or M2 Apple CPU chips. Two possible workarounds are proposed
 below.
 
-Downgrading `voms`
-^^^^^^^^^^^^^^^^^^
+Downgrading ``voms``
+^^^^^^^^^^^^^^^^^^^^
 
 Some Mac OS users (running on M1 or M2 chips) may experience a ``M2Crypto.SSL.SSLError``
 error when trying to initiate a DIRAC proxy with ``dirac-proxy-init``. During the
