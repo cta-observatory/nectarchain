@@ -4,7 +4,9 @@ import numpy as np
 from astropy import time as astropytime
 from matplotlib import pyplot as plt
 
-from nectarchain.dqm.dqm_summary_processor import DQMSummary
+from .dqm_summary_processor import DQMSummary
+
+__all__ = ["TriggerStatistics"]
 
 
 class TriggerStatistics(DQMSummary):

@@ -1,6 +1,7 @@
 """
 Extract flat field coefficients from flasher data files.
 """
+
 import numpy as np
 from ctapipe.calib.camera.flatfield import FlatFieldCalculator
 from ctapipe.calib.camera.pedestals import PedestalCalculator
@@ -13,6 +14,8 @@ from ctapipe.io.containers import (
     WaveformCalibrationContainer,
 )
 from traitlets import Dict, Float, List, Unicode
+
+__all__ = ["CalibrationHDF5Writer"]
 
 
 class CalibrationHDF5Writer(Tool):
