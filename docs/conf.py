@@ -86,24 +86,6 @@ intersphinx_mapping = {
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
-# These links are ignored in the checks, necessary due to broken intersphinx for these
-nitpick_ignore = [
-    ("py:obj", "enum.auto"),
-    ("py:obj", "enum.IntFlag"),
-    ("py:obj", "enum.unique"),
-    # coming from inherited traitlets docs
-    ("py:class", "t.Union"),
-    ("py:class", "t.Dict"),
-    ("py:class", "t.Tuple"),
-    ("py:class", "t.List"),
-    ("py:class", "t.Any"),
-    ("py:class", "t.Type"),
-    ("py:class", "Config"),
-    ("py:class", "Unicode"),
-    ("py:class", "StrDict"),
-    ("py:class", "ClassesType"),
-]
-
 suppress_warnings = [
     "autosummary",
 ]
@@ -135,8 +117,9 @@ if not version_match or version_match.isdigit():
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "pydata_sphinx_theme"
+# html_theme = "pydata_sphinx_theme"
 # html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = f"{project}doc"
