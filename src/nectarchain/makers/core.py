@@ -369,16 +369,20 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         """
         Method to extract data from the EventSource.
 
-        Args:
-            n_events (int, optional): The maximum number of events to process.
-            Default is np.inf.
-            restart_from_begining (bool, optional): Whether to restart the event source
-            reader. Default is False.
-            *args: Additional arguments that can be passed to the method.
-            **kwargs: Additional keyword arguments that can be passed to the method.
+        Parameters
+        ----------
+        n_events: int, optional
+            The maximum number of events to process. Default is np.inf.
+        restart_from_begining: bool, optional
+            Whether to restart the event source reader. Default is False.
+        args
+            Additional arguments that can be passed to the method.
+        kwargs
+            Additional keyword arguments that can be passed to the method.
 
-        Returns:
-            The output container created by the _make_output_container method.
+        Returns
+        -------
+        The output container created by the _make_output_container method.
         """
         if ~np.isfinite(n_events) and (self.events_per_slice is None):
             self.log.warning(
@@ -402,9 +406,11 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             tqdm(
                 self._event_source,
                 desc=self._event_source.__class__.__name__,
-                total=len(self._event_source)
-                if self._event_source.max_events is None
-                else int(np.min((self._event_source.max_events, n_events))),
+                total=(
+                    len(self._event_source)
+                    if self._event_source.max_events is None
+                    else int(np.min((self._event_source.max_events, n_events)))
+                ),
                 unit="ev",
                 disable=not self.progress_bar,
             )
