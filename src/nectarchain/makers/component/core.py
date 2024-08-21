@@ -192,15 +192,22 @@ class ArrayDataComponent(NectarCAMComponent):
         """
         Method to extract data from the event.
 
-        Args:
-            event (NectarCAMDataContainer): The event object.
-            trigger (EventType): The trigger type.
-            *args: Additional arguments that can be passed to the method.
-            **kwargs: Additional keyword arguments that can be passed to the method.
+        Parameters
+        ----------
+        event: NectarCAMDataContainer
+            The event object.
+        trigger: EventType
+            The trigger type.
+        args
+            Additional arguments that can be passed to the method.
+        kwargs
+            Additional keyword arguments that can be passed to the method.
 
-        Returns:
-            If the return_wfs keyword argument is True, the method returns the high and
-            low gain waveforms from the event.
+        Returns
+        -------
+        get_wfs_hg, get_wfs_lg
+            If the ``return_wfs`` keyword argument is True, the method returns the high
+            and low gain waveforms from the event.
         """
         name = __class__._get_name_trigger(event.trigger.event_type)
 
