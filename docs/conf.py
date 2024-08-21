@@ -90,8 +90,6 @@ intersphinx_mapping = {
 
 suppress_warnings = [
     "autosummary",
-    # "toc.not_readable",  # Suppress warnings about excluded toctree entries,
-    # needed for the generation of the API doc.
 ]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
