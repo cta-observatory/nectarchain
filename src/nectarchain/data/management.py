@@ -44,7 +44,7 @@ class DataManagement:
         Returns
         -------
         (PosixPath,list):
-            the path list of `*fits.fz` files
+            the path list of ``*.fits.fz`` files
 
         """
         basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
