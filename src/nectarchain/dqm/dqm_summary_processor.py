@@ -35,7 +35,10 @@ class DQMSummary:
     @staticmethod
     def _create_hdu(name, content):
         data = Table()
-        data[name] = content
+        try:
+            data[name] = content
+        except TypeError:
+            data = Table(content)
         hdu = fits.BinTableHDU(data)
         hdu.name = name
         return hdu
