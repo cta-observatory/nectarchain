@@ -64,6 +64,8 @@ nbsphinx_allow_errors = True  # Continue through Jupyter errors
 # autodoc_typehints = "description" # Sphinx-native method. Not as good as
 # sphinx_autodoc_typehints
 add_module_names = False  # Remove namespaces from class/method signatures
+# cf. https://stackoverflow.com/a/73294408:
+numpydoc_class_members_toctree = False
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -88,7 +90,7 @@ intersphinx_mapping = {
 
 suppress_warnings = [
     "autosummary",
-    "toc.not_readable",  # Suppress warnings about excluded toctree entries,
+    # "toc.not_readable",  # Suppress warnings about excluded toctree entries,
     # needed for the generation of the API doc.
 ]
 
