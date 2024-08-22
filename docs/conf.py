@@ -77,7 +77,12 @@ source_suffix = ".rst"
 
 templates_path = ["_templates"]
 
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**/*.dqm.bokeh_app**",
+]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
