@@ -77,7 +77,13 @@ source_suffix = ".rst"
 
 templates_path = ["_templates"]
 
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**bokeh_app**",
+    "**tools**",
+]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
@@ -121,9 +127,9 @@ if not version_match or version_match.isdigit():
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "pydata_sphinx_theme"
+# html_theme = "pydata_sphinx_theme"
 # html_theme = "alabaster"
-# html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_rtd_theme"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = f"{project}doc"
