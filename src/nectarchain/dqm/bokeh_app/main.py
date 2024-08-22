@@ -1,17 +1,18 @@
 import numpy as np
-from app_hooks import get_rundata, make_camera_displays
 
 # bokeh imports
 from bokeh.layouts import layout, row
 from bokeh.models import Select  # , NumericInput
 from bokeh.plotting import curdoc
-from ctapipe.coordinates import EngineeringCameraFrame
 
 # ctapipe imports
+from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe_io_nectarcam import constants
 
 from nectarchain.dqm.db_utils import DQMDB
+
+from .app_hooks import get_rundata, make_camera_displays
 
 NOTINDISPLAY = [
     "Results_TriggerStatistics",

@@ -64,6 +64,10 @@ nbsphinx_allow_errors = True  # Continue through Jupyter errors
 # autodoc_typehints = "description" # Sphinx-native method. Not as good as
 # sphinx_autodoc_typehints
 add_module_names = False  # Remove namespaces from class/method signatures
+numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
+# cf. https://stackoverflow.com/a/73294408:
+numpydoc_class_members_toctree = False
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -71,15 +75,20 @@ add_module_names = False  # Remove namespaces from class/method signatures
 # source_suffix = ['.rst', '.md']
 source_suffix = ".rst"
 
-# The master toctree document.
-master_doc = "index"
-
-# have all links automatically associated with the right domain.
-default_role = "py:obj"
-
 templates_path = ["_templates"]
 
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**/*.dqm.bokeh_app**",
+]
+
+autodoc_mock_imports = [
+    "nectarchain.makers.extractor.charge_extractor",
+    "nectarchain.makers.calibration.core",
+    "nectarchain.dqm.bokeh_app",
+]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
@@ -92,27 +101,10 @@ intersphinx_mapping = {
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
-# These links are ignored in the checks, necessary due to broken intersphinx for these
-nitpick_ignore = [
-    ("py:obj", "enum.auto"),
-    ("py:obj", "enum.IntFlag"),
-    ("py:obj", "enum.unique"),
-    # coming from inherited traitlets docs
-    ("py:class", "t.Union"),
-    ("py:class", "t.Dict"),
-    ("py:class", "t.Tuple"),
-    ("py:class", "t.List"),
-    ("py:class", "t.Any"),
-    ("py:class", "t.Type"),
-    ("py:class", "Config"),
-    ("py:class", "Unicode"),
-    ("py:class", "StrDict"),
-    ("py:class", "ClassesType"),
-]
-
-suppress_warnings = [
-    "autosummary",
-]
+# suppress_warnings = [
+#     "autosummary",
+#     "autosummary.import_cycle",
+# ]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
@@ -143,6 +135,7 @@ if not version_match or version_match.isdigit():
 
 html_theme = "pydata_sphinx_theme"
 # html_theme = "alabaster"
+# html_theme = "sphinx_rtd_theme"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = f"{project}doc"

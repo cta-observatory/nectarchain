@@ -7,7 +7,9 @@ from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
 from matplotlib import pyplot as plt
 
-from nectarchain.dqm.dqm_summary_processor import DQMSummary
+from .dqm_summary_processor import DQMSummary
+
+__all__ = ["CameraMonitoring"]
 
 
 class CameraMonitoring(DQMSummary):
