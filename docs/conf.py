@@ -77,13 +77,7 @@ source_suffix = ".rst"
 
 templates_path = ["_templates"]
 
-exclude_patterns = [
-    "_build",
-    "Thumbs.db",
-    ".DS_Store",
-    "**bokeh_app**",
-    "**tools**",
-]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
@@ -98,6 +92,7 @@ intersphinx_mapping = {
 
 suppress_warnings = [
     "autosummary",
+    "autosummary.import_cycle",
 ]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
