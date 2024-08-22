@@ -13,10 +13,12 @@ dependencies:
   - pytest-runner
   - pip
   - pandas
-  - zeo
-  - zodb
-  - openssl
-  - libexpat
+  - scipy=1.11.4
+  - sphinx
+  - sphinx-automodapi
+  - pydata-sphinx-theme
   - pip:
+      - zeo
+      - zodb
       - mechanize
       - browser-cookie3
