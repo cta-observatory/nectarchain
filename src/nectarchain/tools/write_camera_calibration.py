@@ -42,11 +42,9 @@ class CalibrationHDF5Writer(Tool):
         800, help="Temporary cut on charge to eliminate events without led signal"
     ).tag(config=True)
 
-    pedestal_product = traits.enum_trait(
-        PedestalCalculator, default="PedestalIntegrator"
-    )
+    pedestal_product = traits.Enum(PedestalCalculator, default="PedestalIntegrator")
 
-    flatfield_product = traits.enum_trait(
+    flatfield_product = traits.Enum(
         FlatFieldCalculator, default="FlasherFlatFieldCalculator"
     )
 

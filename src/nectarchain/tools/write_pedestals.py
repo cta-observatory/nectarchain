@@ -24,9 +24,7 @@ class PedestalHDF5Writer(Tool):
         config=True
     )
 
-    calculator_product = traits.enum_trait(
-        PedestalCalculator, default="PedestalIntegrator"
-    )
+    calculator_product = traits.Enum(PedestalCalculator, default="PedestalIntegrator")
 
     aliases = Dict(
         dict(
