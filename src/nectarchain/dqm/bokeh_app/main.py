@@ -1,5 +1,7 @@
+import re
+
 import numpy as np
-from app_hooks import NOTINDISPLAY, get_rundata, make_camera_displays
+from app_hooks import TEST_PATTERN, get_rundata, make_camera_displays
 
 # bokeh imports
 from bokeh.layouts import layout, row
@@ -22,7 +24,7 @@ def update_camera_displays(attr, old, new):
     new_rundata = get_rundata(db, runid)
 
     for parentkey in db[runid].keys():
-        if parentkey not in NOTINDISPLAY:
+        if not re.match(TEST_PATTERN, parentkey):
             for childkey in db[runid][parentkey].keys():
                 print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
                 # try:
