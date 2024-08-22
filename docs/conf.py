@@ -64,6 +64,8 @@ nbsphinx_allow_errors = True  # Continue through Jupyter errors
 # autodoc_typehints = "description" # Sphinx-native method. Not as good as
 # sphinx_autodoc_typehints
 add_module_names = False  # Remove namespaces from class/method signatures
+numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
 # cf. https://stackoverflow.com/a/73294408:
 numpydoc_class_members_toctree = False
 
