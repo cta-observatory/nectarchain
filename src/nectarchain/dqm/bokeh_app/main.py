@@ -32,10 +32,18 @@ def update_camera_displays(attr, old, new):
                 image = np.nan_to_num(image, nan=0.0)
                 try:
                     displays[parentkey][childkey].image = image
-                except ValueError:
+                except ValueError as e:
+                    print(
+                        f"Caught error {e} for {childkey}, filling display with "
+                        f"zeros."
+                    )
                     image = np.zeros(shape=displays[parentkey][childkey].image.shape)
                     displays[parentkey][childkey].image = image
-                except KeyError:
+                except KeyError as e:
+                    print(
+                        f"Caught error {e} for {childkey}, filling display with "
+                        f"zeros."
+                    )
                     image = np.zeros(shape=constants.N_PIXELS)
                     displays[parentkey][childkey].image = image
                 # TODO: TRY TO USE `stream` INSTEAD, ON UPDATES:
