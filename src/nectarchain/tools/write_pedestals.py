@@ -3,9 +3,9 @@ Extract pedestals from pedestal file
 """
 
 from ctapipe.calib.camera.pedestals import PedestalCalculator
+from ctapipe.containers import PedestalContainer
 from ctapipe.core import Provenance, Tool, traits
 from ctapipe.io import EventSource, HDF5TableWriter
-from ctapipe.io.containers import PedestalContainer
 from traitlets import Dict, List, Unicode
 
 __all__ = ["PedestalHDF5Writer"]
