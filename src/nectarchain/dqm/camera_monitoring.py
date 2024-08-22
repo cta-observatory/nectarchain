@@ -4,10 +4,10 @@ import sqlite3
 import numpy as np
 from astropy import time as astropytime
 from ctapipe.coordinates import EngineeringCameraFrame
-from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from nectarchain.dqm.dqm_summary_processor import DQMSummary
 
 
 class CameraMonitoring(DQMSummary):
@@ -139,7 +139,6 @@ class CameraMonitoring(DQMSummary):
         return self.CameraMonitoring_Results_Dict
 
     def PlotResults(self, name, FigPath):
-
         try:
             fig, disp = plt.subplots()
             disp = CameraDisplay(self.camera)
