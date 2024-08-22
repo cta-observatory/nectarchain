@@ -39,15 +39,15 @@ def update_camera_displays(attr, old, new):
                     displays[parentkey][childkey].image = image
                 except ValueError as e:
                     print(
-                        f"Caught {type(e).__name__} for {childkey}, filling display with "
-                        f"zeros. Details: {e}"
+                        f"Caught {type(e).__name__} for {childkey}, filling display"
+                        f"with zeros. Details: {e}"
                     )
                     image = np.zeros(shape=displays[parentkey][childkey].image.shape)
                     displays[parentkey][childkey].image = image
                 except KeyError as e:
                     print(
-                        f"Caught {type(e).__name__} for {childkey}, filling display with "
-                        f"zeros. Details: {e}"
+                        f"Caught {type(e).__name__} for {childkey}, filling display"
+                        f"with zeros. Details: {e}"
                     )
                     image = np.zeros(shape=constants.N_PIXELS)
                     displays[parentkey][childkey].image = image
