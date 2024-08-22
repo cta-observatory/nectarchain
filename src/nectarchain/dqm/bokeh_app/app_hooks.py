@@ -13,7 +13,7 @@ NOTINDISPLAY = [
     "TRIGGER-",
     "START-TIMES",
     "WF-",
-    "PIXTIMELINE-",
+    "PixTimeline-",
 ]
 TEST_PATTERN = "(?:% s)" % "|".join(NOTINDISPLAY)
 
