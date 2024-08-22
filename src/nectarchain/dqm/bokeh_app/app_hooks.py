@@ -1,4 +1,5 @@
 import collections
+import re
 
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
@@ -9,12 +10,11 @@ from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe_io_nectarcam import constants
 
 NOTINDISPLAY = [
-    "Results_TriggerStatistics",
-    "Results_MeanWaveForms_HighGain",
-    "Results_MeanWaveForms_LowGain",
-    "Results_PixelTimeline_HighGain",
-    "Results_PixelTimeline_LowGain",
+    "TRIGGER-",
+    "WF-",
+    "PIXTIMELINE-",
 ]
+TEST_PATTERN = "(?:% s)" % "|".join(NOTINDISPLAY)
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
@@ -28,7 +28,7 @@ def get_rundata(src, runid):
 def make_camera_displays(db, source, runid):
     displays = collections.defaultdict(dict)
     for parentkey in db[runid].keys():
-        if parentkey not in NOTINDISPLAY:
+        if not re.match(TEST_PATTERN, parentkey):
             for childkey in db[runid][parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
                 displays[parentkey][childkey] = make_camera_display(

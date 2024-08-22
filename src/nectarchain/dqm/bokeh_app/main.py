@@ -1,4 +1,7 @@
+import re
+
 import numpy as np
+from app_hooks import TEST_PATTERN, get_rundata, make_camera_displays
 
 # bokeh imports
 from bokeh.layouts import layout, row
@@ -12,15 +15,6 @@ from ctapipe_io_nectarcam import constants
 
 from nectarchain.dqm.db_utils import DQMDB
 
-from .app_hooks import get_rundata, make_camera_displays
-
-NOTINDISPLAY = [
-    "Results_TriggerStatistics",
-    "Results_MeanWaveForms_HighGain",
-    "Results_MeanWaveForms_LowGain",
-    "Results_CameraMonitoring",
-]
-
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
@@ -30,7 +24,7 @@ def update_camera_displays(attr, old, new):
     new_rundata = get_rundata(db, runid)
 
     for parentkey in db[runid].keys():
-        if parentkey not in NOTINDISPLAY:
+        if not re.match(TEST_PATTERN, parentkey):
             for childkey in db[runid][parentkey].keys():
                 print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
                 # try:
