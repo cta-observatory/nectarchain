@@ -84,6 +84,12 @@ exclude_patterns = [
     "**/*.dqm.bokeh_app**",
 ]
 
+autodoc_mock_imports = [
+    "nectarchain.makers.extractor.charge_extractor",
+    "nectarchain.makers.calibration.core",
+    "nectarchain.dqm.bokeh_app",
+]
+
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.9", None),
@@ -95,10 +101,10 @@ intersphinx_mapping = {
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
-suppress_warnings = [
-    "autosummary",
-    "autosummary.import_cycle",
-]
+# suppress_warnings = [
+#     "autosummary",
+#     "autosummary.import_cycle",
+# ]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
