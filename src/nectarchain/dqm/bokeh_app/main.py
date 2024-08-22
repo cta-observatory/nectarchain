@@ -24,8 +24,8 @@ def update_camera_displays(attr, old, new):
     new_rundata = get_rundata(db, runid)
 
     for parentkey in db[runid].keys():
-        if not re.match(TEST_PATTERN, parentkey):
-            for childkey in db[runid][parentkey].keys():
+        for childkey in db[runid][parentkey].keys():
+            if not re.match(TEST_PATTERN, childkey):
                 print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
                 # try:
                 image = new_rundata[parentkey][childkey]
