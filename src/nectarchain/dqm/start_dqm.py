@@ -149,7 +149,7 @@ def main():
     ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
     # LIST OF PROCESSES TO RUN
-    ########################################################################################
+    ####################################################################################
     processors = [
         TriggerStatistics(HIGH_GAIN),
         MeanWaveFormsHighLowGain(HIGH_GAIN),
