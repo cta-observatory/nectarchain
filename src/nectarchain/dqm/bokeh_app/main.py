@@ -23,11 +23,16 @@ def update_camera_displays(attr, old, new):
     runid = run_select.value
     new_rundata = get_rundata(db, runid)
 
+    # Reset each display
+    for k in displays.keys():
+        for kk in displays[k].keys():
+            displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
+
     for parentkey in db[runid].keys():
         for childkey in db[runid][parentkey].keys():
             if not re.match(TEST_PATTERN, childkey):
                 print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
-                # try:
+
                 image = new_rundata[parentkey][childkey]
                 image = np.nan_to_num(image, nan=0.0)
                 try:
