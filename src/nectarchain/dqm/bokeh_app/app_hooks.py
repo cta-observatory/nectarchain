@@ -10,10 +10,10 @@ from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe_io_nectarcam import constants
 
 NOTINDISPLAY = [
-    "TRIGGER-",
+    "TRIGGER-.*",
     "START-TIMES",
-    "WF-",
-    "PixTimeline-",
+    "WF-.*",
+    ".*PixTimeline-.*",
 ]
 TEST_PATTERN = "(?:% s)" % "|".join(NOTINDISPLAY)
 
