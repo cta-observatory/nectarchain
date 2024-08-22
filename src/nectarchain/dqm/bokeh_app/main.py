@@ -45,7 +45,20 @@ def update_camera_displays(attr, old, new):
 
 db = DQMDB(read_only=True).root
 runids = sorted(list(db.keys()))
-runid = runids[-1]
+
+# First, get the run id with the most populated result dictionary
+runid_max = runids[-1]
+largest = 0
+for runid in runids:
+    larger = 0
+    for k in db[runid].keys():
+        length = len(db[runid][k])
+        if length > larger:
+            larger = length
+    if larger > largest:
+        largest = larger
+        runid_max = runid
+runid = runid_max
 
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 run_select = Select(value=runid, title="NectarCAM run number", options=runids)
