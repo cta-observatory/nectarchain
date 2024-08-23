@@ -30,8 +30,8 @@ def get_rundata(src, runid):
 def make_camera_displays(db, source, runid):
     displays = collections.defaultdict(dict)
     for parentkey in db[runid].keys():
-        for childkey in db[runid][parentkey].keys():
-            if not re.match(TEST_PATTERN, childkey):
+        if not re.match(TEST_PATTERN, parentkey):
+            for childkey in db[runid][parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
                 displays[parentkey][childkey] = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
