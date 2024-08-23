@@ -51,7 +51,7 @@ class DQMSummary:
                     hdu = self._create_hdu(name, content)
                     hdulist.append(hdu)
                 except TypeError as e:
-                    print(f"DEBUG JPL: Got error {e}, skipping {name}")
+                    print(f"Caught {type(e).__name__}, skipping {name}. Details: {e}")
                     pass
 
         FileName = path + "_Results.fits"
