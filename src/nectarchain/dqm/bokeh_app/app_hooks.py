@@ -14,7 +14,7 @@ NOTINDISPLAY = [
     "PED-INTEGRATION-.*",
     "START-TIMES",
     "WF-.*",
-    ".*PixTimeline-.*",
+    ".*PIXTIMELINE-.*",
 ]
 TEST_PATTERN = "(?:% s)" % "|".join(NOTINDISPLAY)
 
