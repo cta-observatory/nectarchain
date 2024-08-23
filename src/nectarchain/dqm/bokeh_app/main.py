@@ -88,11 +88,7 @@ controls = row(run_select)
 # update_camera_displays(attr, old, new)
 
 ncols = 3
-plots = [
-    displays[parentkey][childkey].figure
-    for parentkey in displays.keys()
-    for childkey in displays[parentkey].keys()
-]
+plots = [displays[key].figure for key in displays.keys()]
 curdoc().add_root(
     layout(
         [[controls], [[plots[x : x + ncols] for x in range(0, len(plots), ncols)]]],
