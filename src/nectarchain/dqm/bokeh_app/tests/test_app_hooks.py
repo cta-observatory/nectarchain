@@ -14,18 +14,12 @@ geom = geom.transform_to(EngineeringCameraFrame())
 
 test_dict = {
     "run1": {
-        "mykey1": {
-            "mysubkey1": np.random.normal(size=geom.n_pixels),
-            "mysubkey2": np.random.normal(size=geom.n_pixels),
-        },
-        "mykey2": {
-            "mysubkey1": np.random.normal(size=geom.n_pixels),
-            "mysubkey2": np.random.normal(size=geom.n_pixels),
-        },
+        "mykey1": np.random.normal(size=geom.n_pixels),
+        "mykey2": np.random.normal(size=geom.n_pixels),
     }
 }
 # Renders the second image incomplete
-test_dict["run1"]["mykey2"]["mysubkey2"][10:20] = np.nan
+test_dict["run1"]["mykey2"][10:20] = np.nan
 
 
 def test_make_camera_displays():
@@ -54,11 +48,7 @@ def test_bokeh(tmp_path):
     displays = make_camera_displays(root, source, runid)
 
     ncols = 3
-    plots = [
-        displays[parentkey][childkey].figure
-        for parentkey in displays.keys()
-        for childkey in displays[parentkey].keys()
-    ]
+    plots = [displays[key].figure for key in displays.keys()]
     curdoc().add_root(
         layout(
             [[[plots[x : x + ncols] for x in range(0, len(plots), ncols)]]],

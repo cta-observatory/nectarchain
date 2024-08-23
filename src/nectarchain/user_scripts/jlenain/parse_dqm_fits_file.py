@@ -78,9 +78,14 @@ outdict = dict()
 for h in range(1, len(hdu)):
     extname = hdu[h].header["EXTNAME"]
     outdict[extname] = dict()
-    for i in range(hdu[extname].header["TFIELDS"]):
-        keyname = hdu[extname].header[f"TTYPE{i+1}"]
-        outdict[extname][keyname] = hdu[extname].data[keyname]
+    # for i in range(hdu[extname].header["TFIELDS"]):
+    if len(hdu[extname].header["TFIELDS"]) > 1:
+        raise ValueError(
+            f"Wrong DQM format, {hdu[extname]} should contain only one element"
+        )
+    # keyname = hdu[extname].header[f"TTYPE{i+1}"]
+    keyname = hdu[extname].header[f"TTYPE1"]
+    outdict[extname] = hdu[extname].data[keyname]
 
 try:
     db = DQMDB(read_only=False)
