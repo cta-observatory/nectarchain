@@ -7,5 +7,7 @@ User Guide
    :maxdepth: 2
 
    getting-started
+   env-vars
    howto-dirac
+   dqm
    troubleshooting
