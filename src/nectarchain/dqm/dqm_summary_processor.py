@@ -1,3 +1,4 @@
+import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
@@ -38,7 +39,13 @@ class DQMSummary:
         try:
             data[name] = content
         except TypeError:
-            data = Table(content)
+            try:
+                data = Table(content)
+            except ValueError:
+                # We may have caught just a single float value, try to pack it into
+                # the FITS output
+                content = np.array([content])
+                data = Table(content)
         hdu = fits.BinTableHDU(data)
         hdu.name = name
         return hdu
