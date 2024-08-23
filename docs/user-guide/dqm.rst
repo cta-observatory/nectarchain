@@ -18,7 +18,7 @@ To automatically find and retrieve run files from DIRAC, use the ``-r`` option::
 
     $ python start_dqm.py -r 2720 $NECTARCAMDATA $NECTARCAMDATA
 
-See :ref:env-vars_ for the usage of the ``$NECTARCAMDATA`` environment variable.
+See :ref:`env-vars` for the usage of the ``$NECTARCAMDATA`` environment variable.
 
 To manually use local run files, use the ``-i`` option **after** indicating the positional arguments for input and output directories::
 
@@ -30,17 +30,6 @@ As a DIRAC job
 The user script `nectarchain/user_scripts/jlenain/dqm_job_submitter/submit_dqm_processor.py` can be used to run the DQM as a DIRAC job::
 
     $ python submit_dqm_processor.py -h
-    usage: submit_dqm_processor.py [-h] [-d DATE] [-r RUN] [--dry-run] [--log LOG]
-
-    Submit jobs on DIRAC to run the DQM
-
-    options:
-      -h, --help            show this help message and exit
-      -d DATE, --date DATE  date for which NectarCAM runs should be processed
-      -r RUN, --run RUN     only process a specific run (optional). When omitted, all the runs acquired on DATE are processed (1 job per run).
-      --dry-run             dry run (does not actually submit jobs)
-      --log LOG             debug output
-
 
 Under the hood, it calls the ``dqm_processor.sh`` wrapper script, which itself launches an Apptainer instance of the ``nectarchain`` container on the DIRAC worker. This Apptainer image is automatically built and published in CI on releases.
 
