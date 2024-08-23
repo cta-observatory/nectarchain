@@ -39,7 +39,7 @@ Please follow the `same conventions as ctapipe <https://ctapipe.readthedocs.io/e
 Optional DIRAC support
 ----------------------
 
-*Note*: this is **not** needed if you are using ``nectarchain`` as a container :ref:`as-a-container`, as DIRAC is already fully installed and configured within.
+*Note*: this is **not** needed if you are using ``nectarchain`` as a container (see :ref:`as-a-container`), as DIRAC is already fully installed and configured within.
 
 To enable support for DIRAC within the same environment, do the following after the installation of ``nectarchain`` described above:
 
@@ -64,13 +64,13 @@ Building the documentation
 
 To locally build the documentation, optional dependencies should be installed with:
 
-.. code-block::
+.. code-block:: console
 
     $ pip install -e ".[docs]"
 
 The documentation can then be compiled with:
 
-.. code-block::
+.. code-block:: console
 
     $ make -C docs html
 
