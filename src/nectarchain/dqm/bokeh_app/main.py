@@ -25,33 +25,35 @@ def update_camera_displays(attr, old, new):
 
     # Reset each display
     for k in displays.keys():
-        displays[k].image = np.zeros(shape=constants.N_PIXELS)
+        for kk in displays[k].keys():
+            displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
 
-    for key in db[runid].keys():
-        if not re.match(TEST_PATTERN, key):
-            print(f"Run id {runid} Updating plot for {key}")
+    for parentkey in db[runid].keys():
+        if not re.match(TEST_PATTERN, parentkey):
+            for childkey in db[runid][parentkey].keys():
+                print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
 
-            image = new_rundata[key]
-            image = np.nan_to_num(image, nan=0.0)
-            try:
-                displays[key].image = image
-            except ValueError as e:
-                print(
-                    f"Caught {type(e).__name__} for {key}, filling display"
-                    f"with zeros. Details: {e}"
-                )
-                image = np.zeros(shape=displays[key].image.shape)
-                displays[key].image = image
-            except KeyError as e:
-                print(
-                    f"Caught {type(e).__name__} for {key}, filling display"
-                    f"with zeros. Details: {e}"
-                )
-                image = np.zeros(shape=constants.N_PIXELS)
-                displays[key].image = image
-            # TODO: TRY TO USE `stream` INSTEAD, ON UPDATES:
-            # display.datasource.stream(new_data)
-            # displays[key].datasource.stream(image)
+                image = new_rundata[parentkey][childkey]
+                image = np.nan_to_num(image, nan=0.0)
+                try:
+                    displays[parentkey][childkey].image = image
+                except ValueError as e:
+                    print(
+                        f"Caught {type(e).__name__} for {childkey}, filling display"
+                        f"with zeros. Details: {e}"
+                    )
+                    image = np.zeros(shape=displays[parentkey][childkey].image.shape)
+                    displays[parentkey][childkey].image = image
+                except KeyError as e:
+                    print(
+                        f"Caught {type(e).__name__} for {childkey}, filling display"
+                        f"with zeros. Details: {e}"
+                    )
+                    image = np.zeros(shape=constants.N_PIXELS)
+                    displays[parentkey][childkey].image = image
+                # TODO: TRY TO USE `stream` INSTEAD, ON UPDATES:
+                # display.datasource.stream(new_data)
+                # displays[parentkey][childkey].datasource.stream(image)
 
 
 db = DQMDB(read_only=True).root
@@ -88,7 +90,11 @@ controls = row(run_select)
 # update_camera_displays(attr, old, new)
 
 ncols = 3
-plots = [displays[key].figure for key in displays.keys()]
+plots = [
+    displays[parentkey][childkey].figure
+    for parentkey in displays.keys()
+    for childkey in displays[parentkey].keys()
+]
 curdoc().add_root(
     layout(
         [[controls], [[plots[x : x + ncols] for x in range(0, len(plots), ncols)]]],
