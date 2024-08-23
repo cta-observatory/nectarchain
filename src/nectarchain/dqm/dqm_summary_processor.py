@@ -40,7 +40,7 @@ class DQMSummary:
         hdu, hdu0, hdu1, hdu2 = None, None, None, None
         hdulist = fits.HDUList()
         for i, j in DICT.items():
-            if (i == "Results_TriggerStatistics"):
+            if i == "Results_TriggerStatistics":
                 for n2, m2 in j.items():
                     data2[n2] = m2
                 hdu2 = fits.BinTableHDU(data2)
@@ -52,11 +52,13 @@ class DQMSummary:
                 for n1, m1 in j.items():
                     data1[n1] = m1
                 hdu1 = fits.BinTableHDU(data1)
-                hdu1.name = "MWF"    
+                hdu1.name = "MWF"
 
-            elif (i == "Results_PixelTimeline_HighGain") or (i == "Results_PixelTimeline_LowGain"):
+            elif (i == "Results_PixelTimeline_HighGain") or (
+                i == "Results_PixelTimeline_LowGain"
+            ):
                 for n0, m0 in j.items():
-                    data0[n0] = m0 
+                    data0[n0] = m0
                 hdu0 = fits.BinTableHDU(data0)
                 hdu0.name = "BPX"
 
@@ -82,8 +84,7 @@ class DQMSummary:
         else:
             print("No Camera studies requests")
 
-        
-        FileName = path + '_Results.fits'
+        FileName = path + "_Results.fits"
         print(FileName)
         hdulist.writeto(FileName, overwrite=True)
         return None
