@@ -75,12 +75,38 @@ NectarCAM data can then be explored using ``dls``:
    NectarCAM.Run5568.0003.fits.fz
    NectarCAM.Run5568.0004.fits.fz
 
-The `~nectarchain.data.management.DataManagement.findrun` method will
+Sometimes, it is useful to quickly find the DIRAC location of a given NectarCAM run. The command ``dfind`` comes in handy. Suppose you want to know where run 5326 is, or how much slice files it contains:
+
+.. code-block:: console
+
+    $ dfind /vo.cta.in2p3.fr/nectarcam | grep 5326
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0000.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0001.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0002.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0003.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0004.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0005.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0006.fits.fz
+    /vo.cta.in2p3.fr/nectarcam/2024/20240520/NectarCAM.Run5326.0007.fits.fz
+    $ dfind /vo.cta.in2p3.fr/nectarcam | grep 5326 | grep -e "fits.fz" | wc -l
+    8
+
+
+The `nectarchain.data.management.DataManagement.findrun` method will
 automatically localize NectarCAM data on DIRAC, given a run number, and fetch
 the run files for you.
 
 Tips
 ====
+
+Web portal
+^^^^^^^^^^
+
+CTA-DIRAC has a web portal available at https://ctadirac-01.cscs.cta-observatory.org/DIRAC/ to interact with it. In particular, the *Job Monitor* application is very useful to interact with your jobs on DIRAC.
+
+.. tip::
+
+    If you submitted your jobs using the ``cta_nectarcam`` role, you would need to re-authenticate in the portal with this role: Click on *Settings* in the bottom left, and select *cta_nectarcam* under *Group*.
 
 Proxy error
 ^^^^^^^^^^^

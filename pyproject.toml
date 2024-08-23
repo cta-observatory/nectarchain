@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nectarchain"
 description = "Analysis chain for the CTA MSTN NectarCAM prototype"
-readme = "README.md"
+readme = "README.rst"
 authors = [{name = "CTAO NectarCAM collaboration"}]
 license = {text = "BSD-3-Clause"}
 classifiers = [

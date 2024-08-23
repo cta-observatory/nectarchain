@@ -75,19 +75,17 @@ numpydoc_class_members_toctree = False
 # source_suffix = ['.rst', '.md']
 source_suffix = ".rst"
 
+# have all links automatically associated with the right domain.
+default_role = "py:obj"
+
 templates_path = ["_templates"]
 
-exclude_patterns = [
-    "_build",
-    "Thumbs.db",
-    ".DS_Store",
-    "**/*.dqm.bokeh_app**",
-]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 autodoc_mock_imports = [
-    "nectarchain.makers.extractor.charge_extractor",
-    "nectarchain.makers.calibration.core",
-    "nectarchain.dqm.bokeh_app",
+    f"{project}.makers.calibration.core",
+    f"{project}.makers.extractor.charge_extractor",
+    f"{project}.dqm.bokeh_app",
 ]
 
 # intersphinx allows referencing other packages sphinx docs
@@ -100,11 +98,6 @@ intersphinx_mapping = {
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
-
-# suppress_warnings = [
-#     "autosummary",
-#     "autosummary.import_cycle",
-# ]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
