@@ -1,40 +1,52 @@
-.. dqm:
+.. _dqm:
 
-Quick recipe for the Data Quality Monitoring (DQM) scripts
-==========================================================
+Quick recipe for the Data Quality Monitoring script
+===================================================
 
-To launch the DQM, first activate the ``nectarchain`` ``conda`` environment::
+Run locally
+-----------
+
+To launch the Data Quality Monitoring (DQM), first activate the ``nectarchain`` ``conda`` environment::
 
     source activate nectarchain
 
 Usage::
 
-    python start_dqm.py -h
-    usage: start_dqm.py [-h] [-p] [--write-db] [-n] [-r RUNNB] [--r0] [--max-events MAX_EVENTS] [-i INPUT_FILES [INPUT_FILES ...]] input_paths output_paths
-
-    NectarCAM Data Quality Monitoring tool
-
-    positional arguments:
-      input_paths           Input paths
-      output_paths          Output paths
-
-    options:
-      -h, --help            show this help message and exit
-      -p, --plot            Enables plots to be generated
-      --write-db            Write DQM output in DQM ZODB data base
-      -n, --noped           Enables pedestal subtraction in charge integration
-      -r RUNNB, --runnb RUNNB
-                            Optional run number, automatically found on DIRAC
-      --r0                  Disable all R0->R1 corrections
-      --max-events MAX_EVENTS
-                            Maximum number of events to loop through in each run slice
-      -i INPUT_FILES [INPUT_FILES ...], --input-files INPUT_FILES [INPUT_FILES ...]
-                            Local input files
+    $ python start_dqm.py -h
 
 To automatically find and retrieve run files from DIRAC, use the ``-r`` option::
 
-    python start_dqm.py -r 2720 $NECTARCAMDATA $NECTARCAMDATA
+    $ python start_dqm.py -r 2720 $NECTARCAMDATA $NECTARCAMDATA
+
+See :ref:env-vars_ for the usage of the ``$NECTARCAMDATA`` environment variable.
 
 To manually use local run files, use the ``-i`` option **after** indicating the positional arguments for input and output directories::
 
-    python start_dqm.py $NECTARCAMDATA $NECTARCAMDATA -i NectarCAM.Run2720.0000.fits.fz NectarCAM.Run2720.0001.fits.fz
+    $ python start_dqm.py $NECTARCAMDATA $NECTARCAMDATA -i NectarCAM.Run2720.0000.fits.fz NectarCAM.Run2720.0001.fits.fz
+
+As a DIRAC job
+--------------
+
+The user script `nectarchain/user_scripts/jlenain/dqm_job_submitter/submit_dqm_processor.py` can be used to run the DQM as a DIRAC job::
+
+    $ python submit_dqm_processor.py -h
+    usage: submit_dqm_processor.py [-h] [-d DATE] [-r RUN] [--dry-run] [--log LOG]
+
+    Submit jobs on DIRAC to run the DQM
+
+    options:
+      -h, --help            show this help message and exit
+      -d DATE, --date DATE  date for which NectarCAM runs should be processed
+      -r RUN, --run RUN     only process a specific run (optional). When omitted, all the runs acquired on DATE are processed (1 job per run).
+      --dry-run             dry run (does not actually submit jobs)
+      --log LOG             debug output
+
+
+Under the hood, it calls the ``dqm_processor.sh`` wrapper script, which itself launches an Apptainer instance of the ``nectarchain`` container on the DIRAC worker. This Apptainer image is automatically built and published in CI on releases.
+
+The DQM runs one job per NectarCAM run. It is possible, for instance, to bulk-submit DIRAC jobs for all runs acquired during a given period, e.g.::
+
+    $ d=2023-01-01
+    $ while [ "$d" != 2023-03-01 ]; do python submit_dqm_processor.py -d $d; d=$(date -I -d "$d + 1 day"); done
+
+The script will first assess whether DQM jobs have already been run for a given NectarCAM run, based on the output directory on DIRAC where this script stores its output. Look for the ``$DIRAC_OUTDIR`` environment variable in ``dqm_processor.sh``.
