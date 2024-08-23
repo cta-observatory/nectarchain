@@ -90,22 +90,18 @@ class TriggerStatistics(DQMSummary):
 
     def GetResults(self):
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
-        self.TriggerStat_Results_Dict[
-            "TRIGGER-STATISTICS"
-        ] = "All: %s, Physical: %s, Pedestals: %s, Others: %s, Wrong times: %s" % (
-            len(self.event_times),
-            len(self.event_phy_times),
-            len(self.event_ped_times),
-            len(self.event_other_times),
-            len(self.event_wrong_times),
-        )
-        self.TriggerStat_Results_Dict[
-            "START-TIMES"
-        ] = "Run start time: %s, First event: %s, Last event: %s" % (
-            self.run_start1,
-            self.run_start,
-            self.run_end,
-        )
+        self.TriggerStat_Results_Dict["TRIGGER-STATISTICS"] = {
+            "All": [len(self.event_times)],
+            "Physical": [len(self.event_phy_times)],
+            "Pedestals": [len(self.event_ped_times)],
+            "Others": [len(self.event_other_times)],
+            "Wrong times": [len(self.event_wrong_times)],
+        }
+        self.TriggerStat_Results_Dict["START-TIMES"] = {
+            "Run start time": self.run_start1,
+            "First event": self.run_start,
+            "Last event": self.run_end,
+        }
         return self.TriggerStat_Results_Dict
 
     def PlotResults(self, name, FigPath):
