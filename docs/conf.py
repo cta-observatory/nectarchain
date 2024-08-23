@@ -80,9 +80,9 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 autodoc_mock_imports = [
-    "nectarchain.makers.extractor.charge_extractor",
-    "nectarchain.makers.calibration.core",
-    "nectarchain.dqm.bokeh_app",
+    f"{project}.makers.calibration.core",
+    f"{project}.makers.extractor.charge_extractor",
+    f"{project}.dqm.bokeh_app",
 ]
 
 # intersphinx allows referencing other packages sphinx docs
