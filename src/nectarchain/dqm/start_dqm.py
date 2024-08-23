@@ -70,8 +70,6 @@ def main():
     output_path = args.output_paths
     print("Output path:", output_path)
 
-    # Defining and printing the paths of the input files.
-
     if args.runnb is not None:
         # Grab runs automatically from DIRAC is the -r option is provided
         from nectarchain.data.management import DataManagement
@@ -152,34 +150,22 @@ def main():
 
     # LIST OF PROCESSES TO RUN
     ####################################################################################
-    a = TriggerStatistics(HIGH_GAIN)
-    b = MeanWaveFormsHighLowGain(HIGH_GAIN)
-    c = MeanWaveFormsHighLowGain(LOW_GAIN)
-    d = MeanCameraDisplayHighLowGain(HIGH_GAIN)
-    e = MeanCameraDisplayHighLowGain(LOW_GAIN)
-    f = ChargeIntegrationHighLowGain(HIGH_GAIN)
-    g = ChargeIntegrationHighLowGain(LOW_GAIN)
-    h = CameraMonitoring(HIGH_GAIN)
-    i = PixelParticipationHighLowGain(HIGH_GAIN)
-    j = PixelParticipationHighLowGain(LOW_GAIN)
-    k = PixelTimelineHighLowGain(HIGH_GAIN)
-    ll = PixelTimelineHighLowGain(LOW_GAIN)
+    processors = [
+        TriggerStatistics(HIGH_GAIN),
+        MeanWaveFormsHighLowGain(HIGH_GAIN),
+        MeanWaveFormsHighLowGain(LOW_GAIN),
+        MeanCameraDisplayHighLowGain(HIGH_GAIN),
+        MeanCameraDisplayHighLowGain(LOW_GAIN),
+        ChargeIntegrationHighLowGain(HIGH_GAIN),
+        ChargeIntegrationHighLowGain(LOW_GAIN),
+        CameraMonitoring(HIGH_GAIN),
+        PixelParticipationHighLowGain(HIGH_GAIN),
+        PixelParticipationHighLowGain(LOW_GAIN),
+        PixelTimelineHighLowGain(HIGH_GAIN),
+        PixelTimelineHighLowGain(LOW_GAIN),
+    ]
 
-    processors = list()
-
-    processors.append(a)
-    processors.append(b)
-    processors.append(c)
-    processors.append(d)
-    processors.append(e)
-    processors.append(f)
-    processors.append(g)
-    processors.append(h)
-    processors.append(i)
-    processors.append(j)
-    processors.append(k)
-    processors.append(ll)
-
+    # LIST OF DICT RESULTS
     NESTED_DICT = {}  # The final results dictionary
 
     NESTED_DICT_KEYS = [
@@ -196,8 +182,6 @@ def main():
         "Results_PixelTimeline_HighGain",
         "Results_PixelTimeline_LowGain",
     ]
-
-    # NESTED_DICT_KEYS = ["Results_PixelParticipation_HighGain"]
 
     # START
     for p in processors:
@@ -257,7 +241,7 @@ def main():
                 plt.close()
 
     end = time.time()
-    print("Processing time:", end - start)
+    print(f"Processing time: {end-start:.2f} s.")
 
     # TODO
     # Reduce code by using loops: for figs and results
