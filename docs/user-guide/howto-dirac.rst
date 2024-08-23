@@ -75,7 +75,7 @@ NectarCAM data can then be explored using ``dls``:
    NectarCAM.Run5568.0003.fits.fz
    NectarCAM.Run5568.0004.fits.fz
 
-Sometimes, it is useful to quickly find the DIRAC location of a given NectarCAM run. The command ``dfind`` comes in handy. Suppose you want to know where run `RUN_NUMBER` is, or how much slice files it contains:
+Sometimes, it is useful to quickly find the DIRAC location of a given NectarCAM run. The command ``dfind`` comes in handy. Suppose you want to know where run 5326 is, or how much slice files it contains:
 
 .. code-block:: console
 
@@ -102,11 +102,11 @@ Tips
 Web portal
 ^^^^^^^^^^
 
-CTA-DIRAC has a web portal available at https://ctadirac-01.cscs.cta-observatory.org/DIRAC/ to interact with it. In particular, the `Job Monitor` application is very useful to interact with your jobs on DIRAC.
+CTA-DIRAC has a web portal available at https://ctadirac-01.cscs.cta-observatory.org/DIRAC/ to interact with it. In particular, the *Job Monitor* application is very useful to interact with your jobs on DIRAC.
 
 .. tip::
 
-    If you submitted your jobs using the ``cta_nectarcam`` role, you would need to re-authenticate in the portal with this role: Click on `Settings` in the bottom left, and select `cta_nectarcam` under `Group`.
+    If you submitted your jobs using the ``cta_nectarcam`` role, you would need to re-authenticate in the portal with this role: Click on *Settings* in the bottom left, and select *cta_nectarcam* under *Group*.
 
 Proxy error
 ^^^^^^^^^^^
