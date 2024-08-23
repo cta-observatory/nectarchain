@@ -79,7 +79,7 @@ for h in range(1, len(hdu)):
     extname = hdu[h].header["EXTNAME"]
     outdict[extname] = dict()
     # for i in range(hdu[extname].header["TFIELDS"]):
-    if hdu[extname].header["TFIELDS"] > 1:
+    if len(hdu[extname].header["TFIELDS"]) > 1:
         raise ValueError(
             f"Wrong DQM format, {hdu[extname]} should contain only one element"
         )
