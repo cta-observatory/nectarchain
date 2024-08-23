@@ -77,12 +77,7 @@ source_suffix = ".rst"
 
 templates_path = ["_templates"]
 
-exclude_patterns = [
-    "_build",
-    "Thumbs.db",
-    ".DS_Store",
-    "**/*.dqm.bokeh_app**",
-]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 autodoc_mock_imports = [
     "nectarchain.makers.extractor.charge_extractor",
