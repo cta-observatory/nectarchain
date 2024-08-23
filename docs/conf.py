@@ -75,6 +75,9 @@ numpydoc_class_members_toctree = False
 # source_suffix = ['.rst', '.md']
 source_suffix = ".rst"
 
+# have all links automatically associated with the right domain.
+default_role = "py:obj"
+
 templates_path = ["_templates"]
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
