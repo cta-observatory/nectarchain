@@ -11,6 +11,7 @@ from ctapipe_io_nectarcam import constants
 
 NOTINDISPLAY = [
     "TRIGGER-.*",
+    "PED-INTEGRATION-.*",
     "START-TIMES",
     "WF-.*",
     ".*PixTimeline-.*",
