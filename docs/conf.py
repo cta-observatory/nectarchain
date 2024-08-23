@@ -96,11 +96,6 @@ intersphinx_mapping = {
     "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
 }
 
-# suppress_warnings = [
-#     "autosummary",
-#     "autosummary.import_cycle",
-# ]
-
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
