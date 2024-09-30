@@ -35,6 +35,13 @@ parser.add_argument(
     type=str,
 )
 parser.add_argument(
+    "-f",
+    "--force",
+    default=False,
+    action="store_true",
+    help="if this run is already in the DB, force re-parsing its DQM output again.",
+)
+parser.add_argument(
     "-p",
     "--path",
     default="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm",
@@ -46,6 +53,14 @@ args = parser.parse_args()
 if args.run is None:
     logger.critical("A run number should be provided.")
     sys.exit(1)
+
+db = DQMDB(read_only=True)
+if not args.force and f"NectarCAM_Run{args.run}" in list(db.root.keys()):
+    logger.warning(
+        f'The run {args.run} is already present in the DB, will not parse this DQM run, or consider forcing it with the "--force" option.'
+    )
+    sys.exit(0)
+del db
 
 lfn = f"{args.path}/NectarCAM_DQM_Run{args.run}.tar.gz"
 
