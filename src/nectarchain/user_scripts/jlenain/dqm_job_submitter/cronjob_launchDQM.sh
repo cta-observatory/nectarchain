@@ -9,6 +9,9 @@
 LOGFILE=${0%".sh"}_$(date +%F).log
 exec 1>"$LOGFILE" 2>&1
 
+source /opt/cta/mambaforge/etc/profile.d/conda.sh
+conda activate ctadirac
+
 localParentDir="/data/nvme/ZFITS"
 remoteParentDir="/vo.cta.in2p3.fr/nectarcam"
 nectarchainScriptDir="$HOME/local/src/python/cta-observatory/nectarchain/src/nectarchain/user_scripts/jlenain/dqm_job_submitter"
@@ -37,6 +40,6 @@ for run in $(find ${localParentDir} -type f -name "NectarCAM*.fits.fz" | awk -F.
             echo "  DQM job for run $run already submitted, either ongoing or failed, skipping it."
         fi
     else
-	      echo "  Run $run is not yet complete on DIRAC, will wait another day before launching a DQM job on it."
+        echo "  Run $run is not yet complete on DIRAC, will wait another day before launching a DQM job on it."
     fi
 done
