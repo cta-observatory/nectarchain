@@ -24,14 +24,19 @@ for run in $(find ${localParentDir} -type f -name "NectarCAM*.fits.fz" | awk -F.
     # If number of local and remote files matching, will attempt to launch a DQM run
     if [ $nbLocalFiles -eq $nbRemoteFiles ]; then
         echo "  Run $run: number of local and remote files matching, will attempt to submit a DQM job"
-        yyyymmdd=$(find ${localParentDir} -type f -name "NectarCAM.Run${run}.????.fits.fz" | head -n 1 | awk -F/ '{print $6}')
-        yyyy=${yyyymmdd:0:4}
-        mm=${yyyymmdd:4:2}
-        dd=${yyyymmdd:6:2}
-        cmd="python submit_dqm_processor.py -d "${yyyy}-${mm}-${dd}" -r $run"
-	echo "Running: $cmd"
-	eval $cmd
+        # Has this DQM run already been submitted ?
+        if [ $(dstat | grep -e "NectarCAM DQM run ${run}" | wc -l) -eq 0 ]; then
+            yyyymmdd=$(find ${localParentDir} -type f -name "NectarCAM.Run${run}.????.fits.fz" | head -n 1 | awk -F/ '{print $6}')
+            yyyy=${yyyymmdd:0:4}
+            mm=${yyyymmdd:4:2}
+            dd=${yyyymmdd:6:2}
+            cmd="python submit_dqm_processor.py -d "${yyyy}-${mm}-${dd}" -r $run"
+            echo "Running: $cmd"
+            eval $cmd
+        else
+            echo "  DQM job for run $run already submitted, either ongoing or failed, skipping it."
+        fi
     else
-	echo "  Run $run is not yet complete on DIRAC, will wait another day before launching a DQM job on it."
+	      echo "  Run $run is not yet complete on DIRAC, will wait another day before launching a DQM job on it."
     fi
 done
