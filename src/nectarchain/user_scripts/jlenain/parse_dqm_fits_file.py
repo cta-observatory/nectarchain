@@ -58,8 +58,6 @@ db_read = DQMDB(read_only=True)
 db_read_keys = list(db_read.root.keys())
 db_read.abort_and_close()
 
-db = DQMDB(read_only=False)
-
 for run in args.runs:
     if not args.force and f"NectarCAM_Run{run}" in db_read_keys:
         logger.warning(
@@ -80,8 +78,14 @@ for run in args.runs:
             printOutput=True,
         )
 
-    with tarfile.open(os.path.basename(lfn), "r") as tar:
-        tar.extractall(".")
+    try:
+        with tarfile.open(os.path.basename(lfn), "r") as tar:
+            tar.extractall(".")
+    except FileNotFoundError as e:
+        logger.warning(
+            f"Could not fetch DQM results from DIRAC for run {run}, received error {e}, skipping this run..."
+        )
+        continue
 
     fits_file = (
         f"./NectarCAM_DQM_Run{run}/output/NectarCAM_Run{run}/"
@@ -102,7 +106,12 @@ for run in args.runs:
             keyname = hdu[extname].header[f"TTYPE{i+1}"]
             outdict[extname][keyname] = hdu[extname].data[keyname]
 
-    db.insert(f"NectarCAM_Run{run}", outdict)
+    try:
+        db = DQMDB(read_only=False)
+        db.insert(f"NectarCAM_Run{run}", outdict)
+        db.commit_and_close()
+    except ZEO.Exceptions.ClientDisconnected as e:
+        logger.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
 
     # Remove DQM archive file and directory
     try:
@@ -115,8 +124,3 @@ for run in args.runs:
     dirpath = Path(f"./NectarCAM_DQM_Run{run}")
     if dirpath.exists() and dirpath.is_dir():
         shutil.rmtree(dirpath)
-
-try:
-    db.commit_and_close()
-except ZEO.Exceptions.ClientDisconnected as e:
-    logger.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
