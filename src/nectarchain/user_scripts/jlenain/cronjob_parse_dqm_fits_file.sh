@@ -5,6 +5,7 @@
 
 # Log everything to $LOGFILE
 LOGFILE=${0%".sh"}_$(date +%F).log
+LOGFILE=$HOME/log/$(basename $LOGFILE)
 exec 1>"$LOGFILE" 2>&1
 
 . "/opt/conda/etc/profile.d/conda.sh"
