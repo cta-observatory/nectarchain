@@ -10,6 +10,7 @@ exec 1>"$LOGFILE" 2>&1
 . "/opt/conda/etc/profile.d/conda.sh"
 conda activate nectar-dev
 
-for run in $(dls "/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm" | grep -ve "/vo.cta" | awk -F. '{print $1}' | awk -Fn '{print $2}'); do
-    python /opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain/parse_dqm_fits_file.py -r $run
-done
+remoteParentDir="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm"
+nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
+
+python ${nectarchainScriptDir}/parse_dqm_fits_file.py -r $(dls ${remoteParentDir} | grep -ve "/vo.cta" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')
