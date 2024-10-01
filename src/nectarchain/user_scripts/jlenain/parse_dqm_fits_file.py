@@ -28,13 +28,6 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
-    "-r",
-    "--run",
-    default=None,
-    help="process a specific run.",
-    type=str,
-)
-parser.add_argument(
     "-f",
     "--force",
     default=False,
@@ -48,70 +41,82 @@ parser.add_argument(
     help="path on DIRAC where to grab DQM outputs (optional).",
     type=str,
 )
+parser.add_argument(
+    "-r",
+    "--runs",
+    nargs="+",
+    default=None,
+    help="process a specific run or a list of runs.",
+)
 args = parser.parse_args()
 
-if args.run is None:
-    logger.critical("A run number should be provided.")
+if args.runs is None:
+    logger.critical("At least one run number should be provided.")
     sys.exit(1)
 
-db = DQMDB(read_only=True)
-if not args.force and f"NectarCAM_Run{args.run}" in list(db.root.keys()):
-    logger.warning(
-        f'The run {args.run} is already present in the DB, will not parse this DQM run, or consider forcing it with the "--force" option.'
+db_read = DQMDB(read_only=True)
+db_read_keys = list(db_read.root.keys())
+db_read.abort_and_close()
+
+db = DQMDB(read_only=False)
+
+for run in args.runs:
+    if not args.force and f"NectarCAM_Run{run}" in db_read_keys:
+        logger.warning(
+            f'The run {run} is already present in the DB, will not parse this DQM run, or consider forcing it with the "--force" option.'
+        )
+        continue
+
+    lfn = f"{args.path}/NectarCAM_DQM_Run{run}.tar.gz"
+
+    if not os.path.exists(os.path.basename(lfn)):
+        DIRAC.initialize()
+
+        dirac = Dirac()
+
+        dirac.getFile(
+            lfn=lfn,
+            destDir=f".",
+            printOutput=True,
+        )
+
+    with tarfile.open(os.path.basename(lfn), "r") as tar:
+        tar.extractall(".")
+
+    fits_file = (
+        f"./NectarCAM_DQM_Run{run}/output/NectarCAM_Run{run}/"
+        f"NectarCAM_Run{run}_calib/NectarCAM_Run{run}_Results.fits"
     )
-    sys.exit(0)
-del db
 
-lfn = f"{args.path}/NectarCAM_DQM_Run{args.run}.tar.gz"
+    hdu = fits.open(fits_file)
 
-if not os.path.exists(os.path.basename(lfn)):
-    DIRAC.initialize()
+    # Explore FITS file structure
+    hdu.info()
 
-    dirac = Dirac()
+    outdict = dict()
 
-    dirac.getFile(
-        lfn=lfn,
-        destDir=f".",
-        printOutput=True,
-    )
+    for h in range(1, len(hdu)):
+        extname = hdu[h].header["EXTNAME"]
+        outdict[extname] = dict()
+        for i in range(hdu[extname].header["TFIELDS"]):
+            keyname = hdu[extname].header[f"TTYPE{i+1}"]
+            outdict[extname][keyname] = hdu[extname].data[keyname]
 
-with tarfile.open(os.path.basename(lfn), "r") as tar:
-    tar.extractall(".")
+    db.insert(f"NectarCAM_Run{run}", outdict)
 
-fits_file = (
-    f"./NectarCAM_DQM_Run{args.run}/output/NectarCAM_Run{args.run}/"
-    f"NectarCAM_Run{args.run}_calib/NectarCAM_Run{args.run}_Results.fits"
-)
+    # Remove DQM archive file and directory
+    try:
+        os.remove(f"NectarCAM_DQM_Run{run}.tar.gz")
+    except OSError:
+        logger.warning(
+            f"Could not remove NectarCAM_DQM_Run{run}.tar.gz or it does not exist"
+        )
 
-hdu = fits.open(fits_file)
-
-# Explore FITS file structure
-hdu.info()
-
-outdict = dict()
-
-for h in range(1, len(hdu)):
-    extname = hdu[h].header["EXTNAME"]
-    outdict[extname] = dict()
-    for i in range(hdu[extname].header["TFIELDS"]):
-        keyname = hdu[extname].header[f"TTYPE{i+1}"]
-        outdict[extname][keyname] = hdu[extname].data[keyname]
+    dirpath = Path(f"./NectarCAM_DQM_Run{run}")
+    if dirpath.exists() and dirpath.is_dir():
+        shutil.rmtree(dirpath)
 
 try:
-    db = DQMDB(read_only=False)
-    db.insert(f"NectarCAM_Run{args.run}", outdict)
     db.commit_and_close()
 except ZEO.Exceptions.ClientDisconnected as e:
     logger.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
-
-# Remove DQM archive file and directory
-try:
-    os.remove(f"NectarCAM_DQM_Run{args.run}.tar.gz")
-except OSError:
-    logger.warning(
-        f"Could not remove NectarCAM_DQM_Run{args.run}.tar.gz or it does not exist"
-    )
-
-dirpath = Path(f"./NectarCAM_DQM_Run{args.run}")
-if dirpath.exists() and dirpath.is_dir():
-    shutil.rmtree(dirpath)
