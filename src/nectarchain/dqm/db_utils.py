@@ -1,4 +1,5 @@
 import transaction
+from BTrees.OOBTree import OOBTree
 from ZEO import ClientStorage
 from ZODB import DB
 
@@ -17,7 +18,7 @@ class DQMDB:
     def insert(self, key=None, value=None):
         if key is not None and value is not None:
             try:
-                self.root[key] = value
+                self.root[key] = OOBTree(value)
                 return True
             except AttributeError:
                 return False

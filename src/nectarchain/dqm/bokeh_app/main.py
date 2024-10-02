@@ -29,8 +29,8 @@ def update_camera_displays(attr, old, new):
             displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
 
     for parentkey in db[runid].keys():
-        for childkey in db[runid][parentkey].keys():
-            if not re.match(TEST_PATTERN, childkey):
+        if not re.match(TEST_PATTERN, parentkey):
+            for childkey in db[runid][parentkey].keys():
                 print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
 
                 image = new_rundata[parentkey][childkey]
@@ -56,26 +56,24 @@ def update_camera_displays(attr, old, new):
                 # displays[parentkey][childkey].datasource.stream(image)
 
 
+print("Opening connection to ZODB")
 db = DQMDB(read_only=True).root
+print("Getting list of run numbers")
 runids = sorted(list(db.keys()))
 
 # First, get the run id with the most populated result dictionary
-runid_max = runids[-1]
-largest = 0
-for runid in runids:
-    larger = 0
-    for k in db[runid].keys():
-        length = len(db[runid][k])
-        if length > larger:
-            larger = length
-    if larger > largest:
-        largest = larger
-        runid_max = runid
-runid = runid_max
+# On the full DB, this takes an awful lot of time, and saturates the RAM on the host
+# VM (gets OoM killed)
+# run_dict_lengths = [len(db[r]) for r in runids]
+# runid = runids[np.argmax(run_dict_lengths)]
+runid = "NectarCAM_Run0008"
+print(f"We will start with run {runid}")
 
+print("Defining Select")
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 
+print(f"Getting data for run {run_select.value}")
 source = get_rundata(db, run_select.value)
 displays = make_camera_displays(db, source, runid)
 
