@@ -11,6 +11,12 @@ exec 1>"$LOGFILE" 2>&1
 . "/opt/conda/etc/profile.d/conda.sh"
 conda activate nectar-dev
 
+# Initialize DIRAC proxy from user certificate:
+if ! dirac-proxy-init -M -g cta_nectarcam --pwstdin < ~/.dirac.pwd; then
+    echo "DIRAC proxy initialization failed..."
+    exit 1
+fi
+
 remoteParentDir="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm"
 nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
 
