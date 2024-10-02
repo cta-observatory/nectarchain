@@ -59,7 +59,7 @@ def update_camera_displays(attr, old, new):
 print("Opening connection to ZODB")
 db = DQMDB(read_only=True).root
 print("Getting list of run numbers")
-runids = sorted(list(db.keys()))
+runids = sorted(list(db.keys()), reverse=True)
 
 # First, get the run id with the most populated result dictionary
 # On the full DB, this takes an awful lot of time, and saturates the RAM on the host
