@@ -1,10 +1,15 @@
 import ctapipe.instrument.camera.readout
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
-from ctapipe.image import LocalPeakWindowSum
+from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
+from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
+from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
+from ctapipe.image.extractor import NeighborPeakWindowSum  # noqa: F401
+from ctapipe.image.extractor import SlidingWindowMaxSum  # noqa: F401
+from ctapipe.image.extractor import TwoPassWindowSum  # noqa: F401
 from ctapipe.visualization import CameraDisplay
 from matplotlib import pyplot as plt
-from traitlets.config.loader import Config
 
 from .dqm_summary_processor import DQMSummary
 
@@ -51,7 +56,20 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def _get_extractor_kwargs_from_method_and_kwargs(method: str, kwargs: dict):
+        extractor_kwargs = {}
+        for key in eval(method).class_own_traits().keys():
+            if key in kwargs.keys():
+                extractor_kwargs[key] = kwargs[key]
+        if (
+            "apply_integration_correction" in eval(method).class_own_traits().keys()
+        ):  # to change the default behavior of ctapipe extractor
+            extractor_kwargs["apply_integration_correction"] = kwargs.get(
+                "apply_integration_correction", False
+            )
+        return extractor_kwargs
+
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, charges_kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -72,9 +90,11 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         ].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name(
             "NectarCam"
         )
-        config = Config({"LocalPeakWindowSum": {"window_shift": 4, "window_width": 12}})
 
-        self.integrator = LocalPeakWindowSum(subarray, config=config)
+        extractor_kwargs = __class__._get_extractor_kwargs_from_method_and_kwargs(
+            method=charges_kwargs["method"], kwargs=charges_kwargs["extractor_kwargs"]
+        )
+        self.integrator = eval(charges_kwargs["method"])(subarray, **extractor_kwargs)
 
     def ProcessEvent(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels

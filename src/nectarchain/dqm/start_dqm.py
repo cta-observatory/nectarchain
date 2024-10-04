@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 import time
@@ -18,6 +19,7 @@ from nectarchain.dqm.mean_waveforms import MeanWaveFormsHighLowGain
 from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
+from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
 
 def main():
@@ -40,6 +42,28 @@ def main():
         action="store_true",
         help="Enables pedestal subtraction in charge integration",
     )
+    # extractor arguments
+    parser.add_argument(
+        "--method",
+        choices=[
+            "FullWaveformSum",
+            "FixedWindowSum",
+            "GlobalPeakWindowSum",
+            "LocalPeakWindowSum",
+            "SlidingWindowMaxSum",
+            "TwoPassWindowSum",
+        ],
+        default="GlobalPeakWindowSum",
+        help="charge extractor method",
+        type=str,
+    )
+    parser.add_argument(
+        "--extractor_kwargs",
+        default={'{"window_width":16,"window_shift":4}'},
+        help="charge extractor kwargs",
+        type=json.loads,
+    )
+
     parser.add_argument(
         "-r",
         "--runnb",
@@ -94,9 +118,21 @@ def main():
     # Defining and printing the options
     PlotFig = args.plot
     noped = args.noped
+    method = args.method
+    extractor_kwargs = args.extractor_kwargs
 
     print("Plot:", PlotFig)
     print("Noped:", noped)
+    print("method:", method)
+    print("extractor_kwargs:", extractor_kwargs)
+
+    kwargs = {"method": method, "extractor_kwargs": extractor_kwargs}
+    charges_kwargs = {}
+    tool = ChargesNectarCAMCalibrationTool()
+    for key in tool.traits().keys():
+        if key in kwargs.keys():
+            charges_kwargs[key] = kwargs[key]
+    print(charges_kwargs)
 
     def GetName(RunFile):
         name = RunFile.split("/")[-1]
@@ -189,7 +225,7 @@ def main():
         break
 
     for p in processors:
-        p.ConfigureForRun(path, Pix, Samp, reader1)
+        p.ConfigureForRun(path, Pix, Samp, reader1, charges_kwargs)
 
     for evt in tqdm(
         reader, total=args.max_events if args.max_events else len(reader), unit="ev"

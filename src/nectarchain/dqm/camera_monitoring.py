@@ -39,7 +39,7 @@ class CameraMonitoring(DQMSummary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, charges_kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
