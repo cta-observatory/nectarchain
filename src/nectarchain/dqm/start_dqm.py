@@ -53,13 +53,13 @@ def main():
             "SlidingWindowMaxSum",
             "TwoPassWindowSum",
         ],
-        default="GlobalPeakWindowSum",
+        default="LocalPeakWindowSum",
         help="charge extractor method",
         type=str,
     )
     parser.add_argument(
         "--extractor_kwargs",
-        default={'{"window_width":16,"window_shift":4}'},
+        default='{"window_shift": 4, "window_width": 16}',
         help="charge extractor kwargs",
         type=json.loads,
     )
