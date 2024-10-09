@@ -1,0 +1,16 @@
+astropy==5.3.4
+ctapipe==0.19.1
+ctapipe_io_nectarcam==0.1.5
+h5py==3.10.0
+hdf5plugin==5.0.0
+iminuit==2.30.0
+lmfit==1.2.2
+matplotlib==3.8.2
+nectarchain==0.1.9
+numpy
+pandas==2.2.3
+PyQt5==5.15.11
+PyQt5_sip==12.15.0
+scipy==1.14.1
+traitlets==5.14.3
+
