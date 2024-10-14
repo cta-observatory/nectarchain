@@ -1,3 +1,4 @@
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
 from ctapipe.io import EventSource
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import HIGH_GAIN
@@ -5,6 +6,7 @@ from tqdm import tqdm
 from traitlets.config import Config
 
 from nectarchain.dqm.mean_camera_display import MeanCameraDisplayHighLowGain
+from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
 
 class TestMeanCameraDisplayHighLowGain:
@@ -34,8 +36,18 @@ class TestMeanCameraDisplayHighLowGain:
 
         Pix, Samp = MeanCameraDisplayHighLowGain(HIGH_GAIN).DefineForRun(reader1)
 
+        kwargs = {
+            "method": LocalPeakWindowSum,
+            "extractor_kwargs": '{"window_width":16,"window_shift":4}',
+        }
+        charges_kwargs = {}
+        tool = ChargesNectarCAMCalibrationTool()
+        for key in tool.traits().keys():
+            if key in kwargs.keys():
+                charges_kwargs[key] = kwargs[key]
+
         MeanCameraDisplayHighLowGain(HIGH_GAIN).ConfigureForRun(
-            path, Pix, Samp, reader1
+            path, Pix, Samp, reader1, charges_kwargs
         )
 
         for evt in tqdm(reader1, total=1):

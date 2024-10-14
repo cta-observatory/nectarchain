@@ -1,3 +1,6 @@
+import argparse
+import json
+
 import numpy as np
 from ctapipe.image import LocalPeakWindowSum
 from ctapipe.io import EventSource
@@ -7,6 +10,7 @@ from tqdm import tqdm
 from traitlets.config import Config
 
 from nectarchain.dqm.charge_integration import ChargeIntegrationHighLowGain
+from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
 
 class TestChargeIntegrationHighLowGain:
@@ -30,14 +34,53 @@ class TestChargeIntegrationHighLowGain:
                 )
             )
         )
+
+        parser = argparse.ArgumentParser(
+            description="NectarCAM Data Quality Monitoring tool"
+        )
+        # extractor arguments
+        parser.add_argument(
+            "--method",
+            choices=[
+                "FullWaveformSum",
+                "FixedWindowSum",
+                "GlobalPeakWindowSum",
+                "LocalPeakWindowSum",
+                "SlidingWindowMaxSum",
+                "TwoPassWindowSum",
+            ],
+            default="LocalPeakWindowSum",
+            help="charge extractor method",
+            type=str,
+        )
+
+        parser.add_argument(
+            "--extractor_kwargs",
+            default='{"window_shift": 4, "window_width": 16}',
+            help="charge extractor kwargs",
+            type=json.loads,
+        )
+
+        args, leftovers = parser.parse_known_args()
+
         reader1 = EventSource(input_url=path, config=config, max_events=1)
         subarray = reader1.subarray
         self.integrator = LocalPeakWindowSum(subarray, config=config)
 
         Pix, Samp = ChargeIntegrationHighLowGain(HIGH_GAIN).DefineForRun(reader1)
 
+        method = args.method
+        extractor_kwargs = args.extractor_kwargs
+
+        kwargs = {"method": method, "extractor_kwargs": extractor_kwargs}
+        charges_kwargs = {}
+        tool = ChargesNectarCAMCalibrationTool()
+        for key in tool.traits().keys():
+            if key in kwargs.keys():
+                charges_kwargs[key] = kwargs[key]
+
         ChargeIntegrationHighLowGain(HIGH_GAIN).ConfigureForRun(
-            path, Pix, Samp, reader1
+            path, Pix, Samp, reader1, charges_kwargs
         )
 
         for evt in tqdm(reader1, total=1):
