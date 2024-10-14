@@ -7,7 +7,6 @@ from tqdm import tqdm
 from traitlets.config import Config
 
 from nectarchain.dqm.camera_monitoring import CameraMonitoring
-from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
 
 class TestCameraMonitoring:
@@ -37,19 +36,7 @@ class TestCameraMonitoring:
 
         Pix, Samp = CameraMonitoring(HIGH_GAIN).DefineForRun(reader1)
 
-        kwargs = {
-            "method": LocalPeakWindowSum,
-            "extractor_kwargs": '{"window_width":16,"window_shift":4}',
-        }
-        charges_kwargs = {}
-        tool = ChargesNectarCAMCalibrationTool()
-        for key in tool.traits().keys():
-            if key in kwargs.keys():
-                charges_kwargs[key] = kwargs[key]
-
-        CameraMonitoring(HIGH_GAIN).ConfigureForRun(
-            path, Pix, Samp, reader1, charges_kwargs
-        )
+        CameraMonitoring(HIGH_GAIN).ConfigureForRun(path, Pix, Samp, reader1)
 
         for evt in tqdm(reader1, total=1):
             run_start1 = evt.nectarcam.tel[0].svc.date

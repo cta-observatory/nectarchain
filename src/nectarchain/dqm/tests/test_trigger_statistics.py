@@ -6,7 +6,6 @@ from tqdm import tqdm
 from traitlets.config import Config
 
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
-from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
 
 class TestTriggerStatistics:
@@ -36,19 +35,7 @@ class TestTriggerStatistics:
 
         Pix, Samp = TriggerStatistics(HIGH_GAIN).DefineForRun(reader1)
 
-        kwargs = {
-            "method": LocalPeakWindowSum,
-            "extractor_kwargs": '{"window_width":16,"window_shift":4}',
-        }
-        charges_kwargs = {}
-        tool = ChargesNectarCAMCalibrationTool()
-        for key in tool.traits().keys():
-            if key in kwargs.keys():
-                charges_kwargs[key] = kwargs[key]
-
-        TriggerStatistics(HIGH_GAIN).ConfigureForRun(
-            path, Pix, Samp, reader1, charges_kwargs
-        )
+        TriggerStatistics(HIGH_GAIN).ConfigureForRun(path, Pix, Samp, reader1)
 
         for evt in tqdm(reader1, total=1):
             time = evt.trigger.time.value

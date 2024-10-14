@@ -74,13 +74,14 @@ class TestChargeIntegrationHighLowGain:
 
         kwargs = {"method": method, "extractor_kwargs": extractor_kwargs}
         charges_kwargs = {}
+
         tool = ChargesNectarCAMCalibrationTool()
         for key in tool.traits().keys():
             if key in kwargs.keys():
                 charges_kwargs[key] = kwargs[key]
 
         ChargeIntegrationHighLowGain(HIGH_GAIN).ConfigureForRun(
-            path, Pix, Samp, reader1, charges_kwargs
+            path, Pix, Samp, reader1, **charges_kwargs
         )
 
         for evt in tqdm(reader1, total=1):
