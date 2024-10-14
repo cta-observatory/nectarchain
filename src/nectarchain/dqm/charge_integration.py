@@ -11,6 +11,7 @@ from ctapipe.image.extractor import TwoPassWindowSum  # noqa: F401
 from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
+from traitlets.config.loader import Config
 
 from ..makers.component import ChargesComponent
 from ..makers.component.core import ArrayDataComponent
@@ -60,7 +61,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, charges_kwargs):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, **charges_kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -81,14 +82,22 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         ].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name(
             "NectarCam"
         )
-
-        extractor_kwargs = (
-            ChargesComponent._get_extractor_kwargs_from_method_and_kwargs(
-                method=charges_kwargs["method"],
-                kwargs=charges_kwargs["extractor_kwargs"],
+        if charges_kwargs:
+            extractor_kwargs = (
+                ChargesComponent._get_extractor_kwargs_from_method_and_kwargs(
+                    method=charges_kwargs["method"],
+                    kwargs=charges_kwargs["extractor_kwargs"],
+                )
             )
-        )
-        self.integrator = eval(charges_kwargs["method"])(subarray, **extractor_kwargs)
+            self.integrator = eval(charges_kwargs["method"])(
+                subarray, **extractor_kwargs
+            )
+        else:
+            config = Config(
+                {"LocalPeakWindowSum": {"window_shift": 4, "window_width": 12}}
+            )
+            self.integrator = LocalPeakWindowSum(subarray, config=config)
+        print("self.integrator", self.integrator)
         # can be replaced by: imageExtractor =
         # __class__._get_imageExtractor(method=method, subarray=subarray, **kwargs)
 

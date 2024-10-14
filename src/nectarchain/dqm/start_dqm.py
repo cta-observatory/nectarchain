@@ -225,7 +225,7 @@ def main():
         break
 
     for p in processors:
-        p.ConfigureForRun(path, Pix, Samp, reader1, charges_kwargs)
+        p.ConfigureForRun(path, Pix, Samp, reader1, **charges_kwargs)
 
     for evt in tqdm(
         reader, total=args.max_events if args.max_events else len(reader), unit="ev"
