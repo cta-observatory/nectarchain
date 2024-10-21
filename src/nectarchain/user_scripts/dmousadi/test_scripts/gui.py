@@ -10,32 +10,49 @@ The class provides the following functionality:
 
 The class uses the PyQt5 library for the GUI implementation and the Matplotlib library for plotting the test results.
 """
-import sys
-import os
+
+
 import argparse
-import tempfile
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QLabel, 
-                             QComboBox, QLineEdit, QPushButton, QMessageBox, 
-                             QTextEdit, QHBoxLayout, QFileDialog, QSpacerItem, QSizePolicy,
-                             QGroupBox)
-from PyQt5.QtCore import QProcess, QTimer
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
+import os
 import pickle
+import sys
+import tempfile
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from PyQt5.QtCore import QProcess, QTimer
+from PyQt5.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 # Ensure the tests directory is in sys.path
-test_dir = os.path.abspath('tests')
+test_dir = os.path.abspath("tests")
 if test_dir not in sys.path:
     sys.path.append(test_dir)
 
+import deadtime_test
+
 # Import test modules
 import linearity_test
-import deadtime_test
 import pedestal_test
 import pix_couple_tim_uncertainty_test
 import pix_tim_uncertainty_test
+
 
 class TestRunner(QWidget):
     def __init__(self):
@@ -51,7 +68,8 @@ class TestRunner(QWidget):
         # Main layout: vertical, dividing into two sections (top for controls/plot, bottom for output)
         main_layout = QVBoxLayout()
 
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QWidget {
                 background-color: #2e2e2e;  /* Dark background */
                 color: #ffffff;  /* Light text */
@@ -109,27 +127,32 @@ class TestRunner(QWidget):
             QPushButton:hover {
                 background-color: #45a049;  /* Darker green on hover */
             }
-        """)
-
+        """
+        )
 
         # Horizontal layout for test options (left) and plot canvas (right)
         top_layout = QHBoxLayout()
 
         # Create a QGroupBox for controls
-        controls_box = QGroupBox("Test Controls", self)  
+        controls_box = QGroupBox("Test Controls", self)
         controls_box.setFixedHeight(600)
         controls_layout = QVBoxLayout()  # Layout for the controls
 
         # Dropdown for selecting the test
-        self.label = QLabel('Select Test:', self)
+        self.label = QLabel("Select Test:", self)
         self.label.setFixedSize(100, 20)
         controls_layout.addWidget(self.label)
 
         self.test_selector = QComboBox(self)
-        self.test_selector.addItems([
-            "Linearity Test", "Deadtime Test", "Pedestal Test", 
-            "Pixel Time Uncertainty Test", "Time Uncertainty Between Couples of Pixels"
-        ])
+        self.test_selector.addItems(
+            [
+                "Linearity Test",
+                "Deadtime Test",
+                "Pedestal Test",
+                "Pixel Time Uncertainty Test",
+                "Time Uncertainty Between Couples of Pixels",
+            ]
+        )
         self.test_selector.setFixedWidth(400)  # Fixed width for the dropdown
         self.test_selector.currentIndexChanged.connect(self.update_parameters)
         controls_layout.addWidget(self.test_selector)
@@ -141,7 +164,7 @@ class TestRunner(QWidget):
         controls_layout.addWidget(self.param_widgets)
 
         # Button to run the test
-        self.run_button = QPushButton('Run Test', self)
+        self.run_button = QPushButton("Run Test", self)
         self.run_button.clicked.connect(self.run_test)
         controls_layout.addWidget(self.run_button)
 
@@ -152,14 +175,18 @@ class TestRunner(QWidget):
         top_layout.addWidget(controls_box)
 
         # Add a stretchable spacer to push the canvas to the right
-        top_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        top_layout.addSpacerItem(
+            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        )
 
         # Create a vertical layout for the plot container
         self.plot_container = QWidget(self)
         self.plot_layout = QVBoxLayout(self.plot_container)
 
         # Fixed size for the container
-        self.plot_container.setFixedSize(800, 650)  # Set desired fixed size for the container
+        self.plot_container.setFixedSize(
+            800, 650
+        )  # Set desired fixed size for the container
 
         # Create a vertical layout for the plot (canvas and toolbar)
         self.canvas = FigureCanvas(self.figure)
@@ -171,7 +198,7 @@ class TestRunner(QWidget):
 
         # Add the toolbar and canvas to the plot layout
         self.plot_layout.addWidget(self.toolbar)  # Toolbar stays on top
-        self.plot_layout.addWidget(self.canvas)   # Canvas below toolbar
+        self.plot_layout.addWidget(self.canvas)  # Canvas below toolbar
 
         # Add the plot container to the top layout (to the right)
         top_layout.addWidget(self.plot_container)
@@ -181,12 +208,12 @@ class TestRunner(QWidget):
 
         # Navigation buttons
         nav_layout = QHBoxLayout()
-        self.prev_button = QPushButton('Previous Plot', self)
+        self.prev_button = QPushButton("Previous Plot", self)
         self.prev_button.clicked.connect(self.show_previous_plot)
         self.prev_button.setEnabled(False)  # Initially disabled
         nav_layout.addWidget(self.prev_button)
 
-        self.next_button = QPushButton('Next Plot', self)
+        self.next_button = QPushButton("Next Plot", self)
         self.next_button.clicked.connect(self.show_next_plot)
         self.next_button.setEnabled(False)  # Initially disabled
         nav_layout.addWidget(self.next_button)
@@ -196,24 +223,30 @@ class TestRunner(QWidget):
         # Output text box (bottom section of the main layout)
         self.output_text_edit = QTextEdit(self)
         self.output_text_edit.setReadOnly(True)  # To prevent user editing
-        self.output_text_edit.setFixedHeight(150)  # Set a fixed height for the output box
-        self.output_text_edit.setMinimumWidth(800)  # Set a minimum width to match the canvas
+        self.output_text_edit.setFixedHeight(
+            150
+        )  # Set a fixed height for the output box
+        self.output_text_edit.setMinimumWidth(
+            800
+        )  # Set a minimum width to match the canvas
         main_layout.addWidget(self.output_text_edit)
 
         # Set the main layout to the window
         self.setLayout(main_layout)
-        self.setWindowTitle('Test Runner GUI')
+        self.setWindowTitle("Test Runner GUI")
         self.showFullScreen()
-
-
 
     def get_parameters_from_module(self, module):
         # Fetch parameters from the module
-        if hasattr(module, 'get_args'):
+        if hasattr(module, "get_args"):
             parser = module.get_args()
-            return {arg.dest: arg.default for arg in parser._actions if isinstance(arg, argparse._StoreAction)}
+            return {
+                arg.dest: arg.default
+                for arg in parser._actions
+                if isinstance(arg, argparse._StoreAction)
+            }
         else:
-            raise RuntimeError('No get_args function found in module.')
+            raise RuntimeError("No get_args function found in module.")
 
     def debug_layout(self):
         for i in range(self.param_layout.count()):
@@ -236,7 +269,7 @@ class TestRunner(QWidget):
             "Deadtime Test": deadtime_test,
             "Pedestal Test": pedestal_test,
             "Pixel Time Uncertainty Test": pix_tim_uncertainty_test,
-            "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test
+            "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test,
         }
 
         module = test_modules.get(selected_test)
@@ -244,19 +277,23 @@ class TestRunner(QWidget):
             try:
                 self.params = self.get_parameters_from_module(module)
                 for param, default in self.params.items():
-                    if param=="temp_output":
+                    if param == "temp_output":
                         continue
-                    label = QLabel(f'{param}:', self)
+                    label = QLabel(f"{param}:", self)
                     self.param_layout.addWidget(label)
                     entry = QLineEdit(self)
-                    entry.setText(str(default).replace('[','').replace(']','').replace(',',''))
+                    entry.setText(
+                        str(default).replace("[", "").replace("]", "").replace(",", "")
+                    )
                     entry.setObjectName(param)
                     entry.setFixedWidth(400)  # Set fixed width for QLineEdit
                     self.param_layout.addWidget(entry)
 
                 # Force update the layout
-                self.param_widgets.update()  
-                QTimer.singleShot(0, self.param_widgets.update)  # Ensures the layout is updated
+                self.param_widgets.update()
+                QTimer.singleShot(
+                    0, self.param_widgets.update
+                )  # Ensures the layout is updated
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to fetch parameters: {e}")
         else:
@@ -272,14 +309,14 @@ class TestRunner(QWidget):
             "Deadtime Test": deadtime_test,
             "Pedestal Test": pedestal_test,
             "Pixel Time Uncertainty Test": pix_tim_uncertainty_test,
-            "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test
+            "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test,
         }
         module = test_modules.get(selected_test)
 
         if module:
             params = []
-            self.update()  
-            self.repaint()  
+            self.update()
+            self.repaint()
 
             # Generate temporary output path
             self.temp_output = tempfile.gettempdir()
@@ -290,10 +327,10 @@ class TestRunner(QWidget):
                 if widget_list:
                     widget = widget_list[0]
                     params.append(f"--{param}")
-                    params.extend(widget.text().split(' '))
+                    params.extend(widget.text().split(" "))
                     if param == "output":
                         params.append(f"--output={widget.text()}")
-                    
+
                     params.append(f"--temp_output={self.temp_output}")
                 else:
                     print(f"Widget with name {param} not found")
@@ -310,15 +347,23 @@ class TestRunner(QWidget):
                 self.process.readyReadStandardOutput.connect(self.read_process_output)
                 self.process.finished.connect(self.process_finished)
 
-                QTimer.singleShot(0, lambda: self.process.start(sys.executable, [test_script_path] + params))
+                QTimer.singleShot(
+                    0,
+                    lambda: self.process.start(
+                        sys.executable, [test_script_path] + params
+                    ),
+                )
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to run the test: {e}")
         else:
-            QMessageBox.critical(self, "Error", "No parameters found for the selected test")
+            QMessageBox.critical(
+                self, "Error", "No parameters found for the selected test"
+            )
 
-        self.plot_files = [os.path.join(self.temp_output, f'plot{i}.pkl') for i in range(1, 3)]
-
+        self.plot_files = [
+            os.path.join(self.temp_output, f"plot{i}.pkl") for i in range(1, 3)
+        ]
 
     def read_process_output(self):
         """Reads and displays the process output in real-time."""
@@ -335,10 +380,14 @@ class TestRunner(QWidget):
             # Delay to ensure file creation is complete
             QTimer.singleShot(1000, self.check_and_display_plot)
         else:
-            QMessageBox.critical(self, "Error", f"Test failed with exit code {self.process.exitCode()}")
+            QMessageBox.critical(
+                self, "Error", f"Test failed with exit code {self.process.exitCode()}"
+            )
 
     def check_and_display_plot(self):
-        plot_files = [os.path.join(self.temp_output, f'plot{i}.pkl') for i in range(1, 3)]
+        plot_files = [
+            os.path.join(self.temp_output, f"plot{i}.pkl") for i in range(1, 3)
+        ]
         self.display_plot([f for f in plot_files if os.path.exists(f)])
 
     def display_plot(self, plot_files):
@@ -347,7 +396,7 @@ class TestRunner(QWidget):
         self.current_plot_index = 0
         # Load all available plots from the pickle files
         for plot_file in plot_files:
-            with open(plot_file, 'rb') as f:
+            with open(plot_file, "rb") as f:
                 self.plots.append(pickle.load(f))  # Load the plot data
         # Display the first plot if there are any loaded plots
         if self.plots:
@@ -359,8 +408,6 @@ class TestRunner(QWidget):
             else:
                 self.next_button.setEnabled(False)
 
-
-
     def update_plot_canvas(self):
         """Updates the canvas with the current plot."""
         if not self.plots:
@@ -369,11 +416,11 @@ class TestRunner(QWidget):
         try:
             # Load the current figure
 
-            with open(self.plot_files[self.current_plot_index], 'rb') as f:
+            with open(self.plot_files[self.current_plot_index], "rb") as f:
                 loaded_figure = pickle.load(f)
-            #loaded_figure = self.plots[self.current_plot_index]
+            # loaded_figure = self.plots[self.current_plot_index]
 
-           # Remove the old canvas and toolbar from the plot layout
+            # Remove the old canvas and toolbar from the plot layout
             self.plot_layout.removeWidget(self.canvas)
             self.canvas.deleteLater()  # Properly delete the old canvas
             self.plot_layout.removeWidget(self.toolbar)
@@ -385,7 +432,7 @@ class TestRunner(QWidget):
 
             # Adjust the plot margins to ensure the x-axis is visible
             loaded_figure.subplots_adjust(bottom=0.15)  # Increase the bottom margin
-            #loaded_figure.tight_layout(pad=2.0)  # Use tight layout with padding
+            # loaded_figure.tight_layout(pad=2.0)  # Use tight layout with padding
 
             self.canvas.draw()
 
@@ -397,17 +444,8 @@ class TestRunner(QWidget):
             self.plot_layout.addWidget(self.toolbar)
             self.plot_layout.addWidget(self.canvas)
 
-
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load plot: {e}")
-
-
-
-
-
-
-
-
 
     def show_next_plot(self):
         if self.current_plot_index < len(self.plots) - 1:
@@ -432,12 +470,12 @@ class TestRunner(QWidget):
     def cleanup_tempdir(self):
         """Remove old plot files in temp directory."""
         for i in range(1, 3):
-            plot_file = os.path.join(tempfile.gettempdir(), f'plot{i}.pkl')
+            plot_file = os.path.join(tempfile.gettempdir(), f"plot{i}.pkl")
             if os.path.exists(plot_file):
                 os.remove(plot_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = TestRunner()
     sys.exit(app.exec_())
