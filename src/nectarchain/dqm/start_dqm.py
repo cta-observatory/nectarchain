@@ -53,7 +53,7 @@ def main():
             "SlidingWindowMaxSum",
             "TwoPassWindowSum",
         ],
-        default="LocalPeakWindowSum",
+        default="GlobalPeakWindowSum",
         help="charge extractor method",
         type=str,
     )
