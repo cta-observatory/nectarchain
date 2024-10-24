@@ -1,4 +1,5 @@
 from astropy import time as astropytime
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
 from ctapipe.io import EventSource
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import HIGH_GAIN

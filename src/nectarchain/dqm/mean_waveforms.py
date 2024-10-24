@@ -23,7 +23,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.MeanWaveForms_Figures_Dict = {}
         self.MeanWaveForms_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
