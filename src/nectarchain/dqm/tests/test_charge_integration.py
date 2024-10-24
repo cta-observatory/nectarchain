@@ -2,7 +2,6 @@ import argparse
 import json
 
 import numpy as np
-from ctapipe.image import LocalPeakWindowSum
 from ctapipe.io import EventSource
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import HIGH_GAIN
@@ -49,7 +48,7 @@ class TestChargeIntegrationHighLowGain:
                 "SlidingWindowMaxSum",
                 "TwoPassWindowSum",
             ],
-            default="LocalPeakWindowSum",
+            default="GlobalPeakWindowSum",
             help="charge extractor method",
             type=str,
         )
@@ -64,8 +63,7 @@ class TestChargeIntegrationHighLowGain:
         args, leftovers = parser.parse_known_args()
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
-        subarray = reader1.subarray
-        self.integrator = LocalPeakWindowSum(subarray, config=config)
+        self.subarray = reader1.subarray
 
         Pix, Samp = ChargeIntegrationHighLowGain(HIGH_GAIN).DefineForRun(reader1)
 
@@ -88,7 +86,11 @@ class TestChargeIntegrationHighLowGain:
             self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
             waveform = evt.r0.tel[0].waveform[HIGH_GAIN]
             ped = np.mean(waveform[:, 20])
-            # ChargeIntegrationHighLowGain(HIGH_GAIN).ProcessEvent(evt, noped = False)
+            # w_noped = waveform - ped
+            # self.integrator = eval(charges_kwargs["method"])(
+            #    subarray, **extractor_kwargs
+            # )
+            # ChargeIntegrationHighLowGain(HIGH_GAIN).ProcessEvent(evt, noped = True)
         # ChargeIntegrationHighLowGain(HIGH_GAIN).FinishRun()
         assert Pix + Samp == 1915
         assert np.sum(ped) == 985.8636118598383
