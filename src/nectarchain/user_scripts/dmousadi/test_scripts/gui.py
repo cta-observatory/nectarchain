@@ -99,7 +99,6 @@ class TestRunner(QWidget):
                 color: #ffffff;  /* Light text */
                 border: 1px solid #888888;  /* Light border */
                 padding: 5px;  /* Add padding */
-                fixed-height: 30px;  /* Set a fixed height */
                 min-width: 200px;  /* Fixed width */
             }
             QTextEdit {
@@ -107,7 +106,6 @@ class TestRunner(QWidget):
                 color: #ffffff;  /* Light text */
                 border: 1px solid #888888;  /* Light border */
                 padding: 5px;  /* Add padding */
-                fixed-height: 150px;  /* Set a fixed height */
                 min-width: 800px;  /* Set a minimum width to match the canvas */
             }
             QTextEdit:focus {
