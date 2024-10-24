@@ -20,9 +20,9 @@ def get_args():
         argparse.ArgumentParser: The parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Deadtime tests B-TEL-1260 & B-TEL-1270. \n"
+        description="Trigger Timing Test B-TEL-1410. \n"
         + "According to the nectarchain component interface, you have to set a NECTARCAMDATA environment variable in the folder where you have the data from your runs or where you want them to be downloaded.\n"
-        + "You have to give a list of runs (run numbers with spaces inbetween), a corresponding source list and an output directory to save the final plot.\n"
+        + "You have to give a list of runs (run numbers with spaces inbetween) and an output directory to save the final plot.\n"
         + "If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.\n For the purposes of testing this script, default data is from the runs used for this test in the TRR document.\n"
         + "You can optionally specify the number of events to be processed (default 1000).\n"
     )
