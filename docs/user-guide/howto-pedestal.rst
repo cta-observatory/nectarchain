@@ -15,9 +15,9 @@ To use the pedestal estimation tool, first activate the ``nectarchain`` environm
 
 The user script `nectarchain/user_scripts/ltibaldo/example_pedestal.py` showcases the usage of the tool.
 
-The input data are indentified by run number. See :ref:`env-vars` for the usage of the ``$NECTARCAMDATA`` environment variable. The pedestal estimation tool inherits the configuration parameters of the PedestalEstimationComponent (make this a link).
+The input data are indentified by run number. See :ref:`env-vars` to set up the ``$NECTARCAMDATA`` environment variable. The pedestal estimation tool inherits the configurable parameters of the `~nectarchain.makers.component.PedestalComponent.PedestalEstimationComponent`.
 
-To run the example script
+To run the example script:
 
 .. code-block:: console
 
@@ -25,7 +25,7 @@ To run the example script
 
 Inspect the results
 =========================
-The results are stored in a NectarCAMPedestalContainer (make this a link). They are accessible on the fly if the tool is run interactively (as in the example above) and stored in a `.h5` file.
+The results are stored in a `~nectarchain.data.container.pedestalContainer.NectarCAMPedestalContainer`. They are accessible on the fly if the tool is run interactively (as in the example above) and stored in a `.h5` file.
 
 The user script `nectarchain/user_scripts/ltibaldo/show_pedestal_output.py` provides an example of how to access the results from disk and produce some plots:
 
