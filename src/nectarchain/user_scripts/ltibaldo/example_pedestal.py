@@ -8,14 +8,12 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-from nectarchain.makers.calibration import (
-    PedestalNectarCAMCalibrationTool,
-)
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 
 run_number = 3938
-max_events= 2999
+max_events = 2999
 events_per_slice = 300
-outfile = "/Users/ltibaldo/tmp/test_pedestal/pedestal_{}.h5".format(run_number)
+outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_{}.h5".format(run_number)
 
 tool = PedestalNectarCAMCalibrationTool(
     progress_bar=True,
@@ -24,9 +22,9 @@ tool = PedestalNectarCAMCalibrationTool(
     events_per_slice=events_per_slice,
     log_level=20,
     output_path=outfile,
-    overwrite = True,
-    filter_method = 'WaveformsStdFilter',
-    wfs_std_threshold = 4.,
+    overwrite=True,
+    filter_method="WaveformsStdFilter",
+    wfs_std_threshold=4.0,
 )
 
 tool.initialize()
