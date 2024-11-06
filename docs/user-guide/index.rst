@@ -10,4 +10,5 @@ User Guide
    env-vars
    howto-dirac
    dqm
+   howto-pedestal
    troubleshooting
