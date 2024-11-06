@@ -1108,7 +1108,6 @@ class UCTSComp(NectarCAMComponent):
 
     The `finish` method creates and returns a `UCTSContainer` object, which is a container for the UCTS-related data that was collected during the event loop.
     """
-    
     window_shift = Integer(
         default_value=6,
         help="the time in ns before the peak to extract charge",
