@@ -1088,7 +1088,6 @@ class UCTSContainer(NectarCAMContainer):
         ndim=1,
         description="average pixel charge for event",
     )
-
     event_type = Field(
         type=np.ndarray, dtype=np.uint8, ndim=1, description="trigger event type"
     )
@@ -1109,7 +1108,7 @@ class UCTSComp(NectarCAMComponent):
 
     The `finish` method creates and returns a `UCTSContainer` object, which is a container for the UCTS-related data that was collected during the event loop.
     """
-
+    
     window_shift = Integer(
         default_value=6,
         help="the time in ns before the peak to extract charge",
@@ -1265,7 +1264,6 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
         ucts_timestamps = np.array(ucts_timestamps).flatten()
         # print(ucts_timestamps)
         event_counter = np.array(event_counter).flatten()
-        # print(busy_counter)
         busy_counter = np.array(busy_counter).flatten()
         # print(ucts_timestamps)
         delta_t = [

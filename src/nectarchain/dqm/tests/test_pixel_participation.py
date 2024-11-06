@@ -9,11 +9,7 @@ from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 
 
 class TestPixelParticipation:
-    run_number = 3798
-    max_events = 1
-
     def test_pixel_participation(self):
-        # run_number = 3938
         path = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
 
         config = None
@@ -34,15 +30,9 @@ class TestPixelParticipation:
 
         Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN).DefineForRun(reader1)
 
-        PixelParticipationHighLowGain(HIGH_GAIN).ConfigureForRun(
-            path, Pix, Samp, reader1
-        )
-
+        evt = None
         for evt in tqdm(reader1, total=1):
             self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
-            # PixelParticipationHighLowGain(HIGH_GAIN).ProcessEvent(evt, noped = False)
-
-        PixelParticipationHighLowGain(HIGH_GAIN).FinishRun()
 
         assert Pix + Samp == 1915
         assert np.sum(evt.nectarcam.tel[0].svc.pixel_ids) == 1719375

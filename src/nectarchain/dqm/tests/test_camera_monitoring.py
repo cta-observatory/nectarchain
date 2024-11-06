@@ -9,14 +9,8 @@ from nectarchain.dqm.camera_monitoring import CameraMonitoring
 
 
 class TestCameraMonitoring:
-    run_number = 3798
-    max_events = 1
-
     def test_camera_monitoring(self):
-        # run_number = 3938
         path = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
-
-        config = None
 
         config = Config(
             dict(
@@ -29,18 +23,17 @@ class TestCameraMonitoring:
                 )
             )
         )
-        print(path)
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
 
         Pix, Samp = CameraMonitoring(HIGH_GAIN).DefineForRun(reader1)
 
-        CameraMonitoring(HIGH_GAIN).ConfigureForRun(path, Pix, Samp, reader1)
-
+        sql_file_date = None
         for evt in tqdm(reader1, total=1):
             run_start1 = evt.nectarcam.tel[0].svc.date
-            SqlFileDate = astropytime.Time(run_start1, format="unix").iso.split(" ")[0]
-        # print("SqlFileDate", SqlFileDate)
-        # CameraMonitoring(HIGH_GAIN).FinishRun()
+            sql_file_date = astropytime.Time(run_start1, format="unix").iso.split(" ")[
+                0
+            ]
+
         assert Pix + Samp == 1915
-        assert SqlFileDate == "2023-01-23"
+        assert sql_file_date == "2023-01-23"
