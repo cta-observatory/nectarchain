@@ -11,7 +11,6 @@ The class provides the following functionality:
 The class uses the PyQt5 library for the GUI implementation and the Matplotlib library for plotting the test results.
 """
 
-
 import argparse
 import os
 import pickle
@@ -38,6 +37,7 @@ from PyQt5.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QWidgetItem,
 )
 
 # Ensure the tests directory is in sys.path
@@ -52,9 +52,19 @@ import linearity_test
 import pedestal_test
 import pix_couple_tim_uncertainty_test
 import pix_tim_uncertainty_test
+import trigger_timing_test
 
 
 class TestRunner(QWidget):
+    test_modules = {
+        "Linearity Test": linearity_test,
+        "Deadtime Test": deadtime_test,
+        "Pedestal Test": pedestal_test,
+        "Pixel Time Uncertainty Test": pix_tim_uncertainty_test,
+        "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test,
+        "Trigger Timing Test": trigger_timing_test,
+    }
+
     def __init__(self):
         super().__init__()
         self.params = {}
@@ -89,25 +99,13 @@ class TestRunner(QWidget):
                 color: #ffffff;  /* Light text */
                 border: 1px solid #888888;  /* Light border */
                 padding: 5px;  /* Add padding */
-                fixed-height: 30px;  /* Set a fixed height */
                 min-width: 200px;  /* Fixed width */
-            }
-            QPushButton {
-                background-color: #4caf50;  /* Green button */
-                color: white;  /* White text */
-                border: none;  /* No border */
-                padding: 10px;  /* Add padding */
-                border-radius: 5px;  /* Rounded corners */
-            }
-            QPushButton:hover {
-                background-color: #45a049;  /* Darker green on hover */
             }
             QTextEdit {
                 background-color: #1e1e1e;  /* Dark output box */
                 color: #ffffff;  /* Light text */
                 border: 1px solid #888888;  /* Light border */
                 padding: 5px;  /* Add padding */
-                fixed-height: 150px;  /* Set a fixed height */
                 min-width: 800px;  /* Set a minimum width to match the canvas */
             }
             QTextEdit:focus {
@@ -144,6 +142,7 @@ class TestRunner(QWidget):
         controls_layout.addWidget(self.label)
 
         self.test_selector = QComboBox(self)
+        self.test_selector.addItem("Select Test")
         self.test_selector.addItems(
             [
                 "Linearity Test",
@@ -151,6 +150,7 @@ class TestRunner(QWidget):
                 "Pedestal Test",
                 "Pixel Time Uncertainty Test",
                 "Time Uncertainty Between Couples of Pixels",
+                "Trigger Timing Test",
             ]
         )
         self.test_selector.setFixedWidth(400)  # Fixed width for the dropdown
@@ -165,6 +165,8 @@ class TestRunner(QWidget):
 
         # Button to run the test
         self.run_button = QPushButton("Run Test", self)
+        # Disable the run button initially
+        self.run_button.setEnabled(False)
         self.run_button.clicked.connect(self.run_test)
         controls_layout.addWidget(self.run_button)
 
@@ -240,11 +242,14 @@ class TestRunner(QWidget):
         # Fetch parameters from the module
         if hasattr(module, "get_args"):
             parser = module.get_args()
-            return {
-                arg.dest: arg.default
-                for arg in parser._actions
-                if isinstance(arg, argparse._StoreAction)
-            }
+            params = {}
+            for arg in parser._actions:
+                if isinstance(arg, argparse._StoreAction):
+                    params[arg.dest] = {
+                        "default": arg.default,
+                        "help": arg.help,  # Store the help text
+                    }
+            return params
         else:
             raise RuntimeError("No get_args function found in module.")
 
@@ -258,32 +263,83 @@ class TestRunner(QWidget):
     def update_parameters(self):
         # Clear existing parameter fields
         for i in reversed(range(self.param_layout.count())):
-            widget = self.param_layout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
+            item = self.param_layout.itemAt(i)
+
+            if isinstance(
+                item, QHBoxLayout
+            ):  # Check if the item is a QHBoxLayout (contains label and help button)
+                for j in reversed(range(item.count())):
+                    widget = item.itemAt(j).widget()
+                    if widget:
+                        widget.deleteLater()
+            elif isinstance(item, QWidgetItem):  # For direct widgets like QLineEdit
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
+
+            # Remove the item itself from the layout
+            self.param_layout.removeItem(item)
 
         # Get the selected test and corresponding module
         selected_test = self.test_selector.currentText()
-        test_modules = {
-            "Linearity Test": linearity_test,
-            "Deadtime Test": deadtime_test,
-            "Pedestal Test": pedestal_test,
-            "Pixel Time Uncertainty Test": pix_tim_uncertainty_test,
-            "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test,
-        }
 
-        module = test_modules.get(selected_test)
+        # If the placeholder is selected, do nothing
+        if selected_test == "Select Test":
+            self.run_button.setEnabled(False)
+            return
+
+        module = self.test_modules.get(selected_test)
         if module:
             try:
                 self.params = self.get_parameters_from_module(module)
-                for param, default in self.params.items():
-                    if param == "temp_output":
+
+                for param, param_info in self.params.items():
+                    if param == "temp_output":  # Skip temp_output
                         continue
+
+                    # Create a horizontal layout for the label and help button
+                    param_layout = QHBoxLayout()
+
+                    # Create label
                     label = QLabel(f"{param}:", self)
-                    self.param_layout.addWidget(label)
+                    param_layout.addWidget(label)
+
+                    # Create tiny grey circle help button with a white question mark
+                    help_button = QPushButton("?", self)
+                    help_button.setFixedSize(16, 16)  # Smaller button size
+                    help_button.setStyleSheet(
+                        """
+                        QPushButton {
+                            background-color: grey;
+                            color: white;
+                            border-radius: 8px;  /* Circular button */
+                            font-weight: bold;
+                            font-size: 10px;  /* Smaller font size */
+                        }
+                        QPushButton:hover {
+                            background-color: darkgrey;  /* Change color on hover */
+                        }
+                        """
+                    )
+                    help_button.setToolTip(param_info["help"])
+
+                    # # Use lambda to capture the current param's help text
+                    # help_button.clicked.connect(lambda _, p=param_info["help"]: self.show_help(p))
+
+                    # Add the help button to the layout (next to the label)
+                    param_layout.addWidget(help_button)
+                    param_layout.addStretch()  # Add stretch to push the help button to the right
+
+                    # Add the horizontal layout (label + help button) to the main layout
+                    self.param_layout.addLayout(param_layout)
+
+                    # Create the input field for the parameter
                     entry = QLineEdit(self)
                     entry.setText(
-                        str(default).replace("[", "").replace("]", "").replace(",", "")
+                        str(param_info["default"])
+                        .replace("[", "")
+                        .replace("]", "")
+                        .replace(",", "")
                     )
                     entry.setObjectName(param)
                     entry.setFixedWidth(400)  # Set fixed width for QLineEdit
@@ -294,24 +350,24 @@ class TestRunner(QWidget):
                 QTimer.singleShot(
                     0, self.param_widgets.update
                 )  # Ensures the layout is updated
+
+                self.run_button.setEnabled(True)
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to fetch parameters: {e}")
+
         else:
             QMessageBox.critical(self, "Error", "No test selected or test not found")
+
+    def show_help(self, help_text):
+        QMessageBox.information(self, "Parameter Help", help_text)
 
     def run_test(self):
         # Clean up old plot files to avoid loading leftover files
         self.cleanup_tempdir()
 
         selected_test = self.test_selector.currentText()
-        test_modules = {
-            "Linearity Test": linearity_test,
-            "Deadtime Test": deadtime_test,
-            "Pedestal Test": pedestal_test,
-            "Pixel Time Uncertainty Test": pix_tim_uncertainty_test,
-            "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test,
-        }
-        module = test_modules.get(selected_test)
+
+        module = self.test_modules.get(selected_test)
 
         if module:
             params = []
@@ -320,9 +376,9 @@ class TestRunner(QWidget):
 
             # Generate temporary output path
             self.temp_output = tempfile.gettempdir()
-            print(f"Temporary output dir: {self.temp_output}")  # Debug print
+            # print(f"Temporary output dir: {self.temp_output}")  # Debug print
 
-            for param, default in self.params.items():
+            for param, _ in self.params.items():
                 widget_list = self.param_widgets.findChildren(QLineEdit, param)
                 if widget_list:
                     widget = widget_list[0]

@@ -47,7 +47,6 @@ EventsLoopNectarCAMCalibrationTool._init_output_path = _init_output_path
 
 
 class ChargeContainer(NectarCAMContainer):
-
     """
     This class contains fields that store various properties and data related to NectarCAM events, including:
 
@@ -87,7 +86,6 @@ class ChargeContainer(NectarCAMContainer):
 
 
 class ChargeComp(NectarCAMComponent):
-
     """
     This class `ChargeComp` is a NectarCAMComponent that processes NectarCAM event data. It extracts the charge information from the waveforms of each event, handling cases of saturated or noisy events. The class has the following configurable parameters:
 
@@ -594,7 +592,6 @@ class ToMComp(NectarCAMComponent):
 
 
 class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
-
     """
     This class, `TimingResolutionTestTool`, is a subclass of `EventsLoopNectarCAMCalibrationTool` and is used to perform timing resolution tests on NectarCAM data. It reads the output data from the `ToMContainer` dataset and processes the charge, timing, and event information to calculate the timing resolution and mean charge in photoelectrons.
 
@@ -611,17 +608,8 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def _init_output_path(self):
-        if self.max_events is None:
-            filename = f"{self.name}_run{self.run_number}.h5"
-        else:
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
-        self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/tests/{filename}"
-        )
-
     def finish(self, bootstrap=False, *args, **kwargs):
-        super().finish(return_output_component=True, *args, **kwargs)
+        super().finish(return_output_component=False, *args, **kwargs)
 
         # tom_mu_all= output[0].tom_mu
         # tom_sigma_all= output[0].tom_sigma
@@ -868,7 +856,6 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
 
 
 class PedestalContainer(NectarCAMContainer):
-
     """
     Attributes of the PedestalContainer class that store various data related to the pedestal of a NectarCAM event.
 
@@ -932,7 +919,6 @@ class PedestalContainer(NectarCAMContainer):
 
 
 class PedestalComp(NectarCAMComponent):
-
     """
     The `PedestalComp` class is a NectarCAMComponent that is responsible for processing the pedestal and RMS of the high and low gain waveforms for each event.
 
@@ -1096,6 +1082,12 @@ class UCTSContainer(NectarCAMContainer):
     ucts_timestamp = Field(
         type=np.ndarray, dtype=np.uint64, ndim=1, description="events ucts timestamp"
     )
+    mean_event_charge = Field(
+        type=np.ndarray,
+        dtype=np.uint32,
+        ndim=1,
+        description="average pixel charge for event",
+    )
     event_type = Field(
         type=np.ndarray, dtype=np.uint8, ndim=1, description="trigger event type"
     )
@@ -1109,7 +1101,6 @@ class UCTSContainer(NectarCAMContainer):
 
 
 class UCTSComp(NectarCAMComponent):
-
     """
     The `__init__` method initializes the `UCTSComp` class, which is a NectarCAMComponent. It sets up several member variables to store UCTS related data, such as timestamps, event types, event IDs, busy counters, and event counters.
 
@@ -1118,7 +1109,19 @@ class UCTSComp(NectarCAMComponent):
     The `finish` method creates and returns a `UCTSContainer` object, which is a container for the UCTS-related data that was collected during the event loop.
     """
 
-    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+    window_shift = Integer(
+        default_value=6,
+        help="the time in ns before the peak to extract charge",
+    ).tag(config=True)
+
+    window_width = Integer(
+        default_value=16,
+        help="the duration of the extraction window in ns",
+    ).tag(config=True)
+
+    def __init__(
+        self, subarray, config=None, parent=None, excl_muons=None, *args, **kwargs
+    ):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
@@ -1129,14 +1132,71 @@ class UCTSComp(NectarCAMComponent):
         self.__event_id = []
         self.__ucts_busy_counter = []
         self.__ucts_event_counter = []
+        self.excl_muons = None
+        self.__mean_event_charge = []
 
     ##This method need to be defined !
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        self.__event_id.append(np.uint32(event.index.event_id))
-        self.__event_type.append(event.trigger.event_type.value)
-        self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
-        self.__ucts_busy_counter.append(event.nectarcam.tel[0].evt.ucts_busy_counter)
-        self.__ucts_event_counter.append(event.nectarcam.tel[0].evt.ucts_event_counter)
+        take_event = True
+
+        # exclude muon events for the trigger timing test
+        if self.excl_muons:
+            wfs = []
+            wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
+            # print(self.pixels_id)
+            wf = np.array(wfs[0])
+            # print(wf.shape)
+            index_peak = np.argmax(wf, axis=1)  # tom per event/pixel
+            # print(wf[100])
+            # print(index_peak[100])
+            index_peak[index_peak < 20] = 20
+            index_peak[index_peak > 40] = 40
+            signal_start = index_peak - self.window_shift
+            # signal_stop = index_peak + self.window_width - self.window_shift
+            # print(index_peak)
+            # print(signal_start)
+            # print(signal_stop)
+            chg = np.zeros(len(self.pixels_id))
+
+            ped = np.array(
+                [
+                    np.mean(wf[pix, 0 : signal_start[pix]])
+                    for pix in range(len(self.pixels_id))
+                ]
+            )
+
+            for pix in range(len(self.pixels_id)):
+                # print("iterating through pixels")
+                # print("pix", pix)
+
+                y = (
+                    wf[pix] - ped[pix]
+                )  # np.maximum(wf[pix] - ped[pix],np.zeros(len(wf[pix])))
+                charge_sum = y[
+                    signal_start[pix] : signal_start[pix] + self.window_width
+                ].sum()
+                # print(charge_sum)
+                chg[pix] = charge_sum
+
+            # is it a good event?
+            if np.max(chg) > 10 * np.mean(chg):
+                # print("is not good evt")
+                take_event = False
+            mean_charge = np.mean(chg) / 58.0
+
+        if take_event:
+            self.__event_id.append(np.uint32(event.index.event_id))
+            self.__event_type.append(event.trigger.event_type.value)
+            self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
+            self.__ucts_busy_counter.append(
+                event.nectarcam.tel[0].evt.ucts_busy_counter
+            )
+            self.__ucts_event_counter.append(
+                event.nectarcam.tel[0].evt.ucts_event_counter
+            )
+
+            if self.excl_muons:
+                self.__mean_event_charge.append(mean_charge)
 
     ##This method need to be defined !
     def finish(self):
@@ -1147,20 +1207,22 @@ class UCTSComp(NectarCAMComponent):
             ucts_timestamp=UCTSContainer.fields["ucts_timestamp"].dtype.type(
                 self.__ucts_timestamp
             ),
+            mean_event_charge=UCTSContainer.fields["mean_event_charge"].dtype.type(
+                self.__mean_event_charge
+            ),
+            event_type=UCTSContainer.fields["event_type"].dtype.type(self.__event_type),
+            event_id=UCTSContainer.fields["event_id"].dtype.type(self.__event_id),
             ucts_busy_counter=UCTSContainer.fields["ucts_busy_counter"].dtype.type(
                 self.__ucts_busy_counter
             ),
             ucts_event_counter=UCTSContainer.fields["ucts_event_counter"].dtype.type(
                 self.__ucts_event_counter
             ),
-            event_type=UCTSContainer.fields["event_type"].dtype.type(self.__event_type),
-            event_id=UCTSContainer.fields["event_id"].dtype.type(self.__event_id),
         )
         return output
 
 
 class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
-
     """
     The `DeadtimeTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that is used to test the deadtime of NectarCAM.
 
@@ -1188,7 +1250,6 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
             group = output_file[thing]
             dataset = group["UCTSContainer"]
             data = dataset[:]
-            # print("data",data)
             for tup in data:
                 try:
                     ucts_timestamps.extend(tup[3])
@@ -1226,3 +1287,90 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
             time_tot,
             deadtime_pc,
         )
+
+
+class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
+    """
+    The `TriggerTimingTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that is used to test the trigger timing of NectarCAM.
+
+    The `finish` method is responsible for reading the data from the HDF5 file, extracting the relevant information (UCTS timestamps), and calculating the RMS value of the difference between consecutive triggers. The method returns the UCTS timestamps, the time differences between consecutive triggers for events concerning more than 10 pixels (non-muon related events).
+    """
+
+    name = "TriggerTimingTestTool"
+
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value=["UCTSComp"],
+        help="List of Component names to be apply, the order will be respected",
+    ).tag(config=True)
+
+    def setup(self):
+        super().setup()
+        for component in self.components:
+            if isinstance(component, UCTSComp):
+                component.excl_muons = True
+
+    def finish(self, *args, **kwargs):
+        super().finish(return_output_component=False, *args, **kwargs)
+        # print(self.output_path)
+        output_file = h5py.File(self.output_path)
+
+        ucts_timestamps = []
+        charge_per_event = []
+
+        for thing in output_file:
+            group = output_file[thing]
+            dataset = group["UCTSContainer"]
+            data = dataset[:]
+            # print("data",data)
+            for tup in data:
+                try:
+                    ucts_timestamps.extend(tup[3])
+                    charge_per_event.extend(tup[4])
+
+                except:
+                    break
+        # print(output_file.keys())
+        # tom_mu_all= output[0].tom_mu
+        # tom_sigma_all= output[0].tom_sigma
+        # ucts_timestamps= np.array(output_file["ucts_timestamp"])
+        ucts_timestamps = np.array(ucts_timestamps).flatten()
+
+        # dt in nanoseconds
+        delta_t = [
+            ucts_timestamps[i] - ucts_timestamps[i - 1]
+            for i in range(1, len(ucts_timestamps))
+        ]
+        # event_counter = np.array(output_file['ucts_event_counter'])
+        # busy_counter=np.array(output_file['ucts_busy_counter'])
+        output_file.close()
+
+        # make hist to get rms value
+        hist_values, bin_edges = np.histogram(delta_t, bins=50)
+        # Compute bin centers
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        weighted_mean = np.average(bin_centers, weights=hist_values)
+        # print("Weighted Mean:", weighted_mean)
+
+        # Compute weighted variance
+        weighted_variance = np.average(
+            (bin_centers - weighted_mean) ** 2, weights=hist_values
+        )
+        # print("Weighted Variance:", weighted_variance)
+
+        # Compute RMS value (Standard deviation)
+        rms = np.sqrt(weighted_variance)
+        # print("RMS:", rms[pix])
+
+        # Compute the total number of data points (sum of histogram values, i.e. N)
+        N = np.sum(hist_values)
+        # print("Total number of events (N):", N)
+
+        # Error on the standard deviation
+        err = rms / np.sqrt(2 * N)
+        # print("Error on RMS:", err[pix])
+
+        # charge per run
+        charge_per_run = np.mean(charge_per_event)
+
+        return ucts_timestamps, delta_t, rms, err, charge_per_run

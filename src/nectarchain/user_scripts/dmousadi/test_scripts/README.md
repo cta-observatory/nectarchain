@@ -19,12 +19,6 @@ Automated tests from the Test Readiness Review document for the CTA NectarCAM ba
 
 ## Installation
 
-Instructions on how to install and set up the project:
-```
-git clone https://drf-gitlab.cea.fr/dmousadi/camera-test-scripts
-cd camera-test-scripts
-pip install -r requirements.txt
-```
 If you want to automatically download your data, one of the requirements is also DIRAC, for which you need to have a grid certificate. It is not necessary for this repo, if you have your NectarCAM runs (fits files) locally stored. You can find more information about DIRAC [here](https://gitlab.cta-observatory.org/cta-computing/dpps/workload/CTADIRAC). If you are installing these packages for the first time and getting 'error building wheel', you might need to (re)install some of these: swig, ca-certificates, openssl, boost, protobuff, cmake. 
 
 Once you have set up your environment, if you're not already a nectarchain user you need to set the NECTARCAMDATA environment variable to the directory where you have the NectarCAM runs:
