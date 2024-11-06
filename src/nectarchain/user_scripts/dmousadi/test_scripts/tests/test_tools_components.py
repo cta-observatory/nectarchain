@@ -96,6 +96,7 @@ class ChargeComp(NectarCAMComponent):
     The `__call__` method is the main processing logic, which is called for each event. It extracts the charge information for both high gain and low gain channels, handling various cases such as saturated events and events with no signal.
     The `finish` method collects all the processed data and returns a `ChargeContainer` object containing the run number, number of pixels, pixel IDs, UCTS timestamps, event types, event IDs, and the high and low gain charge values.
     """
+    
     window_shift = Integer(
         default_value=6,
         help="the time in ns before the peak to extract charge",
@@ -351,6 +352,7 @@ class ToMComp(NectarCAMComponent):
 
     The `finish` method collects the processed data from the member variables and returns a `ToMContainer` object, which contains the run number, number of pixels, pixel IDs, UCTS timestamps, event types, event IDs, high-gain charge, ToM without fitting, and IDs of good (non-cosmic ray) events.
     """
+    
     window_shift = Integer(
         default_value=6,
         help="the time in ns before the peak to extract charge",
@@ -1106,6 +1108,7 @@ class UCTSComp(NectarCAMComponent):
 
     The `finish` method creates and returns a `UCTSContainer` object, which is a container for the UCTS-related data that was collected during the event loop.
     """
+    
     window_shift = Integer(
         default_value=6,
         help="the time in ns before the peak to extract charge",
