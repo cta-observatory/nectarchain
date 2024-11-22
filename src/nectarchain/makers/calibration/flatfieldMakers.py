@@ -33,6 +33,6 @@ class FlatfieldNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         else:
             filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
         self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/tutorials/{filename}"
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/FlatFieldTests/{filename}"
         )
 
