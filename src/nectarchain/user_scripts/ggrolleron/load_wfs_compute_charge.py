@@ -210,8 +210,8 @@ if __name__ == "__main__":
     kwargs.pop("verbosity")
 
     log.info(f"arguments passed to main are : {kwargs}")
-    # kwargs['reload_wfs'] = True
-    # kwargs['run_number'] = [3938]
-    # kwargs['overwrite'] = True
-    # kwargs['events_per_slice'] = 2000
+    #kwargs['reload_wfs'] = True
+    #kwargs['run_number'] = [3784]#[5436]
+    #kwargs['overwrite'] = True
+    #kwargs['events_per_slice'] = 2000
     main(log=log, **kwargs)
