@@ -1,6 +1,9 @@
 import numpy as np
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from .dqm_summary_processor import DQMSummary
+
+__all__ = ["MeanWaveFormsHighLowGain"]
 
 
 class MeanWaveFormsHighLowGain(DQMSummary):
@@ -20,7 +23,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.MeanWaveForms_Figures_Dict = {}
         self.MeanWaveForms_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -70,7 +73,6 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         return None
 
     def GetResults(self):
-
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             self.MeanWaveForms_Results_Dict[
@@ -93,7 +95,6 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         return self.MeanWaveForms_Results_Dict
 
     def PlotResults(self, name, FigPath):
-
         wf_list = np.array(self.wf_list_plot)
 
         counter_fig = 0

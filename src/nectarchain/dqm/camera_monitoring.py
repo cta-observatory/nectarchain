@@ -4,10 +4,12 @@ import sqlite3
 import numpy as np
 from astropy import time as astropytime
 from ctapipe.coordinates import EngineeringCameraFrame
-from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from .dqm_summary_processor import DQMSummary
+
+__all__ = ["CameraMonitoring"]
 
 
 class CameraMonitoring(DQMSummary):
@@ -37,7 +39,7 @@ class CameraMonitoring(DQMSummary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -139,7 +141,6 @@ class CameraMonitoring(DQMSummary):
         return self.CameraMonitoring_Results_Dict
 
     def PlotResults(self, name, FigPath):
-
         try:
             fig, disp = plt.subplots()
             disp = CameraDisplay(self.camera)
