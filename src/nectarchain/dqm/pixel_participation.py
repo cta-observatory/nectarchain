@@ -1,8 +1,11 @@
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from .dqm_summary_processor import DQMSummary
+
+__all__ = ["PixelParticipationHighLowGain"]
 
 
 class PixelParticipationHighLowGain(DQMSummary):
@@ -22,7 +25,7 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.PixelParticipation_Figures_Dict = {}
         self.PixelParticipation_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp

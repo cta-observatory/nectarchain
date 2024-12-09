@@ -4,9 +4,12 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-from .gainMakers import GainMaker
+__all__ = ["GainMaker", "WhiteTargetSPEMaker"]
 
-__all__ = ["FlatfieldMaker"]
+
+class GainMaker:
+    def __init__(self, *args, **kwargs) -> None:
+        raise NotImplementedError("This class is not yet implemented")
 
 
 class WhiteTargetSPEMaker(GainMaker):
@@ -15,5 +18,6 @@ class WhiteTargetSPEMaker(GainMaker):
 
     def make(self):
         raise NotImplementedError(
-            "The computation of the white target calibration is not yet implemented, feel free to contribute !:)"
+            "The computation of the white target calibration is not yet implemented,"
+            "feel free to contribute !:)"
         )

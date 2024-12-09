@@ -107,6 +107,7 @@ class NectarCAMContainer(Container):
 class ArrayDataContainer(NectarCAMContainer):
     """
     A container that holds information about waveforms from a specific run.
+
     Attributes:
         run_number (int): The run number associated with the waveforms.
         nevents (int): The number of events.

@@ -1,11 +1,14 @@
 """
 Extract pedestals from pedestal file
 """
+
 from ctapipe.calib.camera.pedestals import PedestalCalculator
+from ctapipe.containers import PedestalContainer
 from ctapipe.core import Provenance, Tool, traits
 from ctapipe.io import EventSource, HDF5TableWriter
-from ctapipe.io.containers import PedestalContainer
 from traitlets import Dict, List, Unicode
+
+__all__ = ["PedestalHDF5Writer"]
 
 
 class PedestalHDF5Writer(Tool):
@@ -21,9 +24,7 @@ class PedestalHDF5Writer(Tool):
         config=True
     )
 
-    calculator_product = traits.enum_trait(
-        PedestalCalculator, default="PedestalIntegrator"
-    )
+    calculator_product = traits.Enum(PedestalCalculator, default="PedestalIntegrator")
 
     aliases = Dict(
         dict(

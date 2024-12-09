@@ -1,18 +1,21 @@
 """
 Extract flat field coefficients from flasher data files.
 """
+
 import numpy as np
 from ctapipe.calib.camera.flatfield import FlatFieldCalculator
 from ctapipe.calib.camera.pedestals import PedestalCalculator
-from ctapipe.core import Provenance, Tool, traits
-from ctapipe.image import ImageExtractor
-from ctapipe.io import EventSource, HDF5TableWriter
-from ctapipe.io.containers import (
+from ctapipe.containers import (
     FlatFieldContainer,
     PedestalContainer,
     WaveformCalibrationContainer,
 )
+from ctapipe.core import Provenance, Tool, traits
+from ctapipe.image import ImageExtractor
+from ctapipe.io import EventSource, HDF5TableWriter
 from traitlets import Dict, Float, List, Unicode
+
+__all__ = ["CalibrationHDF5Writer"]
 
 
 class CalibrationHDF5Writer(Tool):
@@ -39,11 +42,9 @@ class CalibrationHDF5Writer(Tool):
         800, help="Temporary cut on charge to eliminate events without led signal"
     ).tag(config=True)
 
-    pedestal_product = traits.enum_trait(
-        PedestalCalculator, default="PedestalIntegrator"
-    )
+    pedestal_product = traits.Enum(PedestalCalculator, default="PedestalIntegrator")
 
-    flatfield_product = traits.enum_trait(
+    flatfield_product = traits.Enum(
         FlatFieldCalculator, default="FlasherFlatFieldCalculator"
     )
 

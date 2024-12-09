@@ -1,6 +1,9 @@
 import numpy as np
-from dqm_summary_processor import DQMSummary
 from matplotlib import pyplot as plt
+
+from .dqm_summary_processor import DQMSummary
+
+__all__ = ["PixelTimelineHighLowGain"]
 
 
 class PixelTimelineHighLowGain(DQMSummary):
@@ -21,7 +24,7 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.PixelTimeline_Figures_Dict = {}
         self.PixelTimeline_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1):
+    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp

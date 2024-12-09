@@ -193,12 +193,11 @@ class CameraSampleStats(Stats):
 
     Examples
     --------
-    Cumulating the rawdata from a run to get the average waveform
+    Cumulating the rawdata from a run to get the average waveform::
+
     >>> from nectarchain.utils.stats import CameraSampleStats
     >>> from ctapipe_io_nectarcam import NectarCAMEventSource
-
     >>> reader = NectarCAMEventSource(input_url='NectarCAM.Run4560.00??.fits.fz')
-
     >>> s = CameraSampleStats()
     >>> for event in reader:
     >>>     s.add(event.r0.tel[0].waveform,
