@@ -46,6 +46,9 @@ dev = [
     "setuptools_scm",
 ]
 
+[tool.pytest.ini_options]
+addopts = "--ignore=src/nectarchain/user_scripts"
+
 docs = [
     "sphinx",
     "sphinx-autodoc-typehints",
