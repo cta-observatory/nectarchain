@@ -2,6 +2,7 @@ name: CI
 
 # by not building all branches on push, we avoid the duplicated builds in PRs
 on:
+  workflow_dispatch:
   push:
   # TODO
   # Remove comment: just a test to force CI on push
