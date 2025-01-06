@@ -5,7 +5,8 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-from tools_components import ToMPairsTool
+
+from .tools_components import ToMPairsTool
 
 
 def get_args():
