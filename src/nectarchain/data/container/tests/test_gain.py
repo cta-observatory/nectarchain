@@ -83,7 +83,7 @@ class TestGainContainer:
             mode="w",
             group_name="data",
         )
-        writer.write(table_name="GainContainer", containers=gain_container)
+        writer.write(table_name="GainContainer_0", containers=gain_container)
         writer.close()
 
         loaded_gain_container = next(GainContainer.from_hdf5(tmp_path))
@@ -172,7 +172,7 @@ class TestSPEfitContainer:
             mode="w",
             group_name="data",
         )
-        writer.write(table_name="SPEfitContainer", containers=SPEfit_container)
+        writer.write(table_name="SPEfitContainer_0", containers=SPEfit_container)
         writer.close()
 
         loaded_SPEfit_container = next(SPEfitContainer.from_hdf5(tmp_path))
