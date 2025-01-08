@@ -104,8 +104,8 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
             self.Ped_chargesComponent(event=event, *args, **kwargs)
         else:
             self.log.warning(
-                f"event {event.index.event_id} is event type {event.trigger.event_type}\
-                    which is not used here"
+                f"event {event.index.event_id} is event type {event.trigger.event_type}"
+                f"which is not used here"
             )
 
     def finish(self, *args, **kwargs):

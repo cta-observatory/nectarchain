@@ -264,9 +264,9 @@ class TriggerMapContainer(Container):
         with HDF5TableReader(path) as reader:
             if len(reader._h5file.root.__members__) > 1 and slice_index is None:
                 log.info(
-                    f"reading {container_class.__name__} containing\
-                        {len(reader._h5file.root.__members__)}\
-                        slices, will return a generator"
+                    f"reading {container_class.__name__} containing"
+                    f"{len(reader._h5file.root.__members__)}"
+                    f"slices, will return a generator"
                 )
                 for data in reader._h5file.root.__members__:
                     # container.containers[data] =
@@ -286,8 +286,8 @@ class TriggerMapContainer(Container):
                             _waveforms_data = np.array(waveforms_data)[_mask]
                             if len(_waveforms_data) == 1:
                                 tableReader = reader.read(
-                                    table_name=f"/{data}/\
-                                        {_waveforms_data[0]}/{trigger.name}",
+                                    table_name=f"/{data}/{_waveforms_data[0]}"
+                                    f"/{trigger.name}",
                                     containers=_container,
                                 )
                                 # container.containers[data].containers[trigger] =
@@ -296,9 +296,9 @@ class TriggerMapContainer(Container):
 
                             else:
                                 log.info(
-                                    f"there is {len(_waveforms_data)} entry\
-                                        corresponding to a {container_class}\
-                                            table save, unable to load"
+                                    f"there is {len(_waveforms_data)} entry"
+                                    f"corresponding to a {container_class}"
+                                    f"table save, unable to load"
                                 )
                         except NoSuchNodeError as err:
                             log.warning(err)
@@ -309,15 +309,15 @@ class TriggerMapContainer(Container):
             else:
                 if slice_index is None:
                     log.info(
-                        f"reading {container_class.__name__} containing\
-                            a single slice,\
-                            will return the {container_class.__name__} instance"
+                        f"reading {container_class.__name__} containing"
+                        f"a single slice,"
+                        f"will return the {container_class.__name__} instance"
                     )
                     data = "data"
                 else:
                     log.info(
-                        f"reading slice {slice_index} of {container_class.__name__},\
-                            will return the {container_class.__name__} instance"
+                        f"reading slice {slice_index} of {container_class.__name__},"
+                        f"will return the {container_class.__name__} instance"
                     )
                     data = f"data_{slice_index}"
                 for key, trigger in EventType.__members__.items():
@@ -326,8 +326,8 @@ class TriggerMapContainer(Container):
                             f"module.{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
                         )
                         tableReader = reader.read(
-                            table_name=f"/{data}/{_container.__name__}_\
-                                {index_component}/{trigger.name}",
+                            table_name=f"/{data}/{_container.__name__}_"
+                            f"{index_component}/{trigger.name}",
                             containers=_container,
                         )
                         container.containers[trigger] = next(tableReader)
