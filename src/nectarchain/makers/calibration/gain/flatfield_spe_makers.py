@@ -71,11 +71,15 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         else:
             ext = f"_sliced{self.events_per_slice}.h5"
         if self.max_events is None:
-            filename = f"{self.name}_run{self.run_number}_\
-                {self.method}_{str_extractor_kwargs}{ext}"
+            filename = (
+                f"{self.name}_run{self.run_number}_"
+                f"{self.method}_{str_extractor_kwargs}{ext}"
+            )
         else:
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}\
-                _{self.method}_{str_extractor_kwargs}{ext}"
+            filename = (
+                f"{self.name}_run{self.run_number}_maxevents"
+                f"{self.max_events}_{self.method}_{str_extractor_kwargs}{ext}"
+            )
 
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{filename}"
@@ -101,10 +105,10 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         if self.reload_events or len(files) != 1:
             if len(files) != 1:
                 self.log.info(
-                    f"{len(files)} computed charges files found with max_events >\
-                        {self.max_events} for run {self.run_number} with extraction\
-                            method {self.method} and {str_extractor_kwargs},\n reload\
-                                charges from event loop"
+                    f"{len(files)} computed charges files found with max_events >"
+                    f"{self.max_events} for run {self.run_number} with extraction"
+                    f"method {self.method} and {str_extractor_kwargs},\n reload"
+                    f"charges from event loop"
                 )
             super().start(
                 n_events=n_events,
@@ -208,11 +212,15 @@ class FlatFieldSPECombinedStdNectarCAMCalibrationTool(
             self.extractor_kwargs
         )
         if self.max_events is None:
-            filename = f"{self.name}_run{self.run_number}_HHV{HHVrun}_{self.method}_\
-                {str_extractor_kwargs}.h5"
+            filename = (
+                f"{self.name}_run{self.run_number}_HHV{HHVrun}_{self.method}_"
+                f"{str_extractor_kwargs}.h5"
+            )
         else:
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_\
-                HHV{HHVrun}_{self.method}_{str_extractor_kwargs}.h5"
+            filename = (
+                f"{self.name}_run{self.run_number}_maxevents{self.max_events}_"
+                f"HHV{HHVrun}_{self.method}_{str_extractor_kwargs}.h5"
+            )
 
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/{filename}"

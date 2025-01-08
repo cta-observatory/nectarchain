@@ -62,12 +62,17 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             self.extractor_kwargs
         )
         if self.max_events is None:
-            filename = f"{self.name}_FFrun{self.run_number}_{self.method}\
-                _{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_FullWaveformSum.h5"
+            filename = (
+                f"{self.name}_FFrun{self.run_number}_{self.method}"
+                f"_{str_extractor_kwargs}_Pedrun{self.Ped_run_number}"
+                f"_FullWaveformSum.h5"
+            )
         else:
-            filename = f"{self.name}_FFrun{self.run_number}_{self.method}\
-                _{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_\
-                    FullWaveformSum_maxevents{self.max_events}.h5"
+            filename = (
+                f"{self.name}_FFrun{self.run_number}_{self.method}"
+                f"_{str_extractor_kwargs}_Pedrun{self.Ped_run_number}_"
+                f"FullWaveformSum_maxevents{self.max_events}.h5"
+            )
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/{filename}"
         )
@@ -106,19 +111,19 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         if self.reload_events or len(FF_files) != 1 or len(Ped_files) != 1:
             if len(FF_files) != 1 or len(Ped_files) != 1:
                 self.log.info(
-                    f"{len(FF_files)} computed charges FF files found\
-                        with max_events >\
-                        {self.max_events} for run {self.run_number}\
-                            with extraction method\
-                            {self.method} and {str_extractor_kwargs},\n reload charges\
-                                from event loop"
+                    f"{len(FF_files)} computed charges FF files found"
+                    f"with max_events >"
+                    f"{self.max_events} for run {self.run_number}"
+                    f"with extraction method"
+                    f"{self.method} and {str_extractor_kwargs},\n reload charges"
+                    f"from event loop"
                 )
                 self.log.info(
-                    f"{len(Ped_files)} computed charges FF files found\
-                        with max_events >\
-                        {self.max_events} for run {self.Ped_run_number}\
-                            with extraction\
-                            method FullWaveformSum,\n reload charges from event loop"
+                    f"{len(Ped_files)} computed charges FF files found"
+                    f"with max_events >"
+                    f"{self.max_events} for run {self.Ped_run_number}"
+                    f"with extraction"
+                    f"method FullWaveformSum,\n reload charges from event loop"
                 )
 
             super().start(
