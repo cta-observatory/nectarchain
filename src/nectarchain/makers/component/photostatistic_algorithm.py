@@ -182,7 +182,8 @@ class PhotoStatisticAlgorithm(Component):
         x = np.linspace(photoStat_gain[mask].min(), photoStat_gain[mask].max(), 1000)
 
         # Define a lambda function for the linear fit line
-        y = lambda x: a * x + b
+        def y(x):
+            return a * x + b
 
         with quantity_support():
             # Create a scatter plot of the filtered data points

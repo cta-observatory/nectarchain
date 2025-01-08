@@ -339,7 +339,8 @@ class TestPedestalCalibrationTool:
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
-            # For all the following tests we set the acceptable values to a range out of what
+            # For all the following tests we set the acceptable values to a range
+            # out of what
             # is normal. Since our test run is good we expect to flag all pixels
 
             # Condition on mean pedestal value

@@ -13,7 +13,8 @@ from nectarchain.makers.extractor.utils import CtapipeExtractor
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
-    description=f"compute high and low gain with the Photo-statistic method, output data are saved in $NECTARCAMDATA/../PhotoStat/",
+    description=f"compute high and low gain with the Photo-statistic\
+        method, output data are saved in $NECTARCAMDATA/../PhotoStat/",
 )
 # run numbers
 parser.add_argument(

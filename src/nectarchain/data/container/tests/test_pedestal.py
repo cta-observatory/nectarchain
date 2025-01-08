@@ -1,7 +1,4 @@
-import tempfile
-
 import numpy as np
-from ctapipe.io import HDF5TableWriter
 
 from nectarchain.data.container import NectarCAMPedestalContainer
 
@@ -40,7 +37,7 @@ def generate_mock_pedestal_container():
     pedestal_container.validate()
 
     # create dictionary that duplicates content
-    dict = {
+    _dict = {
         "nsamples": nsamples,
         "nevents": nevents,
         "pixels_id": pixels_id,
@@ -54,7 +51,7 @@ def generate_mock_pedestal_container():
     }
 
     # return both container and input content
-    return pedestal_container, dict
+    return pedestal_container, _dict
 
 
 class TestNectarCAMPedestalContainer:
@@ -103,10 +100,14 @@ class TestNectarCAMPedestalContainer:
     #         assert pedestal_container.nevents.tolist() == dict['nevents'].tolist()
     #         assert pedestal_container.ucts_timestamp_min == dict['ucts_timestamp_min']
     #         assert pedestal_container.ucts_timestamp_max == dict['ucts_timestamp_max']
-    #         assert np.allclose(pedestal_container.pedestal_mean_hg, dict['pedestal_mean_hg'])
-    #         assert np.allclose(pedestal_container.pedestal_mean_lg, dict['pedestal_mean_lg'])
-    #         assert np.allclose(pedestal_container.pedestal_std_hg, dict['pedestal_std_hg'])
-    #         assert np.allclose(pedestal_container.pedestal_std_lg, dict['pedestal_std_lg'])
+    #         assert np.allclose(pedestal_container.pedestal_mean_hg,
+    # dict['pedestal_mean_hg'])
+    #         assert np.allclose(pedestal_container.pedestal_mean_lg,
+    # dict['pedestal_mean_lg'])
+    #         assert np.allclose(pedestal_container.pedestal_std_hg,
+    # dict['pedestal_std_hg'])
+    #         assert np.allclose(pedestal_container.pedestal_std_lg,
+    # dict['pedestal_std_lg'])
 
 
 if __name__ == "__main__":

@@ -71,7 +71,8 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
 
     def test_init_output_path(self, tool_instance):
         expected_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA', '/tmp')}/runs/EventsLoopNectarCAMCalibration_run{self.RUN_NUMBER}.h5"
+            f"{os.environ.get('NECTARCAMDATA', '/tmp')}/runs"
+            f"/EventsLoopNectarCAMCalibration_run{self.RUN_NUMBER}.h5"
         )
         assert tool_instance.output_path == expected_path
         assert tool_instance.run_number == self.RUN_NUMBER
@@ -408,11 +409,13 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         tool_instance_run_file._write_container(container, index_component=0)
         container.validate.assert_called_once()
         mock_writer.write.assert_any_call(
-            table_name=f"{container.containers[EventType.FLATFIELD].__class__.__name__}_0/{EventType.FLATFIELD.name}",
+            table_name=f"{container.containers[EventType.FLATFIELD].__class__.__name__}\
+                _0/{EventType.FLATFIELD.name}",
             containers=container.containers[EventType.FLATFIELD],
         )
         mock_writer.write.assert_any_call(
-            table_name=f"{container.containers[EventType.UNKNOWN].__class__.__name__}_0/{EventType.UNKNOWN.name}",
+            table_name=f"{container.containers[EventType.UNKNOWN].__class__.__name__}\
+                _0/{EventType.UNKNOWN.name}",
             containers=container.containers[EventType.UNKNOWN],
         )
 
@@ -425,7 +428,8 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         container.validate = MagicMock()
         with pytest.raises(
             TypeError,
-            match="component output must be an instance of TriggerMapContainer or NectarCAMContainer",
+            match="component output must be an instance of\
+                TriggerMapContainer or NectarCAMContainer",
         ):
             tool_instance_run_file._write_container(container, index_component=0)
         container.validate.assert_called_once()

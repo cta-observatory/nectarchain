@@ -9,13 +9,11 @@ from ...data.container import merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
 from .chargesComponent import ChargesComponent
 from .gainComponent import GainNectarCAMComponent
-from .spe import (
-    SPECombinedalgorithm,
-    SPEHHValgorithm,
-    SPEHHVStdalgorithm,
-    SPEnominalalgorithm,
-    SPEnominalStdalgorithm,
-)
+from .spe import SPECombinedalgorithm  # noqa
+from .spe import SPEHHValgorithm  # noqa
+from .spe import SPEHHVStdalgorithm  # noqa
+from .spe import SPEnominalalgorithm  # noqa
+from .spe import SPEnominalStdalgorithm  # noqa
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -135,7 +133,7 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
             spe_fit = eval(self.SPEfitalgorithm).create_from_chargesContainer(
                 self._chargesContainers, parent=self, **self._SPEfitalgorithm_kwargs
             )
-            fit_output = spe_fit.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
+            _ = spe_fit.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
             n_asked_pix = (
                 len(self._chargesContainers.pixels_id)
                 if self.asked_pixels_id is None

@@ -234,7 +234,8 @@ class TriggerMapContainer(Container):
         slice_index (int, optional): The index of the slice of data within the hdf5 file
         to read. Default is None.
 
-        This method first checks if the path is a string and converts it to a Path object
+        This method first checks if the path is a string and converts it to a Path
+        object
         if it is.
         It then imports the module of the container class and creates an instance of the
         container class.
@@ -257,7 +258,7 @@ class TriggerMapContainer(Container):
         """
         if isinstance(path, str):
             path = Path(path)
-        module = importlib.import_module(f"{container_class.__module__}")
+        _ = importlib.import_module(f"{container_class.__module__}")
         container = eval(f"module.{container_class.__name__}")()
 
         with HDF5TableReader(path) as reader:
@@ -268,11 +269,13 @@ class TriggerMapContainer(Container):
                         slices, will return a generator"
                 )
                 for data in reader._h5file.root.__members__:
-                    # container.containers[data] = eval(f"module.{container_class.__name__}s")()
+                    # container.containers[data] =
+                    # eval(f"module.{container_class.__name__}s")()
                     for key, trigger in EventType.__members__.items():
                         try:
                             _container = eval(
-                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                                f"module."
+                                f"{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
                             )
                             waveforms_data = eval(
                                 f"reader._h5file.root.{data}.__members__"
@@ -283,7 +286,8 @@ class TriggerMapContainer(Container):
                             _waveforms_data = np.array(waveforms_data)[_mask]
                             if len(_waveforms_data) == 1:
                                 tableReader = reader.read(
-                                    table_name=f"/{data}/{_waveforms_data[0]}/{trigger.name}",
+                                    table_name=f"/{data}/\
+                                        {_waveforms_data[0]}/{trigger.name}",
                                     containers=_container,
                                 )
                                 # container.containers[data].containers[trigger] =
@@ -292,9 +296,9 @@ class TriggerMapContainer(Container):
 
                             else:
                                 log.info(
-                                    f"there is {len(_waveforms_data)} entry corresponding \
-                                        to a {container_class} table save,\
-                                            unable to load"
+                                    f"there is {len(_waveforms_data)} entry\
+                                        corresponding to a {container_class}\
+                                            table save, unable to load"
                                 )
                         except NoSuchNodeError as err:
                             log.warning(err)
@@ -319,10 +323,11 @@ class TriggerMapContainer(Container):
                 for key, trigger in EventType.__members__.items():
                     try:
                         _container = eval(
-                            f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                            f"module.{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
                         )
                         tableReader = reader.read(
-                            table_name=f"/{data}/{_container.__name__}_{index_component}/{trigger.name}",
+                            table_name=f"/{data}/{_container.__name__}_\
+                                {index_component}/{trigger.name}",
                             containers=_container,
                         )
                         container.containers[trigger] = next(tableReader)

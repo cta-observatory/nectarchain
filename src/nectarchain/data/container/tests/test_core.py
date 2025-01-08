@@ -1,6 +1,5 @@
 import numpy as np
-import pytest
-from ctapipe.containers import Container, EventType, Field
+from ctapipe.containers import EventType, Field
 from ctapipe.io import HDF5TableWriter
 
 from nectarchain.data.container import (

@@ -1,14 +1,8 @@
 import logging
 import os
-
-import numpy as np
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import pathlib
 
+import numpy as np
 import tables
 from ctapipe.core.traits import ComponentNameList
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN, N_GAINS
@@ -16,6 +10,11 @@ from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN, N_GAINS
 from ...data.container import NectarCAMPedestalContainer
 from ..component import NectarCAMComponent
 from .core import NectarCAMCalibrationTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 __all__ = ["PedestalNectarCAMCalibrationTool"]
 
@@ -128,7 +127,8 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             pedestal_std_lg /= nevents[:, np.newaxis]
             pedestal_std_lg = np.sqrt(pedestal_std_lg)
 
-        # flag bad pixels in overall results based on same criteria as for individual slides
+        # flag bad pixels in overall results based on same criteria as for individual
+        # slides
         # reconstitute dictionary with cumulated results consistently with
         # PedestalComponent
         ped_stats = {}

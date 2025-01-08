@@ -1,7 +1,4 @@
-import glob
-
 import numpy as np
-import pytest
 from ctapipe.containers import EventType
 from ctapipe.io import HDF5TableWriter
 
