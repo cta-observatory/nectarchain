@@ -32,8 +32,7 @@ class TestPedestalCalibrationTool:
         expected_ucts_timestamp_min = [1674462932637854793, 1715007113924900896]
         expected_ucts_timestamp_max = [1674462932695877994, 1715007123524920096]
 
-        for i, run in enumerate(runs["Run number"]):
-            run_number = runs["Run number"][i]
+        for i, run_number in enumerate(runs["Run number"]):
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
             with tempfile.TemporaryDirectory() as tmpdirname:
