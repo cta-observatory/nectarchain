@@ -1,5 +1,5 @@
-import logging
 import copy
+import logging
 from argparse import ArgumentError
 
 import numpy as np
@@ -11,11 +11,10 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 from ...data.container import WaveformsContainer, WaveformsContainers
 from .core import ArrayDataComponent
+
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
-
-
 
 
 __all__ = ["WaveformsComponent"]

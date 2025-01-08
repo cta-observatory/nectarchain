@@ -1,6 +1,5 @@
-import logging
-
 import copy
+import logging
 
 import numpy as np
 from ctapipe.core.traits import List, Unicode
@@ -47,13 +46,13 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 
     # Windows_lenght = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows leght used for the savgol 
+    #                        help = "The windows leght used for the savgol
     # filter algorithm",
     # ).tag(config = True)
     #
     # Order = Integer(2,
     #                read_only = True,
-    #                help = "The order of the polynome used in the savgol 
+    #                help = "The order of the polynome used in the savgol
     # filter algorithm",
     # ).tag(config = True)
 

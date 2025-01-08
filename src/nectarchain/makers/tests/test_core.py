@@ -300,15 +300,15 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
     @patch(
         "nectarchain.makers.core.EventsLoopNectarCAMCalibrationTool._finish_components"
     )
-    def test_start_n_events(self, mock_finish_component, 
-                            mock_component, tool_instance_run_file):
+    def test_start_n_events(
+        self, mock_finish_component, mock_component, tool_instance_run_file
+    ):
         tool_instance_run_file.overwrite = True
         tool_instance_run_file.setup()
         tool_instance_run_file.components = [mock_component.from_name.return_value]
         tool_instance_run_file.start(n_events=10)
         tool_instance_run_file.finish()
         assert tool_instance_run_file._n_traited_events == 10
-        
 
     @patch("nectarchain.makers.core.Component")
     @patch(
