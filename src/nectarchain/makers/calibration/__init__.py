@@ -1,4 +1,4 @@
-from .flatfieldMakers import FlatfieldNectarCAMCalibrationTool
+from .flatfield_makers import FlatfieldNectarCAMCalibrationTool
 from .gain import (
     FlatFieldSPECombinedStdNectarCAMCalibrationTool,
     FlatFieldSPEHHVNectarCAMCalibrationTool,
@@ -7,7 +7,7 @@ from .gain import (
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
     PhotoStatisticNectarCAMCalibrationTool,
 )
-from .pedestalMakers import PedestalNectarCAMCalibrationTool
+from .pedestal_makers import PedestalNectarCAMCalibrationTool
 
 __all__ = [
     "FlatfieldNectarCAMCalibrationTool",
