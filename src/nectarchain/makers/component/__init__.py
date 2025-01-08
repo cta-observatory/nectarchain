@@ -1,24 +1,18 @@
-from .charges_component import ChargesComponent
+from .chargesComponent import ChargesComponent
 from .core import ArrayDataComponent, NectarCAMComponent, get_valid_component
-from .flatfield_spe_component import (
+from .FlatFieldSPEComponent import (
     FlatFieldCombinedSPEStdNectarCAMComponent,
     FlatFieldSingleHHVSPENectarCAMComponent,
     FlatFieldSingleHHVSPEStdNectarCAMComponent,
     FlatFieldSingleNominalSPENectarCAMComponent,
     FlatFieldSingleNominalSPEStdNectarCAMComponent,
 )
-from .gain_component import GainNectarCAMComponent
-from .pedestal_component import PedestalEstimationComponent
+from .gainComponent import GainNectarCAMComponent
+from .PedestalComponent import PedestalEstimationComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
-from .spe import (
-    SPECombinedalgorithm,
-    SPEHHValgorithm,
-    SPEHHVStdalgorithm,
-    SPEnominalalgorithm,
-    SPEnominalStdalgorithm,
-)
-from .waveforms_component import WaveformsComponent
+from .spe import SPECombinedalgorithm, SPEHHValgorithm, SPEHHVStdalgorithm
+from .waveformsComponent import WaveformsComponent
 
 __all__ = [
     "ArrayDataComponent",

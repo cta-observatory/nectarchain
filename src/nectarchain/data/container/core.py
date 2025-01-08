@@ -55,8 +55,7 @@ class NectarCAMContainer(Container):
 
     @staticmethod
     def _container_from_hdf5(path, container_class, index_component=0):
-        """
-        Static method to read a container from an HDF5 file.
+        """Static method to read a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -84,8 +83,7 @@ class NectarCAMContainer(Container):
 
     @classmethod
     def from_hdf5(cls, path, index_component=0):
-        """
-        Reads a container from an HDF5 file.
+        """Reads a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -202,8 +200,7 @@ class TriggerMapContainer(Container):
 
     @classmethod
     def from_hdf5(cls, path, slice_index=None, index_component=0):
-        """
-        Reads a container from an HDF5 file.
+        """Reads a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -229,8 +226,7 @@ class TriggerMapContainer(Container):
     def _container_from_hdf5(
         path, container_class, slice_index=None, index_component=0
     ):
-        """
-        Reads a container from an HDF5 file.
+        """Reads a container from an HDF5 file.
 
         Parameters:
         path (str or Path): The path to the HDF5 file.
@@ -238,8 +234,7 @@ class TriggerMapContainer(Container):
         slice_index (int, optional): The index of the slice of data within the hdf5 file
         to read. Default is None.
 
-        This method first checks if the path is a string and converts it to a Path
-        object
+        This method first checks if the path is a string and converts it to a Path object
         if it is.
         It then imports the module of the container class and creates an instance of the
         container class.
@@ -268,9 +263,9 @@ class TriggerMapContainer(Container):
         with HDF5TableReader(path) as reader:
             if len(reader._h5file.root.__members__) > 1 and slice_index is None:
                 log.info(
-                    f"reading {container_class.__name__} containing"
-                    f"{len(reader._h5file.root.__members__)}"
-                    f"slices, will return a generator"
+                    f"reading {container_class.__name__} containing\
+                        {len(reader._h5file.root.__members__)}\
+                        slices, will return a generator"
                 )
                 for data in np.sort(reader._h5file.root.__members__):
                     # container.containers[data] =
@@ -351,23 +346,34 @@ class TriggerMapContainer(Container):
                                     table_name=f"/{data}/{_waveforms_data[0]}/{trigger.name}",
                                     containers=_container,
                                 )
-                                # container.containers[data].containers[trigger] = next(tableReader)
+                                # container.containers[data].containers[trigger] =
+                                # next(tableReader)
                                 container.containers[trigger] = next(tableReader)
 
                             else:
                                 log.info(
-                                    f"there is {len(_waveforms_data)} entry corresponding to a {container_class} table save, unable to load"
+                                    f"there is {len(_waveforms_data)} entry corresponding \
+                                        to a {container_class} table save,\
+                                            unable to load"
                                 )
                         except NoSuchNodeError as err:
                             log.warning(err)
                         except Exception as err:
                             log.error(err, exc_info=True)
                             raise err
+                    yield container
+            else:
+                if slice_index is None:
+                    log.info(
+                        f"reading {container_class.__name__} containing\
+                            a single slice,\
+                            will return the {container_class.__name__} instance"
+                    )
+                    data = "data"
                 else:
-                    tableReader = reader.read(
-                        table_name=f"/{data}/{_container.__name__}_"
-                        f"{index_component}",
-                        containers=_container,
+                    log.info(
+                        f"reading slice {slice_index} of {container_class.__name__},\
+                            will return the {container_class.__name__} instance"
                     )
                     data = f"data_{slice_index}"
                 for key, trigger in EventType.__members__.items():

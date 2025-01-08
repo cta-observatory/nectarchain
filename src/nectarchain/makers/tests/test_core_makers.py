@@ -58,15 +58,15 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
 
     @pytest.fixture
     def tool_instance(self):
-        return EventsLoopNectarCAMCalibrationTool(run_number=self.RUN_NUMBER)
+        return EventsLoopNectarCAMCalibrationTool(
+            run_number=self.RUN_NUMBER,
+        )
 
     @pytest.fixture
     def tool_instance_run_file(self):
         return EventsLoopNectarCAMCalibrationTool(
             run_number=self.RUN_NUMBER,
             run_file=self.RUN_FILE,
-            output_path=pathlib.Path(f"/tmp/{np.random.random()}test_output.h5")
-            # to avoid I/O conflicts between tests
         )
 
     def test_init_output_path(self, tool_instance):
@@ -289,10 +289,7 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         assert not (tool_instance.split_run(n_events_in_slice=2, event=event))
 
     @patch("nectarchain.makers.core.Component")
-    @patch(
-        "nectarchain.makers.core.EventsLoopNectarCAMCalibrationTool._finish_components"
-    )
-    def test_start(self, mock_finish_component, mock_component, tool_instance_run_file):
+    def test_start(self, mock_component, tool_instance_run_file):
         tool_instance_run_file.overwrite = True
         tool_instance_run_file.setup()
         n_events = len(tool_instance_run_file.event_source)
@@ -302,17 +299,11 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         assert tool_instance_run_file._n_traited_events == n_events
 
     @patch("nectarchain.makers.core.Component")
-    @patch(
-        "nectarchain.makers.core.EventsLoopNectarCAMCalibrationTool._finish_components"
-    )
-    def test_start_n_events(
-        self, mock_finish_component, mock_component, tool_instance_run_file
-    ):
+    def test_start_n_events(self, mock_component, tool_instance_run_file):
         tool_instance_run_file.overwrite = True
         tool_instance_run_file.setup()
         tool_instance_run_file.components = [mock_component.from_name.return_value]
         tool_instance_run_file.start(n_events=10)
-        tool_instance_run_file.finish()
         assert tool_instance_run_file._n_traited_events == 10
 
     @patch("nectarchain.makers.core.Component")
@@ -335,10 +326,7 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         n_events = len(tool_instance_run_file.event_source)
         tool_instance_run_file.components = [MockComponent()]
         tool_instance_run_file.start()
-        tool_instance_run_file.finish()
-        assert (
-            mock_finish_components.call_count == n_events // self.EVENTS_PER_SLICE + 1
-        )
+        assert mock_finish_components.call_count == n_events // self.EVENTS_PER_SLICE
         assert mock_setup_components.call_count == n_events // self.EVENTS_PER_SLICE + 1
 
     @patch("nectarchain.makers.core.Component")
@@ -384,7 +372,7 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         tool_instance_run_file.setup()
         tool_instance_run_file.components = [MockComponent()]
 
-        _ = tool_instance_run_file._finish_components()
+        output = tool_instance_run_file._finish_components()
 
         assert mock_finish_components.called_with([MockComponent().finish()], 0)
 
@@ -435,8 +423,7 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         container.validate = MagicMock()
         with pytest.raises(
             TypeError,
-            match="component output must be an instance "
-            "of TriggerMapContainer or NectarCAMContainer",
+            match="component output must be an instance of TriggerMapContainer or NectarCAMContainer",
         ):
             tool_instance_run_file._write_container(container, index_component=0)
         container.validate.assert_called_once()

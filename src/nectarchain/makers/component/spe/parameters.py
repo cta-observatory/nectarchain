@@ -42,11 +42,9 @@ class Parameter:
         )
 
     def __str__(self):
-        return (
-            f"name : {self.__name}, value : {self.__value}, error : {self.__error},"
-            f"unit : {self.__unit}, min : {self.__min}, max : {self.__max},"
-            f"frozen : {self.__frozen}"
-        )
+        return f"name : {self.__name}, value : {self.__value}, error : {self.__error},\
+            unit : {self.__unit}, min : {self.__min}, max : {self.__max},\
+                frozen : {self.__frozen}"
 
     @property
     def name(self):

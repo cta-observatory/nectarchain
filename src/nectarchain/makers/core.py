@@ -16,7 +16,6 @@ from ctapipe.core.traits import (
     classes_with_traits,
     flag,
 )
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from ctapipe.io import HDF5TableWriter
 from ctapipe.io.datawriter import DATA_MODEL_VERSION
 from ctapipe_io_nectarcam import LightNectarCAMEventSource
@@ -26,7 +25,6 @@ from tqdm.auto import tqdm
 from traitlets import default
 
 from ..data import DataManagement
-from ctapipe_io_nectarcam import LightNectarCAMEventSource
 from ..data.container.core import NectarCAMContainer, TriggerMapContainer
 from ..utils import ComponentUtils
 from .component import NectarCAMComponent, get_valid_component
@@ -436,7 +434,9 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 self._setup_components()
                 n_events_in_slice = 0
 
-    def split_run(self, n_events_in_slice : int = None, event : NectarCAMDataContainer = None):
+    def split_run(
+        self, n_events_in_slice: int = None, event: NectarCAMDataContainer = None
+    ):
         """Method to decide if criteria to end a run slice are met"""
         condition = (
             self.events_per_slice is not None
@@ -554,7 +554,9 @@ class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def split_run(self, n_events_in_slice : int = None, event : NectarCAMDataContainer = None):
+    def split_run(
+        self, n_events_in_slice: int = None, event: NectarCAMDataContainer = None
+    ):
         """Method to decide if criteria to end a run slice is met"""
         condition = event.trigger.event_type == EventType.UNKNOWN
         return condition

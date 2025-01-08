@@ -115,8 +115,10 @@ class PhotoStatisticAlgorithm(Component):
         return out
 
     def __check_shape(self) -> None:
-        """Checks the shape of certain attributes and raises an exception if the shape
-        is not as expected."""
+        """
+        Checks the shape of certain attributes and raises an exception if the shape is
+        not as expected.
+        """
         try:
             self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[
                 0
@@ -155,7 +157,8 @@ class PhotoStatisticAlgorithm(Component):
     def plot_correlation(
         photoStat_gain: np.ndarray, SPE_gain: np.ndarray
     ) -> plt.Figure:
-        """Plot the correlation between the photo statistic gain and the single
+        """
+        Plot the correlation between the photo statistic gain and the single
         photoelectron (SPE) gain.
 
         Args:
@@ -219,8 +222,9 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def sigmaPedHG(self) -> float:
-        """Calculates and returns the standard deviation of Pedcharge_hg multiplied by
-        the square root of coefCharge_FF_Ped.
+        """
+        Calculates and returns the standard deviation of Pedcharge_hg multiplied by the
+        square root of coefCharge_FF_Ped.
 
         Returns:
             float: The standard deviation of Pedcharge_hg.
@@ -290,8 +294,9 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def sigmaPedLG(self) -> float:
-        """Calculates and returns the standard deviation of Pedcharge_lg multiplied by
-        the square root of coefCharge_FF_Ped.
+        """
+        Calculates and returns the standard deviation of Pedcharge_lg multiplied by the
+        square root of coefCharge_FF_Ped.
 
         Returns:
             float: The standard deviation of Pedcharge_lg.

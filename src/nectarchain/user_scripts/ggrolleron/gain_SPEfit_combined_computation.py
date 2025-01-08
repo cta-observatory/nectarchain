@@ -218,13 +218,13 @@ if __name__ == "__main__":
     kwargs.pop("display")
     kwargs.pop("HHV_run_number")
 
-    #args.HHV_run_number = 3942
-    #kwargs['run_number'] = [3936]
-    #kwargs['overwrite'] = True
-    #kwargs['asked_pixels_id'] = [45,600,800]
-    #kwargs['multiproc'] = False
-    #args.display = True
-    #args.figpath = "/home/ggroller/projects/nectarchain/src/nectarchain/user_scripts/ggrolleron/local/figures"
+    # args.HHV_run_number = 3942
+    # kwargs['run_number'] = [3936]
+    # kwargs['overwrite'] = True
+    # kwargs['asked_pixels_id'] = [45,600,800]
+    # kwargs['multiproc'] = False
+    # args.display = True
+    # args.figpath = "/home/ggroller/projects/nectarchain/src/nectarchain/user_scripts/ggrolleron/local/figures"
 
     log.info(f"arguments passed to main are : {kwargs}")
     main(log=log, **kwargs)

@@ -11,7 +11,6 @@ from ctapipe.instrument import CameraGeometry
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.constants import N_PIXELS
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe_io_nectarcam.constants import N_PIXELS
 
 from ...data.container.core import ArrayDataContainer
 
@@ -226,13 +225,16 @@ class ArrayDataComponent(NectarCAMComponent):
         self.__ucts_event_counter[f"{name}"].append(
             event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_event_counter
         )
-        if event.nectarcam.tel[__class__.TEL_ID.default_value].evt.trigger_pattern is None : 
+        if (
+            event.nectarcam.tel[__class__.TEL_ID.default_value].evt.trigger_pattern
+            is None
+        ):
+            self.__trig_patter_all[f"{name}"].append(np.empty((4, N_PIXELS)).T)
+        else:
             self.__trig_patter_all[f"{name}"].append(
-            np.empty((4,N_PIXELS)).T
-        )
-        else : 
-            self.__trig_patter_all[f"{name}"].append(
-                event.nectarcam.tel[__class__.TEL_ID.default_value].evt.trigger_pattern.T
+                event.nectarcam.tel[
+                    __class__.TEL_ID.default_value
+                ].evt.trigger_pattern.T
             )
 
         if kwargs.get("return_wfs", False):

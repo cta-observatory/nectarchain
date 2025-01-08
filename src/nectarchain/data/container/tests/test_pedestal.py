@@ -1,4 +1,7 @@
+import tempfile
+
 import numpy as np
+from ctapipe.io import HDF5TableWriter
 
 from nectarchain.data.container import NectarCAMPedestalContainer
 
@@ -37,7 +40,7 @@ def generate_mock_pedestal_container():
     pedestal_container.validate()
 
     # create dictionary that duplicates content
-    _dict = {
+    dict = {
         "nsamples": nsamples,
         "nevents": nevents,
         "pixels_id": pixels_id,
@@ -52,6 +55,7 @@ def generate_mock_pedestal_container():
 
     # return both container and input content
     return pedestal_container, _dict
+
 
 
 class TestNectarCAMPedestalContainer:
@@ -108,6 +112,7 @@ class TestNectarCAMPedestalContainer:
     # dict['pedestal_std_hg'])
     #         assert np.allclose(pedestal_container.pedestal_std_lg,
     # dict['pedestal_std_lg'])
+
 
 
 if __name__ == "__main__":

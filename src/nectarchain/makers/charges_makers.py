@@ -3,7 +3,6 @@ import os
 import pathlib
 
 import numpy as np
-from ctapipe.containers import EventType
 from ctapipe.core.traits import Bool, ComponentNameList
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
 from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
@@ -16,12 +15,7 @@ from ctapipe.image.extractor import (  # noqa: F401
     BaselineSubtractedNeighborPeakWindowSum,
 )
 
-from ..data.container import (
-    ChargesContainers,
-    TriggerMapContainer,
-    WaveformsContainer,
-    WaveformsContainers,
-)
+from ..data.container import WaveformsContainer, WaveformsContainers
 from ..data.management import DataManagement
 from .component import ChargesComponent, NectarCAMComponent
 from .core import EventsLoopNectarCAMCalibrationTool
@@ -84,9 +78,9 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
             )
             if len(files) != 1:
                 self.log.info(
-                    f"{len(files)} computed wavforms files found with max_events >="
-                    f"{self.max_events}  for run {self.run_number}, reload waveforms"
-                    f"from event loop"
+                    f"{len(files)} computed wavforms files found with max_events >=\
+                        {self.max_events}  for run {self.run_number}, reload waveforms\
+                            from event loop"
                 )
                 super().start(
                     n_events=n_events,
@@ -96,9 +90,8 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                 )
             else:
                 self.log.info(
-                    f"{files[0]} is the computed wavforms files found"
-                    f"with max_events >="
-                    f"{self.max_events}  for run {self.run_number}"
+                    f"{files[0]} is the computed wavforms files found with max_events >=\
+                        {self.max_events}  for run {self.run_number}"
                 )
                 waveformsContainers = WaveformsContainers.from_hdf5(files[0])
                 if not (isinstance(waveformsContainers, WaveformsContainer)):
@@ -123,7 +116,8 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                         self._write_container(container=chargesContainers)
                     else:
                         self.log.debug(
-                            f"WaveformsContainer file contains {n_slices} slices of the run events"
+                            f"WaveformsContainer file contains {n_slices} slices of the\
+                                run events"
                         )
                         for slice_index, _waveformsContainers in enumerate(
                             waveformsContainers
