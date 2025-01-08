@@ -1,5 +1,3 @@
-import logging
-
 import copy
 import logging
 
@@ -50,13 +48,13 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 
     # window_length = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows leght used for the savgol 
+    #                        help = "The windows leght used for the savgol
     # filter algorithm",
     # ).tag(config = True)
     #
     # order = Integer(2,
     #                read_only = True,
-    #                help = "The order of the polynome used in the savgol 
+    #                help = "The order of the polynome used in the savgol
     # filter algorithm",
     # ).tag(config = True)
 
