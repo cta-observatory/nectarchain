@@ -8,8 +8,8 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 from ...data.container import SPEfitContainer, merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
-from .chargesComponent import ChargesComponent
-from .gainComponent import GainNectarCAMComponent
+from .charges_component import ChargesComponent
+from .gain_component import GainNectarCAMComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm  # noqa
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")

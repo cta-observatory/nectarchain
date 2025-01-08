@@ -10,9 +10,9 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 from ...data.container import NectarCAMPedestalContainer, PedestalFlagBits
 from ...utils import ComponentUtils
-from .chargesComponent import ChargesComponent
+from .charges_component import ChargesComponent
 from .core import NectarCAMComponent
-from .waveformsComponent import WaveformsComponent
+from .waveforms_component import WaveformsComponent
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)

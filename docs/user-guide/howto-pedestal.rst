@@ -25,7 +25,7 @@ processed in slices with a fixed number of events set by the
 
 The pedestal
 estimation tool inherits the configurable parameters of the
-`~nectarchain.makers.component.PedestalComponent.PedestalEstimationComponent`.
+`~nectarchain.makers.component.pedestal_component.PedestalEstimationComponent`.
 The data can be filtered based on time using the ``ucts_tmin`` and
 ``ucts_tmax`` parameters and to eliminate outlier waveforms using the ``filter_method`` parameter. Two different methods to exclude outlier
 waveforms are implemented:

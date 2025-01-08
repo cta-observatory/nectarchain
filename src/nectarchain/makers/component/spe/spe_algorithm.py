@@ -25,7 +25,7 @@ from scipy.special import gammainc
 
 from ....data.container import ChargesContainer, SPEfitContainer
 from ....utils import MPE2, MeanValueError, Statistics, UtilsMinuit, weight_gaussian
-from ..chargesComponent import ChargesComponent
+from ..charges_component import ChargesComponent
 from .parameters import Parameter, Parameters
 
 mplstyle.use("fast")

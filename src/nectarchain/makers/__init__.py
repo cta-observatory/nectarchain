@@ -2,12 +2,12 @@
 the makers folder.
 """
 
-from .chargesMakers import ChargesNectarCAMCalibrationTool
+from .charges_makers import ChargesNectarCAMCalibrationTool
 from .core import (
     DelimiterLoopNectarCAMCalibrationTool,
     EventsLoopNectarCAMCalibrationTool,
 )
-from .waveformsMakers import WaveformsNectarCAMCalibrationTool
+from .waveforms_makers import WaveformsNectarCAMCalibrationTool
 
 __all__ = [
     "ChargesNectarCAMCalibrationTool",

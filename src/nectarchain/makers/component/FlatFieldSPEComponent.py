@@ -7,8 +7,8 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 from ...data.container import merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
-from .chargesComponent import ChargesComponent
-from .gainComponent import GainNectarCAMComponent
+from .charges_component import ChargesComponent
+from .gain_component import GainNectarCAMComponent
 from .spe import SPECombinedalgorithm  # noqa
 from .spe import SPEHHValgorithm  # noqa
 from .spe import SPEHHVStdalgorithm  # noqa
