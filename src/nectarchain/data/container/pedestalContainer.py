@@ -10,11 +10,12 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+__all__ = ["NectarCAMPedestalContainer", "PedestalFlagBits"]
+
 
 @unique
 class PedestalFlagBits(IntFlag):
-    """
-    Define the bits corresponding to pedestal-related flags
+    """Define the bits corresponding to pedestal-related flags.
 
     NEVENTS:        Number of events below the acceptable minimum value
     MEAN_PEDESTAL:  Mean pedestal outside acceptable range
@@ -31,8 +32,7 @@ class PedestalFlagBits(IntFlag):
 
 
 class NectarCAMPedestalContainer(NectarCAMContainer):
-    """
-    A container that holds estimated pedestals
+    """A container that holds estimated pedestals.
 
     Fields:
         nsamples (int): The number of samples in the waveforms.

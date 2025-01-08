@@ -1,6 +1,7 @@
 import logging
 from abc import ABC
 
+import numpy as np
 from ctapipe.visualization import CameraDisplay
 from matplotlib import pyplot as plt
 
@@ -10,7 +11,7 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import numpy as np
+__all__ = ["ContainerDisplay"]
 
 
 class ContainerDisplay(ABC):
@@ -33,10 +34,12 @@ class ContainerDisplay(ABC):
             pixels_id = container.pixels_id
         else:
             log.error(
-                "container can't be displayed, must be a ChargesContainer or a WaveformsContainer"
+                "container can't be displayed, must be a ChargesContainer or a\
+                    WaveformsContainer"
             )
             raise Exception(
-                "container can't be displayed, must be a ChargesContainer or a WaveformsContainer"
+                "container can't be displayed, must be a ChargesContainer or a\
+                WaveformsContainer"
             )
 
         highlighten_pixels = np.array([], dtype=int)

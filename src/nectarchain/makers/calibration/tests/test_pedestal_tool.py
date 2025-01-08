@@ -51,7 +51,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -165,7 +165,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -218,7 +218,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -273,7 +273,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -321,7 +321,7 @@ class TestPedestalCalibrationTool:
                 filter_method=None,
             )
 
-            tool.initialize()
+            # tool.initialize()
             tool.setup()
 
             tool.start()
@@ -331,9 +331,11 @@ class TestPedestalCalibrationTool:
             flag_bit = PedestalFlagBits.NEVENTS
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.MEAN_PEDESTAL,
-                         PedestalFlagBits.STD_SAMPLE,
-                         PedestalFlagBits.STD_PIXEL]
+            flag_bits = [
+                PedestalFlagBits.MEAN_PEDESTAL,
+                PedestalFlagBits.STD_SAMPLE,
+                PedestalFlagBits.STD_PIXEL,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
@@ -351,8 +353,8 @@ class TestPedestalCalibrationTool:
                 overwrite=True,
                 filter_method=None,
                 pixel_mask_nevents_min=1,
-                pixel_mask_mean_min=1000.,
-                pixel_mask_mean_max=1100.,
+                pixel_mask_mean_min=1000.0,
+                pixel_mask_mean_max=1100.0,
             )
 
             tool.initialize()
@@ -365,9 +367,11 @@ class TestPedestalCalibrationTool:
             flag_bit = PedestalFlagBits.MEAN_PEDESTAL
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.NEVENTS,
-                         PedestalFlagBits.STD_SAMPLE,
-                         PedestalFlagBits.STD_PIXEL]
+            flag_bits = [
+                PedestalFlagBits.NEVENTS,
+                PedestalFlagBits.STD_SAMPLE,
+                PedestalFlagBits.STD_PIXEL,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
@@ -382,7 +386,7 @@ class TestPedestalCalibrationTool:
                 overwrite=True,
                 filter_method=None,
                 pixel_mask_nevents_min=1,
-                pixel_mask_std_sample_min=100.
+                pixel_mask_std_sample_min=100.0,
             )
 
             tool.initialize()
@@ -391,13 +395,16 @@ class TestPedestalCalibrationTool:
             tool.start()
             output = tool.finish(return_output_component=True)[0]
 
-            # Check that all pixels were flagged as having a small sample std
+            # Check that all pixels were flagged as
+            # having a small sample std
             flag_bit = PedestalFlagBits.STD_SAMPLE
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.NEVENTS,
-                         PedestalFlagBits.MEAN_PEDESTAL,
-                         PedestalFlagBits.STD_PIXEL]
+            flag_bits = [
+                PedestalFlagBits.NEVENTS,
+                PedestalFlagBits.MEAN_PEDESTAL,
+                PedestalFlagBits.STD_PIXEL,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
@@ -412,10 +419,10 @@ class TestPedestalCalibrationTool:
                 overwrite=True,
                 filter_method=None,
                 pixel_mask_nevents_min=1,
-                pixel_mask_std_pixel_max=0.01
+                pixel_mask_std_pixel_max=0.01,
             )
 
-            tool.initialize()
+            # tool.initialize()
             tool.setup()
 
             tool.start()
@@ -425,8 +432,10 @@ class TestPedestalCalibrationTool:
             flag_bit = PedestalFlagBits.STD_PIXEL
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.NEVENTS,
-                         PedestalFlagBits.MEAN_PEDESTAL,
-                         PedestalFlagBits.STD_SAMPLE]
+            flag_bits = [
+                PedestalFlagBits.NEVENTS,
+                PedestalFlagBits.MEAN_PEDESTAL,
+                PedestalFlagBits.STD_SAMPLE,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)

@@ -26,8 +26,7 @@ __all__ = ["LightNectarCAMEventSource"]
 
 
 def fill_nectarcam_event_container_from_zfile(self, array_event, event):
-    """
-    Fill the NectarCAM event container from the zfile event data.
+    """Fill the NectarCAM event container from the zfile event data.
 
     Parameters:
     - array_event: The NectarCAMDataContainer object to fill with event data.
@@ -54,7 +53,6 @@ def fill_nectarcam_event_container_from_zfile(self, array_event, event):
     in the event_container.
     7. Calls the unpack_feb_data function to unpack the FEB counters and trigger pattern
     from the event and assign them to the corresponding fields in the event_container.
-
     """
 
     tel_id = self.tel_id
@@ -83,7 +81,7 @@ def fill_nectarcam_event_container_from_zfile(self, array_event, event):
 
 
 def unpack_feb_data(self, event_container, event):
-    """Unpack FEB counters and trigger pattern"""
+    """Unpack FEB counters and trigger pattern."""
     # Deduce data format version
     bytes_per_module = (
         len(event.nectarcam.counters) // self.nectarcam_service.num_modules
@@ -117,8 +115,7 @@ def unpack_feb_data(self, event_container, event):
 
 
 def fill_trigger_info(self, array_event):
-    """
-    Fill the trigger information for a given event.
+    """Fill the trigger information for a given event.
 
     Parameters:
         array_event (NectarCAMEventContainer): The NectarCAMEventContainer object to
@@ -188,9 +185,8 @@ def fill_trigger_info(self, array_event):
 
 
 class LightNectarCAMEventSource(NectarCAMEventSource):
-    """
-    LightNectarCAMEventSource is a subclass of NectarCAMEventSource that provides a
-    generator for iterating over NectarCAM events.
+    """LightNectarCAMEventSource is a subclass of NectarCAMEventSource that
+    provides a generator for iterating over NectarCAM events.
 
     This implementation of the NectarCAMEventSource is much lighter than the one within
     ctapipe_io_nectarcam, only the fields interesting for nectarchain are kept.
@@ -218,9 +214,8 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
     """
 
     def _generator(self):
-        """
-        The generator function that yields NectarCAMDataContainer objects representing
-        each event.
+        """The generator function that yields NectarCAMDataContainer objects
+        representing each event.
 
         Yields
         ------
@@ -230,7 +225,6 @@ class LightNectarCAMEventSource(NectarCAMEventSource):
         Raises
         ------
         None
-
         """
         # container for NectarCAM data
         array_event = NectarCAMDataContainer()

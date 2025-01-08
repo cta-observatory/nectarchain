@@ -1,15 +1,7 @@
-import logging
-import sys
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
-
 import copy
+import logging
 import os
 
-import matplotlib
 import numpy as np
 from astropy.visualization import quantity_support
 from ctapipe.core import Component
@@ -18,6 +10,11 @@ from scipy.stats import linregress
 
 from ...data.container import ChargesContainer, GainContainer, SPEfitContainer
 from ..component import ChargesComponent
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 __all__ = ["PhotoStatisticAlgorithm"]
 
@@ -119,7 +116,8 @@ class PhotoStatisticAlgorithm(Component):
 
     def __check_shape(self) -> None:
         """
-        Checks the shape of certain attributes and raises an exception if the shape is not as expected.
+        Checks the shape of certain attributes and raises an exception if the shape is
+        not as expected.
         """
         try:
             self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[
@@ -160,14 +158,16 @@ class PhotoStatisticAlgorithm(Component):
         photoStat_gain: np.ndarray, SPE_gain: np.ndarray
     ) -> plt.Figure:
         """
-        Plot the correlation between the photo statistic gain and the single photoelectron (SPE) gain.
+        Plot the correlation between the photo statistic gain and the single
+        photoelectron (SPE) gain.
 
         Args:
             photoStat_gain (np.ndarray): Array of photo statistic gain values.
             SPE_gain (np.ndarray): Array of SPE gain values.
 
         Returns:
-            fig (plt.Figure): The figure object containing the scatter plot and the linear fit line.
+            fig (plt.Figure): The figure object containing the scatter plot
+            and the linear fit line.
         """
         # matplotlib.use("TkAgg")
         # Create a mask to filter the data points based on certain criteria
@@ -197,7 +197,8 @@ class PhotoStatisticAlgorithm(Component):
                 x,
                 y(x),
                 color="red",
-                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
+                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n\
+                    p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
             )
 
             # Plot the line y = x
@@ -222,7 +223,8 @@ class PhotoStatisticAlgorithm(Component):
     @property
     def sigmaPedHG(self) -> float:
         """
-        Calculates and returns the standard deviation of Pedcharge_hg multiplied by the square root of coefCharge_FF_Ped.
+        Calculates and returns the standard deviation of Pedcharge_hg multiplied by the
+        square root of coefCharge_FF_Ped.
 
         Returns:
             float: The standard deviation of Pedcharge_hg.
@@ -297,7 +299,8 @@ class PhotoStatisticAlgorithm(Component):
     @property
     def sigmaPedLG(self) -> float:
         """
-        Calculates and returns the standard deviation of Pedcharge_lg multiplied by the square root of coefCharge_FF_Ped.
+        Calculates and returns the standard deviation of Pedcharge_lg multiplied by the
+        square root of coefCharge_FF_Ped.
 
         Returns:
             float: The standard deviation of Pedcharge_lg.

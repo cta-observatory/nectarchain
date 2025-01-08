@@ -24,17 +24,15 @@ try:
         DIRAC.initialize()
 except ImportError:
     log.warning("DIRAC probably not installed")
-    pass
 except Exception as e:
     log.warning(f"DIRAC could not be properly initialized: {e}")
-    pass
 
 
 class DataManagement:
     @staticmethod
     def findrun(run_number: int, search_on_GRID=True) -> Tuple[Path, List[Path]]:
-        """method to find in NECTARCAMDATA the list of ``*.fits.fz`` files associated to
-        run_number
+        """Method to find in NECTARCAMDATA the list of ``*.fits.fz`` files
+        associated to run_number.
 
         Parameters
         ----------
@@ -45,7 +43,6 @@ class DataManagement:
         -------
         (PosixPath,list):
             the path list of ``*.fits.fz`` files
-
         """
         basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
         list = glob.glob(
@@ -82,7 +79,7 @@ class DataManagement:
 
     @staticmethod
     def getRunFromDIRAC(lfns: list):
-        """Method to get run files from the EGI grid from input lfns
+        """Method to get run files from the EGI grid from input lfns.
 
         Parameters
         ----------
@@ -115,8 +112,7 @@ class DataManagement:
         username=None,
         password=None,
     ):
-        """
-        Method to get run location on GRID from Elog (work in progress!)
+        """Method to get run location on GRID from Elog (work in progress!)
 
         Parameters
         ----------
@@ -139,7 +135,6 @@ class DataManagement:
         Returns
         -------
         __get_GRID_location_ELog or __get_GRID_location_DIRAC
-
         """
         if fromElog:
             return __class__.__get_GRID_location_ELog(
@@ -262,11 +257,13 @@ class DataManagement:
             return lfns
         else:
             return url_data
+
     @staticmethod
     def find_waveforms(run_number, max_events=None):
         return __class__.__find_computed_data(
             run_number=run_number, max_events=max_events, data_type="waveforms"
         )
+
     @staticmethod
     def find_charges(
         run_number, method="FullWaveformSum", str_extractor_kwargs="", max_events=None
@@ -277,6 +274,7 @@ class DataManagement:
             ext=f"_{method}_{str_extractor_kwargs}.h5",
             data_type="charges",
         )
+
     @staticmethod
     def find_photostat(
         FF_run_number,
@@ -296,6 +294,7 @@ class DataManagement:
         if len(full_file) != 1:
             raise Exception(f"the files is {full_file}")
         return full_file
+
     @staticmethod
     def find_SPE_combined(
         run_number, method="FullWaveformSum", str_extractor_kwargs=""
@@ -306,6 +305,7 @@ class DataManagement:
             str_extractor_kwargs=str_extractor_kwargs,
             keyword="FlatFieldCombined",
         )
+
     @staticmethod
     def find_SPE_nominal(
         run_number, method="FullWaveformSum", str_extractor_kwargs="", free_pp_n=False
@@ -317,6 +317,7 @@ class DataManagement:
             free_pp_n=free_pp_n,
             keyword="FlatFieldSPENominal",
         )
+
     @staticmethod
     def find_SPE_HHV(
         run_number,
@@ -334,8 +335,9 @@ class DataManagement:
                 f"_{str_extractor_kwargs}.h5"
             ).__str__()
         )
-        ###need to improve the files search !!
-        #       -> unstable behavior with SPE results computed with maxevents not to None
+        # need to improve the files search !!
+        #       -> unstable behavior with SPE results computed
+        #           with maxevents not to None
         if len(full_file) != 1:
             all_files = glob.glob(
                 pathlib.Path(
@@ -357,6 +359,7 @@ class DataManagement:
             return [all_files[index]]
         else:
             return full_file
+
     @staticmethod
     def __find_computed_data(
         run_number, max_events=None, ext=".h5", data_type="waveforms"
