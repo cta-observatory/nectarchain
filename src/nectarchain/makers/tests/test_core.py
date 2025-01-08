@@ -409,13 +409,13 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
         tool_instance_run_file._write_container(container, index_component=0)
         container.validate.assert_called_once()
         mock_writer.write.assert_any_call(
-            table_name=f"{container.containers[EventType.FLATFIELD].__class__.__name__}\
-                _0/{EventType.FLATFIELD.name}",
+            table_name=f"{container.containers[EventType.FLATFIELD].__class__.__name__}"
+            f"_0/{EventType.FLATFIELD.name}",
             containers=container.containers[EventType.FLATFIELD],
         )
         mock_writer.write.assert_any_call(
-            table_name=f"{container.containers[EventType.UNKNOWN].__class__.__name__}\
-                _0/{EventType.UNKNOWN.name}",
+            table_name=f"{container.containers[EventType.UNKNOWN].__class__.__name__}"
+            f"_0/{EventType.UNKNOWN.name}",
             containers=container.containers[EventType.UNKNOWN],
         )
 
