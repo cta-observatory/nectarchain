@@ -1,15 +1,13 @@
 import ctapipe.instrument.camera.readout
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
-from ctapipe.image.extractor import (
-    FixedWindowSum,
-    FullWaveformSum,
-    GlobalPeakWindowSum,
-    LocalPeakWindowSum,
-    NeighborPeakWindowSum,
-    SlidingWindowMaxSum,
-    TwoPassWindowSum,
-)
+from ctapipe.image.extractor import FixedWindowSum  # noqa
+from ctapipe.image.extractor import FullWaveformSum  # noqa
+from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa
+from ctapipe.image.extractor import NeighborPeakWindowSum  # noqa
+from ctapipe.image.extractor import SlidingWindowMaxSum  # noqa
+from ctapipe.image.extractor import TwoPassWindowSum  # noqa
 from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
