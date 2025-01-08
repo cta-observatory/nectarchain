@@ -46,11 +46,11 @@ To run the example script:
 Inspect the results
 =========================
 The results are stored in a
-`~nectarchain.data.container.pedestalContainer.NectarCAMPedestalContainer`. The
+`~nectarchain.data.container.pedestal_container.NectarCAMPedestalContainer`. The
 results include information on pixels that were flagged as having
 an abnormal behavior during the computation of the pedestals. The
 flags are defined in in
-`~nectarchain.data.container.pedestalContainer.PedestalFlagBits`. The
+`~nectarchain.data.container.pedestal_container.PedestalFlagBits`. The
 results are accessible on the fly if the tool is run interactively (as in the example above) and stored in a `.h5` file.
 
 The user script `nectarchain/user_scripts/ltibaldo/show_pedestal_output.py` provides an example of how to access the results from disk and produce some plots:
