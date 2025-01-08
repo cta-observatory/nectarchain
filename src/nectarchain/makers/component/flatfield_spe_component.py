@@ -1,3 +1,5 @@
+import logging
+
 import copy
 import logging
 
@@ -14,6 +16,10 @@ from .spe import SPEHHValgorithm  # noqa: F401
 from .spe import SPEHHVStdalgorithm  # noqa: F401
 from .spe import SPEnominalalgorithm  # noqa: F401
 from .spe import SPEnominalStdalgorithm  # noqa: F401
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -44,13 +50,13 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 
     # window_length = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows length used for the savgol
+    #                        help = "The windows leght used for the savgol 
     # filter algorithm",
     # ).tag(config = True)
     #
     # order = Integer(2,
     #                read_only = True,
-    #                help = "The order of the polynome used in the savgol
+    #                help = "The order of the polynome used in the savgol 
     # filter algorithm",
     # ).tag(config = True)
 

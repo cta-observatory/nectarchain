@@ -434,60 +434,6 @@ class ArrayDataComponent(NectarCAMComponent):
             dtype=ArrayDataContainer.fields["broken_pixels_lg"].dtype,
         )
 
-    @property
-    def _ucts_timestamp(self):
-        """Returns the ucts_timestamp attribute.
-
-        Returns:
-            np.ndarray: The ucts_timestamp attribute.
-        """
-        return copy.deepcopy(self.__ucts_timestamp)
-
-    @property
-    def _ucts_busy_counter(self):
-        """Returns the ucts_busy_counter attribute.
-
-        Returns:
-            np.ndarray: The ucts_busy_counter attribute.
-        """
-        return copy.deepcopy(self.__ucts_busy_counter)
-
-    @property
-    def _ucts_event_counter(self):
-        """Returns the ucts_event_counter attribute.
-
-        Returns:
-            np.ndarray: The ucts_event_counter attribute.
-        """
-        return copy.deepcopy(self.__ucts_event_counter)
-
-    @property
-    def _event_id(self):
-        """Returns the event_id attribute.
-
-        Returns:
-            np.ndarray: The event_id attribute.
-        """
-        return copy.deepcopy(self.__event_id)
-
-    @property
-    def _event_type(self):
-        """Returns the event_type attribute.
-
-        Returns:
-            np.ndarray: The event_type attribute.
-        """
-        return copy.deepcopy(self.__event_type)
-
-    @property
-    def _trig_pattern_all(self):
-        """Returns the trig_pattern_all attribute.
-
-        Returns:
-            np.ndarray: The trig_pattern_all attribute.
-        """
-        return copy.deepcopy(self.__trig_pattern_all)
-
     def ucts_timestamp(self, trigger: EventType):
         """Returns an array of UCTS timestamps for the specified trigger type.
 

@@ -1266,8 +1266,8 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
     def _make_minuitParameters_array_from_parameters(
         self, pixels_id: np.ndarray = None, **kwargs
     ) -> np.ndarray:
-        """
-        Generates the fit array from the fixed parameters and the fitted data obtained from a 1400V run.
+        """Generates the fit array from the fixed parameters and the fitted data
+        obtained from a 1400V run.
 
         Parameters
         ----------
