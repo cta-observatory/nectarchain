@@ -8,7 +8,9 @@ from ctapipe.utils import get_dataset_path
 from nectarchain.data.container import ChargesContainer, ChargesContainers
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
-"This test file test the overall workflow of the ChargesNectarCAMCalibrationTool, adapted from the test of the WaveformsNectarCAMCalibrationTool. There are lot of code duplication but I don't care for now. Do you ?"
+# This test file test the overall workflow of the ChargesNectarCAMCalibrationTool,
+# adapted from the test of the WaveformsNectarCAMCalibrationTool.
+# There are lot of code duplication but I don't care for now. Do you ?
 
 
 class TestChargesNectarCAMCalibrationTool:

@@ -4,16 +4,14 @@ import pathlib
 
 import numpy as np
 from ctapipe.core.traits import Bool, ComponentNameList
-from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
-from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
-from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
-from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
-from ctapipe.image.extractor import NeighborPeakWindowSum  # noqa: F401
-from ctapipe.image.extractor import SlidingWindowMaxSum  # noqa: F401
-from ctapipe.image.extractor import TwoPassWindowSum  # noqa: F401
-from ctapipe.image.extractor import (  # noqa: F401
-    BaselineSubtractedNeighborPeakWindowSum,
-)
+from ctapipe.image.extractor import BaselineSubtractedNeighborPeakWindowSum  # noqa
+from ctapipe.image.extractor import FixedWindowSum  # noqa
+from ctapipe.image.extractor import FullWaveformSum  # noqa
+from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa
+from ctapipe.image.extractor import NeighborPeakWindowSum  # noqa
+from ctapipe.image.extractor import SlidingWindowMaxSum  # noqa
+from ctapipe.image.extractor import TwoPassWindowSum  # noqa
 
 from ..data.container import WaveformsContainer, WaveformsContainers
 from ..data.management import DataManagement
@@ -71,7 +69,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         *args,
         **kwargs,
     ):
-        ##cette implémentation est complétement nulle
+        # cette implémentation est complétement nulle
         if self.from_computed_waveforms:
             files = DataManagement.find_waveforms(
                 run_number=self.run_number, max_events=self.max_events
@@ -90,7 +88,8 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                 )
             else:
                 self.log.info(
-                    f"{files[0]} is the computed wavforms files found with max_events >=\
+                    f"{files[0]} is the computed wavforms files found\
+                        with max_events >=\
                         {self.max_events}  for run {self.run_number}"
                 )
                 waveformsContainers = WaveformsContainers.from_hdf5(files[0])

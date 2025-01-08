@@ -234,7 +234,8 @@ class TriggerMapContainer(Container):
         slice_index (int, optional): The index of the slice of data within the hdf5 file
         to read. Default is None.
 
-        This method first checks if the path is a string and converts it to a Path object
+        This method first checks if the path is a string and converts it to a Path
+        object
         if it is.
         It then imports the module of the container class and creates an instance of the
         container class.
@@ -257,7 +258,7 @@ class TriggerMapContainer(Container):
         """
         if isinstance(path, str):
             path = Path(path)
-        module = importlib.import_module(f"{container_class.__module__}")  # noqa :F841
+        _ = importlib.import_module(f"{container_class.__module__}")
         container = eval(f"module.{container_class.__name__}")()
 
         with HDF5TableReader(path) as reader:
@@ -267,72 +268,14 @@ class TriggerMapContainer(Container):
                         {len(reader._h5file.root.__members__)}\
                         slices, will return a generator"
                 )
-                for data in np.sort(reader._h5file.root.__members__):
+                for data in reader._h5file.root.__members__:
                     # container.containers[data] =
                     # eval(f"module.{container_class.__name__}s")()
-
-                    _container = eval(
-                        f"module."
-                        f"{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
-                    )
-                    waveforms_data = eval(f"reader._h5file.root.{data}.__members__")
-                    _mask = [_container.__name__ in _word for _word in waveforms_data]
-                    _waveforms_data = np.array(waveforms_data)[_mask]
-                    if len(_waveforms_data) == 1:
-                        if issubclass(_container, TriggerMapContainer) or issubclass(
-                            _container, ArrayDataContainer
-                        ):
-                            for key, trigger in EventType.__members__.items():
-                                try:
-                                    tableReader = reader.read(
-                                        table_name=f"/{data}/{_waveforms_data[0]}"
-                                        f"/{trigger.name}",
-                                        containers=_container,
-                                    )
-                                    container.containers[trigger] = next(tableReader)
-                                except NoSuchNodeError as err:
-                                    log.warning(err)
-                                except Exception as err:
-                                    log.error(err, exc_info=True)
-                                    raise err
-                        else:
-                            tableReader = reader.read(
-                                table_name=f"/{data}/{_waveforms_data[0]}",
-                                containers=_container,
-                            )
-                            container.containers[data] = next(tableReader)
-                    else:
-                        log.info(
-                            f"there is {len(_waveforms_data)} entry"
-                            f"corresponding to a {container_class}"
-                            f"table save, unable to load"
-                        )
-
-                yield container
-            else:
-                if slice_index is None:
-                    log.info(
-                        f"reading {container_class.__name__} containing"
-                        f"a single slice,"
-                        f"will return the {container_class.__name__} instance"
-                    )
-                    data = "data"
-                else:
-                    log.info(
-                        f"reading slice {slice_index} of {container_class.__name__},"
-                        f"will return the {container_class.__name__} instance"
-                    )
-                    data = f"data_{slice_index}"
-                _container = eval(
-                    f"module.{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
-                )
-                if issubclass(_container, TriggerMapContainer) or issubclass(
-                    _container, ArrayDataContainer
-                ):
                     for key, trigger in EventType.__members__.items():
                         try:
                             _container = eval(
-                                f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                                f"module."
+                                f"{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
                             )
                             waveforms_data = eval(
                                 f"reader._h5file.root.{data}.__members__"
@@ -343,7 +286,8 @@ class TriggerMapContainer(Container):
                             _waveforms_data = np.array(waveforms_data)[_mask]
                             if len(_waveforms_data) == 1:
                                 tableReader = reader.read(
-                                    table_name=f"/{data}/{_waveforms_data[0]}/{trigger.name}",
+                                    table_name=f"/{data}/\
+                                        {_waveforms_data[0]}/{trigger.name}",
                                     containers=_container,
                                 )
                                 # container.containers[data].containers[trigger] =
@@ -352,9 +296,9 @@ class TriggerMapContainer(Container):
 
                             else:
                                 log.info(
-                                    f"there is {len(_waveforms_data)} entry corresponding \
-                                        to a {container_class} table save,\
-                                            unable to load"
+                                    f"there is {len(_waveforms_data)} entry\
+                                        corresponding to a {container_class}\
+                                            table save, unable to load"
                                 )
                         except NoSuchNodeError as err:
                             log.warning(err)
@@ -379,10 +323,11 @@ class TriggerMapContainer(Container):
                 for key, trigger in EventType.__members__.items():
                     try:
                         _container = eval(
-                            f"module.{container.fields['containers'].default_factory.args[0].__name__}"
+                            f"module.{container.fields['containers'].default_factory.args[0].__name__}"  # noqa
                         )
                         tableReader = reader.read(
-                            table_name=f"/{data}/{_container.__name__}_{index_component}/{trigger.name}",
+                            table_name=f"/{data}/{_container.__name__}_\
+                                {index_component}/{trigger.name}",
                             containers=_container,
                         )
                         container.containers[trigger] = next(tableReader)

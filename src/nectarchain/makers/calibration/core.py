@@ -9,6 +9,9 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 
+__all__ = None
+
+
 class NectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     name = "CalibrationTool"
     # PIXELS_ID_COLUMN = "pixels_id"

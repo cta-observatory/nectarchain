@@ -9,7 +9,11 @@ from ctapipe_io_nectarcam.constants import N_SAMPLES
 from nectarchain.data.container import WaveformsContainer, WaveformsContainers
 from nectarchain.makers import WaveformsNectarCAMCalibrationTool
 
-"This test file test the overall workflow of the WaveformsNectarCAMCalibrationTool, covering also the EventsLoopNectarCAMCalibrationTool, which cannot be tested on data because the ArrayDataComponent within the WaveformsNectarCAMCalibrationTool is an abstract Component. However the EventsLoopNectarCAMCalibrationTool is still covered by unit test using pytest patches to mock the Component behavior."
+# This test file test the overall workflow of the WaveformsNectarCAMCalibrationTool,
+# covering also the EventsLoopNectarCAMCalibrationTool, which cannot be tested on
+# data because the ArrayDataComponent within the WaveformsNectarCAMCalibrationTool
+# is an abstract Component. However the EventsLoopNectarCAMCalibrationTool is still
+# covered by unit test using pytest patches to mock the Component behavior.
 
 
 class TestWaveformsNectarCAMCalibrationTool:
