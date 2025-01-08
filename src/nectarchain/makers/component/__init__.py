@@ -12,7 +12,7 @@ from .pedestal_component import PedestalEstimationComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
 from .spe import SPECombinedalgorithm, SPEHHValgorithm, SPEHHVStdalgorithm
-from .waveformsComponent import WaveformsComponent
+from .waveforms_component import WaveformsComponent
 
 __all__ = [
     "ArrayDataComponent",
