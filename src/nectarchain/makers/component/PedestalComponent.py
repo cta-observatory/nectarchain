@@ -24,12 +24,10 @@ __all__ = [
 
 
 class PedestalEstimationComponent(NectarCAMComponent):
-    """
-    Component that computes calibration pedestal coefficients from raw data.
-    Waveforms can be filtered based on time, standard deviation of the waveforms
-    or charge distribution within the sample.
-    Use the ``events_per_slice`` parameter of ``NectarCAMComponent`` to reduce
-    memory load.
+    """Component that computes calibration pedestal coefficients from raw data.
+    Waveforms can be filtered based on time, standard deviation of the waveforms or
+    charge distribution within the sample. Use the ``events_per_slice`` parameter of
+    ``NectarCAMComponent`` to reduce memory load.
 
     Parameters
     ----------
@@ -62,7 +60,6 @@ class PedestalEstimationComponent(NectarCAMComponent):
     pixel_mask_std_pixel_max : float
         Maximum value of pedestal standard deviation in a pixel above which the pixel is
         flagged as bad
-
     """
 
     ucts_tmin = Integer(
@@ -152,12 +149,10 @@ class PedestalEstimationComponent(NectarCAMComponent):
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
-        """
-        Component that computes calibration pedestal coefficients from raw data.
-        Waveforms can be filtered based on time, standard deviation of the waveforms
-        or charge distribution within the sample.
-        Use the ``events_per_slice`` parameter of ``NectarCAMComponent`` to
-        reduce memory load.
+        """Component that computes calibration pedestal coefficients from raw data.
+        Waveforms can be filtered based on time, standard deviation of the waveforms or
+        charge distribution within the sample. Use the ``events_per_slice`` parameter of
+        ``NectarCAMComponent`` to reduce memory load.
 
         Parameters
         ----------
@@ -208,8 +203,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
     @staticmethod
     def calculate_stats(waveformsContainers, wfs_mask, statistics):
-        """
-        Calculate statistics for the pedestals from a waveforms container.
+        """Calculate statistics for the pedestals from a waveforms container.
 
         Parameters
         ----------
@@ -250,8 +244,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return ped_stats
 
     def flag_bad_pixels(self, ped_stats, nevents):
-        """
-        Flag bad pixels based on pedestal properties
+        """Flag bad pixels based on pedestal properties.
 
         Parameters
         ----------
@@ -326,9 +319,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return pixel_mask
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        """
-        Fill the waveform container looping over the events of type SKY_PEDESTAL.
-        """
+        """Fill the waveform container looping over the events of type SKY_PEDESTAL."""
 
         if event.trigger.event_type == EventType.SKY_PEDESTAL:
             self.waveformsComponent(event=event, *args, **kwargs)
@@ -336,8 +327,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
             pass
 
     def timestamp_mask(self, tmin, tmax):
-        """
-        Generates a mask to filter waveforms outside the required time interval
+        """Generates a mask to filter waveforms outside the required time interval.
 
         Parameters
         ----------
@@ -383,10 +373,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return new_mask
 
     def waveformsStdFilter_mask(self, threshold):
-        """
-        Generates a mask to filter waveforms that have a standard deviation above
-        a threshold.
-        This option is effective for dark room verification data.
+        """Generates a mask to filter waveforms that have a standard deviation above a
+        threshold. This option is effective for dark room verification data.
 
         Parameters
         ----------
@@ -428,10 +416,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return new_mask
 
     def chargeDistributionFilter_mask(self, sigma_low, sigma_high):
-        """
-        Generates a mask to filter waveforms that have a charge in the tails of the
-        distribution.
-        This option is useful for data with NSB.
+        """Generates a mask to filter waveforms that have a charge in the tails of the
+        distribution. This option is useful for data with NSB.
 
         Parameters
         ----------
@@ -501,10 +487,8 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return new_mask
 
     def finish(self, *args, **kwargs):
-        """
-        Finish the component by filtering the waveforms and calculating the pedestal
-        quantities.
-        """
+        """Finish the component by filtering the waveforms and calculating the pedestal
+        quantities."""
 
         # Use only pedestal type events
         waveformsContainers = self.waveformsComponent.finish()

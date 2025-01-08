@@ -1,9 +1,5 @@
 import logging
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import copy
 
 import numpy as np
@@ -21,6 +17,10 @@ from .spe import (
     SPEnominalalgorithm,
     SPEnominalStdalgorithm,
 )
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = [
     "FlatFieldSingleNominalSPEStdNectarCAMComponent",
@@ -47,12 +47,14 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 
     # Windows_lenght = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows leght used for the savgol filter algorithm",
+    #                        help = "The windows leght used for the savgol 
+    # filter algorithm",
     # ).tag(config = True)
     #
     # Order = Integer(2,
     #                read_only = True,
-    #                help = "The order of the polynome used in the savgol filter algorithm",
+    #                help = "The order of the polynome used in the savgol 
+    # filter algorithm",
     # ).tag(config = True)
 
     asked_pixels_id = List(
@@ -79,7 +81,8 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
     #                 ).tag(config = True)
     #
     # extractor_kwargs = Dict(default_value = {},
-    #                        help = "The kwargs to be pass to the charge extractor method",
+    #                        help = "The kwargs to be pass to the charge extractor
+    # method",
     #                        ).tag(config = True)
 
     # constructor
