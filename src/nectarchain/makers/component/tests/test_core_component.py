@@ -14,7 +14,7 @@ def test_get_valid_component():
     assert isinstance(get_valid_component(), dict)
 
 
-class BaseTestArrayDataComponent:
+class TestArrayDataComponent:
     RUN_NUMBER = 3938
     RUN_FILE = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
     NPIXELS = 1834
@@ -92,8 +92,6 @@ class BaseTestArrayDataComponent:
     def event(self, eventsource):
         return next(eventsource.__iter__())
 
-
-class TestArrayDataComponent(BaseTestArrayDataComponent):
     @pytest.fixture
     @patch.multiple(ArrayDataComponent, __abstractmethods__=set())
     def instance(self, eventsource):
