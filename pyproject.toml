@@ -45,10 +45,6 @@ test = [
 dev = [
     "setuptools_scm",
 ]
-
-[tool.pytest.ini_options]
-addopts = "--ignore=src/nectarchain/user_scripts"
-
 docs = [
     "sphinx",
     "sphinx-autodoc-typehints",
@@ -58,11 +54,16 @@ docs = [
     "numpydoc",
     "tomli; python_version < '3.11'"
 ]
-
 # we can use self-references to simplify all
 all = [
     "nectarchain[test,docs,dev]",
 ]
+
+
+[tool.pytest.ini_options]
+addopts = "--ignore=src/nectarchain/user_scripts"
+
+
 
 [tool.setuptools.packages.find]
 where = ["src"]
