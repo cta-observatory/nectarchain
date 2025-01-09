@@ -9,11 +9,11 @@ from ...data.container import merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
 from .charges_component import ChargesComponent
 from .gain_component import GainNectarCAMComponent
-from .spe import SPECombinedalgorithm  # noqa
-from .spe import SPEHHValgorithm  # noqa
-from .spe import SPEHHVStdalgorithm  # noqa
-from .spe import SPEnominalalgorithm  # noqa
-from .spe import SPEnominalStdalgorithm  # noqa
+from .spe import SPECombinedalgorithm  # noqa: F401
+from .spe import SPEHHValgorithm  # noqa: F401
+from .spe import SPEHHVStdalgorithm  # noqa: F401
+from .spe import SPEnominalalgorithm  # noqa: F401
+from .spe import SPEnominalStdalgorithm  # noqa: F401
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
