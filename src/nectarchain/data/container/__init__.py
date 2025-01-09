@@ -10,7 +10,11 @@ from .core import (
     merge_map_ArrayDataContainer,
 )
 from .gain_container import GainContainer, SPEfitContainer
-from .pedestal_container import NectarCAMPedestalContainer, PedestalFlagBits
+from .pedestal_container import (
+    NectarCAMPedestalContainer,
+    NectarCAMPedestalContainers,
+    PedestalFlagBits,
+)
 from .waveforms_container import WaveformsContainer, WaveformsContainers
 
 __all__ = [
@@ -26,5 +30,6 @@ __all__ = [
     "GainContainer",
     "SPEfitContainer",
     "NectarCAMPedestalContainer",
+    "NectarCAMPedestalContainers",
     "PedestalFlagBits",
 ]
