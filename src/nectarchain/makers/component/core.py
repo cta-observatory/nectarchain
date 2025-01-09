@@ -113,7 +113,7 @@ class ArrayDataComponent(NectarCAMComponent):
         self.__ucts_event_counter = {}
         self.__event_type = {}
         self.__event_id = {}
-        self.__trig_patter_all = {}
+        self.__trig_pattern_all = {}
         self.__broken_pixels_hg = {}
         self.__broken_pixels_lg = {}
 
@@ -134,7 +134,7 @@ class ArrayDataComponent(NectarCAMComponent):
         self.__ucts_event_counter[f"{name}"] = []
         self.__event_type[f"{name}"] = []
         self.__event_id[f"{name}"] = []
-        self.__trig_patter_all[f"{name}"] = []
+        self.__trig_pattern_all[f"{name}"] = []
         self.__broken_pixels_hg[f"{name}"] = []
         self.__broken_pixels_lg[f"{name}"] = []
         self.trigger_list.append(trigger)
@@ -229,13 +229,18 @@ class ArrayDataComponent(NectarCAMComponent):
             event.nectarcam.tel[__class__.TEL_ID.default_value].evt.trigger_pattern
             is None
         ):
-            self.__trig_patter_all[f"{name}"].append(np.empty((4, N_PIXELS)).T)
+            self.__trig_pattern_all[f"{name}"].append(np.empty((4, N_PIXELS)).T)
         else:
-            self.__trig_patter_all[f"{name}"].append(
+            self.__trig_pattern_all[f"{name}"].append(
                 event.nectarcam.tel[
                     __class__.TEL_ID.default_value
                 ].evt.trigger_pattern.T
             )
+        broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
+            event, self._pixels_id
+        )
+        self._broken_pixels_hg[f"{name}"].append(broken_pixels_hg)
+        self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
 
         if kwargs.get("return_wfs", False):
             get_wfs_hg = event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id]
@@ -259,6 +264,8 @@ class ArrayDataComponent(NectarCAMComponent):
             pixel_id (ndarray): An array of pixel IDs for which the data needs to be
             selected.
             field (str): The name of the field to be selected from the container.
+            WARNING: This field have to be associated
+            to an array indexed by pixels
 
         Returns:
             ndarray: An array containing the selected data for the given pixel IDs.
@@ -432,6 +439,60 @@ class ArrayDataComponent(NectarCAMComponent):
             dtype=ArrayDataContainer.fields["broken_pixels_lg"].dtype,
         )
 
+    @property
+    def _ucts_timestamp(self):
+        """Returns the ucts_timestamp attribute.
+
+        Returns:
+            np.ndarray: The ucts_timestamp attribute.
+        """
+        return copy.deepcopy(self.__ucts_timestamp)
+
+    @property
+    def _ucts_busy_counter(self):
+        """Returns the ucts_busy_counter attribute.
+
+        Returns:
+            np.ndarray: The ucts_busy_counter attribute.
+        """
+        return copy.deepcopy(self.__ucts_busy_counter)
+
+    @property
+    def _ucts_event_counter(self):
+        """Returns the ucts_event_counter attribute.
+
+        Returns:
+            np.ndarray: The ucts_event_counter attribute.
+        """
+        return copy.deepcopy(self.__ucts_event_counter)
+
+    @property
+    def _event_id(self):
+        """Returns the event_id attribute.
+
+        Returns:
+            np.ndarray: The event_id attribute.
+        """
+        return copy.deepcopy(self.__event_id)
+
+    @property
+    def _event_type(self):
+        """Returns the event_type attribute.
+
+        Returns:
+            np.ndarray: The event_type attribute.
+        """
+        return copy.deepcopy(self.__event_type)
+
+    @property
+    def _trig_pattern_all(self):
+        """Returns the trig_pattern_all attribute.
+
+        Returns:
+            np.ndarray: The trig_pattern_all attribute.
+        """
+        return copy.deepcopy(self.__trig_pattern_all)
+
     def ucts_timestamp(self, trigger: EventType):
         """Returns an array of UCTS timestamps for the specified trigger type.
 
@@ -553,6 +614,6 @@ class ArrayDataComponent(NectarCAMComponent):
             trigger type.
         """
         return np.array(
-            self.__trig_patter_all[f"{__class__._get_name_trigger(trigger)}"],
+            self.__trig_pattern_all[f"{__class__._get_name_trigger(trigger)}"],
             dtype=ArrayDataContainer.fields["trig_pattern_all"].dtype,
         )

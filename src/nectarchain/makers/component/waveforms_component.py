@@ -145,12 +145,6 @@ class WaveformsComponent(ArrayDataComponent):
         self.__wfs_hg[f"{name}"].append(wfs_hg_tmp)
         self.__wfs_lg[f"{name}"].append(wfs_lg_tmp)
 
-        broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
-            event, self._pixels_id
-        )
-        self._broken_pixels_hg[f"{name}"].append(broken_pixels_hg)
-        self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
-
     def finish(self, *args, **kwargs):
         """Make the output container for the selected trigger types.
 
