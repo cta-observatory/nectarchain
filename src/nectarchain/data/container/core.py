@@ -261,7 +261,7 @@ class TriggerMapContainer(Container):
         """
         if isinstance(path, str):
             path = Path(path)
-        module = importlib.import_module(f"{container_class.__module__}")  # noqa
+        module = importlib.import_module(f"{container_class.__module__}")  # noqa :F841
         container = eval(f"module.{container_class.__name__}")()
 
         with HDF5TableReader(path) as reader:

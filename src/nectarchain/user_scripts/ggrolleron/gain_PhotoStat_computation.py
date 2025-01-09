@@ -138,7 +138,7 @@ def main(
     path = DataManagement.find_SPE_nominal(
         run_number=args.HHV_run_number,
         method="GlobalPeakWindowSum",
-        str_extractor_kwargs=f"window_width_{8}_window_shift_4",
+        str_extractor_kwargs=f"window_width_8_window_shift_4",
     )
     if len(path) == 1:
         log.info(
