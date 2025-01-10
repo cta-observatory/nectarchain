@@ -103,7 +103,7 @@ class SPEalgorithm(Component):
         help="The windows leght used for the savgol filter algorithm",
     ).tag(config=True)
 
-    Order = Integer(
+    order = Integer(
         2,
         read_only=True,
         help="The order of the polynome used in the savgol filter algorithm",
@@ -293,7 +293,7 @@ class SPEalgorithm(Component):
             print(coeff_mean)  # Output: [norm,peak_value_mean, peak_width_mean]
         """
         window_length = __class__.window_length.default_value
-        order = __class__.Order.default_value
+        order = __class__.order.default_value
         histo_smoothed = savgol_filter(counts, window_length, order)
         peaks = find_peaks(histo_smoothed, 10)
         peak_max = np.argmax(histo_smoothed[peaks[0]])
@@ -824,7 +824,7 @@ class SPEnominalalgorithm(SPEalgorithm):
                         )
                         result = pool.starmap_async(
                             __class__.run_fit,
-                            [(i, self.tol) for i in range(npix)],
+                            [(i, kwargs.get("tol", self.tol)) for i in range(npix)],
                             chunksize=chunksize,
                         )
                         result.wait()
@@ -841,7 +841,10 @@ class SPEnominalalgorithm(SPEalgorithm):
                 else:
                     self.log.info("running in mono-cpu")
                     t = time.time()
-                    res = [__class__.run_fit(i, self.tol) for i in range(npix)]
+                    res = [
+                        __class__.run_fit(i, kwargs.get("tol", self.tol))
+                        for i in range(npix)
+                    ]
                     self.log.info(
                         f"time for singleproc execution is {time.time() - t:.2e} sec"
                     )
