@@ -295,7 +295,7 @@ class SPEalgorithm(Component):
             print(coeff_mean)  # Output: [norm,peak_value_mean, peak_width_mean]
         """
         window_length = __class__.window_length.default_value
-        order = __class__.Order.default_value
+        order = __class__.order.default_value
         histo_smoothed = savgol_filter(counts, window_length, order)
         peaks = find_peaks(histo_smoothed, 10)
         peak_max = np.argmax(histo_smoothed[peaks[0]])
