@@ -44,7 +44,7 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 
     # window_length = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows leght used for the savgol
+    #                        help = "The windows length used for the savgol
     # filter algorithm",
     # ).tag(config = True)
     #
