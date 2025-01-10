@@ -285,6 +285,24 @@ class WaveformsComponent(ArrayDataComponent):
         """
         return copy.deepcopy(self.__geometry)
 
+    @property
+    def _wfs_lg(self):
+        """Returns a deep copy of the wfs_lg attribute.
+
+        Returns:
+            A deep copy of the wfs_lg attribute.
+        """
+        return copy.deepcopy(self.__wfs_lg)
+
+    @property
+    def _wfs_hg(self):
+        """Returns a deep copy of the wfs_hg attribute.
+
+        Returns:
+            A deep copy of the wfs_hg attribute.
+        """
+        return copy.deepcopy(self.__wfs_hg)
+
     def wfs_hg(self, trigger: EventType):
         """Returns the waveform data for the specified trigger type.
 
