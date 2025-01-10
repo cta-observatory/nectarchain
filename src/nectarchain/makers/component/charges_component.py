@@ -229,8 +229,9 @@ class ChargesComponent(ArrayDataComponent):
             or method in list_nectarchain_charge_extractor
         ):
             raise ArgumentError(
+                None,
                 f"method must be in {list_ctapipe_charge_extractor} or "
-                f"{list_nectarchain_charge_extractor}"
+                f"{list_nectarchain_charge_extractor}",
             )
         extractor_kwargs = __class__._get_extractor_kwargs_from_method_and_kwargs(
             method=method, kwargs=kwargs
@@ -603,7 +604,7 @@ class ChargesComponent(ArrayDataComponent):
             ), ChargesContainer.fields["peak_lg"].dtype.type(out[1])
         else:
             raise ArgumentError(
-                f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
+                None, f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
             )
 
     @staticmethod
