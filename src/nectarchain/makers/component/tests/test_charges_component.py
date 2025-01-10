@@ -13,7 +13,7 @@ from nectarchain.data.container import (
     WaveformsContainer,
     WaveformsContainers,
 )
-from nectarchain.makers.component import ArrayDataComponent, ChargesComponent
+from nectarchain.makers.component import ChargesComponent
 from nectarchain.makers.component.tests.test_core_component import (
     BaseTestArrayDataComponent,
 )
@@ -92,7 +92,7 @@ class TestChargesComponent(BaseTestArrayDataComponent):
         return wfs
 
     def test_init(self, instance):
-        assert issubclass(instance.__class__, ArrayDataComponent)
+        assert isinstance(instance, ChargesComponent)
         assert instance.method == self.METHOD
         assert instance.extractor_kwargs == self.EXTRACTOR_KWARGS
         assert isinstance(instance._charges_hg, dict)

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from nectarchain.data.container import WaveformsContainer, WaveformsContainers
-from nectarchain.makers.component import ArrayDataComponent, WaveformsComponent
+from nectarchain.makers.component import WaveformsComponent
 from nectarchain.makers.component.tests.test_core_component import (
     BaseTestArrayDataComponent,
 )
@@ -44,7 +44,7 @@ class TestWaveformsComponent(BaseTestArrayDataComponent):
         )
 
     def test_init(self, instance):
-        assert issubclass(instance.__class__, ArrayDataComponent)
+        assert isinstance(instance, WaveformsComponent)
         assert instance._geometry == instance.subarray.tel[instance.TEL_ID].camera
         assert isinstance(instance._wfs_lg, dict)
         assert isinstance(instance._wfs_hg, dict)
