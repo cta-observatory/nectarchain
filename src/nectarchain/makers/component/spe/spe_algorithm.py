@@ -97,7 +97,7 @@ def init_processes(
 
 
 class SPEalgorithm(Component):
-    Windows_lenght = Integer(
+    window_length = Integer(
         40,
         read_only=True,
         help="The windows leght used for the savgol filter algorithm",
@@ -292,9 +292,9 @@ class SPEalgorithm(Component):
             print(coeff)  # Output: [norm,peak_value, peak_width]
             print(coeff_mean)  # Output: [norm,peak_value_mean, peak_width_mean]
         """
-        windows_lenght = __class__.Windows_lenght.default_value
+        window_length = __class__.window_length.default_value
         order = __class__.Order.default_value
-        histo_smoothed = savgol_filter(counts, windows_lenght, order)
+        histo_smoothed = savgol_filter(counts, window_length, order)
         peaks = find_peaks(histo_smoothed, 10)
         peak_max = np.argmax(histo_smoothed[peaks[0]])
         peak_pos, peak_value = charge[peaks[0][peak_max]], counts[peaks[0][peak_max]]
@@ -314,7 +314,7 @@ class SPEalgorithm(Component):
                 charge,
                 histo_smoothed,
                 label=f"smoothed data with savgol filter (windows lenght : "
-                f"{windows_lenght}, order : {order})",
+                f"{window_length}, order : {order})",
             )
             ax.plot(
                 charge,
@@ -382,7 +382,7 @@ class SPEalgorithm(Component):
                 charge,
                 histo_smoothed,
                 label=f"smoothed data with savgol filter (windows length : "
-                f"{windows_lenght}, order : {order})",
+                f"{window_length}, order : {order})",
             )
             ax.plot(
                 charge,
