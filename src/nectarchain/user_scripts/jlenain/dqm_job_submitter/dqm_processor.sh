@@ -45,7 +45,9 @@ WRAPPER="singularity_wrapper.sh"
 # We can instantiate a particular container version:
 # CONTAINER="oras://ghcr.io/cta-observatory/nectarchain@sha256:cf5a812bdb1113d027facceec30009759535a8579eb4caf38f56143e65cb35e7"
 # or just use the latest available:
-CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
+# CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
+# of from CVMFS:
+CONTAINER="/cvmfs/sw.cta-observatory.org/software/containers/nectarchain-latest"
 OUTDIR=NectarCAM_DQM_Run${runnb}
 DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm
 
