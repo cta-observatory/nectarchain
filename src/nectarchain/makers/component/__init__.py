@@ -13,6 +13,8 @@ from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
 from .spe import SPECombinedalgorithm, SPEHHValgorithm, SPEHHVStdalgorithm
 from .waveforms_component import WaveformsComponent
+from .preFlatFieldComponent impor
+
 
 __all__ = [
     "ArrayDataComponent",
@@ -32,4 +34,5 @@ __all__ = [
     "PhotoStatisticNectarCAMComponent",
     "PhotoStatisticAlgorithm",
     "GainNectarCAMComponent",
+    "preFlatFieldComponent",
 ]

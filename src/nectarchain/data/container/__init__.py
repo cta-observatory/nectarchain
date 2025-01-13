@@ -33,3 +33,4 @@ __all__ = [
     "NectarCAMPedestalContainers",
     "PedestalFlagBits",
 ]
+from .flatfieldContainer import *
