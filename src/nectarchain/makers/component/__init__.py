@@ -1,13 +1,13 @@
 from .chargesComponent import *
 from .core import *
 from .FlatFieldSPEComponent import *
-from .PedestalComponent import *
 from .gainComponent import *
+from .PedestalComponent import *
 from .photostatistic_algorithm import *
 from .photostatistic_component import *
+from .preFlatFieldComponent import *
 from .spe import *
 from .waveformsComponent import *
-from .preFlatFieldComponent import *
 
 __all__ = [
     "ArrayDataComponent",
