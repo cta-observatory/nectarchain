@@ -7,6 +7,7 @@ from .photostatistic_algorithm import *
 from .photostatistic_component import *
 from .spe import *
 from .waveformsComponent import *
+from .preFlatFieldComponent import *
 
 __all__ = [
     "ArrayDataComponent",
@@ -24,4 +25,5 @@ __all__ = [
     "PedestalEstimationComponent",
     "PhotoStatisticNectarCAMComponent",
     "PhotoStatisticAlgorithm",
+    "preFlatFieldComponent",
 ]
