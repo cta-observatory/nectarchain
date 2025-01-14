@@ -7,6 +7,7 @@ from .core import (
     merge_map_ArrayDataContainer,
 )
 from .eventSource import *
+from .flatfieldContainer import *
 from .gainContainer import *
-from .waveformsContainer import *
 from .pedestalContainer import *
+from .waveformsContainer import *
