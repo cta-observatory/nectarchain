@@ -1,37 +1,26 @@
 import os
-import pathlib
 
-import matplotlib.pyplot as plt
+from nectarchain.makers.calibration import FlatfieldNectarCAMCalibrationTool
 
-# %%
-import numpy as np
-from ctapipe.containers import Field
-from ctapipe.core import Component
-from ctapipe.core.traits import ComponentNameList, Integer, List, Dict, Tuple
-from ctapipe.io import HDF5TableReader
-from ctapipe_io_nectarcam import constants
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from ctapipe.instrument import CameraGeometry
-from ctapipe.visualization import CameraDisplay
-from ctapipe.coordinates import EngineeringCameraFrame
+# Define the global environment variable NECTARCAMDATA (folder where are the runs)
+os.environ["NECTARCAMDATA"] = "./20231222"
 
-from nectarchain.data.container import (
-    ArrayDataContainer,
-    NectarCAMContainer,
-    TriggerMapContainer,
+run_number = 4940
+max_events = 10000
+window_width = 14
+
+# Call the tool
+tool = FlatfieldNectarCAMCalibrationTool(
+    progress_bar=True,
+    run_number=run_number,
+    max_events=max_events,
+    log_level=20,
+    window_width=window_width,
+    overwrite=True,
 )
-from ctapipe.containers import EventType
-from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
-from nectarchain.makers.component import ArrayDataComponent, NectarCAMComponent
-from nectarchain.utils import ComponentUtils
 
-from ctapipe.io import EventSource, EventSeeker
-from ctapipe_io_nectarcam import NectarCAMEventSource
-from astropy import units as u
-from astropy.time import Time
+tool.initialize()
+tool.setup()
 
-from scipy import signal
-from scipy.signal import find_peaks
-from scipy.interpolate import Rbf, InterpolatedUnivariateSpline
-from scipy.stats import chi2, norm
-import scipy
+tool.start()
+preFlatFieldOutput = tool.finish(return_output_component=True)[0]
