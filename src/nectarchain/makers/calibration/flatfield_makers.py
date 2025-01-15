@@ -19,7 +19,7 @@ __all__ = ["FlatfieldNectarCAMCalibrationTool"]
 
 
 class FlatfieldNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
-    name = "NectarCAM"
+    name = "FlatfieldNectarCAMCalibrationTool"
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
