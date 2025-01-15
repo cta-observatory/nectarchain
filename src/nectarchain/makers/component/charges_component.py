@@ -61,8 +61,7 @@ list_nectarchain_charge_extractor = ["gradient_extractor"]
     cache=True,
 )
 def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
-    """
-    Compute histogram of charge with numba
+    """Compute histogram of charge with numba.
 
     Parameters
     ----------
@@ -71,7 +70,6 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         mask_broken_pix (np.ndarray(pixels)): mask on broxen pixels
         _mask (np.ndarray(pixels,nbins)): mask
         hist_ma_data (np.ndarray(pixels,nbins)): histogram
-
     """
     # print(f"charge.shape = {charge.shape[0]}")
     # print(f"_mask.shape = {_mask.shape[0]}")
@@ -138,8 +136,7 @@ class ChargesComponent(ArrayDataComponent):
         self.__peak_lg = {}
 
     def _init_trigger_type(self, trigger_type: EventType, **kwargs):
-        """
-        Initializes the ChargesMaker based on the trigger type.
+        """Initializes the ChargesMaker based on the trigger type.
 
         Parameters
         ----------
@@ -149,7 +146,6 @@ class ChargesComponent(ArrayDataComponent):
         Returns
         -------
             None
-
         """
         super()._init_trigger_type(trigger_type, **kwargs)
         name = __class__._get_name_trigger(trigger_type)
@@ -212,8 +208,7 @@ class ChargesComponent(ArrayDataComponent):
 
     @staticmethod
     def _get_imageExtractor(method: str, subarray: SubarrayDescription, **kwargs):
-        """
-        Create an instance of a charge extraction method based on the provided method
+        """Create an instance of a charge extraction method based on the provided method
         name and subarray description.
 
         Parameters
@@ -250,8 +245,7 @@ class ChargesComponent(ArrayDataComponent):
         return imageExtractor
 
     def finish(self, *args, **kwargs):
-        """
-        Create an output container for the specified trigger type and method.
+        """Create an output container for the specified trigger type and method.
 
         Parameters
         ----------
@@ -263,7 +257,6 @@ class ChargesComponent(ArrayDataComponent):
         Returns
         -------
             list: A list of ChargesContainer objects.
-
         """
         output = ChargesContainers()
         for i, trigger in enumerate(self.trigger_list):
@@ -296,8 +289,7 @@ class ChargesComponent(ArrayDataComponent):
 
     @staticmethod
     def sort(chargesContainer: ChargesContainer, method: str = "event_id"):
-        """
-        Sorts the charges in a ChargesContainer object based on the specified method.
+        """Sorts the charges in a ChargesContainer object based on the specified method.
 
         Parameters
         ----------
@@ -346,9 +338,8 @@ class ChargesComponent(ArrayDataComponent):
 
     @staticmethod
     def select_charges_hg(chargesContainer: ChargesContainer, pixel_id: np.ndarray):
-        """
-        Selects the charges from the ChargesContainer object for the given pixel_id and
-        returns the result transposed.
+        """Selects the charges from the ChargesContainer object for the given pixel_id
+        and returns the result transposed.
 
         Parameters
         ----------
@@ -371,9 +362,8 @@ class ChargesComponent(ArrayDataComponent):
 
     @staticmethod
     def select_charges_lg(chargesContainer: ChargesContainer, pixel_id: np.ndarray):
-        """
-        Selects the charges from the ChargesContainer object for the given pixel_id and
-        returns the result transposed.
+        """Selects the charges from the ChargesContainer object for the given pixel_id
+        and returns the result transposed.
 
         Parameters
         ----------
@@ -395,8 +385,7 @@ class ChargesComponent(ArrayDataComponent):
         return res
 
     def charges_hg(self, trigger: EventType):
-        """
-        Returns the charges for a specific trigger type as a NumPy array of unsigned
+        """Returns the charges for a specific trigger type as a NumPy array of unsigned
         16-bit integers.
 
         Parameters
@@ -415,8 +404,7 @@ class ChargesComponent(ArrayDataComponent):
         )
 
     def charges_lg(self, trigger: EventType):
-        """
-        Returns the charges for a specific trigger type as a NumPy array of unsigned
+        """Returns the charges for a specific trigger type as a NumPy array of unsigned
         16-bit integers.
 
         Parameters
@@ -435,8 +423,7 @@ class ChargesComponent(ArrayDataComponent):
         )
 
     def peak_hg(self, trigger: EventType):
-        """
-        Returns the peak charges for a specific trigger type as a NumPy array of
+        """Returns the peak charges for a specific trigger type as a NumPy array of
         unsigned 16-bit integers.
 
         Parameters
@@ -455,8 +442,7 @@ class ChargesComponent(ArrayDataComponent):
         )
 
     def peak_lg(self, trigger: EventType):
-        """
-        Returns the peak charges for a specific trigger type as a NumPy array of
+        """Returns the peak charges for a specific trigger type as a NumPy array of
         unsigned 16-bit integers.
 
         Parameters
@@ -492,8 +478,7 @@ class ChargesComponent(ArrayDataComponent):
         method: str = "FullWaveformSum",
         **kwargs,
     ) -> ChargesContainer:
-        """
-        Create a ChargesContainer object from waveforms using the specified charge
+        """Create a ChargesContainer object from waveforms using the specified charge
         extraction method.
 
         Parameters
@@ -546,8 +531,7 @@ class ChargesComponent(ArrayDataComponent):
         tel_id: int = None,
         **kwargs,
     ):
-        """
-        Compute charge from waveforms.
+        """Compute charge from waveforms.
 
         Parameters
         ----------
@@ -626,8 +610,7 @@ class ChargesComponent(ArrayDataComponent):
     def histo_hg(
         chargesContainer: ChargesContainer, n_bins: int = 1000, autoscale: bool = True
     ) -> ma.masked_array:
-        """
-        Computes histogram of high gain charges from a ChargesContainer object.
+        """Computes histogram of high gain charges from a ChargesContainer object.
 
         Parameters
         ----------
@@ -657,8 +640,7 @@ class ChargesComponent(ArrayDataComponent):
     def histo_lg(
         chargesContainer: ChargesContainer, n_bins: int = 1000, autoscale: bool = True
     ) -> ma.masked_array:
-        """
-        Computes histogram of low gain charges from a ChargesContainer object.
+        """Computes histogram of low gain charges from a ChargesContainer object.
 
         Parameters
         ----------
@@ -691,9 +673,8 @@ class ChargesComponent(ArrayDataComponent):
         n_bins: int = 1000,
         autoscale: bool = True,
     ) -> ma.masked_array:
-        """
-        Computes histogram of charges for a given field from a ChargesContainer object.
-        Numba is used to compute histograms in a vectorized way.
+        """Computes histogram of charges for a given field from a ChargesContainer
+        object. Numba is used to compute histograms in a vectorized way.
 
         Parameters
         ----------

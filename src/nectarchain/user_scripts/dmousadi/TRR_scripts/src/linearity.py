@@ -9,8 +9,9 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from lmfit.models import Model
-from test_tools_components import LinearityTestTool
-from utils import (
+
+from .tools_components import LinearityTestTool
+from .utils import (
     adc_to_pe,
     err_ratio,
     err_sum,

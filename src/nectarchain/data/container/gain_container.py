@@ -1,25 +1,27 @@
 import logging
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import numpy as np
 from ctapipe.containers import Field
 
 from .core import NectarCAMContainer
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
+
 __all__ = ["GainContainer", "SPEfitContainer"]
 
 
 class GainContainer(NectarCAMContainer):
-    """
-    Class representing a GainContainer.
+    """Class representing a GainContainer.
 
-    This class is a subclass of NectarCAMContainer and provides additional fields and methods specific to gain calibration data.
+    This class is a subclass of NectarCAMContainer and provides additional fields and
+    methods specific to gain calibration data.
 
     Attributes:
-        is_valid (np.ndarray): Array of booleans indicating the validity of each gain value.
+        is_valid (np.ndarray): Array of booleans indicating the validity of each gain
+        value.
         high_gain (np.ndarray): Array of high gain values.
         low_gain (np.ndarray): Array of low gain values.
         pixels_id (np.ndarray): Array of pixel IDs.
@@ -54,10 +56,10 @@ class GainContainer(NectarCAMContainer):
 
 
 class SPEfitContainer(GainContainer):
-    """
-    Class representing a SPEfitContainer.
+    """Class representing a SPEfitContainer.
 
-    This class is a subclass of GainContainer and provides additional fields specific to single photoelectron (SPE) fit data.
+    This class is a subclass of GainContainer and provides additional fields specific to
+    single photoelectron (SPE) fit data.
 
     Attributes:
         likelihood (np.ndarray): Array of likelihood values.

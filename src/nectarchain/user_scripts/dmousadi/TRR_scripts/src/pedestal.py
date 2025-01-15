@@ -10,10 +10,11 @@ import numpy as np
 import pandas as pd
 from ctapipe.containers import EventType
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from test_tools_components import PedestalTool
-from utils import adc_to_pe, pe2photons, photons2pe
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
+
+from .tools_components import PedestalTool
+from .utils import adc_to_pe, pe2photons, photons2pe
 
 
 def get_args():

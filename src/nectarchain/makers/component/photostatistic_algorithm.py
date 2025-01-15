@@ -1,15 +1,7 @@
-import logging
-import sys
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
-
 import copy
+import logging
 import os
 
-import matplotlib
 import numpy as np
 from astropy.visualization import quantity_support
 from ctapipe.core import Component
@@ -18,6 +10,11 @@ from scipy.stats import linregress
 
 from ...data.container import ChargesContainer, GainContainer, SPEfitContainer
 from ..component import ChargesComponent
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 __all__ = ["PhotoStatisticAlgorithm"]
 
@@ -118,9 +115,8 @@ class PhotoStatisticAlgorithm(Component):
         return out
 
     def __check_shape(self) -> None:
-        """
-        Checks the shape of certain attributes and raises an exception if the shape is not as expected.
-        """
+        """Checks the shape of certain attributes and raises an exception if the shape
+        is not as expected."""
         try:
             self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[
                 0
@@ -159,17 +155,18 @@ class PhotoStatisticAlgorithm(Component):
     def plot_correlation(
         photoStat_gain: np.ndarray, SPE_gain: np.ndarray
     ) -> plt.Figure:
-        """
-        Plot the correlation between the photo statistic gain and the single photoelectron (SPE) gain.
+        """Plot the correlation between the photo statistic gain and the single
+        photoelectron (SPE) gain.
 
         Args:
             photoStat_gain (np.ndarray): Array of photo statistic gain values.
             SPE_gain (np.ndarray): Array of SPE gain values.
 
         Returns:
-            fig (plt.Figure): The figure object containing the scatter plot and the linear fit line.
+            fig (plt.Figure): The figure object containing the scatter plot
+            and the linear fit line.
         """
-        matplotlib.use("TkAgg")
+        # matplotlib.use("TkAgg")
         # Create a mask to filter the data points based on certain criteria
         mask = (photoStat_gain > 20) * (SPE_gain > 0) * (photoStat_gain < 80)
 
@@ -185,7 +182,8 @@ class PhotoStatisticAlgorithm(Component):
         x = np.linspace(photoStat_gain[mask].min(), photoStat_gain[mask].max(), 1000)
 
         # Define a lambda function for the linear fit line
-        y = lambda x: a * x + b
+        def y(x):
+            return a * x + b
 
         with quantity_support():
             # Create a scatter plot of the filtered data points
@@ -197,7 +195,8 @@ class PhotoStatisticAlgorithm(Component):
                 x,
                 y(x),
                 color="red",
-                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
+                label=f"linear fit,\n a = {a:.2e},\n b = {b:.2e},\n r = {r:.2e},\n\
+                    p_value = {p_value:.2e},\n std_err = {std_err:.2e}",
             )
 
             # Plot the line y = x
@@ -211,8 +210,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def SPE_resolution(self) -> float:
-        """
-        Returns a deep copy of the SPE resolution.
+        """Returns a deep copy of the SPE resolution.
 
         Returns:
             float: The SPE resolution.
@@ -221,8 +219,8 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def sigmaPedHG(self) -> float:
-        """
-        Calculates and returns the standard deviation of Pedcharge_hg multiplied by the square root of coefCharge_FF_Ped.
+        """Calculates and returns the standard deviation of Pedcharge_hg multiplied by
+        the square root of coefCharge_FF_Ped.
 
         Returns:
             float: The standard deviation of Pedcharge_hg.
@@ -231,8 +229,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def sigmaChargeHG(self) -> float:
-        """
-        Calculates and returns the standard deviation of FFcharge_hg minus meanPedHG.
+        """Calculates and returns the standard deviation of FFcharge_hg minus meanPedHG.
 
         Returns:
             float: The standard deviation of FFcharge_hg minus meanPedHG.
@@ -241,8 +238,8 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def meanPedHG(self) -> float:
-        """
-        Calculates and returns the mean of Pedcharge_hg multiplied by coefCharge_FF_Ped.
+        """Calculates and returns the mean of Pedcharge_hg multiplied by
+        coefCharge_FF_Ped.
 
         Returns:
             float: The mean of Pedcharge_hg.
@@ -251,8 +248,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def meanChargeHG(self) -> float:
-        """
-        Calculates and returns the mean of FFcharge_hg minus meanPedHG.
+        """Calculates and returns the mean of FFcharge_hg minus meanPedHG.
 
         Returns:
             float: The mean of FFcharge_hg minus meanPedHG.
@@ -261,8 +257,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def BHG(self) -> float:
-        """
-        Calculates and returns the BHG value.
+        """Calculates and returns the BHG value.
 
         Returns:
             float: The BHG value.
@@ -282,8 +277,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def gainHG(self) -> float:
-        """
-        Calculates and returns the gain for high gain charge data.
+        """Calculates and returns the gain for high gain charge data.
 
         Returns:
             float: The gain for high gain charge data.
@@ -296,8 +290,8 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def sigmaPedLG(self) -> float:
-        """
-        Calculates and returns the standard deviation of Pedcharge_lg multiplied by the square root of coefCharge_FF_Ped.
+        """Calculates and returns the standard deviation of Pedcharge_lg multiplied by
+        the square root of coefCharge_FF_Ped.
 
         Returns:
             float: The standard deviation of Pedcharge_lg.
@@ -306,8 +300,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def sigmaChargeLG(self) -> float:
-        """
-        Calculates and returns the standard deviation of FFcharge_lg minus meanPedLG.
+        """Calculates and returns the standard deviation of FFcharge_lg minus meanPedLG.
 
         Returns:
             float: The standard deviation of FFcharge_lg minus meanPedLG.
@@ -316,8 +309,8 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def meanPedLG(self) -> float:
-        """
-        Calculates and returns the mean of Pedcharge_lg multiplied by coefCharge_FF_Ped.
+        """Calculates and returns the mean of Pedcharge_lg multiplied by
+        coefCharge_FF_Ped.
 
         Returns:
             float: The mean of Pedcharge_lg.
@@ -326,8 +319,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def meanChargeLG(self) -> float:
-        """
-        Calculates and returns the mean of FFcharge_lg minus meanPedLG.
+        """Calculates and returns the mean of FFcharge_lg minus meanPedLG.
 
         Returns:
             float: The mean of FFcharge_lg minus meanPedLG.
@@ -336,8 +328,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def BLG(self) -> float:
-        """
-        Calculates and returns the BLG value.
+        """Calculates and returns the BLG value.
 
         Returns:
             float: The BLG value.
@@ -357,8 +348,7 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def gainLG(self) -> float:
-        """
-        Calculates and returns the gain for low gain charge data.
+        """Calculates and returns the gain for low gain charge data.
 
         Returns:
             float: The gain for low gain charge data.

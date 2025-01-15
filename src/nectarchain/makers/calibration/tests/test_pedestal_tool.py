@@ -1,11 +1,10 @@
 import tempfile
 
 import numpy as np
-import tables
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import N_SAMPLES
 
-from nectarchain.data.container import NectarCAMPedestalContainer, PedestalFlagBits
+from nectarchain.data.container import NectarCAMPedestalContainers, PedestalFlagBits
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 
 runs = {
@@ -32,8 +31,7 @@ class TestPedestalCalibrationTool:
         expected_ucts_timestamp_min = [1674462932637854793, 1715007113924900896]
         expected_ucts_timestamp_max = [1674462932695877994, 1715007123524920096]
 
-        for i, run in enumerate(runs["Run number"]):
-            run_number = runs["Run number"][i]
+        for i, run_number in enumerate(runs["Run number"]):
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
             with tempfile.TemporaryDirectory() as tmpdirname:
@@ -52,7 +50,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -80,57 +78,75 @@ class TestPedestalCalibrationTool:
                 # Check output on disk
                 # FIXME: use tables for the moment, update when h5 reader in nectarchain
                 #  is working
-                with tables.open_file(outfile) as h5file:
-                    for s in range(n_slices[i]):
-                        # Check individual groups
-                        group_name = "data_{}".format(s + 1)
-                        assert group_name in h5file.root.__members__
-                        table = h5file.root[group_name][
-                            NectarCAMPedestalContainer.__name__
-                        ][0]
-                        assert table["nsamples"] == N_SAMPLES
-                        assert np.allclose(table["nevents"], events_per_slice, atol=7)
-                        assert np.shape(table["pixels_id"]) == (n_pixels,)
-                        assert np.shape(table["pedestal_mean_hg"]) == (
-                            n_pixels,
-                            N_SAMPLES,
-                        )
-                        assert np.shape(table["pedestal_mean_lg"]) == (
-                            n_pixels,
-                            N_SAMPLES,
-                        )
-                        assert np.shape(table["pedestal_std_hg"]) == (
-                            n_pixels,
-                            N_SAMPLES,
-                        )
-                        assert np.shape(table["pedestal_std_lg"]) == (
-                            n_pixels,
-                            N_SAMPLES,
-                        )
-                    # Check combined results
-                    group_name = "data_combined"
-                    table = h5file.root[group_name][
-                        NectarCAMPedestalContainer.__name__
-                    ][0]
-                    assert table["nsamples"] == N_SAMPLES
-                    assert np.all(table["nevents"] == max_events[i])
-                    assert np.shape(table["pixels_id"]) == (n_pixels,)
-                    assert table["ucts_timestamp_min"] == np.uint64(
-                        expected_ucts_timestamp_min[i]
-                    )
-                    assert table["ucts_timestamp_max"] == np.uint64(
-                        expected_ucts_timestamp_max[i]
-                    )
-                    assert np.shape(table["pedestal_mean_hg"]) == (n_pixels, N_SAMPLES)
-                    assert np.shape(table["pedestal_mean_lg"]) == (n_pixels, N_SAMPLES)
-                    assert np.shape(table["pedestal_std_hg"]) == (n_pixels, N_SAMPLES)
-                    assert np.shape(table["pedestal_std_lg"]) == (n_pixels, N_SAMPLES)
-                    assert np.allclose(table["pedestal_mean_hg"], 245.0, atol=20.0)
-                    assert np.allclose(table["pedestal_mean_lg"], 245.0, atol=20.0)
-                    assert np.allclose(table["pedestal_std_hg"], 10, atol=10)
+                pedestalContainers = next(
+                    NectarCAMPedestalContainers.from_hdf5(outfile)
+                )
+                j = 0
+                for key, pedestalContainer in pedestalContainers.containers.items():
+                    if "combined" in key:
+                        continue
+                    # Check individual groups
+                    group_name = "data_{}".format(i + 1)
+                    assert group_name in pedestalContainers.containers.keys()
+                    assert pedestalContainer.nsamples == N_SAMPLES
                     assert np.allclose(
-                        table["pedestal_std_lg"], 2.5, atol=2.0 if i == 0 else 2.3
+                        pedestalContainer.nevents, events_per_slice, atol=7
                     )
+                    assert np.shape(pedestalContainer.pixels_id) == (n_pixels,)
+                    assert np.shape(pedestalContainer.pedestal_mean_hg) == (
+                        n_pixels,
+                        N_SAMPLES,
+                    )
+                    assert np.shape(pedestalContainer.pedestal_mean_lg) == (
+                        n_pixels,
+                        N_SAMPLES,
+                    )
+                    assert np.shape(pedestalContainer.pedestal_std_hg) == (
+                        n_pixels,
+                        N_SAMPLES,
+                    )
+                    assert np.shape(pedestalContainer.pedestal_std_lg) == (
+                        n_pixels,
+                        N_SAMPLES,
+                    )
+                    j += 1
+                # Check combined results
+                pedestalContainers = next(
+                    NectarCAMPedestalContainers.from_hdf5(outfile)
+                )
+                group_name = "data_combined"
+                pedestalContainer = pedestalContainers.containers[group_name]
+                assert pedestalContainer.nsamples == N_SAMPLES
+                assert np.all(pedestalContainer.nevents == max_events[i])
+                assert np.shape(pedestalContainer.pixels_id) == (n_pixels,)
+                assert pedestalContainer.ucts_timestamp_min == np.uint64(
+                    expected_ucts_timestamp_min[i]
+                )
+                assert pedestalContainer.ucts_timestamp_max == np.uint64(
+                    expected_ucts_timestamp_max[i]
+                )
+                assert np.shape(pedestalContainer.pedestal_mean_hg) == (
+                    n_pixels,
+                    N_SAMPLES,
+                )
+                assert np.shape(pedestalContainer.pedestal_mean_lg) == (
+                    n_pixels,
+                    N_SAMPLES,
+                )
+                assert np.shape(pedestalContainer.pedestal_std_hg) == (
+                    n_pixels,
+                    N_SAMPLES,
+                )
+                assert np.shape(pedestalContainer.pedestal_std_lg) == (
+                    n_pixels,
+                    N_SAMPLES,
+                )
+                assert np.allclose(pedestalContainer.pedestal_mean_hg, 245.0, atol=20.0)
+                assert np.allclose(pedestalContainer.pedestal_mean_lg, 245.0, atol=20.0)
+                assert np.allclose(pedestalContainer.pedestal_std_hg, 10, atol=10)
+                assert np.allclose(
+                    pedestalContainer.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.3
+                )
 
     def test_timesel(self):
         """
@@ -143,7 +159,7 @@ class TestPedestalCalibrationTool:
         max_events = [n_slices[0] * events_per_slice, 13]
         tmin = [1674462932637860000, 1715007113924900000]
         tmax = [1674462932695700000, 1715007123524921000]
-        for i, run in enumerate(runs["Run number"]):
+        for i, _ in enumerate(runs["Run number"]):
             run_number = runs["Run number"][i]
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
@@ -166,7 +182,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -198,7 +214,7 @@ class TestPedestalCalibrationTool:
         n_slices = [3, 2]
         events_per_slice = 10
         max_events = [n_slices[0] * events_per_slice, 13]
-        for i, run in enumerate(runs["Run number"]):
+        for i, _ in enumerate(runs["Run number"]):
             run_number = runs["Run number"][i]
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
@@ -219,7 +235,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -252,7 +268,7 @@ class TestPedestalCalibrationTool:
         n_slices = [2, 1]
         events_per_slice = 10
         max_events = [n_slices[0] * events_per_slice - 1, 12]
-        for i, run in enumerate(runs["Run number"]):
+        for i, _ in enumerate(runs["Run number"]):
             run_number = runs["Run number"][i]
             run_file = runs["Run file"][i]
             n_pixels = runs["N pixels"][i]
@@ -274,7 +290,7 @@ class TestPedestalCalibrationTool:
                     pixel_mask_nevents_min=1,
                 )
 
-                tool.initialize()
+                # tool.initialize()
                 tool.setup()
 
                 tool.start()
@@ -322,7 +338,7 @@ class TestPedestalCalibrationTool:
                 filter_method=None,
             )
 
-            tool.initialize()
+            # tool.initialize()
             tool.setup()
 
             tool.start()
@@ -332,13 +348,16 @@ class TestPedestalCalibrationTool:
             flag_bit = PedestalFlagBits.NEVENTS
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.MEAN_PEDESTAL,
-                         PedestalFlagBits.STD_SAMPLE,
-                         PedestalFlagBits.STD_PIXEL]
+            flag_bits = [
+                PedestalFlagBits.MEAN_PEDESTAL,
+                PedestalFlagBits.STD_SAMPLE,
+                PedestalFlagBits.STD_PIXEL,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
-            # For all the following tests we set the acceptable values to a range out of what
+            # For all the following tests we set the acceptable values to a range
+            # out of what
             # is normal. Since our test run is good we expect to flag all pixels
 
             # Condition on mean pedestal value
@@ -352,11 +371,11 @@ class TestPedestalCalibrationTool:
                 overwrite=True,
                 filter_method=None,
                 pixel_mask_nevents_min=1,
-                pixel_mask_mean_min=1000.,
-                pixel_mask_mean_max=1100.,
+                pixel_mask_mean_min=1000.0,
+                pixel_mask_mean_max=1100.0,
             )
 
-            tool.initialize()
+            # tool.initialize()
             tool.setup()
 
             tool.start()
@@ -366,9 +385,11 @@ class TestPedestalCalibrationTool:
             flag_bit = PedestalFlagBits.MEAN_PEDESTAL
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.NEVENTS,
-                         PedestalFlagBits.STD_SAMPLE,
-                         PedestalFlagBits.STD_PIXEL]
+            flag_bits = [
+                PedestalFlagBits.NEVENTS,
+                PedestalFlagBits.STD_SAMPLE,
+                PedestalFlagBits.STD_PIXEL,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
@@ -383,22 +404,25 @@ class TestPedestalCalibrationTool:
                 overwrite=True,
                 filter_method=None,
                 pixel_mask_nevents_min=1,
-                pixel_mask_std_sample_min=100.
+                pixel_mask_std_sample_min=100.0,
             )
 
-            tool.initialize()
+            # tool.initialize()
             tool.setup()
 
             tool.start()
             output = tool.finish(return_output_component=True)[0]
 
-            # Check that all pixels were flagged as having a small sample std
+            # Check that all pixels were flagged as
+            # having a small sample std
             flag_bit = PedestalFlagBits.STD_SAMPLE
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.NEVENTS,
-                         PedestalFlagBits.MEAN_PEDESTAL,
-                         PedestalFlagBits.STD_PIXEL]
+            flag_bits = [
+                PedestalFlagBits.NEVENTS,
+                PedestalFlagBits.MEAN_PEDESTAL,
+                PedestalFlagBits.STD_PIXEL,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)
 
@@ -413,10 +437,10 @@ class TestPedestalCalibrationTool:
                 overwrite=True,
                 filter_method=None,
                 pixel_mask_nevents_min=1,
-                pixel_mask_std_pixel_max=0.01
+                pixel_mask_std_pixel_max=0.01,
             )
 
-            tool.initialize()
+            # tool.initialize()
             tool.setup()
 
             tool.start()
@@ -426,8 +450,10 @@ class TestPedestalCalibrationTool:
             flag_bit = PedestalFlagBits.STD_PIXEL
             assert np.all(output.pixel_mask & flag_bit == flag_bit)
             # Check that other flags were not raised
-            flag_bits = [PedestalFlagBits.NEVENTS,
-                         PedestalFlagBits.MEAN_PEDESTAL,
-                         PedestalFlagBits.STD_SAMPLE]
+            flag_bits = [
+                PedestalFlagBits.NEVENTS,
+                PedestalFlagBits.MEAN_PEDESTAL,
+                PedestalFlagBits.STD_SAMPLE,
+            ]
             for flag_bit in flag_bits:
                 assert np.all(output.pixel_mask & flag_bit == 0)

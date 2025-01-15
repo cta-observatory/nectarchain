@@ -1,12 +1,13 @@
 import logging
 
+from ctapipe.core.traits import Bool
+
+from ..core import NectarCAMCalibrationTool
+
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-from ctapipe.core.traits import Bool
-
-from ..core import NectarCAMCalibrationTool
 
 __all__ = ["GainNectarCAMCalibrationTool"]
 

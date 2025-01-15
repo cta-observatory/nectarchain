@@ -1,6 +1,7 @@
 import logging
 from abc import ABC
 
+import numpy as np
 from ctapipe.visualization import CameraDisplay
 from matplotlib import pyplot as plt
 
@@ -10,7 +11,7 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import numpy as np
+__all__ = ["ContainerDisplay"]
 
 
 class ContainerDisplay(ABC):
@@ -29,14 +30,16 @@ class ContainerDisplay(ABC):
             image = container.charges_hg
             pixels_id = container.pixels_id
         elif isinstance(container, WaveformsContainer):
-            image = container.wfs_hg.sum(axis=2)
+            image = container.wfs_hg.mean(axis=2)
             pixels_id = container.pixels_id
         else:
             log.error(
-                "container can't be displayed, must be a ChargesContainer or a WaveformsContainer"
+                "container can't be displayed, must be a ChargesContainer or a\
+                    WaveformsContainer"
             )
             raise Exception(
-                "container can't be displayed, must be a ChargesContainer or a WaveformsContainer"
+                "container can't be displayed, must be a ChargesContainer or a\
+                WaveformsContainer"
             )
 
         highlighten_pixels = np.array([], dtype=int)
@@ -55,8 +58,8 @@ class ContainerDisplay(ABC):
 
         disp = CameraDisplay(geometry=geometry, image=image[evt], cmap=cmap)
         disp.highlight_pixels(highlighten_pixels, color="r", linewidth=2)
-        disp.add_colorbar()
-        return disp
+        disp.add_colorbar(label="ADC")
+        return {"disp": disp, "highlighten_pixels": highlighten_pixels}
 
     @staticmethod
     def plot_waveform(waveformsContainer: WaveformsContainer, evt, **kwargs):

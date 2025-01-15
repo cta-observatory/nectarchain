@@ -1,12 +1,12 @@
+import argparse
+import copy
+import glob
 import json
 import logging
 import os
 import sys
 import time
 from pathlib import Path
-import argparse
-import copy
-import glob
 
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import (
@@ -71,7 +71,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--extractor_kwargs",
-    default={"window_width": 16, "window_shift": 4},
+    default={"window_width": 10, "window_shift": 4},
     help="charge extractor kwargs",
     type=json.loads,
 )
@@ -217,6 +217,14 @@ if __name__ == "__main__":
     kwargs.pop("figpath")
     kwargs.pop("display")
     kwargs.pop("HHV_run_number")
+
+    # args.HHV_run_number = 3942
+    # kwargs['run_number'] = [3936]
+    # kwargs['overwrite'] = True
+    # kwargs['asked_pixels_id'] = [45,600,800]
+    # kwargs['multiproc'] = False
+    # args.display = True
+    # args.figpath = "/home/ggroller/projects/nectarchain/src/nectarchain/user_scripts/ggrolleron/local/figures"
 
     log.info(f"arguments passed to main are : {kwargs}")
     main(log=log, **kwargs)

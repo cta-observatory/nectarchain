@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
 from iminuit import Minuit
-from test_tools_components import DeadtimeTestTool
-from utils import (
+
+from .tools_components import DeadtimeTestTool
+from .utils import (
     ExponentialFitter,
     deadtime_and_expo_fit,
     deadtime_labels,

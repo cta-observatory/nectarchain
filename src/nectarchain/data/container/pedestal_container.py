@@ -2,19 +2,24 @@ import logging
 from enum import IntFlag, auto, unique
 
 import numpy as np
-from ctapipe.containers import Field
+from ctapipe.containers import Field, Map, partial
 
-from .core import NectarCAMContainer
+from .core import NectarCAMContainer, TriggerMapContainer
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+__all__ = [
+    "NectarCAMPedestalContainer",
+    "PedestalFlagBits",
+    "NectarCAMPedestalContainers",
+]
+
 
 @unique
 class PedestalFlagBits(IntFlag):
-    """
-    Define the bits corresponding to pedestal-related flags
+    """Define the bits corresponding to pedestal-related flags.
 
     NEVENTS:        Number of events below the acceptable minimum value
     MEAN_PEDESTAL:  Mean pedestal outside acceptable range
@@ -31,8 +36,7 @@ class PedestalFlagBits(IntFlag):
 
 
 class NectarCAMPedestalContainer(NectarCAMContainer):
-    """
-    A container that holds estimated pedestals
+    """A container that holds estimated pedestals.
 
     Fields:
         nsamples (int): The number of samples in the waveforms.
@@ -104,4 +108,20 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
         description="Flag that identifies bad pixels. The flag is a binary mask. \
         The meaning of the mask bits is defined in the class\
          ~nectarchain.data.container.PedestalFlagBits",
+    )
+
+
+class NectarCAMPedestalContainers(TriggerMapContainer):
+    """Class representing a NectarCAMPedestalContainers.This class inherits from the
+    `TriggerMapContainer` class and is used to store slices of data
+    mappings of `NectarCAMPedestalContainer`.
+
+    Attributes:
+        containers (Field): A field representing the slices
+        of data mapping of `NectarCAMPedestalContainer`.
+    """
+
+    containers = Field(
+        default_factory=partial(Map, NectarCAMPedestalContainer),
+        description="slices of data mapping of NectarCAMPedestalContainer",
     )

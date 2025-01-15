@@ -1,9 +1,4 @@
 import logging
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import os
 import pathlib
 
@@ -11,6 +6,11 @@ from ctapipe.core.traits import ComponentNameList
 
 from .component import NectarCAMComponent
 from .core import EventsLoopNectarCAMCalibrationTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 __all__ = ["WaveformsNectarCAMCalibrationTool"]
 

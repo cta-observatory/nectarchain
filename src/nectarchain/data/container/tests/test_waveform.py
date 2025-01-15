@@ -1,7 +1,4 @@
-import glob
-
 import numpy as np
-import pytest
 from ctapipe.containers import EventType
 from ctapipe.io import HDF5TableWriter
 
@@ -112,7 +109,7 @@ class TestWaveformsContainer:
             mode="w",
             group_name="data",
         )
-        writer.write(table_name="WaveformsContainer", containers=waveform_container)
+        writer.write(table_name="WaveformsContainer_0", containers=waveform_container)
         writer.close()
 
         loaded_waveform_container = next(WaveformsContainer.from_hdf5(tmp_path))

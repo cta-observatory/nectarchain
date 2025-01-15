@@ -1,12 +1,12 @@
+import copy
 import logging
+
+import astropy.units as u
+import numpy as np
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-import copy
-
-import astropy.units as u
-import numpy as np
 
 __all__ = ["Parameter", "Parameters"]
 
@@ -42,7 +42,11 @@ class Parameter:
         )
 
     def __str__(self):
-        return f"name : {self.__name}, value : {self.__value}, error : {self.__error}, unit : {self.__unit}, min : {self.__min}, max : {self.__max},frozen : {self.__frozen}"
+        return (
+            f"name : {self.__name}, value : {self.__value}, error : {self.__error},"
+            f"unit : {self.__unit}, min : {self.__min}, max : {self.__max},"
+            f"frozen : {self.__frozen}"
+        )
 
     @property
     def name(self):
