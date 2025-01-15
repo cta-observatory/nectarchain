@@ -49,6 +49,13 @@ parser.add_argument(
     default=False,
     help="dry run (does not actually submit jobs)",
 )
+parser.add_argument(
+    "-l",
+    "--local",
+    action="store_true",
+    default=False,
+    help="submit DIRAC jobs in local mode",
+)
 parser.add_argument("--log", default="info", help="debug output", type=str)
 args = parser.parse_args()
 
@@ -196,7 +203,11 @@ Aborting...
     j.setInputSandbox(sandboxlist)
 
     if not args.dry_run:
-        res = dirac.submitJob(
-            j
-        )  # , mode='local')  # for local execution, simulating a DIRAC job on the local machine, instead of submitting it to a DIRAC Computing Element
+        if args.local:
+            # For local execution, simulating a DIRAC job on the local machine, instead
+            # of submitting it to a DIRAC Computing Element
+            res = dirac.submitJob(j, mode="local")
+        else:
+            res = dirac.submitJob(j)
+
         logger.info(f"Submission Result: {res['Value']}")
