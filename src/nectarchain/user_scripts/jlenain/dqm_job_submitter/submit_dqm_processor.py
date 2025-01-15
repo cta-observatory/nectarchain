@@ -166,7 +166,8 @@ for run in runlist:
     # j.setExecutable(f'{executable_wrapper}', '<SOME POSSIBLE ARGUMENTS such as run number>')
     j.setExecutable(f"{executable_wrapper}", f"-r {run}")
     # Force job to be run from a given Computing Element:
-    # j.setDestination('LCG.GRIF.fr')
+    j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
+    # j.setTag(["16GBMemory"])
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")
     j.setBannedSites(
