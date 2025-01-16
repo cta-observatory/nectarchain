@@ -246,7 +246,7 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["ChargeContainer"]
+            dataset = group["ChargeContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
@@ -616,7 +616,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["ToMContainer"]
+            dataset = group["ToMContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
@@ -1036,7 +1036,7 @@ class PedestalTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["PedestalContainer"]
+            dataset = group["PedestalContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
@@ -1243,7 +1243,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["UCTSContainer"]
+            dataset = group["UCTSContainer_0"]
             data = dataset[:]
             for tup in data:
                 try:
@@ -1315,7 +1315,7 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["UCTSContainer"]
+            dataset = group["UCTSContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
