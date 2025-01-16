@@ -7,13 +7,9 @@ from ctapipe.core.traits import ComponentNameList
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 
-from .core import NectarCAMCalibrationTool
-
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
-
-from .core import NectarCAMCalibrationTool
 
 __all__ = ["FlatfieldNectarCAMCalibrationTool"]
 
@@ -23,7 +19,7 @@ class FlatfieldNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["preFlatFieldComponent"],
+        default_value=["PreFlatFieldComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
@@ -35,4 +31,3 @@ class FlatfieldNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/FlatFieldTests/{filename}"
         )
-

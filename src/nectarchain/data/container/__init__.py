@@ -9,6 +9,7 @@ from .core import (
     get_array_keys,
     merge_map_ArrayDataContainer,
 )
+from .flatfield_container import FlatFieldContainer
 from .gain_container import GainContainer, SPEfitContainer
 from .pedestal_container import (
     NectarCAMPedestalContainer,
@@ -32,5 +33,5 @@ __all__ = [
     "NectarCAMPedestalContainer",
     "NectarCAMPedestalContainers",
     "PedestalFlagBits",
+    "FlatFieldContainer",
 ]
-from .flatfieldContainer import *

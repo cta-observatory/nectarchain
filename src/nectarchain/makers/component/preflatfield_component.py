@@ -13,10 +13,10 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-__all__ = ["preFlatFieldComponent"]
+__all__ = ["PreFlatFieldComponent"]
 
 
-class preFlatFieldComponent(NectarCAMComponent):
+class PreFlatFieldComponent(NectarCAMComponent):
     """
     Component that computes flat field coefficients from raw data.
 
