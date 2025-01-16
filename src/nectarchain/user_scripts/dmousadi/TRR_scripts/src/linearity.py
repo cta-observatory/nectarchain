@@ -2,22 +2,17 @@
 
 import argparse
 import os
-import pathlib
 import pickle
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 from lmfit.models import Model
-
-from .tools_components import LinearityTestTool
-from .utils import (
-    adc_to_pe,
+from tools_components import LinearityTestTool
+from utils import (
     err_ratio,
     err_sum,
-    filters,
     linear_fit_function,
-    optical_density_390ns,
     plot_parameters,
     trasmission_390ns,
 )

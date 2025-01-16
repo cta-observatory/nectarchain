@@ -3,8 +3,6 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
-from ctapipe.utils import get_dataset_path
-from iminuit import Minuit
 from lmfit.models import Model
 from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
@@ -421,7 +419,6 @@ def photons2pe(x):
 
 # from federica's notebook
 class ExponentialFitter:
-
     """
     Represents an exponential fitter class that computes the expected distribution and the minus 2 log likelihood for a given dataset and exponential parameters.
 
