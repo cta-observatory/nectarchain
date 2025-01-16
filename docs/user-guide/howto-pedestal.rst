@@ -25,7 +25,7 @@ processed in slices with a fixed number of events set by the
 
 The pedestal
 estimation tool inherits the configurable parameters of the
-`~nectarchain.makers.component.PedestalComponent.PedestalEstimationComponent`.
+`~nectarchain.makers.component.pedestal_component.PedestalEstimationComponent`.
 The data can be filtered based on time using the ``ucts_tmin`` and
 ``ucts_tmax`` parameters and to eliminate outlier waveforms using the ``filter_method`` parameter. Two different methods to exclude outlier
 waveforms are implemented:
@@ -46,11 +46,11 @@ To run the example script:
 Inspect the results
 =========================
 The results are stored in a
-`~nectarchain.data.container.pedestalContainer.NectarCAMPedestalContainer`. The
+`~nectarchain.data.container.pedestal_container.NectarCAMPedestalContainer`. The
 results include information on pixels that were flagged as having
 an abnormal behavior during the computation of the pedestals. The
 flags are defined in in
-`~nectarchain.data.container.pedestalContainer.PedestalFlagBits`. The
+`~nectarchain.data.container.pedestal_container.PedestalFlagBits`. The
 results are accessible on the fly if the tool is run interactively (as in the example above) and stored in a `.h5` file.
 
 The user script `nectarchain/user_scripts/ltibaldo/show_pedestal_output.py` provides an example of how to access the results from disk and produce some plots:

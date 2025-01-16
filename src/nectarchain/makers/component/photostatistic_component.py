@@ -1,10 +1,5 @@
-import logging
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import copy
+import logging
 
 from ctapipe.containers import EventType
 from ctapipe.core.traits import List, Path, Unicode
@@ -13,16 +8,22 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 from ...data.container import SPEfitContainer, merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
-from .chargesComponent import ChargesComponent
-from .gainComponent import GainNectarCAMComponent
-from .photostatistic_algorithm import PhotoStatisticAlgorithm
+from .charges_component import ChargesComponent
+from .gain_component import GainNectarCAMComponent
+from .photostatistic_algorithm import PhotoStatisticAlgorithm  # noqa: F401
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 __all__ = ["PhotoStatisticNectarCAMComponent"]
 
 
 class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
     SPE_result = Path(
-        help="the path of the SPE result container computed with very high voltage data",
+        help="the path of the SPE result container computed with very\
+            high voltage data",
     ).tag(config=True)
     PhotoStatAlgorithm = Unicode(
         "PhotoStatisticAlgorithm",
@@ -103,7 +104,8 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
             self.Ped_chargesComponent(event=event, *args, **kwargs)
         else:
             self.log.warning(
-                f"event {event.index.event_id} is event type {event.trigger.event_type} which is not used here"
+                f"event {event.index.event_id} is event type {event.trigger.event_type}"
+                f"which is not used here"
             )
 
     def finish(self, *args, **kwargs):
@@ -130,5 +132,5 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
             parent=self,
             **self._PhotoStatAlgorithm_kwargs,
         )
-        fit_output = photo_stat.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
+        _ = photo_stat.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
         return photo_stat.results

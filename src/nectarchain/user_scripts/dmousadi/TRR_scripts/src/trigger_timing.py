@@ -8,8 +8,9 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-from test_tools_components import TriggerTimingTestTool
-from utils import pe2photons
+
+from .tools_components import TriggerTimingTestTool
+from .utils import pe2photons
 
 
 def get_args():

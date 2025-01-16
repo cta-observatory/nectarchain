@@ -1,6 +1,5 @@
 import numpy as np
-import pytest
-from ctapipe.containers import Container, EventType, Field
+from ctapipe.containers import EventType, Field
 from ctapipe.io import HDF5TableWriter
 
 from nectarchain.data.container import (
@@ -120,9 +119,9 @@ class TestArrayDataContainer:
             mode="w",
             group_name="data",
         )
-        writer.write(table_name="ArrayDataContainer", containers=arrayDataContainer)
+        writer.write(table_name="ArrayDataContainer_0", containers=arrayDataContainer)
         writer.close()
-        loaded_arrayDataContainer = next(arrayDataContainer.from_hdf5(tmp_path))
+        loaded_arrayDataContainer = next(ArrayDataContainer.from_hdf5(tmp_path))
         assert isinstance(loaded_arrayDataContainer, ArrayDataContainer)
         assert loaded_arrayDataContainer.run_number == arrayDataContainer.run_number
         assert (

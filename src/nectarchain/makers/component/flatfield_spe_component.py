@@ -1,10 +1,5 @@
-import logging
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 import copy
+import logging
 
 import numpy as np
 from ctapipe.core.traits import List, Unicode
@@ -12,15 +7,17 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
 from ...data.container import merge_map_ArrayDataContainer
 from ...utils import ComponentUtils
-from .chargesComponent import ChargesComponent
-from .gainComponent import GainNectarCAMComponent
-from .spe import (
-    SPECombinedalgorithm,
-    SPEHHValgorithm,
-    SPEHHVStdalgorithm,
-    SPEnominalalgorithm,
-    SPEnominalStdalgorithm,
-)
+from .charges_component import ChargesComponent
+from .gain_component import GainNectarCAMComponent
+from .spe import SPECombinedalgorithm  # noqa: F401
+from .spe import SPEHHValgorithm  # noqa: F401
+from .spe import SPEHHVStdalgorithm  # noqa: F401
+from .spe import SPEnominalalgorithm  # noqa: F401
+from .spe import SPEnominalStdalgorithm  # noqa: F401
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = [
     "FlatFieldSingleNominalSPEStdNectarCAMComponent",
@@ -47,12 +44,14 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 
     # Windows_lenght = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows leght used for the savgol filter algorithm",
+    #                        help = "The windows leght used for the savgol
+    # filter algorithm",
     # ).tag(config = True)
     #
     # Order = Integer(2,
     #                read_only = True,
-    #                help = "The order of the polynome used in the savgol filter algorithm",
+    #                help = "The order of the polynome used in the savgol
+    # filter algorithm",
     # ).tag(config = True)
 
     asked_pixels_id = List(
@@ -79,7 +78,8 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
     #                 ).tag(config = True)
     #
     # extractor_kwargs = Dict(default_value = {},
-    #                        help = "The kwargs to be pass to the charge extractor method",
+    #                        help = "The kwargs to be pass to the charge extractor
+    # method",
     #                        ).tag(config = True)
 
     # constructor
@@ -133,7 +133,7 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
             spe_fit = eval(self.SPEfitalgorithm).create_from_chargesContainer(
                 self._chargesContainers, parent=self, **self._SPEfitalgorithm_kwargs
             )
-            fit_output = spe_fit.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
+            _ = spe_fit.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
             n_asked_pix = (
                 len(self._chargesContainers.pixels_id)
                 if self.asked_pixels_id is None

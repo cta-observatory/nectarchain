@@ -28,12 +28,12 @@ class gradient_extractor(ImageExtractor):
                 shape[0] * shape[1], 1
             )
 
-            y = waveforms - (ped_mean) @ (
+            _ = waveforms - (ped_mean) @ (
                 np.ones(1, shape[2])
             )  # waveforms without pedestal
         else:
             log.info("do not substract pedestal")
-            y = waveforms
+            _ = waveforms
 
         waveforms.reshape(shape[0], shape[1], shape[2])
 
@@ -80,15 +80,17 @@ def extract_charge(y, height_peak, fixed_window):
             xi[peaks[max_peak_index]] < 40
         ):  # Search the adaptive integration window
             # calculate total gradients (not used, only for plot)
-            yi_grad_tot = np.gradient(yi, 1)
+            _ = np.gradient(yi, 1)
             maxposition = peaks[max_peak_index]
-            # calcualte grandients starting from the max peak and going to the left to find the left margin of the window
+            # calcualte grandients starting from the max peak and going to the left to
+            # find the left margin of the window
             yi_left = yi[:maxposition]
             yi_grad_left = np.gradient(yi_left[::-1], 0.9)
             change_grad_pos_left = (
                 np.where(yi_grad_left[:-1] * yi_grad_left[1:] < 0)[0] + 1
             )[0]
-            # calcualte grandients starting from the max peak and going to the right to find the right margin of the window
+            # calcualte grandients starting from the max peak and going to the right to
+            # find the right margin of the window
             yi_right = yi[maxposition:]
             yi_grad_right = np.gradient(yi_right, 0.5)
             change_grad_pos_right = (

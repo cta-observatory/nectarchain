@@ -25,7 +25,7 @@ from scipy.special import gammainc
 
 from ....data.container import ChargesContainer, SPEfitContainer
 from ....utils import MPE2, MeanValueError, Statistics, UtilsMinuit, weight_gaussian
-from ..chargesComponent import ChargesComponent
+from ..charges_component import ChargesComponent
 from .parameters import Parameter, Parameters
 
 mplstyle.use("fast")
@@ -71,9 +71,7 @@ class ContextFit:
 def init_processes(
     _class, minuitParameters_array: np.ndarray, charge: np.ndarray, counts: np.ndarray
 ):
-    """
-    Initialize each process in the process pool with global variable fit_array.
-    """
+    """Initialize each process in the process pool with global variable fit_array."""
     global _minuitParameters_array
     global _charge
     global _counts
@@ -168,8 +166,7 @@ class SPEalgorithm(Component):
 
     # methods
     def read_param_from_yaml(self, parameters_file, only_update=False) -> None:
-        """
-        Reads parameters from a YAML file and updates the internal parameters of the
+        """Reads parameters from a YAML file and updates the internal parameters of the
         FlatFieldSPEMaker class.
 
         Parameters
@@ -210,9 +207,8 @@ class SPEalgorithm(Component):
     def _update_parameters(
         parameters: Parameters, charge: np.ndarray, counts: np.ndarray, **kwargs
     ) -> Parameters:
-        """
-        Update the parameters of the FlatFieldSPEMaker class based on the input charge
-        and counts data.
+        """Update the parameters of the FlatFieldSPEMaker class based on the input
+        charge and counts data.
 
         Parameters
         ----------
@@ -269,8 +265,7 @@ class SPEalgorithm(Component):
     def _get_mean_gaussian_fit(
         charge: np.ndarray, counts: np.ndarray, pixel_id=None, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Perform a Gaussian fit on the data to determine the pedestal and mean values.
+        """Perform a Gaussian fit on the data to determine the pedestal and mean values.
 
         Parameters
         ----------
@@ -465,8 +460,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         parent=None,
         **kwargs,
     ) -> None:
-        """
-        Initializes the FlatFieldSingleHHVSPEMaker object.
+        """Initializes the FlatFieldSingleHHVSPEMaker object.
 
         Parameters
         ----------
@@ -495,9 +489,8 @@ class SPEnominalalgorithm(SPEalgorithm):
     def create_from_chargesContainer(
         cls, signal: ChargesContainer, config=None, parent=None, **kwargs
     ):
-        """
-        Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts data
-        from a ChargesContainer object.
+        """Creates an instance of FlatFieldSingleHHVSPEMaker using charge and counts
+        data from a ChargesContainer object.
 
         Parameters
         ----------
@@ -524,39 +517,30 @@ class SPEnominalalgorithm(SPEalgorithm):
     # getters and setters
     @property
     def charge(self):
-        """
-        Returns a deep copy of the ``__charge`` attribute.
-        """
+        """Returns a deep copy of the ``__charge`` attribute."""
         return copy.deepcopy(self.__charge)
 
     @property
     def _charge(self):
-        """
-        Returns the ``__charge`` attribute.
-        """
+        """Returns the ``__charge`` attribute."""
         return self.__charge
 
     @property
     def counts(self):
-        """
-        Returns a deep copy of the ``__counts`` attribute.
-        """
+        """Returns a deep copy of the ``__counts`` attribute."""
         return copy.deepcopy(self.__counts)
 
     @property
     def _counts(self):
-        """
-        Returns the ``__counts`` attribute.
-        """
+        """Returns the ``__counts`` attribute."""
         return self.__counts
 
     # methods
     def _fill_results_table_from_dict(
         self, dico: dict, pixels_id: np.ndarray, return_fit_array: bool = True
     ) -> None:
-        """
-        Populates the results table with fit values and errors for each pixel based on
-        the dictionary provided as input.
+        """Populates the results table with fit values and errors for each pixel based
+        on the dictionary provided as input.
 
         Parameters
         ----------
@@ -627,9 +611,8 @@ class SPEnominalalgorithm(SPEalgorithm):
         counts: np.ndarray,
         **kwargs,
     ):
-        """
-        Calculates the chi-square value using the MPE2 function.
-        The different parameters are explained in `Caroff et al. (2019) <CAROFF>`_.
+        """Calculates the chi-square value using the MPE2 function. The different
+        parameters are explained in `Caroff et al. (2019) <CAROFF>`_.
 
         .. _CAROFF: https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC
 
@@ -681,8 +664,7 @@ class SPEnominalalgorithm(SPEalgorithm):
     def _make_minuitParameters_array_from_parameters(
         self, pixels_id: np.ndarray = None, **kwargs
     ) -> np.ndarray:
-        """
-        Create an array of Minuit fit instances based on the parameters and data for
+        """Create an array of Minuit fit instances based on the parameters and data for
         each pixel.
 
         Parameters
@@ -705,7 +687,7 @@ class SPEnominalalgorithm(SPEalgorithm):
 
         for i, _id in enumerate(pixels_id):
             index = np.where(self.pixels_id == _id)[0][0]
-            parameters = __class__._update_parameters(
+            parameters = self._update_parameters(
                 self.parameters,
                 self._charge[index].data[~self._charge[index].mask],
                 self._counts[index].data[~self._charge[index].mask],
@@ -726,8 +708,7 @@ class SPEnominalalgorithm(SPEalgorithm):
 
     @staticmethod
     def run_fit(i: int, tol: float) -> dict:
-        """
-        Perform a fit on a specific pixel using the Minuit package.
+        """Perform a fit on a specific pixel using the Minuit package.
 
         Parameters
         ----------
@@ -964,10 +945,10 @@ class SPEnominalalgorithm(SPEalgorithm):
         pedestalWidth: float,
         luminosity: float,
         likelihood: float,
+        **kwargs,
     ) -> tuple:
-        """
-        Generate a plot of the data and a model fit for a specific pixel.
-        The different parameters are explained in `Caroff et al. (2019) <CAROFF>`_.
+        """Generate a plot of the data and a model fit for a specific pixel. The
+        different parameters are explained in `Caroff et al. (2019) <CAROFF>`_.
 
         .. _CAROFF: https://ui.adsabs.harvard.edu/abs/2019SPIE11119E..1WC
 
@@ -1002,9 +983,12 @@ class SPEnominalalgorithm(SPEalgorithm):
         -------
         : tuple
             A tuple containing the generated plot figure and the axes of the plot.
-
         """
-        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        if kwargs.get("ax", False) and kwargs.get("fig", False):
+            fig = kwargs.get("fig")
+            ax = kwargs.get("ax")
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(8, 8))
         ax.errorbar(charge, counts, np.sqrt(counts), zorder=0, fmt=".", label="data")
         ax.plot(
             charge,
@@ -1032,8 +1016,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         return fig, ax
 
     def display(self, pixels_id: np.ndarray, package="pyqtgraph", **kwargs) -> None:
-        """
-        Display and save the plot for each specified pixel ID.
+        """Display and save the plot for each specified pixel ID.
 
         Parameters
         ----------
@@ -1109,9 +1092,7 @@ class SPEnominalalgorithm(SPEalgorithm):
 
 
 class SPEHHValgorithm(SPEnominalalgorithm):
-    """
-    Class to perform fit of the SPE HHV signal with ``n`` and ``pp`` free.
-    """
+    """Class to perform fit of the SPE HHV signal with ``n`` and ``pp`` free."""
 
     parameters_file = Unicode(
         "parameters_SPEHHV.yaml",
@@ -1119,14 +1100,14 @@ class SPEHHValgorithm(SPEnominalalgorithm):
         help="The name of the SPE fit parameters file",
     ).tag(config=True)
     tol = Float(
-        1e40,
+        1e5,
         help="The tolerance used for minuit",
         read_only=True,
     ).tag(config=True)
 
 
 class SPEnominalStdalgorithm(SPEnominalalgorithm):
-    """Class to perform fit of the SPE signal with ``n`` and ``pp`` fixed"""
+    """Class to perform fit of the SPE signal with ``n`` and ``pp`` fixed."""
 
     parameters_file = Unicode(
         "parameters_SPEnominalStd.yaml",
@@ -1143,8 +1124,7 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
         parent=None,
         **kwargs,
     ) -> None:
-        """
-        Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
+        """Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
 
         Parameters
         ----------
@@ -1168,10 +1148,8 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
         self.__fix_parameters()
 
     def __fix_parameters(self) -> None:
-        """
-        Fixes the values of the ``n`` and ``pp`` parameters by setting their frozen
-        attribute to True.
-        """
+        """Fixes the values of the ``n`` and ``pp`` parameters by setting their frozen
+        attribute to True."""
         self.log.info("updating parameters by fixing pp and n")
         pp = self._parameters["pp"]
         pp.frozen = True
@@ -1186,7 +1164,7 @@ class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
         help="The name of the SPE fit parameters file",
     ).tag(config=True)
     tol = Float(
-        1e40,
+        1e5,
         help="The tolerance used for minuit",
         read_only=True,
     ).tag(config=True)
@@ -1200,7 +1178,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
     ).tag(config=True)
 
     tol = Float(
-        1e5,
+        1e-1,
         help="The tolerance used for minuit",
         read_only=True,
     ).tag(config=True)
@@ -1224,8 +1202,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         parent=None,
         **kwargs,
     ) -> None:
-        """
-        Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
+        """Initializes a new instance of the FlatFieldSingleHHVStdSPEMaker class.
 
         Parameters
         ----------
@@ -1248,7 +1225,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         )
 
         self.__fix_parameters()
-        self._nectarGainSPEresult = SPEfitContainer.from_hdf5(self.SPE_result)
+        self._nectarGainSPEresult = next(SPEfitContainer.from_hdf5(self.SPE_result))
         if (
             len(
                 pixels_id[
@@ -1268,8 +1245,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
             )
 
     def __fix_parameters(self) -> None:
-        """
-        Fixes the parameters ``n``, ``pp``, ``res``, and possibly ``luminosity``.
+        """Fixes the parameters ``n``, ``pp``, ``res``, and possibly ``luminosity``.
 
         Parameters
         ----------
@@ -1288,10 +1264,11 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
             luminosity = self._parameters["luminosity"]
             luminosity.frozen = True
 
-    def _make_fit_array_from_parameters(self, pixels_id=None, **kwargs):
-        """
-        Generates the fit array from the fixed parameters and the fitted data obtained
-        from a 1400V run.
+    def _make_minuitParameters_array_from_parameters(
+        self, pixels_id: np.ndarray = None, **kwargs
+    ) -> np.ndarray:
+        """Generates the fit array from the fixed parameters and the fitted data
+        obtained from a 1400V run.
 
         Parameters
         ----------
@@ -1305,7 +1282,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         : array-like
             The fit array.
         """
-        return super()._make_fit_array_from_parameters(
+        return super()._make_minuitParameters_array_from_parameters(
             pixels_id=pixels_id,
             nectarGainSPEresult=self._nectarGainSPEresult,
             **kwargs,
@@ -1320,9 +1297,8 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         nectarGainSPEresult: QTable,
         **kwargs,
     ):
-        """
-        Updates the parameters with the fixed values from the fitted data obtained from
-        a 1400V run.
+        """Updates the parameters with the fixed values from the fitted data obtained
+        from a 1400V run.
 
         Parameters
         ----------
@@ -1354,9 +1330,9 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
 
         index = np.where(pixel_id == nectarGainSPEresult.pixels_id)[0][0]
 
-        resolution.value = nectarGainSPEresult.resolution[index]
-        pp.value = nectarGainSPEresult.pp[index]
-        n.value = nectarGainSPEresult.n[index]["n"]
+        resolution.value = nectarGainSPEresult.resolution[index][0]
+        pp.value = nectarGainSPEresult.pp[index][0]
+        n.value = nectarGainSPEresult.n[index][0]
 
         if luminosity.frozen:
             luminosity.value = nectarGainSPEresult.luminosity[index].value
