@@ -243,7 +243,7 @@ def main():
                     "linearity_range"
                 ][1]
             ],
-            fit_function(
+            linear_fit_function(
                 true[
                     plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
                         "linearity_range"
@@ -296,7 +296,7 @@ def main():
 
         # residuals
 
-        pred = fit_function(true, a, b)  # prediction
+        pred = linear_fit_function(true, a, b)  # prediction
         pred_err = a_err * true + b_err  # a,b uncorrelated
 
         resid = (ch_charge - pred) / ch_charge
@@ -326,7 +326,7 @@ def main():
     ratio = ratio_sorted[:, 1]
     ratio_std = ratio_sorted[:, 2]
 
-    model = model = Model(fit_function)
+    model = model = Model(linear_fit_function)
     params = model.make_params(a=100, b=0)
     ratio_fit = model.fit(
         ratio[10:-4], params, weights=1 / ratio_std[10:-4], x=true[10:-4]
@@ -337,7 +337,7 @@ def main():
     axs[2].errorbar(true, ratio, yerr=ratio_std, ls="", color="C1", marker="o")
     axs[2].plot(
         true[10:-4],
-        fit_function(
+        linear_fit_function(
             true[10:-4], ratio_fit.params["a"].value, ratio_fit.params["b"].value
         ),
         ls="-",
