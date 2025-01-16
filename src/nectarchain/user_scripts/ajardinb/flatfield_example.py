@@ -3,7 +3,7 @@ import os
 from nectarchain.makers.calibration import FlatfieldNectarCAMCalibrationTool
 
 # Define the global environment variable NECTARCAMDATA (folder where are the runs)
-os.environ["NECTARCAMDATA"] = "./20231222"
+# os.environ["NECTARCAMDATA"] = "./20231222"
 
 run_number = 4940
 max_events = 10000
