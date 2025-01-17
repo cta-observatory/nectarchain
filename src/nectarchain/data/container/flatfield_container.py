@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 from ctapipe.containers import Field
-from ctapipe.core.traits import List
 
 from .core import NectarCAMContainer
 
@@ -62,12 +61,12 @@ class FlatFieldContainer(NectarCAMContainer):
         description="amplitude integrated over the window width, per pixel per event",
     )
 
-    t_peak_per_pix_per_event = Field(
-        type=np.ndarray,
-        dtype=np.uint8,
-        ndim=3,
-        description="sample containing the pulse maximum, per pixel and per event",
-    )
+    # t_peak_per_pix_per_event = Field(
+    #    type=np.ndarray,
+    #    dtype=np.float32,
+    #    ndim=3,
+    #    description="sample containing the pulse maximum, per pixel and per event",
+    # )
 
     FF_coef = Field(
         type=np.ndarray,
@@ -84,8 +83,8 @@ class FlatFieldContainer(NectarCAMContainer):
     # )
 
     bad_pixels = Field(
-        type=List,
+        type=np.ndarray,
         dtype=np.uint16,
-        ndim=1,
+        ndim=2,
         description="pixels considered as bad in at least one gain channels",
     )
