@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Float, Integer
+from ctapipe.core.traits import Integer, List
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
@@ -28,11 +28,11 @@ class PreFlatFieldComponent(NectarCAMComponent):
     window_width: int
         duration of the extraction window in ns (default value = 12)
 
-    g: float
-        default gain value (default value = 58)
+    gain: list
+        array of gain value
 
-    hi_lo_ratio: float
-        default high gain to low gain ratio (default value = 13)
+    bad_pix: list
+        list of bad pixels (default value = [])
 
     """
 
@@ -45,16 +45,20 @@ class PreFlatFieldComponent(NectarCAMComponent):
         default_value=12,
         help="the duration of the extraction window in ns",
     ).tag(config=True)
-    # --< final window is 14 samples ! >--
 
-    g = Float(
-        default_value=58.0,
+    gain = List(
+        default_value=None,
         help="default gain value",
     ).tag(config=True)
 
-    hi_lo_ratio = Float(
-        default_value=13.0,
-        help="default high gain to low gain ratio",
+    # hi_lo_ratio = Float(
+    #    default_value=13.0,
+    #    help="default high gain to low gain ratio",
+    # ).tag(config=True)
+
+    bad_pix = List(
+        default_value=None,
+        help="list of bad pixels",
     ).tag(config=True)
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
@@ -67,42 +71,44 @@ class PreFlatFieldComponent(NectarCAMComponent):
         self.__event_id = []
         self.__amp_int_per_pix_per_event = []
         self.__FF_coef = []
+        self.__bad_pixels = []
+
+        print("gain")
+        print(type(self.gain))
+        print(self.gain)
+
+        print("bad_pixels")
+        print(type(self.bad_pix))
+        print(self.bad_pix)
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        wfs = []
-        wfs_pedsub = []
-
         if event.trigger.event_type.value == EventType.FLATFIELD.value:
             # print("event :", (self.__event_id, self.__event_type))
             self.__event_id.append(np.uint32(event.index.event_id))
             self.__event_type.append(event.trigger.event_type.value)
             self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
 
-            wfs.append(event.r0.tel[0].waveform)  # not saved
+            wfs = event.r0.tel[0].waveform
 
             # subtract pedestal using the mean of the 20 first samples
             wfs_pedsub = self.subtract_pedestal(wfs, 20)
 
             # get the masked array for integration window
-            t_peak = np.argmax(wfs_pedsub, axis=3)
+            t_peak = np.argmax(wfs_pedsub, axis=-1)
             masked_wfs = self.make_masked_array(
                 t_peak, self.window_shift, self.window_width
             )
-            # --< I didn't find a better way to do than using this masked array >--
+
+            # mask bad pixels
+            self.__bad_pixels.append(self.bad_pix)
+            masked_wfs[:, self.bad_pix, :] = False
 
             # get integrated amplitude and mean amplitude over all pixels per event
-            amp_int_per_pix_per_event = np.sum(
-                wfs_pedsub[0], axis=2, where=masked_wfs.astype("bool")
-            )
+            amp_int_per_pix_per_event = np.sum(wfs_pedsub, axis=-1, where=masked_wfs)
             self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
-            # mean_amp_cam_per_event = np.mean(amp_int_per_pix_per_event, axis=-1)
+            # --< We could use ctapipe.image.extractor.LocalPeakWindowSum >--
 
-            # get efficiency and flat field coefficient
-            gain = [self.g, self.g / self.hi_lo_ratio]
-
-            amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event[:] / (
-                np.expand_dims(gain[:], axis=-1)
-            )
+            amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event[:] / self.gain[:]
             mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
 
             eff = np.divide(
@@ -126,7 +132,7 @@ class PreFlatFieldComponent(NectarCAMComponent):
             wfs_pedsub: wavefroms subtracted from the pedestal
         """
 
-        ped_mean = np.mean(wfs[0][:, :, 0:window], axis=2)
+        ped_mean = np.mean(wfs[:, :, 0:window], axis=2)
         wfs_pedsub = wfs - np.expand_dims(ped_mean, axis=-1)
 
         return wfs_pedsub
@@ -138,9 +144,9 @@ class PreFlatFieldComponent(NectarCAMComponent):
         of the integrated amplitude of the signal
 
         Args:
-            t_peak: time corresponding the the highest peak of the trace
-            window_shift: time in ns before the peak to integrate charge
-            window_width: duration of the extraction window in ns
+            t_peak: sample corresponding the the highest peak of the trace
+            window_shift: number of samples before the peak to integrate charge
+            window_width: duration of the extraction window in samples
 
         Returns:
             masked_wfs: a mask array
@@ -150,14 +156,14 @@ class PreFlatFieldComponent(NectarCAMComponent):
             shape=(constants.N_GAINS, constants.N_PIXELS, constants.N_SAMPLES),
             dtype=bool,
         )
+
+        sample_times = np.expand_dims(np.arange(constants.N_SAMPLES), axis=(0, 1))
+        t_peak = np.expand_dims(t_peak, axis=-1)
+
         t_signal_start = t_peak - window_shift
         t_signal_stop = t_peak + window_width - window_shift
 
-        for g in range(0, constants.N_GAINS):
-            for i in range(0, constants.N_PIXELS):
-                masked_wfs[g][i][
-                    t_signal_start[0, g, i] : t_signal_stop[0, g, i]
-                ] = True
+        masked_wfs = (sample_times >= t_signal_start) & (sample_times < t_signal_stop)
 
         return masked_wfs
 
@@ -179,5 +185,8 @@ class PreFlatFieldComponent(NectarCAMComponent):
                 "amp_int_per_pix_per_event"
             ].dtype.type(self.__amp_int_per_pix_per_event),
             FF_coef=FlatFieldContainer.fields["FF_coef"].dtype.type(self.__FF_coef),
+            bad_pixels=FlatFieldContainer.fields["bad_pixels"].dtype.type(
+                self.__bad_pixels
+            ),
         )
         return output
