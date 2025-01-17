@@ -12,18 +12,23 @@ from utils import pe2photons, photons2pe
 
 
 def get_args():
-    """
-    Parses command-line arguments for the pixel timing uncertainty test script.
+    """Parses command-line arguments for the pixel timing uncertainty test script.
 
     Returns:
         argparse.ArgumentParser: The parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(
         description="Systematic pixel timing uncertainty test B-TEL-1380.\n"
-        + "According to the nectarchain component interface, you have to set a NECTARCAMDATA environment variable in the folder where you have the data from your runs or where you want them to be downloaded.\n"
-        + "You have to give a list of runs (run numbers with spaces inbetween) and an output directory to save the final plot.\n"
-        + "If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.\n For the purposes of testing this script, default data is from the runs used for this test in the TRR document.\n"
-        + "You can optionally specify the number of events to be processed (default 1200) and the number of pixels used (default 70).\n"
+        + "According to the nectarchain component interface, you have to set a\
+             NECTARCAMDATA environment variable in the folder where you have the data\
+                 from your runs or where you want them to be downloaded.\n"
+        + "You have to give a list of runs (run numbers with spaces inbetween)\
+             and an output directory to save the final plot.\n"
+        + "If the data is not in NECTARCAMDATA, the files will be downloaded through\
+             DIRAC.\n For the purposes of testing this script, default data is from the\
+                 runs used for this test in the TRR document.\n"
+        + "You can optionally specify the number of events to be processed (default\
+             1200) and the number of pixels used (default 70).\n"
     )
     parser.add_argument(
         "-r",
@@ -42,7 +47,8 @@ def get_args():
         required=False,
         default=100,
     )
-    # parser.add_argument('-p','--pixels', type = int, help='Number of pixels used. Default is 70', required=False, default=70)
+    # parser.add_argument('-p','--pixels', type = int, help='Number of pixels used.
+    # Default is 70', required=False, default=70)
     parser.add_argument(
         "-o",
         "--output",
@@ -58,12 +64,14 @@ def get_args():
 
 
 def main():
-    """
-    Processes the pixel timing uncertainty test data and generates a plot.
+    """Processes the pixel timing uncertainty test data and generates a plot.
 
-    The function processes the data from the specified list of runs, calculates the weighted mean RMS and RMS error, and generates a plot of the results. The plot is saved to the specified output directory.
+    The function processes the data from the specified list of runs, calculates the
+    weighted mean RMS and RMS error, and generates a plot of the results. The plot is
+    saved to the specified output directory.
 
-    If a temporary output directory is provided, the plot is also saved to a pickle file in that directory for the gui to use.
+    If a temporary output directory is provided, the plot is also saved to a pickle file
+    in that directory for the gui to use.
     """
 
     parser = get_args()
@@ -129,7 +137,8 @@ def main():
     rms_no_fit_weighted_err = []
 
     for run in range(len(runlist)):
-        # rms_mu_weighted.append(np.sum(rms_mu[run]*weights_mu_pix[run])/np.sum(weights_mu_pix[run]))
+        # rms_mu_weighted.append(np.sum(rms_mu[run]*weights_mu_pix[run])/
+        # np.sum(weights_mu_pix[run]))
         # rms_mu_weighted_err.append(np.sqrt(1/np.sum(weights_mu_pix[run])))
         rms_no_fit_weighted.append(
             np.nansum(rms_no_fit[run] * weights_no_fit_pix[run])
@@ -227,15 +236,33 @@ if __name__ == "__main__":
 # from test_tools_components import TimingResolutionTestTool
 # import argparse
 
-# parser = argparse.ArgumentParser(description='Systematic pixel timing uncertainty test B-TEL-1380.\n'
-#                                  +'According to the nectarchain component interface, you have to set a NECTARCAMDATA environment variable in the folder where you have the data from your runs or where you want them to be downloaded.\n'
-#                                  +'You have to give a list of runs (run numbers with spaces inbetween) and an output directory to save the final plot.\n'
-#                                  +'If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.\n For the purposes of testing this script, default data is from the runs used for this test in the TRR document.\n'
-#                                  +'You can optionally specify the number of events to be processed (default 1200) and the number of pixels used (default 70).\n')
-# parser.add_argument('-r','--runlist', type = int, nargs='+', help='List of runs (numbers separated by space)', required=False)
-# parser.add_argument('-e','--evts', type = int, help='Number of events to process from each run. Default is 1200. 4000 or more gives best results but takes some time', required=False, default=1200)
-# #parser.add_argument('-p','--pixels', type = int, help='Number of pixels used. Default is 70', required=False, default=70)
-# parser.add_argument('-o','--output', type=str, help='Output directory. If none, plot will be saved in current directory', required=False, default='./')
+# parser = argparse.ArgumentParser(description='Sy
+# stematic pixel timing uncertainty test B-TEL-1380.\n'
+#                                  +'According to
+# the nectarchain component interface, you have to set a NECTARCAMDATA environment
+# variable in the folder where you have the data from your runs or where you want them
+# to be downloaded.\n'
+#                                  +'You have to g
+# ive a list of runs (run numbers with spaces inbetween) and an output directory to save
+# the final plot.\n'
+#                                  +'If the data i
+# s not in NECTARCAMDATA, the files will be downloaded through DIRAC.\n For the purposes
+# of testing this script, default data is from the runs used for this test in the TRR
+# document.\n'
+#                                  +'You can optio
+# nally specify the number of events to be processed (default 1200) and the
+# number of
+# pixels used (default 70).\n')
+# parser.add_argument('-r','--runlist', type = int
+# , nargs='+', help='List of runs (numbers separated by space)', required=False)
+# parser.add_argument('-e','--evts', type = int, h
+# elp='Number of events to process from each run. Default is 1200. 4000 or more gives
+# best results but takes some time', required=False, default=1200)
+# #parser.add_argument('-p','--pixels', type = int
+# , help='Number of pixels used. Default is 70', required=False, default=70)
+# parser.add_argument('-o','--output', type=str, h
+# elp='Output directory. If none, plot will be saved in current directory',
+# required=False, default='./')
 
 # args = parser.parse_args()
 
@@ -257,7 +284,8 @@ if __name__ == "__main__":
 # for run in runlist:
 #     print("PROCESSING RUN {}".format(run))
 #     tool = TimingResolutionTestTool(
-#         progress_bar=True, run_number=run, max_events=nevents, log_level=20, window_width=16, overwrite=True
+#         progress_bar=True, run_number=run, max_events=nevents, log_level=20,
+# window_width=16, overwrite=True
 #     )
 #     tool.initialize()
 #     tool.setup()
@@ -301,9 +329,11 @@ if __name__ == "__main__":
 # rms_no_fit_weighted_err = []
 
 # for run in range(len(runlist)):
-#     # rms_mu_weighted.append(np.sum(rms_mu[run]*weights_mu_pix[run])/np.sum(weights_mu_pix[run]))
+#     # rms_mu_weighted.append(np.sum(rms_mu[run]*weights_mu_pix[run])
+# /np.sum(weights_mu_pix[run]))
 #     # rms_mu_weighted_err.append(np.sqrt(1/np.sum(weights_mu_pix[run])))
-#     rms_no_fit_weighted.append(np.nansum(rms_no_fit[run]*weights_no_fit_pix[run])/np.nansum(weights_no_fit_pix[run]))
+#     rms_no_fit_weighted.append(np.nansum(rms_no_fit[run]*weights_no_fit_pix[run])
+# /np.nansum(weights_no_fit_pix[run]))
 #     rms_no_fit_weighted_err.append(np.sqrt(1/np.nansum(weights_no_fit_pix[run])))
 
 
@@ -325,7 +355,8 @@ if __name__ == "__main__":
 
 
 # plt.axhline(1, ls='--', color='C4', alpha=0.6)
-# plt.axhline(1/np.sqrt(12), ls='--', color='gray', alpha=0.7, label='Quantification rms noise')
+# plt.axhline(1/np.sqrt(12), ls='--', color='gray', alpha=0.7, label=
+# 'Quantification rms noise')
 
 
 # plt.axvspan(20, 1000, alpha=0.1, color='C4')

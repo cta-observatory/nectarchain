@@ -17,7 +17,7 @@ dependencies:
   - sphinx
   - sphinx-automodapi
   - pydata-sphinx-theme
-  - pyqt # [linux]
+  - lmfit
   - pip:
     - zeo
     - zodb
