@@ -2,15 +2,13 @@
 
 import argparse
 import os
-import pathlib
 import pickle
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-from .tools_components import TriggerTimingTestTool
-from .utils import pe2photons
+from tools_components import TriggerTimingTestTool
+from utils import pe2photons
 
 
 def get_args():
