@@ -42,13 +42,13 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
     ]
     SubComponents.read_only = True
 
-    # Windows_lenght = Integer(40,
+    # window_length = Integer(40,
     #                        read_only = True,
-    #                        help = "The windows leght used for the savgol
+    #                        help = "The windows length used for the savgol
     # filter algorithm",
     # ).tag(config = True)
     #
-    # Order = Integer(2,
+    # order = Integer(2,
     #                read_only = True,
     #                help = "The order of the polynome used in the savgol
     # filter algorithm",

@@ -80,7 +80,6 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
             config=config,
             parent=parent,
             *args,
-            **chargesComponent_kwargs,
         )
         self._Ped_chargesContainers = None
 
@@ -134,3 +133,7 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
         )
         _ = photo_stat.run(pixels_id=self.asked_pixels_id, *args, **kwargs)
         return photo_stat.results
+
+    @property
+    def coefCharge_FF_Ped(self):
+        return copy.deepcopy(self.__coefCharge_FF_Ped)
