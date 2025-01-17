@@ -11,7 +11,6 @@ from lmfit.models import Model
 
 from .tools_components import LinearityTestTool
 from .utils import (
-    adc_to_pe,
     err_ratio,
     err_sum,
     linear_fit_function,
@@ -21,8 +20,7 @@ from .utils import (
 
 
 def get_args():
-    """
-    Parses command-line arguments for the linearity test script.
+    """Parses command-line arguments for the linearity test script.
 
     Returns:
         argparse.ArgumentParser: The parsed command-line arguments.
@@ -30,10 +28,18 @@ def get_args():
 
     parser = argparse.ArgumentParser(
         description="Linearity test B-TEL-1390 & Intensity resolution B-TEL-1010. \n"
-        + "According to the nectarchain component interface, you have to set a NECTARCAMDATA environment variable in the folder where you have the data from your runs or where you want them to be downloaded.\n"
-        + "You have to give a list of runs (run numbers with spaces inbetween), a corresponding transmission list and an output directory to save the final plot.\n"
-        + "If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.\n For the purposes of testing this script, default data is from the runs used for this test in the TRR document.\n"
-        + "You can optionally specify the number of events to be processed (default 500) and the number of pixels used (default 70).\n"
+        + "According to the nectarchain component interface, \
+            you have to set a NECTARCAMDATA environment variable\
+                in the folder where you have the data from your runs\
+                    or where you want them to be downloaded.\n"
+        + "You have to give a list of runs (run numbers with spaces inbetween), a\
+            corresponding transmission list and an output directory to save the \
+                final plot.\n"
+        + "If the data is not in NECTARCAMDATA, the files will be downloaded through\
+            DIRAC.\n For the purposes of testing this script, default data is from the\
+                runs used for this test in the TRR document.\n"
+        + "You can optionally specify the number of events to be processed\
+            (default 500) and the number of pixels used (default 70).\n"
     )
     parser.add_argument(
         "-r",
@@ -77,19 +83,31 @@ def get_args():
 
 
 def main():
-    """
-    The `main()` function is the entry point of the linearity test script. It parses the command-line arguments, processes the specified runs, and generates plots to visualize the linearity and charge resolution of the detector. The function performs the following key steps:
+    """The `main()` function is the entry point of the linearity test script. It parses
+    the command-line arguments, processes the specified runs, and generates plots to
+    visualize the linearity and charge resolution of the detector. The function performs
+    the following key steps:
 
-    1. Parses the command-line arguments using the `get_args()` function, which sets up the argument parser and handles the input parameters.
-    2. Iterates through the specified run list, processing each run using the `LinearityTestTool` class. This tool initializes, sets up, starts, and finishes the processing for each run, returning the relevant output data.
-    3. Normalizes the high-gain and low-gain charge values using the charge value at 0.01 transmission.
+    1. Parses the command-line arguments using the `get_args()` function, which sets up\
+        the argument parser and handles the input parameters.
+    2. Iterates through the specified run list, processing each run using the\
+        `LinearityTestTool` class. This tool initializes, sets up, starts, and finishes\
+            the processing for each run, returning the relevant output data.
+    3. Normalizes the high-gain and low-gain charge values using the charge value at\
+        0.01 transmission.
     4. Generates three subplots:
-    - The first subplot shows the estimated charge vs. the true charge, with the fitted linear function for both high-gain and low-gain channels.
-    - The second subplot shows the residuals between the estimated and true charge, as a percentage.
-    - The third subplot shows the ratio of high-gain to low-gain charge, with a fitted linear function.
-    5. Saves the generated plots to the specified output directory, and optionally saves temporary plot files for a GUI.
-    6. Generates an additional plot to visualize the charge resolution, including the statistical limit.
-    7. Saves the charge resolution plot to the specified output directory, and optionally saves a temporary plot file for a GUI.
+    - The first subplot shows the estimated charge vs. the true charge, with the fitted\
+        linear function for both high-gain and low-gain channels.
+    - The second subplot shows the residuals between the estimated and true charge, as\
+        a percentage.
+    - The third subplot shows the ratio of high-gain to low-gain charge, with a fitted\
+        linear function.
+    5. Saves the generated plots to the specified output directory, and optionally\
+        saves temporary plot files for a GUI.
+    6. Generates an additional plot to visualize the charge resolution, including the\
+        statistical limit.
+    7. Saves the charge resolution plot to the specified output directory, and\
+        optionally saves a temporary plot file for a GUI.
     """
     parser = get_args()
     args = parser.parse_args()
@@ -180,7 +198,7 @@ def main():
     axs[2].axvspan(10, 1000, alpha=0.2, color="orange")
     axs[2].set_xlabel("Illumination charge [p.e.]")
 
-    for channel, (channel_charge, channel_std, name) in enumerate(
+    for _, (channel_charge, channel_std, name) in enumerate(
         zip(
             [charge_norm_hg, charge_norm_lg],
             [std_norm_hg, std_norm_lg],

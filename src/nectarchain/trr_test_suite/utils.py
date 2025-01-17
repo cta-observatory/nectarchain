@@ -241,13 +241,15 @@ def pe_from_intensity_percentage(
     percent_from_calibration=intensity_percent,
     known_charge=intensity_to_charge,
 ):
-    """
-    Converts a percentage of intensity to the corresponding charge value based on a known calibration.
+    """Converts a percentage of intensity to the corresponding charge value based on a
+    known calibration.
 
     Args:
         percent (numpy.ndarray): The percentage of intensity to convert to charge.
-        percent_from_calibration (numpy.ndarray, optional): The known percentages of intensity used in the calibration. Defaults to `intensity_percent`.
-        known_charge (numpy.ndarray, optional): The known charge values corresponding to the calibration percentages. Defaults to `intensity_to_charge`.
+        percent_from_calibration (numpy.ndarray, optional): The known percentages of\
+            intensity used in the calibration. Defaults to `intensity_percent`.
+        known_charge (numpy.ndarray, optional): The known charge values corresponding\
+            to the calibration percentages. Defaults to `intensity_to_charge`.
 
     Returns:
         numpy.ndarray: The charge values corresponding to the input percentages.
@@ -265,8 +267,7 @@ def pe_from_intensity_percentage(
 
 # functions by federica
 def linear_fit_function(x, a, b):
-    """
-    Computes a linear function of the form `a*x + b`.
+    """Computes a linear function of the form `a*x + b`.
 
     Args:
         x (float): The input value.
@@ -280,8 +281,7 @@ def linear_fit_function(x, a, b):
 
 
 def second_degree_fit_function(x, a, b, c):
-    """
-    Computes a quadratic function of the form `a*(x**2) + b*x + c`.
+    """Computes a quadratic function of the form `a*(x**2) + b*x + c`.
 
     Args:
         x (float): The input value.
@@ -296,8 +296,7 @@ def second_degree_fit_function(x, a, b, c):
 
 
 def third_degree_fit_function(x, a, b, c, d):
-    """
-    Computes a function of the form `(a*x + b)/(1+c) + d`.
+    """Computes a function of the form `(a*x + b)/(1+c) + d`.
 
     Args:
         x (float): The input value.
@@ -313,8 +312,7 @@ def third_degree_fit_function(x, a, b, c, d):
 
 
 def fit_function_hv(x, a, b):
-    """
-    Computes a function of the form `a/sqrt(x) + b`.
+    """Computes a function of the form `a/sqrt(x) + b`.
 
     Args:
         x (float): The input value.
@@ -328,15 +326,16 @@ def fit_function_hv(x, a, b):
 
 
 def err_ratio(nominator, denominator, err_norm, err_denom, cov_nom_den=0):
-    """
-    Computes the error ratio for a given nominator, denominator, and their respective errors.
+    """Computes the error ratio for a given nominator, denominator, and their respective
+    errors.
 
     Args:
         nominator (float): The nominator value.
         denominator (float): The denominator value.
         err_norm (float): The error of the nominator.
         err_denom (float): The error of the denominator.
-        cov_nom_den (float, optional): The covariance between the nominator and denominator. Defaults to 0.
+        cov_nom_den (float, optional): The covariance between the nominator and\
+            denominator. Defaults to 0.
 
     Returns:
         float: The error ratio.
@@ -351,10 +350,11 @@ def err_ratio(nominator, denominator, err_norm, err_denom, cov_nom_den=0):
 
 
 def err_sum(err_a, err_b, cov_a_b=0):
-    """
-    Computes the square root of the sum of the squares of `err_a` and `err_b`, plus twice the covariance `cov_a_b`.
+    """Computes the square root of the sum of the squares of `err_a` and `err_b`, plus
+    twice the covariance `cov_a_b`.
 
-    This function is used to calculate the combined error of two values, taking into account their individual errors and the covariance between them.
+    This function is used to calculate the combined error of two values, taking into\
+        account their individual errors and the covariance between them.
 
     Args:
         err_a (float): The error of the first value.
@@ -369,18 +369,22 @@ def err_sum(err_a, err_b, cov_a_b=0):
 
 # from stackoverflow
 def argmedian(x, axis=None):
-    """
-    Returns the index of the median element in the input array `x` along the specified axis.
+    """Returns the index of the median element in the input array `x` along the
+    specified axis.
 
-    If `axis` is `None`, the function returns the index of the median element in the flattened array.
-    Otherwise, it computes the argmedian along the specified axis and returns an array of indices.
+    If `axis` is `None`, the function returns the index of the median element in\
+         the flattened array.
+    Otherwise, it computes the argmedian along the specified axis and returns an\
+         array of indices.
 
     Args:
         x (numpy.ndarray): The input array.
-        axis (int or None, optional): The axis along which to compute the argmedian. If `None`, the argmedian is computed on the flattened array.
+        axis (int or None, optional): The axis along which to compute the argmedian.\
+            If `None`, the argmedian is computed on the flattened array.
 
     Returns:
-        int or numpy.ndarray: The index or indices of the median element(s) in the input array.
+        int or numpy.ndarray: The index or indices of the median element(s) in the\
+            input array.
     """
     if axis is None:
         return np.argpartition(x, len(x) // 2)[len(x) // 2]
@@ -392,8 +396,8 @@ def argmedian(x, axis=None):
 
 
 def pe2photons(x):
-    """
-    Converts the input value `x` from photons to photoelectrons (PE) by multiplying it by 4.
+    """Converts the input value `x` from photons to photoelectrons (PE) by multiplying
+    it by 4.
 
     Args:
         x (float): The input value in photons.
@@ -405,8 +409,8 @@ def pe2photons(x):
 
 
 def photons2pe(x):
-    """
-    Converts the input value `x` from photoelectrons (PE) to photons by dividing it by 4.
+    """Converts the input value `x` from photoelectrons (PE) to photons by dividing it
+    by 4.
 
     Args:
         x (float): The input value in photoelectrons.
@@ -419,8 +423,8 @@ def photons2pe(x):
 
 # from federica's notebook
 class ExponentialFitter:
-    """
-    Represents an exponential fitter class that computes the expected distribution and the minus 2 log likelihood for a given dataset and exponential parameters.
+    """Represents an exponential fitter class that computes the expected distribution
+    and the minus 2 log likelihood for a given dataset and exponential parameters.
 
     Attributes:
         datas (numpy.ndarray): The input data array.
@@ -428,7 +432,8 @@ class ExponentialFitter:
 
     Methods:
         compute_expected_distribution(norm, loc, scale):
-            Computes the expected distribution given the normalization, location, and scale parameters.
+            Computes the expected distribution given the normalization, location, and\
+                scale parameters.
         expected_distribution(x):
             Returns the expected distribution given the parameters in `x`.
         compute_minus2loglike(x):
@@ -466,8 +471,7 @@ class ExponentialFitter:
 
 
 def pois(x, A, R):
-    """
-    Computes the expected distribution for a Poisson process with rate parameter `R`.
+    """Computes the expected distribution for a Poisson process with rate parameter `R`.
 
     Args:
         x (float): The input value.
@@ -477,13 +481,12 @@ def pois(x, A, R):
     Returns:
         float: The expected distribution for the Poisson process.
     """
-    """poisson function, parameter r (rate) is the fit parameter"""
+    """Poisson function, parameter r (rate) is the fit parameter."""
     return A * np.exp(x * R)
 
 
 def deadtime_and_expo_fit(time_tot, deadtime_us, run, output_plot=None):
-    """
-    Computes the deadtime and exponential fit parameters for a given dataset.
+    """Computes the deadtime and exponential fit parameters for a given dataset.
 
     Args:
         time_tot (float): The total time of the dataset.
@@ -579,8 +582,9 @@ def deadtime_and_expo_fit(time_tot, deadtime_us, run, output_plot=None):
         ax.text(
             600,
             entries[1] / 1,
-            "$y = A \cdot \exp({-R \cdot x})$\n"
-            #          + r'$A=%2.2f \pm %2.2f$'%(as_si((result.params['A'].value/1000)*1e3,2), as_si((result.params['A'].stderr/1000)*1e3,2))
+            r"$y = A \cdot \exp({-R \cdot x})$\n"
+            #          + r'$A=%2.2f \pm %2.2f$'%(as_si((result.params['A'].value/1000)
+            # *1e3,2), as_si((result.params['A'].stderr/1000)*1e3,2))
             + r"$A=%2.2f \pm %2.2f$"
             % (result.params["A"].value, result.params["A"].stderr)
             + "\n"
