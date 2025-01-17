@@ -1,11 +1,8 @@
 import os
 import pathlib
-import random
 from itertools import combinations
 
 import h5py
-import hdf5plugin
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from astropy import units as u
@@ -13,14 +10,12 @@ from ctapipe.containers import EventType, Field
 from ctapipe.core.traits import ComponentNameList, Integer
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from lmfit.models import Model
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
 
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.utils import ComponentUtils
 
 from .utils import adc_to_pe, argmedian
 
@@ -252,7 +247,7 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["ChargeContainer"]
+            dataset = group["ChargeContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
@@ -622,7 +617,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["ToMContainer"]
+            dataset = group["ToMContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
@@ -1042,7 +1037,7 @@ class PedestalTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["PedestalContainer"]
+            dataset = group["PedestalContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
@@ -1249,7 +1244,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["UCTSContainer"]
+            dataset = group["UCTSContainer_0"]
             data = dataset[:]
             for tup in data:
                 try:
@@ -1321,7 +1316,7 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["UCTSContainer"]
+            dataset = group["UCTSContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:

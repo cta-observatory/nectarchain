@@ -2,6 +2,7 @@ name: Build and deploy as Apptainer container image to GitHub Container Registry
 
 on:
   pull_request: []
+  workflow_dispatch:
   push:
     branches:
       - main

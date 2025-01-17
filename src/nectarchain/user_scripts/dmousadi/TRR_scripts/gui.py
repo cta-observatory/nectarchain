@@ -17,7 +17,6 @@ import pickle
 import sys
 import tempfile
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -25,7 +24,6 @@ from PyQt5.QtCore import QProcess, QTimer
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
-    QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -40,29 +38,28 @@ from PyQt5.QtWidgets import (
     QWidgetItem,
 )
 
-# Ensure the tests directory is in sys.path
-test_dir = os.path.abspath("tests")
+# Ensure the src directory is in sys.path
+test_dir = os.path.abspath("src")
 if test_dir not in sys.path:
     sys.path.append(test_dir)
 
-import deadtime_test
-
 # Import test modules
-import linearity_test
-import pedestal_test
-import pix_couple_tim_uncertainty_test
-import pix_tim_uncertainty_test
-import trigger_timing_test
+import deadtime
+import linearity
+import pedestal
+import pix_couple_tim_uncertainty
+import pix_tim_uncertainty
+import trigger_timing
 
 
 class TestRunner(QWidget):
     test_modules = {
-        "Linearity Test": linearity_test,
-        "Deadtime Test": deadtime_test,
-        "Pedestal Test": pedestal_test,
-        "Pixel Time Uncertainty Test": pix_tim_uncertainty_test,
-        "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty_test,
-        "Trigger Timing Test": trigger_timing_test,
+        "Linearity Test": linearity,
+        "Deadtime Test": deadtime,
+        "Pedestal Test": pedestal,
+        "Pixel Time Uncertainty Test": pix_tim_uncertainty,
+        "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty,
+        "Trigger Timing Test": trigger_timing,
     }
 
     def __init__(self):

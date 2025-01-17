@@ -7,9 +7,8 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-from .tools_components import TimingResolutionTestTool
-from .utils import pe2photons, photons2pe
+from tools_components import TimingResolutionTestTool
+from utils import pe2photons, photons2pe
 
 
 def get_args():
