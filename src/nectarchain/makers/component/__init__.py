@@ -11,7 +11,13 @@ from .gain_component import GainNectarCAMComponent
 from .pedestal_component import PedestalEstimationComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
-from .spe import SPECombinedalgorithm, SPEHHValgorithm, SPEHHVStdalgorithm
+from .spe import (
+    SPECombinedalgorithm,
+    SPEHHValgorithm,
+    SPEHHVStdalgorithm,
+    SPEnominalalgorithm,
+    SPEnominalStdalgorithm,
+)
 from .waveforms_component import WaveformsComponent
 
 __all__ = [
