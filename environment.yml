@@ -22,5 +22,5 @@ dependencies:
     - zodb
     - mechanize
     - browser-cookie3
-    - pyqt5
+    - pyqt6
     - pyqtgraph
