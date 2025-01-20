@@ -19,17 +19,11 @@ import pickle
 import sys
 import tempfile
 
-import deadtime
-import linearity
-import pedestal
-import pix_couple_tim_uncertainty
-import pix_tim_uncertainty
-import trigger_timing
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt6.QtCore import QProcess, QTimer
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import QProcess, QTimer
+from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
     QGroupBox,
@@ -44,6 +38,15 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QWidgetItem,
+)
+
+import nectarchain.trr_test_suite.deadtime as deadtime
+import nectarchain.trr_test_suite.linearity as linearity
+import nectarchain.trr_test_suite.pedestal as pedestal
+import nectarchain.trr_test_suite.pix_tim_uncertainty as pix_tim_uncertainty
+import nectarchain.trr_test_suite.trigger_timing as trigger_timing
+from nectarchain.trr_test_suite import (
+    pix_couple_tim_uncertainty as pix_couple_tim_uncertainty,
 )
 
 # Ensure the src directory is in sys.path
