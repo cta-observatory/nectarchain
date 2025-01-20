@@ -27,8 +27,7 @@ dependencies = [
     "scipy==1.11.4",
     "zodb",
     "zeo",
-    "pyqtgraph==0.13.7",
-    "pyqt6==6.8.0",
+    "pyqtgraph",
 ]
 
 # needed for setuptools_scm, we don't define a static version
