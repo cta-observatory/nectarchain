@@ -97,9 +97,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           check-latest: true
 
-      - name: Install libglib2
-        run: sudo apt install -y libglib2.0-0
-
       - name: Install dependencies
         env:
           CTAPIPE_VERSION: ${{ matrix.ctapipe-version }}
