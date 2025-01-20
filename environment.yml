@@ -18,9 +18,9 @@ dependencies:
   - sphinx-automodapi
   - pydata-sphinx-theme
   - pip:
-      - zeo
-      - zodb
-      - mechanize
-      - browser-cookie3
-      - pyqt6
-      - pyqtgraph
+    - zeo
+    - zodb
+    - mechanize
+    - browser-cookie3
+    - pyqt6
+    - pyqtgraph
