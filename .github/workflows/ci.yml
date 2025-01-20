@@ -119,7 +119,7 @@ jobs:
 
       - name: Tests
         run: |
-          pytest -n auto --dist loadscope --cov=nectarchain --cov-report=xml --ignore=src/nectarchain/user_scripts
+          pytest -n 1 --dist loadscope --cov=nectarchain --cov-report=xml --ignore=src/nectarchain/user_scripts
 
       - uses: codecov/codecov-action@v5
 
