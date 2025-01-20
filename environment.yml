@@ -17,6 +17,7 @@ dependencies:
   - sphinx
   - sphinx-automodapi
   - pydata-sphinx-theme
+  - libglib
   - pip:
     - zeo
     - zodb
