@@ -118,10 +118,11 @@ jobs:
       - name: Instal QT and setup environment on macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install qt
           brew install freeglut
+          pip install PyQt5
           echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
           echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
+          
 
       - name: Install dependencies
         env:
