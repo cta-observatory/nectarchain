@@ -117,8 +117,8 @@ jobs:
       - name: Instal X11 and pyqt5 on macOS
         if: matrix.os == 'macos-14'
         run: |
-          sudo brew install pyqt5
-          sudo brew install xquartz
+          brew install pyqt5
+          brew install xquartz
           sudo open -a XQuartz
 
       - name: Install dependencies
