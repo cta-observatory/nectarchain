@@ -114,6 +114,10 @@ jobs:
           sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
           # start xvfb in the background
           sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
+      - name: Instal X11 on macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install xquartz
 
       - name: Install dependencies
         env:
