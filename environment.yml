@@ -24,4 +24,4 @@ dependencies:
     - mechanize
     - browser-cookie3
     - pyqtgraph
-    - pyqt6 # [osx and arm64]
+    - pyqt5 # [osx and arm64]
