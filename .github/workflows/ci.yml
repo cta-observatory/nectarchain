@@ -67,6 +67,9 @@ jobs:
             ctapipe-version: "v0.19.3"
             install-method: "mamba"
 
+    env :
+      DISPLAY: ":99.0"
+      QT_SELECT: "qt5"
     defaults:
       run:
         # We need login shells (-l) for micromamba to work.
@@ -96,6 +99,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
+      
+      - name: Setup xvfb 
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Stuff copied wildly from several stackoverflow posts
+          sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
+          sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
+          # start xvfb in the background
+          sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
 
       - name: Install dependencies for Qt 5 on Ubuntu
         if: matrix.os == 'ubuntu-latest'
