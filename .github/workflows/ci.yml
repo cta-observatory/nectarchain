@@ -82,11 +82,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install freeglut3-dev
 
-      #- name: Install dependencies for Qt 5 on macOS
-      #  if: matrix.os == 'macos-14'
-      #  run: |
-      #    brew install pyqt5
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
