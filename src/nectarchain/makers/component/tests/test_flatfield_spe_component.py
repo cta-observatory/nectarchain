@@ -71,7 +71,7 @@ class TestFlatFieldSingleNominalSPENectarCAMComponent:
         instance(event)
         assert len(instance.chargesComponent.trigger_list) == 1
 
-    @pytest.mark.skip(reason="test multiproc make GitHub worker be killed")
+    # @pytest.mark.skip(reason="test multiproc make GitHub worker be killed")
     def test_finish_multiproc(self):
         SPEalgorithm.window_length.default_value = 2
         # We need to re-instance objects because otherwise, en exception is raised :
@@ -188,7 +188,7 @@ class TestFlatFieldCombinedSPEStdNectarCAMComponent(
         assert isinstance(instance.chargesComponent, ChargesComponent)
         assert instance._chargesContainers is None
 
-    @pytest.mark.skip(reason="test multiproc make GitHub worker be killed")
+    # @pytest.mark.skip(reason="test multiproc make GitHub worker be killed")
     def test_finish_multiproc(self):
         # We need to re-instance objects because otherwise, en exception is raised :
         # ReferenceError('weakly-referenced object no longer exists')
