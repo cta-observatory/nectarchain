@@ -117,8 +117,8 @@ jobs:
       - name: Instal X11 on macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install xquartz
-          open -a XQuartz
+          sudo brew install xquartz
+          sudo open -a XQuartz
 
       - name: Install dependencies
         env:
