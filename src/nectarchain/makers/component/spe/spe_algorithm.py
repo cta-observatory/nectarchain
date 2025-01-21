@@ -12,6 +12,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
 import numpy as np
+import pyqtgraph as pg
 import yaml
 from astropy.table import QTable
 from ctapipe.core.component import Component
@@ -19,6 +20,7 @@ from ctapipe.core.traits import Bool, Float, Integer, Path, Unicode
 from iminuit import Minuit
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Rectangle
+from pyqtgraph.Qt import QtGui
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks, savgol_filter
 from scipy.special import gammainc
@@ -878,10 +880,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         luminosity: float,
         likelihood: float,
     ) -> tuple:
-        import pyqtgraph as pg
-
         # from pyqtgraph.Qt import QtCore, QtGui
-        from pyqtgraph.Qt import QtGui
 
         # app = pg.mkQApp(name="minimal")
         # Create a window
@@ -1064,9 +1063,6 @@ class SPEnominalalgorithm(SPEalgorithm):
                 plt.close(fig)
                 del fig, ax
         elif package == "pyqtgraph":
-            import pyqtgraph as pg
-            import pyqtgraph.exporters
-
             for _id in pixels_id:
                 index = np.argmax(self._results.pixels_id == _id)
                 try:
