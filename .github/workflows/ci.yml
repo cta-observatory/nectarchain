@@ -118,7 +118,7 @@ jobs:
       - name: Install dependencies for Qt 5 on macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install qt5
+          brew install freeglut
 
       - name: Install dependencies
         env:
