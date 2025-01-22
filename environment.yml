@@ -17,7 +17,9 @@ dependencies:
   - sphinx
   - sphinx-automodapi
   - pydata-sphinx-theme
-  - lmfit
+  - lmfit # needed into TRR
+  - h5py # needed into TRR (should be removed to use I/O methods of containers)
+  - pyqt # [linux]
   - pip:
     - zeo
     - zodb
