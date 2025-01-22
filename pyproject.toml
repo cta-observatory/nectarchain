@@ -27,6 +27,7 @@ dependencies = [
     "scipy==1.11.4",
     "zodb",
     "zeo",
+    "h5py",
     "pyqt6",
     "pyqtgraph",
 ]
