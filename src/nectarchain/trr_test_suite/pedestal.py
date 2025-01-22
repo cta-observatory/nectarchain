@@ -8,8 +8,8 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .tools_components import PedestalTool
-from .utils import adc_to_pe, pe2photons
+from nectarchain.trr_test_suite.tools_components import PedestalTool
+from nectarchain.trr_test_suite.utils import adc_to_pe, pe2photons
 
 
 def get_args():
