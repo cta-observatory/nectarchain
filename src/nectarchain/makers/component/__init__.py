@@ -12,7 +12,13 @@ from .pedestal_component import PedestalEstimationComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
 from .preflatfield_component import PreFlatFieldComponent
-from .spe import SPECombinedalgorithm, SPEHHValgorithm, SPEHHVStdalgorithm
+from .spe import (
+    SPECombinedalgorithm,
+    SPEHHValgorithm,
+    SPEHHVStdalgorithm,
+    SPEnominalalgorithm,
+    SPEnominalStdalgorithm,
+)
 from .waveforms_component import WaveformsComponent
 
 __all__ = [
@@ -21,6 +27,8 @@ __all__ = [
     "SPEHHValgorithm",
     "SPEHHVStdalgorithm",
     "SPECombinedalgorithm",
+    "SPEnominalStdalgorithm",
+    "SPEnominalalgorithm",
     "FlatFieldSingleHHVSPENectarCAMComponent",
     "FlatFieldSingleHHVSPEStdNectarCAMComponent",
     "FlatFieldSingleNominalSPENectarCAMComponent",
