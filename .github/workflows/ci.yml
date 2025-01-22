@@ -4,12 +4,10 @@ name: CI
 on:
   workflow_dispatch:
   push:
-  # TODO
-  # Remove comment: just a test to force CI on push
-  # branches:
-  #   - main
-  # tags:
-  #   - '**'
+  branches:
+    - main
+  tags:
+    - '**'
   pull_request:
 
 env:
