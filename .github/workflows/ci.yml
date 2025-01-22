@@ -119,7 +119,7 @@ jobs:
         if: matrix.os == 'macos-14'
         run: |
           brew install freeglut
-          pip install PyQt5
+          brew install pyqt@5
           echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
           echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
           
