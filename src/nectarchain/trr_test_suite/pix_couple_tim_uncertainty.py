@@ -6,7 +6,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .tools_components import ToMPairsTool
+from nectarchain.trr_test_suite.tools_components import ToMPairsTool
 
 
 def get_args():
@@ -55,9 +55,9 @@ def get_args():
         type=str,
         help=".csv file with pmt transit time corrections",
         required=False,
-        default="../transit_time/\
-            hv_pmt_tom_correction_laser_measurement_per_pixel_fit_\
-                sqrt_hv_newmethod.csv",
+        default="../transit_time/"
+        "hv_pmt_tom_correction_laser_measurement_per_pixel_fit"
+        "sqrt_hv_newmethod.csv",
     )
     parser.add_argument(
         "-o",

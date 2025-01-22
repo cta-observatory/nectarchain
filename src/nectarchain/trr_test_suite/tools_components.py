@@ -16,8 +16,7 @@ from scipy.signal import find_peaks
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-
-from .utils import adc_to_pe, argmedian
+from nectarchain.trr_test_suite.utils import adc_to_pe, argmedian
 
 
 # overriding so we can have maxevents in the path
