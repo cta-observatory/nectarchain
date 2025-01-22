@@ -115,10 +115,10 @@ jobs:
           # start xvfb in the background
           sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
       
-      #- name: Instal QT and setup environment on macOS
-      #  if: matrix.os == 'macos-14'
-      #  run: |
-          #brew install freeglut
+      - name: Instal QT and setup environment on macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install freeglut
           #brew install pyqt@6
           #echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
           #echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
@@ -158,6 +158,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
+
+      - name: Install dependencies for Qt 5 on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install freeglut3-dev
 
       - name: Install doc dependencies
         run: |
