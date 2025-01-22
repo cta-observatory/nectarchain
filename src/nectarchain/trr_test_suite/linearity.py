@@ -83,11 +83,11 @@ def get_args():
 
 
 def main():
-    """The `main()` function is the entry point of the linearity test script. It parses
-    the command-line arguments, processes the specified runs, and generates plots to
-    visualize the linearity and charge resolution of the detector. The function performs
-    the following key steps:
-
+    """
+    The `main()` function is the entry point of the linearity test script. It parses \
+        the command-line arguments, processes the specified runs, and generates plots\
+            to visualize the linearity and charge resolution of the detector. The\
+                function performs the following key steps:
     1. Parses the command-line arguments using the `get_args()` function, which sets up\
         the argument parser and handles the input parameters.
     2. Iterates through the specified run list, processing each run using the\
