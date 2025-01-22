@@ -121,7 +121,7 @@ jobs:
           brew install freeglut
           brew install pyqt@6
           echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
-          echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
+          #echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
           
 
       - name: Install dependencies
