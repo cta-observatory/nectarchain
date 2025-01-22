@@ -10,9 +10,6 @@ import numpy as np
 from tools_components import PedestalTool
 from utils import adc_to_pe, pe2photons
 
-from .tools_components import PedestalTool
-from .utils import adc_to_pe, pe2photons, photons2pe
-
 
 def get_args():
     """
