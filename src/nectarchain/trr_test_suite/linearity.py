@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lmfit.models import Model
 
-from .tools_components import LinearityTestTool
-from .utils import (
+from nectarchain.trr_test_suite.tools_components import LinearityTestTool
+from nectarchain.trr_test_suite.utils import (
     err_ratio,
     err_sum,
     linear_fit_function,

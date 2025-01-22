@@ -19,11 +19,11 @@ import pickle
 import sys
 import tempfile
 
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtCore import QProcess, QTimer
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QProcess, QTimer
+from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QGroupBox,
@@ -182,7 +182,9 @@ class TestRunner(QWidget):
 
         # Add a stretchable spacer to push the canvas to the right
         top_layout.addSpacerItem(
-            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+            QSpacerItem(
+                40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+            )
         )
 
         # Create a vertical layout for the plot container
@@ -405,7 +407,9 @@ class TestRunner(QWidget):
                 self.output_text_edit.clear()
 
                 self.process = QProcess(self)
-                self.process.setProcessChannelMode(QProcess.MergedChannels)
+                self.process.setProcessChannelMode(
+                    QProcess.ProcessChannelMode.MergedChannels
+                )
                 self.process.readyReadStandardOutput.connect(self.read_process_output)
                 self.process.finished.connect(self.process_finished)
 
@@ -540,4 +544,4 @@ class TestRunner(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = TestRunner()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -10,8 +10,12 @@ import numpy as np
 from astropy import units as u
 from iminuit import Minuit
 
-from .tools_components import DeadtimeTestTool
-from .utils import ExponentialFitter, deadtime_labels, source_ids_deadtime
+from nectarchain.trr_test_suite.tools_components import DeadtimeTestTool
+from nectarchain.trr_test_suite.utils import (
+    ExponentialFitter,
+    deadtime_labels,
+    source_ids_deadtime,
+)
 
 
 def get_args():
