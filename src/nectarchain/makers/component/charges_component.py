@@ -169,8 +169,6 @@ class ChargesComponent(ArrayDataComponent):
         broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
             event, self._pixels_id
         )
-        self._broken_pixels_hg[f"{name}"].append(broken_pixels_hg)
-        self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
 
         imageExtractor = __class__._get_imageExtractor(
             self.method, self.subarray, **self.extractor_kwargs
@@ -231,8 +229,9 @@ class ChargesComponent(ArrayDataComponent):
             or method in list_nectarchain_charge_extractor
         ):
             raise ArgumentError(
+                None,
                 f"method must be in {list_ctapipe_charge_extractor} or "
-                f"{list_nectarchain_charge_extractor}"
+                f"{list_nectarchain_charge_extractor}",
             )
         extractor_kwargs = __class__._get_extractor_kwargs_from_method_and_kwargs(
             method=method, kwargs=kwargs
@@ -333,7 +332,9 @@ class ChargesComponent(ArrayDataComponent):
                 ):
                     output[field] = chargesContainer[field][index]
         else:
-            raise ArgumentError(f"{method} is not a valid method for sorting")
+            raise ArgumentError(
+                None, message=f"{method} is not a valid method for sorting"
+            )
         return output
 
     @staticmethod
@@ -603,7 +604,7 @@ class ChargesComponent(ArrayDataComponent):
             ), ChargesContainer.fields["peak_lg"].dtype.type(out[1])
         else:
             raise ArgumentError(
-                f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
+                None, f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
             )
 
     @staticmethod
@@ -756,3 +757,39 @@ class ChargesComponent(ArrayDataComponent):
             ).T
 
             return np.array((hist, charge_edges))
+
+    @property
+    def _charges_hg(self):
+        """Returns the charges_hg attribute.
+
+        Returns:
+            np.ndarray: The charges_hg attribute.
+        """
+        return copy.deepcopy(self.__charges_hg)
+
+    @property
+    def _charges_lg(self):
+        """Returns the charges_lg attribute.
+
+        Returns:
+            np.ndarray: The charges_lg attribute.
+        """
+        return copy.deepcopy(self.__charges_lg)
+
+    @property
+    def _peak_hg(self):
+        """Returns the peak_hg attribute.
+
+        Returns:
+            np.ndarray: The peak_hg attribute.
+        """
+        return copy.deepcopy(self.__peak_hg)
+
+    @property
+    def _peak_lg(self):
+        """Returns the peak_lg attribute.
+
+        Returns:
+            np.ndarray: The peak_lg attribute.
+        """
+        return copy.deepcopy(self.__peak_lg)

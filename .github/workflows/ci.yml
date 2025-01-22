@@ -67,12 +67,21 @@ jobs:
             ctapipe-version: "v0.19.3"
             install-method: "mamba"
 
+    env :
+      DISPLAY: ":99.0"
+      QT_SELECT: "qt5"
     defaults:
       run:
         # We need login shells (-l) for micromamba to work.
         shell: bash -leo pipefail {0}
 
     steps:
+      - name: Install dependencies for Qt on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install freeglut3-dev
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -90,12 +99,28 @@ jobs:
           environment-name: "ci"
           environment-file: environment.yml
 
+
       - name: Python setup
         if: matrix.install-method == 'pip'
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
+      
+      - name: Setup xvfb for X11 display
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Stuff copied wildly from several stackoverflow posts
+          sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
+          sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
+          # start xvfb in the background
+          sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
+      
+      - name: Instal QT and setup environment on macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install pyqt@6
+          echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
 
       - name: Install dependencies
         env:
@@ -111,11 +136,16 @@ jobs:
           echo "pip install -e ."
           pip install -e .[test]
 
+      - name: Check pyqt version
+        run: |
+          pip list | grep PyQt
+
       - name: Tests
         run: |
           pytest -n auto --dist loadscope --cov=nectarchain --cov-report=xml --ignore=src/nectarchain/user_scripts
 
       - uses: codecov/codecov-action@v5
+
 
   docs:
     needs: lint
@@ -131,6 +161,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
+
+      - name: Install dependencies for Qt 5 on Ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt-get install freeglut3-dev
 
       - name: Install doc dependencies
         run: |

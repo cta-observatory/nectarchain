@@ -145,12 +145,6 @@ class WaveformsComponent(ArrayDataComponent):
         self.__wfs_hg[f"{name}"].append(wfs_hg_tmp)
         self.__wfs_lg[f"{name}"].append(wfs_lg_tmp)
 
-        broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
-            event, self._pixels_id
-        )
-        self._broken_pixels_hg[f"{name}"].append(broken_pixels_hg)
-        self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
-
     def finish(self, *args, **kwargs):
         """Make the output container for the selected trigger types.
 
@@ -223,11 +217,12 @@ class WaveformsComponent(ArrayDataComponent):
                         "camera",
                         "pixels_id",
                         "nevents",
+                        "nsamples",
                     ]
                 ):
                     output[field] = waveformsContainer[field][index]
         else:
-            raise ArgumentError(f"{method} is not a valid method for sorting")
+            raise ArgumentError(None, f"{method} is not a valid method for sorting")
         return output
 
     @staticmethod
@@ -247,7 +242,7 @@ class WaveformsComponent(ArrayDataComponent):
             np.ndarray: An array of selected waveforms from the container.
         """
         res = __class__.select_container_array_field(
-            container=waveformsContainer, pixel_id=pixel_id, field="wfs_lg"
+            container=waveformsContainer, pixel_id=pixel_id, field="wfs_hg"
         )
         res = res.transpose(1, 0, 2)
         return res
@@ -268,7 +263,7 @@ class WaveformsComponent(ArrayDataComponent):
             np.ndarray: An array of selected waveforms from the container.
         """
         res = __class__.select_container_array_field(
-            container=waveformsContainer, pixel_id=pixel_id, field="wfs_hg"
+            container=waveformsContainer, pixel_id=pixel_id, field="wfs_lg"
         )
         res = res.transpose(1, 0, 2)
         return res
@@ -289,6 +284,24 @@ class WaveformsComponent(ArrayDataComponent):
             A deep copy of the geometry attribute.
         """
         return copy.deepcopy(self.__geometry)
+
+    @property
+    def _wfs_lg(self):
+        """Returns a deep copy of the wfs_lg attribute.
+
+        Returns:
+            A deep copy of the wfs_lg attribute.
+        """
+        return copy.deepcopy(self.__wfs_lg)
+
+    @property
+    def _wfs_hg(self):
+        """Returns a deep copy of the wfs_hg attribute.
+
+        Returns:
+            A deep copy of the wfs_hg attribute.
+        """
+        return copy.deepcopy(self.__wfs_hg)
 
     def wfs_hg(self, trigger: EventType):
         """Returns the waveform data for the specified trigger type.
