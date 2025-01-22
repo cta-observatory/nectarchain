@@ -104,7 +104,9 @@ class PreFlatFieldComponent(NectarCAMComponent):
             masked_wfs[:, self.bad_pix, :] = False
 
             # get integrated amplitude and mean amplitude over all pixels per event
-            amp_int_per_pix_per_event = np.sum(wfs_pedsub, axis=-1, where=masked_wfs)
+            amp_int_per_pix_per_event = np.sum(
+                wfs_pedsub[0], axis=-1, where=masked_wfs.astype("bool")
+            )
             self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
             # --< We could use ctapipe.image.extractor.LocalPeakWindowSum >--
 
