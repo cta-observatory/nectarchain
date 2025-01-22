@@ -1,6 +1,5 @@
-"""The `TestRunner` class is a GUI application that allows the user to run various tests
-and display the results.
-
+"""The ``TestRunner`` class is a GUI application that allows the\
+    user to run various tests and display the results.
 The class provides the following functionality:
 - Allows the user to select a test from a dropdown menu.
 - Dynamically generates input fields based on the selected test.
@@ -8,7 +7,6 @@ The class provides the following functionality:
 - Displays the test results in a plot canvas, with navigation buttons to switch between\
     multiple plots.
 - Provides a dark-themed UI with custom styling for various UI elements.
-
 The class uses the PyQt5 library for the GUI implementation and the Matplotlib library\
     for plotting the test results.
 """
@@ -129,7 +127,7 @@ class TestRunner(QWidget):
             QPushButton:hover {
                 background-color: #45a049;  /* Darker green on hover */
             }
-        """
+            """
         )
 
         # Horizontal layout for test options (left) and plot canvas (right)
