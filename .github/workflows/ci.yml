@@ -118,8 +118,8 @@ jobs:
       - name: Instal QT and setup environment on macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install freeglut
-          #brew install pyqt@6
+          #brew install freeglut
+          brew install pyqt@6
           #echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
           #echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
           
@@ -160,7 +160,6 @@ jobs:
           python-version: 3.9
 
       - name: Install dependencies for Qt 5 on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install freeglut3-dev
