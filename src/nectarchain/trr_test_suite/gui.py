@@ -1,16 +1,3 @@
-"""The ``TestRunner`` class is a GUI application that allows the\
-    user to run various tests and display the results.
-The class provides the following functionality:
-- Allows the user to select a test from a dropdown menu.
-- Dynamically generates input fields based on the selected test.
-- Runs the selected test and displays the output in a text box.
-- Displays the test results in a plot canvas, with navigation buttons to switch between\
-    multiple plots.
-- Provides a dark-themed UI with custom styling for various UI elements.
-The class uses the PyQt5 library for the GUI implementation and the Matplotlib library\
-    for plotting the test results.
-"""
-
 import argparse
 import os
 import pickle
@@ -20,23 +7,30 @@ import tempfile
 from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt6.QtCore import QProcess, QTimer
-from PyQt6.QtWidgets import (
-    QApplication,
-    QComboBox,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QSizePolicy,
-    QSpacerItem,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-    QWidgetItem,
-)
+
+if "sphinx" not in sys.modules:
+    from PyQt6.QtCore import QProcess, QTimer
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QComboBox,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMessageBox,
+        QPushButton,
+        QSizePolicy,
+        QSpacerItem,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+        QWidgetItem,
+    )
+else:
+
+    class QWidget:
+        pass
+
 
 import nectarchain.trr_test_suite.deadtime as deadtime
 import nectarchain.trr_test_suite.linearity as linearity
@@ -56,6 +50,19 @@ if test_dir not in sys.path:
 
 
 class TestRunner(QWidget):
+    """The ``TestRunner`` class is a GUI application that allows the\
+        user to run various tests and display the results.
+    The class provides the following functionality:
+    - Allows the user to select a test from a dropdown menu.
+    - Dynamically generates input fields based on the selected test.
+    - Runs the selected test and displays the output in a text box.
+    - Displays the test results in a plot canvas, with navigation buttons\
+        to switch between multiple plots.
+    - Provides a dark-themed UI with custom styling for various UI elements.
+    The class uses the PyQt5 library for the GUI implementation and the Matplotlib\
+        library for plotting the test results.
+    """
+
     test_modules = {
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
