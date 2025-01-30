@@ -27,3 +27,4 @@ dependencies:
     - browser-cookie3
     - pyqtgraph
     - pyqt6 # [osx and arm64]
+    - sphinx-qt-documentation
