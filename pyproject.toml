@@ -54,6 +54,7 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-automodapi",
     "sphinx-design",
+    "sphinx-qt-documentation",
     "pydata_sphinx_theme",
     "numpydoc",
     "tomli; python_version < '3.11'"
