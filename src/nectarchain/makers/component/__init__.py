@@ -11,6 +11,7 @@ from .gain_component import GainNectarCAMComponent
 from .pedestal_component import PedestalEstimationComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
+from .preflatfield_component import PreFlatFieldComponent
 from .spe import (
     SPECombinedalgorithm,
     SPEHHValgorithm,
@@ -40,4 +41,5 @@ __all__ = [
     "PhotoStatisticNectarCAMComponent",
     "PhotoStatisticAlgorithm",
     "GainNectarCAMComponent",
+    "PreFlatFieldComponent",
 ]
