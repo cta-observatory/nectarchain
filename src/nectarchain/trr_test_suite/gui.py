@@ -7,30 +7,23 @@ import tempfile
 from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-
-if "sphinx" not in sys.modules:
-    from PyQt6.QtCore import QProcess, QTimer
-    from PyQt6.QtWidgets import (
-        QApplication,
-        QComboBox,
-        QGroupBox,
-        QHBoxLayout,
-        QLabel,
-        QLineEdit,
-        QMessageBox,
-        QPushButton,
-        QSizePolicy,
-        QSpacerItem,
-        QTextEdit,
-        QVBoxLayout,
-        QWidget,
-        QWidgetItem,
-    )
-else:
-
-    class QWidget:
-        pass
-
+from PyQt6.QtCore import QProcess, QTimer
+from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+    QWidgetItem,
+)
 
 import nectarchain.trr_test_suite.deadtime as deadtime
 import nectarchain.trr_test_suite.linearity as linearity
