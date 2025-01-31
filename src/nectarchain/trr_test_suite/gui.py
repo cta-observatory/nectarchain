@@ -4,11 +4,11 @@ import pickle
 import sys
 import tempfile
 
-from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt6.QtCore import QProcess, QTimer
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import QProcess, QTimer
+from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
     QGroupBox,
