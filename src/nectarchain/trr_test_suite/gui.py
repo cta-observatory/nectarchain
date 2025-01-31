@@ -4,26 +4,49 @@ import pickle
 import sys
 import tempfile
 
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtCore import QProcess, QTimer
-from PyQt5.QtWidgets import (
-    QApplication,
-    QComboBox,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QSizePolicy,
-    QSpacerItem,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-    QWidgetItem,
-)
+
+try:
+    from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
+    from PyQt6.QtCore import QProcess, QTimer
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QComboBox,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMessageBox,
+        QPushButton,
+        QSizePolicy,
+        QSpacerItem,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+        QWidgetItem,
+    )
+except ImportError:
+    from PyQt5.QtCore import QProcess, QTimer
+    from PyQt5.QtWidgets import (
+        QApplication,
+        QComboBox,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMessageBox,
+        QPushButton,
+        QSizePolicy,
+        QSpacerItem,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+        QWidgetItem,
+    )
+    from matplotlib.backends.backend_qt5 import (
+        NavigationToolbar2QT as NavigationToolbar,
+    )
 
 import nectarchain.trr_test_suite.deadtime as deadtime
 import nectarchain.trr_test_suite.linearity as linearity
