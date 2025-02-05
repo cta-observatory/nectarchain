@@ -32,6 +32,8 @@ From: condaforge/mambaforge
 %post
     # Install CA certificates
     apt -y update
+    # Install dependencies for Qt
+    apt -y install freeglut3-dev
     # cf. https://serverfault.com/a/992421
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
     curl -L https://repository.egi.eu/sw/production/cas/1/current/GPG-KEY-EUGridPMA-RPM-3 | apt-key add -
@@ -43,7 +45,7 @@ From: condaforge/mambaforge
     mamba update --quiet --name base conda mamba
 
     # Install nectarchain
-    mamba env create --quiet --file /opt/cta/nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
+    mamba env create --quiet -y --file /opt/cta/nectarchain/environment.yml --prefix /opt/conda/envs/nectarchain
     mamba activate nectarchain
     cd /opt/cta/nectarchain
     pip install -e .
