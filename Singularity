@@ -36,6 +36,7 @@ From: condaforge/mambaforge
     apt -y install freeglut3-dev
     # cf. https://serverfault.com/a/992421
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
+    apt -y install xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
     curl -L https://repository.egi.eu/sw/production/cas/1/current/GPG-KEY-EUGridPMA-RPM-3 | apt-key add -
     add-apt-repository -y 'deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core'
     apt -y install ca-policy-egi-core || apt -y install -f
