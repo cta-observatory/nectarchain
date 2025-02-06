@@ -51,6 +51,7 @@ extensions = [
     # class signature)
     "numpydoc",
     "sphinx_design",
+    "sphinx_qt_documentation",
 ]
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary

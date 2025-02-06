@@ -27,7 +27,10 @@ dependencies = [
     "scipy==1.11.4",
     "zodb",
     "zeo",
-    "pyqt6",
+    "lmfit",
+    "h5py",
+    'pyqt5 ; platform_system == "Linux"',
+    'pyqt6 ; platform_system != "Linux"',  # for macOS
     "pyqtgraph",
 ]
 
@@ -52,6 +55,7 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-automodapi",
     "sphinx-design",
+    "sphinx-qt-documentation",
     "pydata_sphinx_theme",
     "numpydoc",
     "tomli; python_version < '3.11'"
