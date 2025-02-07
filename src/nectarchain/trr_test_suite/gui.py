@@ -4,11 +4,12 @@ import pickle
 import sys
 import tempfile
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 try:
     from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
+    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
     from PyQt6.QtCore import QProcess, QTimer
     from PyQt6.QtWidgets import (
         QApplication,
@@ -47,6 +48,7 @@ except ImportError:
     from matplotlib.backends.backend_qt5 import (
         NavigationToolbar2QT as NavigationToolbar,
     )
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import nectarchain.trr_test_suite.deadtime as deadtime
 import nectarchain.trr_test_suite.linearity as linearity
