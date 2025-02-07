@@ -230,7 +230,7 @@ class DataManagement:
                 break
 
         if i == len(lines) - 1:
-            e = Exception("lfns not found on GRID")
+            e = FileNotFoundError("lfns not found on GRID")
             log.error(e, exc_info=True)
             log.debug(lines)
             raise e
@@ -283,16 +283,17 @@ class DataManagement:
         ped_method="FullWaveformSum",
         str_extractor_kwargs="",
     ):
-        full_file = glob.glob(
-            pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/"
-                f"PhotoStatisticNectarCAM_FFrun{FF_run_number}_{FF_method}"
-                f"_{str_extractor_kwargs}_Pedrun{ped_run_number}_{ped_method}.h5"
-            ).__str__()
+        path = pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/"
+            f"PhotoStatisticNectarCAM_FFrun{FF_run_number}_{FF_method}"
+            f"_{str_extractor_kwargs}_Pedrun{ped_run_number}_{ped_method}.h5"
         )
+        full_file = glob.glob(str(path))
         log.debug("for now it does not check if there are files with max events")
         if len(full_file) != 1:
-            raise Exception(f"the files is {full_file}")
+            raise FileNotFoundError(
+                f"When looking for {str(path)} : the found files are {full_file}"
+            )
         return full_file
 
     @staticmethod
@@ -328,67 +329,98 @@ class DataManagement:
     ):
         keyword = kwargs.get("keyword", "FlatFieldSPEHHV")
         std_key = "" if free_pp_n else "Std"
-        full_file = glob.glob(
-            pathlib.Path(
-                f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
-                f"{keyword}{std_key}NectarCAM_run{run_number}*_{method}"
-                f"_{str_extractor_kwargs}.h5"
-            ).__str__()
+        path = pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
+            f"{keyword}{std_key}NectarCAM_run{run_number}*_{method}"
+            f"_{str_extractor_kwargs}.h5"
         )
-        # need to improve the files search !!
-        #       -> unstable behavior with SPE results computed
-        #           with maxevents not to None
-        if len(full_file) != 1:
-            all_files = glob.glob(
-                pathlib.Path(
-                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
-                    f"FlatFieldSPEHHVStdNectarCAM_run{run_number}_maxevents*_"
-                    f"{method}_{str_extractor_kwargs}.h5"
-                ).__str__()
+        full_file = glob.glob(str(path))
+        if len(full_file) == 0:
+            raise FileNotFoundError(f"No file found looking for {str(path)}")
+        elif len(full_file) > 1:
+            log.debug(f"Several files found for {str(path)} : {full_file}")
+            for file in full_file:
+                if "maxevents" not in file:
+                    log.debug(
+                        f"File found with the most important"
+                        f"number of events for {str(path)} : {file}"
+                    )
+                    return file
+            path = pathlib.Path(
+                f"{os.environ.get('NECTARCAMDATA','/tmp')}/SPEfit/"
+                f"{keyword}{std_key}NectarCAM_run{run_number}_maxevents*_"
+                f"{method}_{str_extractor_kwargs}.h5"
             )
-            max_events = 0
-            for i, file in enumerate(all_files):
-                data = file.split("/")[-1].split(".h5")[0].split("_")
-                for _data in data:
-                    if "maxevents" in _data:
-                        _max_events = int(_data.split("maxevents")[-1])
-                        break
-                if _max_events >= max_events:
-                    max_events = _max_events
-                    index = i
-            return [all_files[index]]
+            all_files = glob.glob(str(path))
+            if len(all_files) == 0:
+                raise FileNotFoundError(f"No file found looking for {str(path)}")
+            else:
+                log.debug(f"Files found for {str(path)} : {all_files}")
+                max_events = 0
+                for i, file in enumerate(all_files):
+                    data = file.split("/")[-1].split(".h5")[0].split("_")
+                    for _data in data:
+                        if "maxevents" in _data:
+                            _max_events = int(_data.split("maxevents")[-1])
+                            break
+                    if _max_events >= max_events:
+                        max_events = _max_events
+                        index = i
+                log.debug(f"Best file found : {all_files[index]}")
+                return [all_files[index]]
         else:
+            log.debug(f"File found for {str(path)} : {full_file}")
             return full_file
 
     @staticmethod
     def __find_computed_data(
         run_number, max_events=None, ext=".h5", data_type="waveforms"
     ):
-        out = glob.glob(
-            pathlib.Path(
+        if max_events is not None:
+            path = pathlib.Path(
+                f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
+                f"{data_type}/*_run{run_number}_maxevents*{ext}"
+            )
+        else:
+            path = pathlib.Path(
                 f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
                 f"{data_type}/*_run{run_number}{ext}"
-            ).__str__()
-        )
-        if not (max_events is None):
-            all_files = glob.glob(
-                pathlib.Path(
-                    f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
-                    f"{data_type}/*_run{run_number}_maxevents*{ext}"
-                ).__str__()
             )
-            best_max_events = np.inf
-            best_index = None
-            for i, file in enumerate(all_files):
-                data = file.split("/")[-1].split(".h5")[0].split("_")
+        out = glob.glob(str(path))
+        if len(out) == 0:
+            raise FileNotFoundError(f"No file found looking for {str(path)}")
+        elif len(out) > 1:
+            if max_events is None:
+                raise FileExistsError(f"Several files found for {str(path)} : {out}")
+            else:
+                log.debug(
+                    f"Several files found for {str(path)} : {out},"
+                    f"will look for the most complete one"
+                )
+                best_max_events = np.inf
+                best_index = None
+                for i, file in enumerate(out):
+                    data = file.split("/")[-1].split(".h5")[0].split("_")
+                    for _data in data:
+                        if "maxevents" in _data:
+                            _max_events = int(_data.split("maxevents")[-1])
+                            break
+                    if _max_events >= max_events:
+                        if _max_events < best_max_events:
+                            best_max_events = _max_events
+                            best_index = i
+                if best_index is not None:
+                    out = [out[best_index]]
+        else:
+            if max_events is not None:
+                data = out[0].split("/")[-1].split(".h5")[0].split("_")
                 for _data in data:
                     if "maxevents" in _data:
                         _max_events = int(_data.split("maxevents")[-1])
                         break
-                if _max_events >= max_events:
-                    if _max_events < best_max_events:
-                        best_max_events = _max_events
-                        best_index = i
-            if not (best_index is None):
-                out = [all_files[best_index]]
+                if _max_events < max_events:
+                    raise FileNotFoundError(
+                        f"File found for {str(path)} : {out[0]} has less events "
+                        f"than max_events asked {max_events}"
+                    )
         return out
