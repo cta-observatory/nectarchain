@@ -143,6 +143,7 @@ html_context = {
     "github_repo": f"{project}",
     "github_version": "main",
     "doc_path": "docs",
+    "READTHEDOCS": True,
 }
 html_file_suffix = ".html"
 
