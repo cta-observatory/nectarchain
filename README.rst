@@ -1,6 +1,6 @@
-=========================================================================
-nectarchain |pypi| |conda| |Test Status| |Documentation Status| |codecov|
-=========================================================================
+================================================
+nectarchain |pypi| |conda| |CI| |docs| |codecov|
+================================================
 
 
 Repository for the high level analysis of the NectarCAM data, a camera
@@ -75,9 +75,9 @@ for questions and discussions.
    :target: https://pypi.org/project/nectarchain
 .. |conda| image:: https://anaconda.org/conda-forge/nectarchain/badges/version.svg
    :target: https://anaconda.org/conda-forge/nectarchain
-.. |Test Status| image:: https://github.com/cta-observatory/nectarchain/actions/workflows/ci.yml/badge.svg?branch=main
+.. |CI| image:: https://github.com/cta-observatory/nectarchain/actions/workflows/ci.yml/badge.svg?branch=main
    :target: https://github.com/cta-observatory/nectarchain/actions/workflows/ci.yml?query=workflow%3ACI+branch%3Amain
-.. |Documentation Status| image:: https://readthedocs.org/projects/nectarchain/badge/?version=latest
+.. |docs| image:: https://readthedocs.org/projects/nectarchain/badge/?version=latest
    :target: https://nectarchain.readthedocs.io/en/latest/?badge=latest
 .. |codecov| image:: https://codecov.io/github/cta-observatory/nectarchain/graph/badge.svg?token=TDhZlJtbMv
    :target: https://codecov.io/github/cta-observatory/nectarchain
