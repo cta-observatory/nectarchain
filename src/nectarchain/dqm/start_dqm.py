@@ -238,13 +238,16 @@ def main():
         path2 = f"{NectarPath}/runs/{arg}"
         print(path2)
 
-        reader = EventSource(input_url=path2, config=config, max_events=args.max_events)
-
-        for evt in tqdm(
-            reader, total=args.max_events if args.max_events else len(reader), unit="ev"
-        ):
-            for p in processors:
-                p.ProcessEvent(evt, noped)
+        with EventSource(
+            input_url=path2, config=config, max_events=args.max_events
+        ) as reader:
+            for evt in tqdm(
+                reader,
+                total=args.max_events if args.max_events else len(reader),
+                unit="ev",
+            ):
+                for p in processors:
+                    p.ProcessEvent(evt, noped)
 
     for p in processors:
         p.FinishRun()
