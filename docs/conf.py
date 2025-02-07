@@ -27,8 +27,6 @@ copyright = "{}.  Last updated {}".format(
 )
 python_requires = pyproject["project"]["requires-python"]
 
-# sys.path.insert(0, os.path.abspath(f"../src/{project}"))
-
 # make some variables available to each page
 rst_epilog = f"""
 .. |python_requires| replace:: {python_requires}
@@ -85,11 +83,10 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 autodoc_mock_imports = [
-    # f"{project}.makers.calibration.core",
-    # f"{project}.makers.extractor.charge_extractor",
+    f"{project}.makers.extractor.charge_extractor",
     f"{project}.dqm.bokeh_app",
-    "matplotlib",
     "iminuit",
+    "matplotlib",
 ]
 
 # intersphinx allows referencing other packages sphinx docs
@@ -147,7 +144,6 @@ html_context = {
     "github_repo": f"{project}",
     "github_version": "main",
     "doc_path": "docs",
-    # "READTHEDOCS": True,
 }
 html_file_suffix = ".html"
 
