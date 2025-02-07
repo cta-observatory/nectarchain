@@ -9,6 +9,7 @@ from ctapipe.core.traits import ComponentNameList
 from ....data.container import ChargesContainer, ChargesContainers
 from ....data.container.core import merge_map_ArrayDataContainer
 from ....data.management import DataManagement
+from ....utils.error import TooMuchFileException
 from ...component import ArrayDataComponent, NectarCAMComponent
 from ...extractor.utils import CtapipeExtractor
 from .core import GainNectarCAMCalibrationTool
@@ -46,25 +47,37 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         super().__init__(*args, **kwargs)
 
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
+            method=self.method,
+            extractor_kwargs=self.extractor_kwargs,
         )
         if not (self.reload_events):
-            files = DataManagement.find_charges(
-                run_number=self.run_number,
-                method=self.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                max_events=self.max_events,
-            )
-            if len(files) == 1:
-                log.warning(
-                    "You asked events_per_slice but you don't want to reload events and\
-                        a charges file is on disk, then events_per_slice is set to None"
+            try:
+                files = DataManagement.find_charges(
+                    run_number=self.run_number,
+                    method=self.method,
+                    str_extractor_kwargs=str_extractor_kwargs,
+                    max_events=self.max_events,
                 )
-                self.events_per_slice = None
+                if len(files) == 1:
+                    log.warning(
+                        "You asked events_per_slice but you don't want to\
+                        reload events and a charges file is on disk, \
+                        then events_per_slice is set to None"
+                    )
+                    self.events_per_slice = None
+                else:
+                    raise TooMuchFileException("No single charges file found")
+            except (FileNotFoundError, TooMuchFileException) as e:
+                log.warning(e)
+                log.warning(
+                    "You will not be able to reload charges from\
+                    disk when start() call"
+                )
 
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
+            method=self.method,
+            extractor_kwargs=self.extractor_kwargs,
         )
         if self.events_per_slice is None:
             ext = ".h5"
@@ -94,14 +107,19 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         **kwargs,
     ):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
-        )
-        files = DataManagement.find_charges(
-            run_number=self.run_number,
             method=self.method,
-            str_extractor_kwargs=str_extractor_kwargs,
-            max_events=self.max_events,
+            extractor_kwargs=self.extractor_kwargs,
         )
+        try:
+            files = DataManagement.find_charges(
+                run_number=self.run_number,
+                method=self.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                max_events=self.max_events,
+            )
+        except Exception as e:
+            log.warning(e)
+            files = []
         if self.reload_events or len(files) != 1:
             if len(files) != 1:
                 self.log.info(
@@ -135,7 +153,7 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     self.components[
                         0
                     ]._chargesContainers = merge_map_ArrayDataContainer(
-                        chargesContainers
+                        next(chargesContainers)
                     )
                 else:
                     self.log.info("merging along slices")
@@ -152,12 +170,6 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     )
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
-        # if isinstance(container,SPEfitContainer) :
-        #    self.writer.write(table_name = f"{self.method}_
-        # {CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}",
-        #                      containers = container,
-        #    )
-        # else :
         super()._write_container(container=container, index_component=index_component)
 
 
