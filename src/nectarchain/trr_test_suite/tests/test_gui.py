@@ -8,11 +8,9 @@ class TestTestRunner(unittest.TestCase):
     @patch("nectarchain.trr_test_suite.gui.TestRunner.init_ui", return_value=None)
     def test_init_pyqt(self, mock_init_ui):
         try:
-            import PyQt6  # noqa: F401
+            from PyQt6.QtWidgets import QWidget  # noqa: F401
 
-            with patch(
-                "PyQt6.QtWidgets.QWidget.__init__", return_value=None
-            ) as mock_qwidget:
+            with patch("QWidget.__init__", return_value=None) as mock_qwidget:
                 runner = TestRunner()
                 assert isinstance(runner, TestRunner)
                 mock_qwidget.assert_called_once()
@@ -23,11 +21,9 @@ class TestTestRunner(unittest.TestCase):
     @patch("nectarchain.trr_test_suite.gui.TestRunner.init_ui", return_value=None)
     def test_init_pyqt5(self, mock_init_ui):
         try:
-            import PyQt5  # noqa: F401
+            from PyQt5.QtWidgets import QWidget  # noqa: F401
 
-            with patch(
-                "PyQt5.QtWidgets.QWidget.__init__", return_value=None
-            ) as mock_qwidget:
+            with patch("QWidget.__init__", return_value=None) as mock_qwidget:
                 runner = TestRunner()
                 assert isinstance(runner, TestRunner)
                 mock_qwidget.assert_called_once()
