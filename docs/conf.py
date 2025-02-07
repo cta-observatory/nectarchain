@@ -27,6 +27,8 @@ copyright = "{}.  Last updated {}".format(
 )
 python_requires = pyproject["project"]["requires-python"]
 
+sys.path.insert(0, os.path.abspath(f"../src/{project}"))
+
 # make some variables available to each page
 rst_epilog = f"""
 .. |python_requires| replace:: {python_requires}
