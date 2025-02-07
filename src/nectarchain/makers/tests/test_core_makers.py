@@ -1,5 +1,4 @@
 import logging
-import os
 import pathlib
 from unittest.mock import MagicMock, patch
 
@@ -58,22 +57,22 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
 
     @pytest.fixture
     def tool_instance(self):
-        return EventsLoopNectarCAMCalibrationTool(run_number=self.RUN_NUMBER)
+        return EventsLoopNectarCAMCalibrationTool(
+            run_number=self.RUN_NUMBER,
+            output_path=pathlib.Path("/tmp/test_output.h5"),
+        )
 
     @pytest.fixture
     def tool_instance_run_file(self):
         return EventsLoopNectarCAMCalibrationTool(
             run_number=self.RUN_NUMBER,
             run_file=self.RUN_FILE,
-            output_path=pathlib.Path(f"/tmp/{np.random.random()}test_output.h5")
+            output_path=pathlib.Path(f"/tmp/{np.random.random()}test_output.h5"),
             # to avoid I/O conflicts between tests
         )
 
     def test_init_output_path(self, tool_instance):
-        expected_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA', '/tmp')}/runs"
-            f"/EventsLoopNectarCAMCalibration_run{self.RUN_NUMBER}.h5"
-        )
+        expected_path = pathlib.Path("/tmp/test_output.h5")
         assert tool_instance.output_path == expected_path
         assert tool_instance.run_number == self.RUN_NUMBER
         assert tool_instance.max_events is None
