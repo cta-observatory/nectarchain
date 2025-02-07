@@ -88,6 +88,8 @@ autodoc_mock_imports = [
     f"{project}.makers.calibration.core",
     f"{project}.makers.extractor.charge_extractor",
     f"{project}.dqm.bokeh_app",
+    "matplotlib",
+    "iminuit",
 ]
 
 # intersphinx allows referencing other packages sphinx docs
