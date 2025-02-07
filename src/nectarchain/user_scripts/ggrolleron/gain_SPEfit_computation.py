@@ -166,9 +166,9 @@ def main(
             )
             tool.setup()
             if args.reload_events and not (_max_events is None):
-                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{CtapipeExtractor.get_extractor_kwargs_str(tool.extractor_kwargs)}"
+                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{CtapipeExtractor.get_extractor_kwargs_str(tool.method,tool.extractor_kwargs)}"
             else:
-                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{CtapipeExtractor.get_extractor_kwargs_str(tool.extractor_kwargs)}"
+                _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{CtapipeExtractor.get_extractor_kwargs_str(tool.method,tool.extractor_kwargs)}"
             tool.start(figpath=_figpath, display=args.display)
             tool.finish(figpath=_figpath, display=args.display)
         except Exception as e:

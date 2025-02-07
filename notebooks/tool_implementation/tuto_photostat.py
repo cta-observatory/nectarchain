@@ -20,17 +20,18 @@ import logging
 import os
 import pathlib
 
+import matplotlib.pyplot as plt
+
+from nectarchain.data.management import DataManagement
+from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
+from nectarchain.makers.extractor.utils import CtapipeExtractor
+
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s", level=logging.INFO
 )
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-import matplotlib.pyplot as plt
-
-from nectarchain.data.management import DataManagement
-from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
-from nectarchain.makers.extractor.utils import CtapipeExtractor
 
 # %%
 extractor_kwargs = {"window_width": 12, "window_shift": 4}
@@ -42,7 +43,9 @@ Ped_run_number = 3938
 FF_run_number = 3937
 
 # %%
-str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(extractor_kwargs)
+str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+    method=method, extractor_kwargs=extractor_kwargs
+)
 path = DataManagement.find_SPE_HHV(
     run_number=HHV_run_number,
     method=method,
@@ -50,15 +53,21 @@ path = DataManagement.find_SPE_HHV(
 )
 if len(path) == 1:
     log.info(
-        f"{path[0]} found associated to HHV run {HHV_run_number}, method {method} and extractor kwargs {str_extractor_kwargs}"
+        f"{path[0]} found associated to HHV run {HHV_run_number},"
+        f"method {method} and extractor kwargs {str_extractor_kwargs}"
     )
 else:
-    _text = f"no file found in $NECTARCAM_DATA/../SPEfit associated to HHV run {HHV_run_number}, method {method} and extractor kwargs {str_extractor_kwargs}"
+    _text = (
+        f"no file found in $NECTARCAM_DATA/../SPEfit associated to HHV run"
+        f"{HHV_run_number}, method {method} and extractor kwargs {str_extractor_kwargs}"
+    )
     log.error(_text)
     raise FileNotFoundError(_text)
 
 # %% [markdown]
-#  WARNING : for now you can't split the event loop in slice for the Photo-statistic method, however in case of the charges havn't been computed on disk, the loop over events will only store the charge, therefore memory errors should happen rarely
+#  WARNING : for now you can't split the event loop in slice for the Photo-statistic
+# method, however in case of the charges havn't been computed on disk, the loop over
+# events will only store the charge, therefore memory errors should happen rarely
 
 # %%
 tool = PhotoStatisticNectarCAMCalibrationTool(
