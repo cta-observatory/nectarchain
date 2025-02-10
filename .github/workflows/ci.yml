@@ -86,6 +86,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Start SSH Debugging Session
+        uses: mxschmitt/action-tmate@v3
+
       - name: Set Python version
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
@@ -141,7 +144,7 @@ jobs:
         run: |
           micromamba list -n ci | grep qt
           eval "$(micromamba shell hook --shell=bash)"
-          mamba activate ci
+          micromamba activate ci
           otool -L $(python -c "import PyQt5.QtCore; print(PyQt5.QtCore.__file__)")
 
       - name: Tests
