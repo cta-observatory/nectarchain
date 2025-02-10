@@ -146,13 +146,18 @@ def main(
     figpath = args.figpath
 
     str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-        args.extractor_kwargs
-    )
-    path = DataManagement.find_SPE_HHV(
-        run_number=args.HHV_run_number,
         method=args.method,
-        str_extractor_kwargs=str_extractor_kwargs,
+        extractor_kwargs=args.extractor_kwargs,
     )
+    try:
+        path = DataManagement.find_SPE_HHV(
+            run_number=args.HHV_run_number,
+            method=args.method,
+            str_extractor_kwargs=str_extractor_kwargs,
+        )
+    except Exception as e:
+        log.warning(e)
+        path = []
     if len(path) == 1:
         log.info(
             f"{path[0]} found associated to HHV run {args.HHV_run_number}, method {args.method} and extractor kwargs {str_extractor_kwargs}"

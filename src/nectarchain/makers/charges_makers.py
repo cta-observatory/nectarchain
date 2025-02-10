@@ -50,14 +50,19 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
 
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
+            method=self.method,
+            extractor_kwargs=self.extractor_kwargs,
         )
         if self.max_events is None:
-            filename = f"{self.name}_run{self.run_number}_{self.method}"
-            f"{str_extractor_kwargs}.h5"
+            filename = (
+                f"{self.name}_run{self.run_number}_{self.method}"
+                f"{str_extractor_kwargs}.h5"
+            )
         else:
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}_"
-            f"{self.method}_{str_extractor_kwargs}.h5"
+            filename = (
+                f"{self.name}_run{self.run_number}_maxevents{self.max_events}_"
+                f"{self.method}_{str_extractor_kwargs}.h5"
+            )
 
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/charges/{filename}"
@@ -73,9 +78,13 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     ):
         # cette implémentation est complétement nulle
         if self.from_computed_waveforms:
-            files = DataManagement.find_waveforms(
-                run_number=self.run_number, max_events=self.max_events
-            )
+            try:
+                files = DataManagement.find_waveforms(
+                    run_number=self.run_number, max_events=self.max_events
+                )
+            except Exception as e:
+                log.warning(e)
+                files = []
             if len(files) != 1:
                 self.log.info(
                     f"{len(files)} computed wavforms files found with max_events >="
