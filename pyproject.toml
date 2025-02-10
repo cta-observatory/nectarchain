@@ -29,8 +29,7 @@ dependencies = [
     "zeo",
     "lmfit",
     "h5py",
-    'pyqt5 ; platform_system == "Linux"',
-    'pyqt6 ; platform_system != "Linux"',  # for macOS
+    "pyqt5",
     "pyqtgraph",
 ]
 
