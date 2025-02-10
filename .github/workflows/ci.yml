@@ -119,8 +119,7 @@ jobs:
       - name: Instal QT and setup environment on macOS
         if: matrix.os == 'macos-14'
         run: |
-          brew install sqlite
-          brew link --force --overwrite sqlite
+          brew install bzip2 readline ncurses
           brew install pyqt@5
           echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
 
