@@ -138,9 +138,9 @@ jobs:
           else
             pip install --no-deps -e .
           fi
-          # install with pip dependencies for pytest
+          # install with pip dependencies for pytest (NB : when we will use python > 3.10 for all configs, use tomllib instead of toml)
           pip install toml
-          python -c "import toml, sys; print('\n'.join(toml.load('pyproject.toml')['project']['optional-dependencies']['test']))" | xargs pip install
+          python -c "import toml, sys; print('\n'.join(toml.load('pyproject.toml')['project']['optional-dependencies']['test']))" | xargs pip install 
   
       - name: Check pyqt version and intallation
         run: |
