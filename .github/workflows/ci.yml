@@ -86,11 +86,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Start SSH Debugging Session
-        uses: mxschmitt/action-tmate@v3
-        with:
-        detached: true
-
       - name: Set Python version
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
@@ -157,6 +152,12 @@ jobs:
         uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Start SSH Debugging Session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
 
 
   docs:
