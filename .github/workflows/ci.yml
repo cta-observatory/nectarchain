@@ -134,7 +134,8 @@ jobs:
              "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION"
 
           #echo "pip install -r <(python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))")"
-          eval "$(pip install -r <(python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))"))"
+          python -c "import tomllib, sys; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))" | xargs pip install
+
 
       - name: Check pyqt version and intallation
         run: |
