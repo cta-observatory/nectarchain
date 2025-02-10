@@ -140,7 +140,7 @@ jobs:
         if: matrix.os == 'macos-14'
         run: |
           micromamba list -n ci | grep qt
-          micromamba list -n ci | grep pyqt
+          mamba activate ci
           otool -L $(python -c "import PyQt5.QtCore; print(PyQt5.QtCore.__file__)")
 
       - name: Tests
