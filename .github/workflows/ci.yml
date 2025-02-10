@@ -133,8 +133,8 @@ jobs:
           pip install \
              "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION"
 
-          echo "pip install -e --ignore-installed .[test]"
-          pip install -e --ignore-installed .[test]
+          echo "pip install --no-deps -e .[test]"
+          pip install --no-deps -e .[test]
 
       - name: Check pyqt version and intallation
         run: |
