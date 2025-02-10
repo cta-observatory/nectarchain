@@ -136,7 +136,11 @@ jobs:
           #echo "pip install -r <(python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))")"
           python -c "import tomllib, sys; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))" | xargs pip install
 
-
+      - name: Pip setup
+        if: matrix.install-method == 'pip'
+        run: |
+          pip install .
+  
       - name: Check pyqt version and intallation
         run: |
           pip list | grep PyQt
