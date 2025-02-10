@@ -92,6 +92,23 @@ jobs:
         run: |
           sed -i -e "s/- python=.*/- python=$PYTHON_VERSION/g" environment.yml
 
+      - name: Setup xvfb for X11 display
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Stuff copied wildly from several stackoverflow posts
+          sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
+          sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
+          # start xvfb in the background
+          sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
+      
+      - name: Instal QT and setup environment on macOS
+        if: matrix.os == 'macos-14'
+        run: |
+          #brew install bzip2 readline ncurses
+          brew install qt
+          brew install pyqt@5
+          echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
+
       - name: Mamba setup
         if: matrix.install-method == 'mamba'
         uses: mamba-org/setup-micromamba@v2
@@ -107,21 +124,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           check-latest: true
       
-      - name: Setup xvfb for X11 display
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          # Stuff copied wildly from several stackoverflow posts
-          sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
-          sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
-          # start xvfb in the background
-          sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
-      
-      - name: Instal QT and setup environment on macOS
-        if: matrix.os == 'macos-14'
-        run: |
-          brew install bzip2 readline ncurses
-          brew install pyqt@5
-          echo "DYLD_FRAMEWORK_PATH=$(brew --prefix qt)/lib" >> $GITHUB_ENV
 
       - name: Install dependencies
         env:
@@ -137,9 +139,10 @@ jobs:
           echo "pip install -e ."
           pip install -e .[test]
 
-      - name: Check pyqt version
+      - name: Check pyqt version and intallation
         run: |
           pip list | grep PyQt
+          ldd $(python -c "import PyQt5.QtCore; print(PyQt5.QtCore.__file__)")
 
       - name: Tests
         run: |
