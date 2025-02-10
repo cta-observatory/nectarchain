@@ -131,13 +131,15 @@ jobs:
           # we install ctapipe using pip to be able to select any commit, e.g. the current main
           pip install \
              "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION"
-             
+
           #nectarchain installation with pip
           if [ "${{ matrix.install-method }}" == "pip" ]; then
             pip install -e .
           else
             pip install -I -e .
           fi
+          # install with pip dependencies for pytest
+          python -c "import toml, sys; print('\n'.join(toml.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))" | xargs pip install
   
       - name: Check pyqt version and intallation
         run: |
@@ -159,8 +161,6 @@ jobs:
 
       - name: Tests
         run: |
-          # install with pip dependencies for pytest
-          python -c "import tomllib, sys; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['optional-dependencies']['test']))" | xargs pip install
           pytest -n auto --dist loadscope --cov=nectarchain --cov-report=xml --ignore=src/nectarchain/user_scripts
 
       - name: Upload coverage reports to Codecov with GitHub Action
