@@ -4,12 +4,10 @@ name: CI
 on:
   workflow_dispatch:
   push:
-  # TODO
-  # Remove comment: just a test to force CI on push
-  # branches:
-  #   - main
-  # tags:
-  #   - '**'
+    branches:
+      - main
+    tags:
+      - ""**"
   pull_request:
 
 env:
@@ -70,6 +68,7 @@ jobs:
     env :
       DISPLAY: ":99.0"
       QT_SELECT: "qt5"
+
     defaults:
       run:
         # We need login shells (-l) for micromamba to work.
@@ -105,7 +104,6 @@ jobs:
           # start xvfb in the background
           sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
 
-
       - name: Mamba setup
         if: matrix.install-method == 'mamba'
         uses: mamba-org/setup-micromamba@v2
@@ -113,14 +111,12 @@ jobs:
           environment-name: "ci"
           environment-file: environment.yml
 
-
       - name: Python setup
         if: matrix.install-method == 'pip'
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
-      
 
       - name: Install dependencies
         env:
@@ -155,7 +151,6 @@ jobs:
             micromamba list -n ci qt
             pip list | grep PyQt
           fi
-          
 
       - name: Check mac-os installation
         if: matrix.os == 'macos-14'
