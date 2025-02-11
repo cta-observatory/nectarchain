@@ -42,6 +42,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
+    "tomli; python_version < '3.11'"
     "pytest",
     "pytest-cov",
     "pytest-xdist",
@@ -57,7 +58,6 @@ docs = [
     "sphinx-qt-documentation",
     "pydata_sphinx_theme",
     "numpydoc",
-    "tomli; python_version < '3.11'"
 ]
 # we can use self-references to simplify all
 all = [
