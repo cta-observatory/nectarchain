@@ -42,7 +42,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
-    "tomli; python_version < '3.11'"
+    "tomli; python_version < '3.11'",
     "pytest",
     "pytest-cov",
     "pytest-xdist",
