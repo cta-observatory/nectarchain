@@ -31,6 +31,7 @@ dependencies = [
     "h5py",
     "pyqt5",
     "pyqtgraph",
+    "tomli; python_version < '3.11'",
 ]
 
 # needed for setuptools_scm, we don't define a static version
@@ -42,7 +43,6 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
-    "tomli; python_version < '3.11'",
     "pytest",
     "pytest-cov",
     "pytest-xdist",
