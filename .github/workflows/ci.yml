@@ -59,6 +59,7 @@ jobs:
             python-version: "3.11"
             ctapipe-version: "v0.19.3"
             install-method: "pip"
+            extra-args: ["codecov"]
           # macos 14 image is arm64 based
           - os: "macos-14"
             python-version: "3.11"
@@ -166,12 +167,13 @@ jobs:
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
+        if: contains(matrix.extra-args, 'codecov')
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Start SSH Debugging Session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
+      # - name: Start SSH Debugging Session
+      #   if: ${{ failure() }}
+      #   uses: mxschmitt/action-tmate@v3
 
 
   docs:
