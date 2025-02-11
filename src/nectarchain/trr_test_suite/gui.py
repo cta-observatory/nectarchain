@@ -1,16 +1,3 @@
-"""
-The `TestRunner` class is a GUI application that allows the user to run various tests and display the results.
-
-The class provides the following functionality:
-- Allows the user to select a test from a dropdown menu.
-- Dynamically generates input fields based on the selected test.
-- Runs the selected test and displays the output in a text box.
-- Displays the test results in a plot canvas, with navigation buttons to switch between multiple plots.
-- Provides a dark-themed UI with custom styling for various UI elements.
-
-The class uses the PyQt5 library for the GUI implementation and the Matplotlib library for plotting the test results.
-"""
-
 import argparse
 import os
 import pickle
@@ -19,6 +6,8 @@ import tempfile
 
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtCore import QProcess, QTimer
 from PyQt5.QtWidgets import (
@@ -38,21 +27,37 @@ from PyQt5.QtWidgets import (
     QWidgetItem,
 )
 
+import nectarchain.trr_test_suite.deadtime as deadtime
+import nectarchain.trr_test_suite.linearity as linearity
+import nectarchain.trr_test_suite.pedestal as pedestal
+import nectarchain.trr_test_suite.pix_tim_uncertainty as pix_tim_uncertainty
+import nectarchain.trr_test_suite.trigger_timing as trigger_timing
+from nectarchain.trr_test_suite import (
+    pix_couple_tim_uncertainty as pix_couple_tim_uncertainty,
+)
+
 # Ensure the src directory is in sys.path
 test_dir = os.path.abspath("src")
 if test_dir not in sys.path:
     sys.path.append(test_dir)
 
 # Import test modules
-import deadtime
-import linearity
-import pedestal
-import pix_couple_tim_uncertainty
-import pix_tim_uncertainty
-import trigger_timing
 
 
 class TestRunner(QWidget):
+    """The ``TestRunner`` class is a GUI application that allows the\
+        user to run various tests and display the results.
+    The class provides the following functionality:
+    - Allows the user to select a test from a dropdown menu.
+    - Dynamically generates input fields based on the selected test.
+    - Runs the selected test and displays the output in a text box.
+    - Displays the test results in a plot canvas, with navigation buttons\
+        to switch between multiple plots.
+    - Provides a dark-themed UI with custom styling for various UI elements.
+    The class uses the PyQt5 library for the GUI implementation and the Matplotlib\
+        library for plotting the test results.
+    """
+
     test_modules = {
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
@@ -72,7 +77,8 @@ class TestRunner(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Main layout: vertical, dividing into two sections (top for controls/plot, bottom for output)
+        # Main layout: vertical, dividing into two sections (top for controls/plot
+        # , bottom for output)
         main_layout = QVBoxLayout()
 
         self.setStyleSheet(
@@ -116,13 +122,14 @@ class TestRunner(QWidget):
                 border-radius: 5px;  /* Rounded corners */
             }
             QPushButton:disabled {
-                background-color: rgba(76, 175, 80, 0.5);  /* Transparent green when disabled */
+                background-color: rgba(76, 175, 80, 0.5);  /* Transparent green when\
+                    disabled */
                 color: rgba(255, 255, 255, 0.5);  /* Light text when disabled */
             }
             QPushButton:hover {
                 background-color: #45a049;  /* Darker green on hover */
             }
-        """
+            """
         )
 
         # Horizontal layout for test options (left) and plot canvas (right)
@@ -175,7 +182,9 @@ class TestRunner(QWidget):
 
         # Add a stretchable spacer to push the canvas to the right
         top_layout.addSpacerItem(
-            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+            QSpacerItem(
+                40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+            )
         )
 
         # Create a vertical layout for the plot container
@@ -321,11 +330,13 @@ class TestRunner(QWidget):
                     help_button.setToolTip(param_info["help"])
 
                     # # Use lambda to capture the current param's help text
-                    # help_button.clicked.connect(lambda _, p=param_info["help"]: self.show_help(p))
+                    # help_button.clicked.connect(lambda _, p=param_info["help"]:
+                    # self.show_help(p))
 
                     # Add the help button to the layout (next to the label)
                     param_layout.addWidget(help_button)
-                    param_layout.addStretch()  # Add stretch to push the help button to the right
+                    param_layout.addStretch()  # Add stretch to push the help button to
+                    # the right
 
                     # Add the horizontal layout (label + help button) to the main layout
                     self.param_layout.addLayout(param_layout)
@@ -396,7 +407,9 @@ class TestRunner(QWidget):
                 self.output_text_edit.clear()
 
                 self.process = QProcess(self)
-                self.process.setProcessChannelMode(QProcess.MergedChannels)
+                self.process.setProcessChannelMode(
+                    QProcess.ProcessChannelMode.MergedChannels
+                )
                 self.process.readyReadStandardOutput.connect(self.read_process_output)
                 self.process.finished.connect(self.process_finished)
 
@@ -531,4 +544,4 @@ class TestRunner(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = TestRunner()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

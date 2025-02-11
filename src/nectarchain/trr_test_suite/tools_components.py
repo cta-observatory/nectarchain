@@ -12,21 +12,25 @@ from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
-from utils import adc_to_pe, argmedian
 
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
+from nectarchain.trr_test_suite.utils import adc_to_pe, argmedian
 
 
 # overriding so we can have maxevents in the path
 def _init_output_path(self):
-    """
-    Initializes the output path for the NectarCAMCalibrationTool.
+    """Initializes the output path for the NectarCAMCalibrationTool.
 
-    If `max_events` is `None`, the output file name will be in the format `{self.name}_run{self.run_number}.h5`. Otherwise, the file name will be in the format `{self.name}_run{self.run_number}_maxevents{self.max_events}.h5`.
+    If `max_events` is `None`, the output file name will be in the format\
+        `{self.name}_run{self.run_number}.h5`. Otherwise, the file name will\
+            be in the format\
+                `{self.name}_run{self.run_number}_maxevents{self.max_events}.h5`.
 
-    The output path is constructed by joining the `NECTARCAMDATA` environment variable (or `/tmp` if not set) with the `tests` subdirectory and the generated file name.
+    The output path is constructed by joining the `NECTARCAMDATA` environment variable\
+        (or `/tmp` if not set) with the `tests` subdirectory and the generated\
+            file name.
     """
 
     if self.max_events is None:
@@ -42,8 +46,8 @@ EventsLoopNectarCAMCalibrationTool._init_output_path = _init_output_path
 
 
 class ChargeContainer(NectarCAMContainer):
-    """
-    This class contains fields that store various properties and data related to NectarCAM events, including:
+    """This class contains fields that store various properties and data related to
+    NectarCAM events, including:
 
     - `run_number`: The run number associated with the waveforms.
     - `npixels`: The number of effective pixels.
@@ -81,15 +85,22 @@ class ChargeContainer(NectarCAMContainer):
 
 
 class ChargeComp(NectarCAMComponent):
-    """
-    This class `ChargeComp` is a NectarCAMComponent that processes NectarCAM event data. It extracts the charge information from the waveforms of each event, handling cases of saturated or noisy events. The class has the following configurable parameters:
+    """This class `ChargeComp` is a NectarCAMComponent that processes NectarCAM event
+    data. It extracts the charge information from the waveforms of each event, handling
+    cases of saturated or noisy events. The class has the following configurable
+    parameters:
 
     - `window_shift`: The time in ns before the peak to extract the charge.
     - `window_width`: The duration of the charge extraction window in ns.
 
-    The `__init__` method initializes important members of the component, such as timestamps, event type, event ids, pedestal and charge for both gain channels.
-    The `__call__` method is the main processing logic, which is called for each event. It extracts the charge information for both high gain and low gain channels, handling various cases such as saturated events and events with no signal.
-    The `finish` method collects all the processed data and returns a `ChargeContainer` object containing the run number, number of pixels, pixel IDs, UCTS timestamps, event types, event IDs, and the high and low gain charge values.
+    The `__init__` method initializes important members of the component, such as\
+        timestamps, event type, event ids, pedestal and charge for both gain channels.
+    The `__call__` method is the main processing logic, which is called for each event.\
+        It extracts the charge information for both high gain and low gain channels,\
+            handling various cases such as saturated events and events with no signal.
+    The `finish` method collects all the processed data and returns a `ChargeContainer`\
+        object containing the run number, number of pixels, pixel IDs, UCTS timestamps,\
+            event types, event IDs, and the high and low gain charge values.
     """
 
     window_shift = Integer(
@@ -106,7 +117,8 @@ class ChargeComp(NectarCAMComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        ## If you want you can add here members of MyComp, they will contain interesting quantity during the event loop process
+        # If you want you can add here members of MyComp, they will contain
+        # interesting quantity during the event loop process
 
         self.__ucts_timestamp = []
         self.__event_type = []
@@ -118,7 +130,7 @@ class ChargeComp(NectarCAMComponent):
         self.__charge_hg = []
         self.__charge_lg = []
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         self.__event_id.append(np.uint32(event.index.event_id))
 
@@ -131,7 +143,7 @@ class ChargeComp(NectarCAMComponent):
         wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
         wfs.append(event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id])
 
-        #####THE JOB IS HERE######
+        # ###THE JOB IS HERE####
         for i, (pedestal, charge) in enumerate(
             zip(
                 [self.__pedestal_hg, self.__pedestal_lg],
@@ -181,9 +193,11 @@ class ChargeComp(NectarCAMComponent):
                             integral[pix] = 0
 
                         else:
-                            # x = np.linspace(0,signal_stop[pix]-signal_start[pix],signal_stop[pix]-signal_start[pix])
+                            # x = np.linspace(0,signal_stop[pix]-signal_start[pix],
+                            # signal_stop[pix]-signal_start[pix])
                             # spl = UnivariateSpline(x,y)
-                            # integral[pix] = spl.integral(0,signal_stop[pix]-signal_start[pix])
+                            # integral[pix] = spl.integral(0,signal_stop[pix]-
+                            # signal_start[pix])
 
                             integral[pix] = np.sum(
                                 wf[pix, signal_start[pix] : signal_stop[pix]]
@@ -193,7 +207,7 @@ class ChargeComp(NectarCAMComponent):
 
                 charge.append(chg)
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def finish(self):
         output = ChargeContainer(
             run_number=ChargeContainer.fields["run_number"].type(self._run_number),
@@ -218,10 +232,16 @@ class ChargeComp(NectarCAMComponent):
 
 
 class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
-    """
-    This class, `LinearityTestTool`, is a subclass of `EventsLoopNectarCAMCalibrationTool`. It is responsible for performing a linearity test on NectarCAM data. The class has a `componentsList` attribute that specifies the list of NectarCAM components to be applied.
+    """This class, `LinearityTestTool`, is a subclass of
+    `EventsLoopNectarCAMCalibrationTool`. It is responsible for performing a linearity
+    test on NectarCAM data. The class has a `componentsList` attribute that specifies
+    the list of NectarCAM components to be applied.
 
-    The `finish` method is the main functionality of this class. It reads the charge data from the output file, calculates the mean charge, standard deviation, and standard error for both the high gain and low gain channels, and returns these values. This information can be used to assess the linearity of the NectarCAM system.
+    The `finish` method is the main functionality of this class. It reads the charge\
+        data from the output file, calculates the mean charge, standard deviation,\
+            and standard error for both the high gain and low gain channels, and\
+                returns these values. This information can be used to assess\
+                    the linearity of the NectarCAM system.
     """
 
     name = "LinearityTestTool"
@@ -255,7 +275,7 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
                     charge_hg.extend(tup[6])
                     charge_lg.extend(tup[7])
 
-                except:
+                except Exception:
                     break
 
         output_file.close()
@@ -288,7 +308,8 @@ class ToMContainer(NectarCAMContainer):
         event_type (np.ndarray[np.uint8]): The trigger event types.
         event_id (np.ndarray[np.uint32]): The event IDs.
         charge_hg (np.ndarray[np.float64]): The mean high gain charge per event.
-        tom_no_fit (np.ndarray[np.float64]): The time of maximum from the data (no fitting).
+        tom_no_fit (np.ndarray[np.float64]): The time of maximum from\
+            the data (no fitting).
         good_evts (np.ndarray[np.uint32]): The IDs of the good (non-cosmic ray) events.
     """
 
@@ -317,11 +338,13 @@ class ToMContainer(NectarCAMContainer):
     )
 
     # tom_mu = Field(
-    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of maximum of signal fitted with gaussian"
+    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of maximum of
+    # signal fitted with gaussian"
     # )
 
     # tom_sigma = Field(
-    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of fitted maximum sigma"
+    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of fitted
+    # maximum sigma"
     # )
     tom_no_fit = Field(
         type=np.ndarray,
@@ -338,14 +361,25 @@ class ToMContainer(NectarCAMContainer):
 
 
 class ToMComp(NectarCAMComponent):
-    """
-    This class, `ToMComp`, is a component of the NectarCAM system that is responsible for processing waveform data. It has several configurable parameters, including the width and shift before the peak of the time window for charge extraction, the peak height threshold.
+    """This class, `ToMComp`, is a component of the NectarCAM system that is responsible
+    for processing waveform data. It has several configurable parameters, including the
+    width and shift before the peak of the time window for charge extraction, the peak
+    height threshold.
 
-    The `__init__` method initializes some important component members, such as timestamps, event type, event ids, pedestal and charge values for both gain channels.
+    The `__init__` method initializes some important component members, such as\
+        timestamps, event type, event ids, pedestal and charge values for both gain\
+            channels.
 
-    The `__call__` method is the main entry point for processing an event. It extracts the waveform data, calculates the pedestal, charge, and time of maximum (ToM) for each pixel, and filters out events that do not meet the peak height threshold. The results are stored in various member variables, which are then returned in the `finish` method.
+    The `__call__` method is the main entry point for processing an event. It extracts\
+        the waveform data, calculates the pedestal, charge, and time of maximum (ToM)\
+            for each pixel, and filters out events that do not meet the peak\
+                height threshold. The results are stored in various member variables,\
+                    which are then returned in the `finish` method.
 
-    The `finish` method collects the processed data from the member variables and returns a `ToMContainer` object, which contains the run number, number of pixels, pixel IDs, UCTS timestamps, event types, event IDs, high-gain charge, ToM without fitting, and IDs of good (non-cosmic ray) events.
+    The `finish` method collects the processed data from the member variables and\
+        returns a `ToMContainer` object, which contains the run number, number of\
+            pixels, pixel IDs, UCTS timestamps, event types, event IDs, high-gain\
+                charge, ToM without fitting, and IDs of good (non-cosmic ray) events.
     """
 
     window_shift = Integer(
@@ -367,7 +401,8 @@ class ToMComp(NectarCAMComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        ## If you want you can add here members of MyComp, they will contain interesting quantity during the event loop process
+        # If you want you can add here members of MyComp, they will contain
+        # interesting quantity during the event loop process
 
         self.__ucts_timestamp = []
         self.__event_type = []
@@ -386,7 +421,7 @@ class ToMComp(NectarCAMComponent):
 
         self.__ff_event_ind = -1
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         self.__event_id.append(np.uint32(event.index.event_id))
 
@@ -398,7 +433,7 @@ class ToMComp(NectarCAMComponent):
 
         self.__ff_event_ind += 1
 
-        #####THE JOB IS HERE######
+        # #####THE JOB IS HERE######
 
         for i, (pedestal, charge, tom_no_fit) in enumerate(
             zip([self.__pedestal_hg], [self.__charge_hg], [self.__tom_no_fit])
@@ -483,7 +518,8 @@ class ToMComp(NectarCAMComponent):
 
                         # # fit
                         # model = Model(gaus)
-                        # params = model.make_params(a=yi[peaks[max_peak_index]] * 3, mu=mean, sigma=sigma)
+                        # params = model.make_params(a=yi[peaks[max_peak_index]] * 3,
+                        # mu=mean, sigma=sigma)
                         # result = model.fit(y_fit, params, x=x_fit)
 
                         # result_sigma = result.params['sigma'].value
@@ -510,12 +546,16 @@ class ToMComp(NectarCAMComponent):
                         # change_grad_pos_left = 3
                         # change_grad_pos_right = 3
                         # mean = xi[peaks[max_peak_index]]
-                        # sigma = change_grad_pos_right + change_grad_pos_left # define window for the gaussian fit
+                        # sigma = change_grad_pos_right + change_grad_pos_left # define
+                        # window for the gaussian fit
 
-                        # x_fit =  xi[peaks[max_peak_index]-change_grad_pos_left:peaks[max_peak_index]+change_grad_pos_right]
-                        # y_fit =  yi[peaks[max_peak_index]-change_grad_pos_left:peaks[max_peak_index]+change_grad_pos_right]
+                        # x_fit =  xi[peaks[max_peak_index]-change_grad_pos_left:peaks
+                        # [max_peak_index]+change_grad_pos_right]
+                        # y_fit =  yi[peaks[max_peak_index]-change_grad_pos_left:peaks
+                        # [max_peak_index]+change_grad_pos_right]
                         # model = Model(gaus)
-                        # params = model.make_params(a=yi[peaks[max_peak_index]],mu=mean,sigma=sigma)
+                        # params = model.make_params(a=yi[peaks[max_peak_index]],
+                        # mu=mean,sigma=sigma)
                         # result = model.fit(y_fit, params, x=x_fit)
 
                         max_position_x_prefit = xi[peaks[max_peak_index]]
@@ -523,7 +563,8 @@ class ToMComp(NectarCAMComponent):
                         # result_mu  = result.params['mu'].value
 
                     else:
-                        # index_x_window_min = list(xi).index(closest_value(xi, signal_start[pix]))
+                        # index_x_window_min = list(xi).index(closest_value(xi,
+                        # signal_start[pix]))
                         charge_sum = y[
                             signal_start[pix] : signal_start[pix] + self.window_width
                         ].sum()
@@ -533,10 +574,12 @@ class ToMComp(NectarCAMComponent):
                         # result_mu = -1
 
                 else:
-                    # If no maximum is found, the integration is done between 20 and 36 ns.
+                    # If no maximum is found, the integration is done between 20 and 36
+                    # ns.
                     signal_start[pix] = 20
 
-                    # index_x_window_min = list(xi).index(closest_value(xi, signal_start[pix]))
+                    # index_x_window_min = list(xi).index(closest_value(xi,
+                    # signal_start[pix]))
                     charge_sum = y[
                         signal_start[pix] : signal_start[pix] + self.window_width
                     ].sum()
@@ -562,7 +605,7 @@ class ToMComp(NectarCAMComponent):
                 # print("is good evt")
                 self.__good_evts.append(self.__ff_event_ind)
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def finish(self):
         output = ToMContainer(
             run_number=ToMContainer.fields["run_number"].type(self._run_number),
@@ -587,12 +630,20 @@ class ToMComp(NectarCAMComponent):
 
 
 class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
-    """
-    This class, `TimingResolutionTestTool`, is a subclass of `EventsLoopNectarCAMCalibrationTool` and is used to perform timing resolution tests on NectarCAM data. It reads the output data from the `ToMContainer` dataset and processes the charge, timing, and event information to calculate the timing resolution and mean charge in photoelectrons.
+    """This class, `TimingResolutionTestTool`, is a subclass of
+    `EventsLoopNectarCAMCalibrationTool` and is used to perform timing resolution tests
+    on NectarCAM data. It reads the output data from the `ToMContainer` dataset and
+    processes the charge, timing, and event information to calculate the timing
+    resolution and mean charge in photoelectrons.
 
-    The `finish()` method is the main entry point for this tool. It reads the output data from the HDF5 file, filters the data to remove cosmic ray events, and then calculates the timing resolution and mean charge per photoelectron. The timing resolution is calculated using a weighted mean and variance approach, with an option to use a bootstrapping method to estimate the error on the RMS value.
+    The `finish()` method is the main entry point for this tool. It reads the output
+    data from the HDF5 file, filters the data to remove cosmic ray events, and then
+    calculates the timing resolution and mean charge per photoelectron. The timing
+    resolution is calculated using a weighted mean and variance approach, with an option
+    to use a bootstrapping method to estimate the error on the RMS value.
 
-    The method returns the RMS of the timing resolution, the error on the RMS, and the mean charge in photoelectrons.
+    The method returns the RMS of the timing resolution, the error on the RMS, and the
+    mean charge in photoelectrons.
     """
 
     name = "TimingResolutionTestTool"
@@ -625,7 +676,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                     charge_all.extend(tup[6])
                     tom_no_fit_all.extend(tup[7])
                     good_evts.extend(tup[8])
-                except:
+                except Exception:
                     break
 
         output_file.close()
@@ -640,9 +691,11 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         # print(good_evts)
         charge = charge_all[good_evts]
         mean_charge_pe = np.mean(np.mean(charge, axis=0)) / 58.0
-        # tom_mu = np.array(tom_mu_all[good_evts]).reshape(len(good_evts),output[0].npixels)
+        # tom_mu = np.array(tom_mu_all[good_evts]).reshape(len(good_evts),
+        # output[0].npixels)
 
-        # tom_sigma = np.array(tom_sigma_all[good_evts]).reshape(len(good_evts),output[0].npixels)
+        # tom_sigma = np.array(tom_sigma_all[good_evts]).reshape(len(good_evts),
+        # output[0].npixels)
         tom_no_fit = np.array(tom_no_fit_all[good_evts]).reshape(
             len(good_evts), npixels
         )
@@ -679,7 +732,8 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                             bootsample = np.random.choice(
                                 sample, size=int(3 / 4 * (len(sample))), replace=True
                             )
-                            #             print(len(bootsample), bootsample.mean(), bootsample.std())
+                            #             print(len(bootsample), bootsample.mean(),
+                            # bootsample.std())
                             boot_rms.append(bootsample.std())
                             # simulated mean of rms
                         bootrms_mean = np.mean(boot_rms)
@@ -707,14 +761,15 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                         rms[pix] = np.sqrt(weighted_variance)
                         # print("RMS:", rms[pix])
 
-                        # Compute the total number of data points (sum of histogram values, i.e. N)
+                        # Compute the total number of data points (sum of histogram
+                        # values, i.e. N)
                         N = np.sum(hist_values)
                         # print("Total number of events (N):", N)
 
                         # Error on the standard deviation
                         err[pix] = rms[pix] / np.sqrt(2 * N)
                         # print("Error on RMS:", err[pix])
-                    except:
+                    except Exception:
                         # no data
                         rms[pix] = np.nan
                         err[pix] = np.nan
@@ -723,17 +778,22 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
 
 class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
-    """
-    This class, `ToMPairsTool`, is an `EventsLoopNectarCAMCalibrationTool` that is used to process ToM (Time of maximum) data from NectarCAM.
+    """This class, `ToMPairsTool`, is an `EventsLoopNectarCAMCalibrationTool`\
+        that is used to process ToM (Time of maximum) data from NectarCAM.
 
     The `finish` method has the following functionalities:
 
-    - It reads in ToM data from an HDF5 file and applies a transit time correction to the ToM values using a provided lookup table.
-    - It calculates the time difference between ToM pairs for both corrected and uncorrected ToM values.
-    - It returns the uncorrected ToM values, the corrected ToM values, the pixel IDs, and the time difference calculations for the uncorrected and corrected ToM values.
+    - It reads in ToM data from an HDF5 file and applies a transit time correction to\
+        the ToM values using a provided lookup table.
+    - It calculates the time difference between ToM pairs for both corrected and\
+        uncorrected ToM values.
+    - It returns the uncorrected ToM values, the corrected ToM values, the pixel IDs,\
+        and the time difference calculations for the uncorrected and corrected\
+            ToM values.
 
-    The class has several configurable parameters, including the list of NectarCAM components to apply, the maximum number of events to process, and the output file path.
-
+    The class has several configurable parameters, including the list of NectarCAM\
+        components to apply, the maximum number of events to process, and the output\
+            file path.
     """
 
     name = "ToMPairsTool"
@@ -765,7 +825,7 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
                 try:
                     pixels_id.extend(tup[2])
                     tom_no_fit_all.extend(tup[7])
-                except:
+                except Exception:
                     break
 
         output_file.close()
@@ -851,8 +911,8 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
 
 
 class PedestalContainer(NectarCAMContainer):
-    """
-    Attributes of the PedestalContainer class that store various data related to the pedestal of a NectarCAM event.
+    """Attributes of the PedestalContainer class that store various data related to the
+    pedestal of a NectarCAM event.
 
     Attributes:
         run_number (np.uint16): The run number associated with the waveforms.
@@ -914,21 +974,30 @@ class PedestalContainer(NectarCAMContainer):
 
 
 class PedestalComp(NectarCAMComponent):
-    """
-    The `PedestalComp` class is a NectarCAMComponent that is responsible for processing the pedestal and RMS of the high and low gain waveforms for each event.
+    """The `PedestalComp` class is a NectarCAMComponent that is responsible for
+    processing the pedestal and RMS of the high and low gain waveforms for each event.
 
-    The `__init__` method initializes the `PedestalComp` class. It sets up several member variables to store pedestal related data such as timestamps, event types, event IDs, pedestal and pedestal rms values for both gains.
+    The `__init__` method initializes the `PedestalComp` class. It sets up several\
+        member variables to store pedestal related data such as timestamps,\
+            event types,\
+            event IDs, pedestal and pedestal rms values for both gains.
 
-    The `__call__` method is called for each event, and it processes the waveforms to calculate the pedestal and RMS for the high and low gain channels. The results are stored in the class attributes `__pedestal_hg`, `__pedestal_lg`, `__rms_ped_hg`, and `__rms_ped_lg`.
+    The `__call__` method is called for each event, and it processes the waveforms to\
+        calculate the pedestal and RMS for the high and low gain channels. The results\
+            are stored in the class attributes `__pedestal_hg`, `__pedestal_lg`, \
+                `__rms_ped_hg`, and `__rms_ped_lg`.
 
-    The `finish` method is called at the end of processing, and it returns a `PedestalContainer` object containing the calculated pedestal and RMS values, as well as other event information.
+    The `finish` method is called at the end of processing, and it returns a\
+        `PedestalContainer` object containing the calculated pedestal and RMS values\
+            , as well as other event information.
     """
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        ## If you want you can add here members of MyComp, they will contain interesting quantity during the event loop process
+        # If you want you can add here members of MyComp, they will contain interesting
+        # quantity during the event loop process
 
         self.__ucts_timestamp = []
         self.__event_type = []
@@ -941,7 +1010,7 @@ class PedestalComp(NectarCAMComponent):
         self.__rms_ped_hg = []
         self.__rms_ped_lg = []
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         self.__event_id.append(np.uint32(event.index.event_id))
 
@@ -954,7 +1023,7 @@ class PedestalComp(NectarCAMComponent):
         wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
         wfs.append(event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id])
 
-        #####THE JOB IS HERE######
+        # #####THE JOB IS HERE######
 
         for i, (pedestal, rms_pedestal) in enumerate(
             zip(
@@ -972,7 +1041,7 @@ class PedestalComp(NectarCAMComponent):
             pedestal.append(ped)
             rms_pedestal.append(rms_ped)
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def finish(self):
         output = PedestalContainer(
             run_number=PedestalContainer.fields["run_number"].type(self._run_number),
@@ -1002,12 +1071,16 @@ class PedestalComp(NectarCAMComponent):
 
 
 class PedestalTool(EventsLoopNectarCAMCalibrationTool):
-    """
-    This class is a part of the PedestalTool, which is an EventsLoopNectarCAMCalibrationTool.
+    """This class is a part of the PedestalTool, which is an
+    EventsLoopNectarCAMCalibrationTool.
 
-    The finish() method opens the output file, which is an HDF5 file, and extracts the `rms_ped_hg` (root mean square of the high gain pedestal) values from the `PedestalContainer` dataset. Finally, it closes the output file and returns the list of `rms_ped_hg` values.
+    The finish() method opens the output file, which is an HDF5 file,\
+        and extracts the `rms_ped_hg` (root mean square of the high gain pedestal)\
+            values from the `PedestalContainer` dataset. Finally, it closes the output\
+                file and returns the list of `rms_ped_hg` values.
 
-    This method is used to post-process the output of the PedestalTool and extract specific information from the generated HDF5 file.
+    This method is used to post-process the output of the PedestalTool and extract\
+        specific information from the generated HDF5 file.
     """
 
     name = "PedestalTool"
@@ -1042,7 +1115,7 @@ class PedestalTool(EventsLoopNectarCAMCalibrationTool):
             for tup in data:
                 try:
                     rms_ped_hg.extend(tup[8])
-                except:
+                except Exception:
                     break
 
         output_file.close()
@@ -1051,8 +1124,8 @@ class PedestalTool(EventsLoopNectarCAMCalibrationTool):
 
 
 class UCTSContainer(NectarCAMContainer):
-    """
-    Defines the fields for the UCTSContainer class, which is used to store various data related to UCTS events.
+    """Defines the fields for the UCTSContainer class, which is used to store various
+    data related to UCTS events.
 
     The fields include:
     - `run_number`: The run number associated with the waveforms.
@@ -1096,12 +1169,15 @@ class UCTSContainer(NectarCAMContainer):
 
 
 class UCTSComp(NectarCAMComponent):
-    """
-    The `__init__` method initializes the `UCTSComp` class, which is a NectarCAMComponent. It sets up several member variables to store UCTS related data, such as timestamps, event types, event IDs, busy counters, and event counters.
+    """The `__init__` method initializes the `UCTSComp` class, which is a
+    NectarCAMComponent. It sets up several member variables to store UCTS related data,
+    such as timestamps, event types, event IDs, busy counters, and event counters.
 
-    The `__call__` method is called for each event, and it appends the UCTS-related data from the event to the corresponding member variables.
+    The `__call__` method is called for each event, and it appends the UCTS-related\
+        data from the event to the corresponding member variables.
 
-    The `finish` method creates and returns a `UCTSContainer` object, which is a container for the UCTS-related data that was collected during the event loop.
+    The `finish` method creates and returns a `UCTSContainer` object, which is a\
+        container for the UCTS-related data that was collected during the event loop.
     """
 
     window_shift = Integer(
@@ -1120,7 +1196,8 @@ class UCTSComp(NectarCAMComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        ## If you want you can add here members of MyComp, they will contain interesting quantity during the event loop process
+        # If you want you can add here members of MyComp, they will contain interesting
+        # quantity during the event loop process
 
         self.__ucts_timestamp = []
         self.__event_type = []
@@ -1130,7 +1207,7 @@ class UCTSComp(NectarCAMComponent):
         self.excl_muons = None
         self.__mean_event_charge = []
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         take_event = True
 
@@ -1193,7 +1270,7 @@ class UCTSComp(NectarCAMComponent):
             if self.excl_muons:
                 self.__mean_event_charge.append(mean_charge)
 
-    ##This method need to be defined !
+    # This method need to be defined !
     def finish(self):
         output = UCTSContainer(
             run_number=UCTSContainer.fields["run_number"].type(self._run_number),
@@ -1218,10 +1295,16 @@ class UCTSComp(NectarCAMComponent):
 
 
 class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
-    """
-    The `DeadtimeTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that is used to test the deadtime of NectarCAM.
+    """The `DeadtimeTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that is
+    used to test the deadtime of NectarCAM.
 
-    The `finish` method is responsible for reading the data from the HDF5 file, extracting the relevant information (UCTS timestamps, event counters, and busy counters), and calculating the deadtime-related metrics. The method returns the UCTS timestamps, the time differences between consecutive UCTS timestamps, the event counters, the busy counters, the collected trigger rate, the total time, and the deadtime percentage.
+    The `finish` method is responsible for reading the data from the HDF5 file,\
+        extracting the relevant information (UCTS timestamps, event counters, and\
+            busy counters), and calculating the deadtime-related metrics. The method\
+                returns the UCTS timestamps, the time differences between consecutive\
+                    UCTS timestamps, the event counters, the busy counters,\
+                        the collected\
+                        trigger rate, the total time, and the deadtime percentage.
     """
 
     name = "DeadtimeTestTool"
@@ -1250,7 +1333,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
                     ucts_timestamps.extend(tup[3])
                     event_counter.extend(tup[7])
                     busy_counter.extend(tup[6])
-                except:
+                except Exception:
                     break
         # print(output_file.keys())
         # tom_mu_all= output[0].tom_mu
@@ -1285,10 +1368,15 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
 
 class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
-    """
-    The `TriggerTimingTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that is used to test the trigger timing of NectarCAM.
+    """The `TriggerTimingTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that
+    is used to test the trigger timing of NectarCAM.
 
-    The `finish` method is responsible for reading the data from the HDF5 file, extracting the relevant information (UCTS timestamps), and calculating the RMS value of the difference between consecutive triggers. The method returns the UCTS timestamps, the time differences between consecutive triggers for events concerning more than 10 pixels (non-muon related events).
+    The `finish` method is responsible for reading the data from the HDF5 file,\
+        extracting the relevant information (UCTS timestamps), and calculating\
+            the RMS value of the difference between consecutive triggers. The method\
+                returns the UCTS timestamps, the time differences between consecutive\
+                    triggers for events concerning more than 10 pixels (non-muon\
+                        related events).
     """
 
     name = "TriggerTimingTestTool"
@@ -1323,7 +1411,7 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
                     ucts_timestamps.extend(tup[3])
                     charge_per_event.extend(tup[4])
 
-                except:
+                except Exception:
                     break
         # print(output_file.keys())
         # tom_mu_all= output[0].tom_mu

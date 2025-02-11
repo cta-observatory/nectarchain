@@ -17,11 +17,13 @@ dependencies:
   - sphinx
   - sphinx-automodapi
   - pydata-sphinx-theme
-  - pyqt # [linux]
+  - lmfit # needed into TRR
+  - h5py # needed into TRR (should be removed to use I/O methods of containers)
+  - pyqt
   - pip:
     - zeo
     - zodb
     - mechanize
     - browser-cookie3
     - pyqtgraph
-    - pyqt6 # [osx and arm64]
+    - sphinx-qt-documentation

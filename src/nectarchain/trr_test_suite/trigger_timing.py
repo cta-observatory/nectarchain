@@ -7,23 +7,29 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-from tools_components import TriggerTimingTestTool
-from utils import pe2photons
+
+from nectarchain.trr_test_suite.tools_components import TriggerTimingTestTool
+from nectarchain.trr_test_suite.utils import pe2photons
 
 
 def get_args():
-    """
-    Parses command-line arguments for the deadtime test script.
+    """Parses command-line arguments for the deadtime test script.
 
     Returns:
         argparse.ArgumentParser: The parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(
         description="Trigger Timing Test B-TEL-1410. \n"
-        + "According to the nectarchain component interface, you have to set a NECTARCAMDATA environment variable in the folder where you have the data from your runs or where you want them to be downloaded.\n"
-        + "You have to give a list of runs (run numbers with spaces inbetween) and an output directory to save the final plot.\n"
-        + "If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.\n For the purposes of testing this script, default data is from the runs used for this test in the TRR document.\n"
-        + "You can optionally specify the number of events to be processed (default 1000).\n"
+        + "According to the nectarchain component interface, you have to set\
+            a NECTARCAMDATA environment variable in the folder where you have the data\
+                from your runs or where you want them to be downloaded.\n"
+        + "You have to give a list of runs (run numbers with spaces inbetween) and an\
+            output directory to save the final plot.\n"
+        + "If the data is not in NECTARCAMDATA, the files will be downloaded through\
+            DIRAC.\n For the purposes of testing this script, default data is from the\
+                runs used for this test in the TRR document.\n"
+        + "You can optionally specify the number of events to be processed\
+            (default 1000).\n"
     )
     parser.add_argument(
         "-r",
@@ -58,15 +64,21 @@ def get_args():
 
 
 def main():
-    """
-    Runs the deadtime test script, which performs deadtime tests B-TEL-1260 and B-TEL-1270.
+    """Runs the deadtime test script, which performs deadtime tests B-TEL-1260 and
+    B-TEL-1270.
 
-    The script takes command-line arguments to specify the list of runs, corresponding sources, number of events to process, and output directory. It then processes the data for each run, performs an exponential fit to the deadtime distribution, and generates two plots:
+    The script takes command-line arguments to specify the list of runs, corresponding\
+        sources, number of events to process, and output directory. It then processes\
+            the data for each run, performs an exponential fit to the deadtime\
+                distribution, and generates two plots:
 
-    1. A plot of deadtime percentage vs. collected trigger rate, with the CTA requirement indicated.
-    2. A plot of the rate from the fit vs. the collected trigger rate, with the relative difference shown in the bottom panel.
+    1. A plot of deadtime percentage vs. collected trigger rate, with the CTA\
+        requirement indicated.
+    2. A plot of the rate from the fit vs. the collected trigger rate, with the\
+        relative difference shown in the bottom panel.
 
-    The script also saves the generated plots to the specified output directory, and optionally saves them to a temporary output directory for use in a GUI.
+    The script also saves the generated plots to the specified output directory,\
+        and optionally saves them to a temporary output directory for use in a GUI.
     """
 
     parser = get_args()
@@ -141,7 +153,8 @@ def main():
     cta_requirement_y = 5  # Y-value for the CTA requirement
     ax.axhline(y=cta_requirement_y, color="purple", linestyle="--")
 
-    # Add the small vertical arrows starting from the CTA requirement line and pointing downwards
+    # Add the small vertical arrows starting from the CTA requirement line and pointing
+    # downwards
     arrow_positions = [20, 80, 200]  # X-positions for the arrows
     for x_pos in arrow_positions:
         ax.annotate(
@@ -151,7 +164,8 @@ def main():
             arrowprops=dict(arrowstyle="->", color="purple", lw=1.5),
         )  # Arrow pointing downwards
 
-    # Add the CTA requirement label exactly above the dashed line, centered between arrows
+    # Add the CTA requirement label exactly above the dashed line, centered between
+    # arrows
     ax.text(
         140,
         cta_requirement_y + 0.5,

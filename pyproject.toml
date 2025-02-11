@@ -27,8 +27,11 @@ dependencies = [
     "scipy==1.11.4",
     "zodb",
     "zeo",
-    "pyqt6",
+    "lmfit",
+    "h5py",
+    "pyqt5",
     "pyqtgraph",
+    "tomli; python_version < '3.11'",
 ]
 
 # needed for setuptools_scm, we don't define a static version
@@ -52,9 +55,9 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-automodapi",
     "sphinx-design",
+    "sphinx-qt-documentation",
     "pydata_sphinx_theme",
     "numpydoc",
-    "tomli; python_version < '3.11'"
 ]
 # we can use self-references to simplify all
 all = [
