@@ -20,7 +20,7 @@ for i in Runs:
         % str(i)
     )
 
-    filename = "/Users/hashkar/Desktop/ashkar_nectar/data/SPEfit/FlatFieldSPENominalStdNectarCAM_run3731_maxevents100_GlobalPeakWindowSum_window_width_8_window_shift_4.h5"
+    filename = "/Users/hashkar/Desktop/ashkar_nectar/data/SPEfit/FlatFieldSPENominalStdNectarCAM_run3942_maxevents100_LocalPeakWindowSum_default.h5"
     with h5py.File(filename, "r") as f:
 
         def print_hdf5_structure(name, obj):

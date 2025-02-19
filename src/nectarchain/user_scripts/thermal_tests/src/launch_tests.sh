@@ -54,7 +54,7 @@ dirac-proxy-init -M -g cta_nectarcam d
 #GAIN Photostatistic
 ########################################################################
 #runs = [3731, 3750, 3784] and there associated pedestal and FF runs
-#python gain_PhotoStat_computation.py --FF_run_number 3937 --Ped_run_number 3938 --SPE_run_number 3942 --max_events 100  --method GlobalPeakWindowSum --extractor_kwargs '{"window_width":16,"window_shift":4}' --overwrite -v INFO --reload_events
+#python gain_PhotoStat_computation.py --FF_run_number 3937 --Ped_run_number 3938 --SPE_run_number 3942 --max_events 100  --method GlobalPeakWindowSum --extractor_kwargs '{"window_width":8,"window_shift":4}' --overwrite -v INFO --reload_events
 ########################################################################
 
 
@@ -62,3 +62,13 @@ dirac-proxy-init -M -g cta_nectarcam d
 ########################################################################
 #python no code for the moment -> Francois
 ########################################################################
+
+
+#REMANAING work : 
+
+#Photostat script
+#THRESHOLD HG/LG script
+
+#FF plots 
+#Photostat plots
+#THRESHOLD HG/LG plots

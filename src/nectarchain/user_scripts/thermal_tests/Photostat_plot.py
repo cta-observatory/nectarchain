@@ -15,19 +15,17 @@ dirname = "/Users/hashkar/Desktop/ashkar_nectar/data/SPEfit/"
 j = 0
 
 for i in Runs:
-    filename = (
-        "/Users/hashkar/Desktop/ashkar_nectar/data/SPEfit/FlatFieldSPENominalStdNectarCAM_run%s_maxevents100_LocalPeakWindowSum_window_width_16_window_shift_4.h5"
-        % str(i)
-    )
+    print(i)
+    filename = "/Users/hashkar/Desktop/ashkar_nectar/data/PhotoStat/PhotoStatisticNectarCAM_FFrun3937_GlobalPeakWindowSum_window_shift_4_window_width_8_Pedrun3938_FullWaveformSum_maxevents100.h5"
 
-    filename = "/Users/hashkar/Desktop/ashkar_nectar/data/SPEfit/FlatFieldSPENominalStdNectarCAM_run3731_maxevents100_GlobalPeakWindowSum_window_width_8_window_shift_4.h5"
     with h5py.File(filename, "r") as f:
 
         def print_hdf5_structure(name, obj):
-            print(name)  # Prints the full path of each dataset/group
+            print(name)  # Prints full path of each dataset/group
 
         f.visititems(print_hdf5_structure)
-    toto = read_table(filename, path="/data/SPEfitContainer_0")
+    print("tralala")
+    toto = read_table(filename, path="/data/PhotoStatistiContainer_0")
     print(toto)
 
     data = {
