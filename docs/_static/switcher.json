@@ -8,5 +8,10 @@
     "name": "stable",
     "version": "stable",
     "url": "https://nectarchain.readthedocs.io/en/stable/"
+  },
+  {
+    "name": "v0.2.1-rtd",
+    "version": "v0.2.1-rtd",
+    "url": "https://nectarchain.readthedocs.io/en/v0.2.1-rtd/"
   }
 ]
