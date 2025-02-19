@@ -3,7 +3,8 @@ import logging
 import numpy as np
 from ctapipe.containers import EventType
 from ctapipe.core.traits import Bool, Integer, List, Unicode
-from ctapipe.image.extractor import GlobalPeakWindowSum, LocalPeakWindowSum # noqa: F401
+from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from traitlets.config.loader import Config
