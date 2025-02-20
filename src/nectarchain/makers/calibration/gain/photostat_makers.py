@@ -108,7 +108,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                 max_events=self.max_events,
             )
         except Exception as e:
-            self.log.warning(e)
+            self.log.warning(f"{e}", exc_info=True)
             FF_files = []
         try:
             Ped_files = DataManagement.find_charges(
@@ -116,7 +116,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                 max_events=self.max_events,
             )
         except Exception as e:
-            self.log.warning(e)
+            self.log.warning(f"{e}", exc_info=True)
             Ped_files = []
         if self.reload_events or len(FF_files) != 1 or len(Ped_files) != 1:
             if len(FF_files) != 1 or len(Ped_files) != 1:
