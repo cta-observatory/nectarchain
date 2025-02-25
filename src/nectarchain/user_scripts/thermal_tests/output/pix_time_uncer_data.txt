@@ -1,2 +1,0 @@
-Run	Collected_trigger_rate 	Measured_trigger_rate	Deadtime_value	Source
-3702	1.550684779942292	0.0032924119475631858	0.9900990099009901	2

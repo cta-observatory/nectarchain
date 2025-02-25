@@ -11,14 +11,8 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 from traitlets.config import Config
 
-from nectarchain.dqm.camera_monitoring import CameraMonitoring
 from nectarchain.dqm.charge_integration import ChargeIntegrationHighLowGain
 from nectarchain.dqm.db_utils import DQMDB
-from nectarchain.dqm.mean_camera_display import MeanCameraDisplayHighLowGain
-from nectarchain.dqm.mean_waveforms import MeanWaveFormsHighLowGain
-from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
-from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
-from nectarchain.dqm.trigger_statistics import TriggerStatistics
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
 
 
@@ -218,13 +212,16 @@ def main():
         path2 = f"{NectarPath}/runs/{arg}"
         print(path2)
 
-        reader = EventSource(input_url=path2, config=config, max_events=args.max_events)
-
-        for evt in tqdm(
-            reader, total=args.max_events if args.max_events else len(reader), unit="ev"
-        ):
-            for p in processors:
-                p.ProcessEvent(evt, noped)
+        with EventSource(
+            input_url=path2, config=config, max_events=args.max_events
+        ) as reader:
+            for evt in tqdm(
+                reader,
+                total=args.max_events if args.max_events else len(reader),
+                unit="ev",
+            ):
+                for p in processors:
+                    p.ProcessEvent(evt, noped)
 
     for p in processors:
         p.FinishRun()

@@ -41,13 +41,14 @@ dirac-proxy-init -M -g cta_nectarcam d
 #FF
 ########################################################################
 #runs = [3731, 3750, 3784]
+#python flatfield_example.py -r 3731
 ########################################################################
 
 
 #GAIN SPEFit
 ########################################################################
 #runs = [3731, 3750, 3784]
-#python gain_SPEfit_computation.py -r 3942 --HHV --reload_events -p 45 56 --max_events 100  --method GlobalPeakWindowSum --extractor_kwargs '{"window_width":8,"window_shift":4}' --overwrite -v DEBUG
+#python gain_SPEfit_computation.py -r 3942  --reload_events --max_events 100  --method GlobalPeakWindowSum --extractor_kwargs '{"window_width":8,"window_shift":4}' --overwrite -v DEBUG
 ########################################################################
 
 
@@ -69,6 +70,4 @@ dirac-proxy-init -M -g cta_nectarcam d
 #Photostat script
 #THRESHOLD HG/LG script
 
-#FF plots 
-#Photostat plots
 #THRESHOLD HG/LG plots

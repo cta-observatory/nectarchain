@@ -7,8 +7,8 @@ from ctapipe.io import read_table
 
 from nectarchain.data.container import GainContainer
 
-temperature = [5, 0, -5]
-Runs = [4940, 4940, 4940]
+temperature = [5]
+Runs = [4940]
 dirname = "/Users/hashkar/Desktop/nectarchain/src/nectarchain/user_scripts/thermal_tests/output/FF/FlatFieldTests"
 
 
@@ -21,21 +21,35 @@ for i in Runs:
     )
 
     toto = read_table(filename, path="/data/FlatFieldContainer_0")
-    print(toto)
+    print(toto.colnames)
+    print(toto["event_id"], max(toto["event_id"][0]), len(toto["event_id"][0]))
 
     data = {
         "FF_coef": [x for x in toto["FF_coef"]],
+        "bad_pixels": [x for x in toto["bad_pixels"]],
         # 'luminosity': toto['luminosity']
     }
-    print(data)
-    FF_coef = np.nanmean(np.array(data["FF_coef"]))
+    print(data["bad_pixels"][0][0])
+    print(data["bad_pixels"][0][1])
+    print(data["bad_pixels"][0][2])
+    print(data["bad_pixels"][0][3])
+    print(data["bad_pixels"][0][1822])
+    print(data["FF_coef"][0][5206][1])
+    # print(len(data['FF_coef'][0][0][1]))
 
-    print(FF_coef)
-    plt.plot(temperature[j], FF_coef, marker="o")
+    ff_co = data["FF_coef"][0][0][0]
+    filtered_arr = ff_co[np.isfinite(ff_co)]
+    # print(len(filtered_arr))
+
+    FF_coef = np.nanmean(filtered_arr)
+
+    plt.hist(filtered_arr)
+
+    # print(FF_coef, max(ff_co), min(ff_co))
+    # plt.plot(temperature[j], FF_coef, marker="o")
     j = j + 1
 
-plt.xlabel("Temperature (°C)")
-plt.savefig("FF_coef.png")
+# plt.show()
 
 
 # print(toto)

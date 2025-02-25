@@ -167,7 +167,7 @@ else:
 max_events = args.max_events
 # run_number = 4940
 # max_events = 10000
-window_width = 12
+window_width = 8
 outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldTests/1FF_{}.h5".format(run_number)
 
 # Initial call
