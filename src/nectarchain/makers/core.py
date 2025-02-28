@@ -303,7 +303,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 )
             )
         except HDF5ExtError as err:
-            self.log.warning(err.args[0], exc_info=True)
+            self.log.warning(f"{err}", exc_info=True)
             self.log.warning("retry with w mode instead of a")
             self.writer = self.enter_context(
                 HDF5TableWriter(
@@ -314,7 +314,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 )
             )
         except Exception as err:
-            self.log.error(err, exc_info=True)
+            self.log.error(f"{err}", exc_info=True)
             raise err
 
     def setup(self, *args, **kwargs):
@@ -487,11 +487,10 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                     "NectarCAMContainer"
                 )
         except FieldValidationError as e:
-            log.warning(e, exc_info=True)
+            self.log.warning(f"{e}", exc_info=True)
             self.log.warning("the container has not been written")
         except Exception as e:
-            log.error(e, exc_info=True)
-            self.log.error(e.args[0], exc_info=True)
+            self.log.error(f"{e}", exc_info=True)
             raise e
 
     @property
