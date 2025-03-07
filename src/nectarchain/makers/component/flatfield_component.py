@@ -2,9 +2,12 @@ import logging
 
 import numpy as np
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Integer, List
+from ctapipe.core.traits import Bool, Integer, List, Unicode
+from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
+from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+from traitlets.config.loader import Config
 
 from nectarchain.data.container import FlatFieldContainer
 from nectarchain.makers.component import NectarCAMComponent
@@ -13,10 +16,10 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-__all__ = ["PreFlatFieldComponent"]
+__all__ = ["FlatFieldComponent"]
 
 
-class PreFlatFieldComponent(NectarCAMComponent):
+class FlatFieldComponent(NectarCAMComponent):
     """
     Component that computes flat field coefficients from raw data.
 
@@ -29,10 +32,17 @@ class PreFlatFieldComponent(NectarCAMComponent):
         duration of the extraction window in ns (default value = 12)
 
     gain: list
-        array of gain value
+        array of gain value (default value = array of 58 and 58/13)
 
     bad_pix: list
         list of bad pixels (default value = [])
+
+    charge_extraction_method: srt
+        name of the charge extraction method ("LocalPeakWindowSum"
+        or "GlobalPeakWindowSum" ; default value = None)
+
+    charge_integration_correction: bool
+        application of a correction from the charge extractor (defaut value = False)
 
     """
 
@@ -61,6 +71,17 @@ class PreFlatFieldComponent(NectarCAMComponent):
         help="list of bad pixels",
     ).tag(config=True)
 
+    charge_extraction_method = Unicode(
+        defaut_value=None,
+        help="name of the charge extraction method",
+        allow_none=True,
+    ).tag(config=True)
+
+    charge_integration_correction = Bool(
+        default_value=False,
+        help="correction applied by the charge extractor",
+    ).tag(config=True)
+
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
@@ -73,13 +94,12 @@ class PreFlatFieldComponent(NectarCAMComponent):
         self.__FF_coef = []
         self.__bad_pixels = []
 
-        print("gain")
-        print(type(self.gain))
-        print(self.gain)
-
-        print("bad_pixels")
-        print(type(self.bad_pix))
-        print(self.bad_pix)
+        log.info(f"Charge extraction method : {self.charge_extraction_method}")
+        log.info(
+            f"Charge integration correciton : {self.charge_integration_correction}"
+        )
+        log.info(f"Gain : {self.gain}")
+        log.info(f"List of bad pixels : {self.bad_pix}")
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         if event.trigger.event_type.value == EventType.FLATFIELD.value:
@@ -93,31 +113,57 @@ class PreFlatFieldComponent(NectarCAMComponent):
             # subtract pedestal using the mean of the 20 first samples
             wfs_pedsub = self.subtract_pedestal(wfs, 20)
 
-            # get the masked array for integration window
-            t_peak = np.argmax(wfs_pedsub, axis=-1)
-            masked_wfs = self.make_masked_array(
-                t_peak, self.window_shift, self.window_width
-            )
-
             # mask bad pixels
-            self.__bad_pixels.append(self.bad_pix)
-            masked_wfs[:, self.bad_pix, :] = False
+            self.__bad_pixels = np.array(self.bad_pix)
+            bad_pixels_mask = self.make_badpix_mask(self.bad_pix)
 
-            # get integrated amplitude and mean amplitude over all pixels per event
-            amp_int_per_pix_per_event = np.sum(
-                wfs_pedsub[0], axis=-1, where=masked_wfs.astype("bool")
-            )
-            self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
-            # --< We could use ctapipe.image.extractor.LocalPeakWindowSum >--
+            if self.charge_extraction_method is None:
+                # get the masked array for integration window
+                t_peak = np.argmax(wfs_pedsub, axis=-1)
+                masked_wfs = self.make_masked_array(
+                    t_peak, self.window_shift, self.window_width
+                )
+                masked_wfs[:, self.bad_pix, :] = False
+                # get integrated amplitude and mean amplitude over all pixels per event
+                amp_int_per_pix_per_event = np.sum(
+                    wfs_pedsub, axis=-1, where=masked_wfs
+                )
+                self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
+                amp_int_per_pix_per_event_pe = (
+                    amp_int_per_pix_per_event[:] / self.gain[:]
+                )
 
-            amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event[:] / self.gain[:]
+            else:
+                config = Config(
+                    {
+                        self.charge_extraction_method: {
+                            "window_shift": self.window_shift,
+                            "window_width": self.window_width,
+                        }
+                    }
+                )
+                integrator = eval(self.charge_extraction_method)(
+                    self.subarray,
+                    config=config,
+                    apply_integration_correction=self.charge_integration_correction,
+                )
+                amp_int_per_pix_per_event = integrator(
+                    wfs_pedsub, 0, 0, bad_pixels_mask
+                )
+                self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
+                amp_int_per_pix_per_event_pe = (
+                    amp_int_per_pix_per_event.image[:] / self.gain[:]
+                )
+
             mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
 
+            # efficiency coefficients
             eff = np.divide(
                 amp_int_per_pix_per_event_pe,
                 np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
             )
 
+            # flat-field coefficients
             FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
             self.__FF_coef.append(FF_coef)
 
@@ -168,6 +214,29 @@ class PreFlatFieldComponent(NectarCAMComponent):
         masked_wfs = (sample_times >= t_signal_start) & (sample_times < t_signal_stop)
 
         return masked_wfs
+
+    @staticmethod
+    def make_badpix_mask(bad_pixel_list):
+        """
+        Make a boulean mask with the list of bad pixels (used by GlobalPeakWindowSum)
+
+        Args:
+            bad_pixel_list: list of bad pixels
+
+        Returns:
+            badpix_mask: boulean mask
+        """
+
+        badpix_mask = np.zeros(
+            shape=(constants.N_GAINS, constants.N_PIXELS), dtype=bool
+        )
+        pixels = np.arange(constants.N_PIXELS)
+
+        for i in pixels:
+            if i in bad_pixel_list:
+                badpix_mask[:, i] = 1
+
+        return badpix_mask
 
     def finish(self):
         output = FlatFieldContainer(

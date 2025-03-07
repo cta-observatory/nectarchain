@@ -19,7 +19,7 @@ class FlatfieldNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["PreFlatFieldComponent"],
+        default_value=["FlatFieldComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
