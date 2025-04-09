@@ -62,6 +62,13 @@ class DataManagement:
                         run_number, basepath="/ctao/nectarcam"
                     )
                 )
+                if not lfns:
+                    not_found = FileNotFoundError(
+                        f"Could not find run {run_number} on DIRAC (neither under "
+                        f"/ctao/nectarcam nor /vo.cta.in2p3.fr/nectarcam)"
+                    )
+                    log.error(not_found, exc_info=True)
+                    raise not_found
                 DataManagement.getRunFromDIRAC(lfns)
                 list = glob.glob(
                     basepath + "**/*" + str(run_number) + "*.fits.fz", recursive=True
