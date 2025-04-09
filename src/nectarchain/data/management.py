@@ -54,7 +54,21 @@ class DataManagement:
             if search_on_GRID:
                 log.warning(e, exc_info=True)
                 log.info("will search files on GRID and fetch them")
-                lfns = DataManagement.get_GRID_location(run_number)
+                lfns = DataManagement.get_GRID_location(
+                    run_number, basepath="/vo.cta.in2p3.fr/nectarcam"
+                )
+                lfns.extend(
+                    DataManagement.get_GRID_location(
+                        run_number, basepath="/ctao/nectarcam"
+                    )
+                )
+                if not lfns:
+                    not_found = FileNotFoundError(
+                        f"Could not find run {run_number} on DIRAC (neither under "
+                        f"/ctao/nectarcam nor /vo.cta.in2p3.fr/nectarcam)"
+                    )
+                    log.error(not_found, exc_info=True)
+                    raise not_found
                 DataManagement.getRunFromDIRAC(lfns)
                 list = glob.glob(
                     basepath + "**/*" + str(run_number) + "*.fits.fz", recursive=True
@@ -87,19 +101,19 @@ class DataManagement:
             list of lfns path
         """
         with KeepLoggingUnchanged():
-            from DIRAC.Interfaces.API.Dirac import Dirac
+            from DIRAC.DataManagementSystem.Client.DataManager import DataManager
 
-            dirac = Dirac()
             for lfn in lfns:
+                voName = lfn.split("/")[1]
+                dm = DataManager(vo=voName)
                 if not (
                     os.path.exists(
                         f'{os.environ["NECTARCAMDATA"]}/runs/{os.path.basename(lfn)}'
                     )
                 ):
-                    dirac.getFile(
+                    dm.getFile(
                         lfn=lfn,
-                        destDir=f"{os.environ['NECTARCAMDATA']}/runs/",
-                        printOutput=True,
+                        destinationDir=f"{os.environ['NECTARCAMDATA']}/runs/",
                     )
                     pass
 
