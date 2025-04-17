@@ -10,19 +10,19 @@ from nectarchain.makers.calibration import FlatfieldNectarCAMCalibrationTool
 os.environ["NECTARCAMDATA"] = "./20231222"
 
 
-def get_gain(output_from_preFlatFieldComponent):
+def get_gain(output_from_FlatFieldComponent):
     """
     Calculate the gain using the ratio of the variance and the mean amplitude per pixel
 
     Args:
-        output_from_preFlatFieldComponent: output from the preFlatFieldComponent
+        output_from_FlatFieldComponent: output from the FlatFieldComponent
 
     Returns:
         gain: list of gain for each pixel
     """
 
     amp_int_per_pix_per_event = (
-        output_from_preFlatFieldComponent.amp_int_per_pix_per_event[:, :, :]
+        output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, :, :]
     )
     amp_int_per_pix_mean = np.mean(amp_int_per_pix_per_event, axis=0)
     amp_int_per_pix_var = np.var(amp_int_per_pix_per_event, axis=0)
@@ -34,28 +34,28 @@ def get_gain(output_from_preFlatFieldComponent):
     return gain
 
 
-def get_hi_lo_ratio(output_from_preFlatFieldComponent):
+def get_hi_lo_ratio(output_from_FlatFieldComponent):
     """
     Calculate the high gain to low gain ratio
 
     Args:
-        output_from_preFlatFieldComponent: output from the preFlatFieldComponent
+        output_from_FlatFieldComponent: output from the FlatFieldComponent
 
     Returns:
         hi_lo_ratio: list of hi/lo ratio for each pixel
     """
 
-    gain = get_gain(output_from_preFlatFieldComponent)
+    gain = get_gain(output_from_FlatFieldComponent)
     hi_lo_ratio = gain[constants.HIGH_GAIN] / gain[constants.LOW_GAIN]
     return hi_lo_ratio
 
 
-def get_bad_pixels(output_from_preFlatFieldComponent):
+def get_bad_pixels(output_from_FlatFieldComponent):
     """
     Identify bad pixels
 
     Args:
-        output_from_preFlatFieldComponent: output from the preFlatFieldComponent
+        output_from_FlatFieldComponent: output from the FlatFieldComponent
 
     Returns:
         all_bad_pix: list of bad pixels
@@ -63,13 +63,13 @@ def get_bad_pixels(output_from_preFlatFieldComponent):
 
     bad_pix = []
 
-    n_event = len(output_from_preFlatFieldComponent.FF_coef[:, 0, 0])
+    n_event = len(output_from_FlatFieldComponent.FF_coef[:, 0, 0])
     step = 100
     n_step = round(n_event / step)
 
-    hi_lo = get_hi_lo_ratio(output_from_preFlatFieldComponent)
+    hi_lo = get_hi_lo_ratio(output_from_FlatFieldComponent)
 
-    amp_int_per_pix_per_event = preFlatFieldOutput.amp_int_per_pix_per_event[:, :, :]
+    amp_int_per_pix_per_event = FlatFieldOutput.amp_int_per_pix_per_event[:, :, :]
     mean_amp_int_per_pix = np.mean(amp_int_per_pix_per_event, axis=0)
     mean_amp = np.mean(mean_amp_int_per_pix, axis=1)
     std_amp = np.std(mean_amp_int_per_pix, axis=1)
@@ -82,7 +82,7 @@ def get_bad_pixels(output_from_preFlatFieldComponent):
             bad_pix.append(p)
 
         amp_int_per_pix_per_event = (
-            output_from_preFlatFieldComponent.amp_int_per_pix_per_event[:, :, p]
+            output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, :, p]
         )
         mean_amp_int_per_pix = np.mean(amp_int_per_pix_per_event, axis=0)
 
@@ -92,20 +92,20 @@ def get_bad_pixels(output_from_preFlatFieldComponent):
                 bad_pix.append(p)
 
             # pixels with unstable flat-field coefficient
-            FF_coef = output_from_preFlatFieldComponent.FF_coef[:, G, p]
+            FF_coef = output_from_FlatFieldComponent.FF_coef[:, G, p]
             mean_FF_per_pix = np.mean(FF_coef, axis=0)
             std_FF_per_pix = np.std(FF_coef, axis=0)
 
             for e in range(0, round(n_step)):
                 x_block = np.linspace(e * step, (e + 1) * step, step)
                 FF_coef_mean_per_block = np.mean(
-                    output_from_preFlatFieldComponent.FF_coef[
+                    output_from_FlatFieldComponent.FF_coef[
                         e * step : (e + 1) * step, G, p
                     ],
                     axis=0,
                 )
                 FF_coef_std_per_block = np.std(
-                    output_from_preFlatFieldComponent.FF_coef[
+                    output_from_FlatFieldComponent.FF_coef[
                         e * step : (e + 1) * step, G, p
                     ],
                     axis=0,
@@ -122,7 +122,9 @@ def get_bad_pixels(output_from_preFlatFieldComponent):
     return all_bad_pix
 
 
-# defalut gain array
+print("\n *** First pass with default gain and hi/lo values *** \n")
+
+# default gain array
 gain_default = 58.0
 hi_lo_ratio_default = 13.0
 gain_array = list(np.ones(shape=(constants.N_GAINS, constants.N_PIXELS)))
@@ -131,10 +133,10 @@ gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
 
 # empty list of bad pixels
 bad_pixels_array = list([])
-
 run_number = 4940
 max_events = 10000
 window_width = 12
+window_shift = 5
 outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldTests/1FF_{}.h5".format(run_number)
 
 # Initial call
@@ -143,7 +145,10 @@ tool = FlatfieldNectarCAMCalibrationTool(
     run_number=run_number,
     max_events=max_events,
     log_level=20,
+    charge_extraction_method=None,  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
+    charge_integration_correction=False,
     window_width=window_width,
+    window_shift=window_shift,
     overwrite=True,
     gain=gain_array,
     bad_pix=bad_pixels_array,
@@ -154,7 +159,14 @@ tool.initialize()
 tool.setup()
 
 tool.start()
-preFlatFieldOutput = tool.finish(return_output_component=True)[0]
+FlatFieldOutput = tool.finish(return_output_component=True)[0]
+
+print("\n\tIntermediate output file %s" % outfile)
+
+print(
+    "\n *** Second pass with updates gain and hi/lo values and \
+taking into account bad pixels *** \n"
+)
 
 outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldTests/2FF_{}.h5".format(run_number)
 
@@ -164,10 +176,13 @@ tool = FlatfieldNectarCAMCalibrationTool(
     run_number=run_number,
     max_events=max_events,
     log_level=20,
+    charge_extraction_method=None,  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
+    charge_integration_correction=False,
     window_width=window_width,
+    window_shift=window_shift,
     overwrite=True,
-    gain=get_gain(preFlatFieldOutput),
-    bad_pix=get_bad_pixels(preFlatFieldOutput),
+    gain=get_gain(FlatFieldOutput),
+    bad_pix=get_bad_pixels(FlatFieldOutput),
     output_path=outfile,
 )
 
@@ -176,6 +191,8 @@ tool.setup()
 
 tool.start()
 FlatFieldOutput = tool.finish(return_output_component=True)[0]
+
+print("\n\tFinal output file %s \n" % outfile)
 
 # Another option would be to use only one tool and make the gain calculation and
 # identification of bad pixels in the finish fonction of the component (to be tested)
