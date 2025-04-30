@@ -70,6 +70,12 @@ def update(attr, old, new):
     page_layout.children[1] = tabs
 
 
+def update_timelines(attr, old, new):
+    runid = run_select.value
+    new_rundata = get_rundata(db, runid)
+    make_timelines(db, new_rundata, runid)
+
+
 print("Opening connection to ZODB")
 db = DQMDB(read_only=True).root
 print("Getting list of run numbers")
