@@ -2,6 +2,7 @@ import collections
 import re
 
 import numpy as np
+from bokeh.plotting import figure
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 
@@ -25,6 +26,20 @@ geom = geom.transform_to(EngineeringCameraFrame())
 def get_rundata(src, runid):
     run_data = src[runid]
     return run_data
+
+
+def make_timelines(db, source, runid):
+    timelines = collections.defaultdict(dict)
+    for parentkey in db[runid].keys():
+        if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
+            for childkey in db[runid][parentkey].keys():
+                print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
+                timelines[parentkey][childkey] = figure(title=childkey)
+                evts = np.arange(len(source[parentkey][childkey]))
+                timelines[parentkey][childkey].line(
+                    x=evts, y=source[parentkey][childkey]
+                )
+    return dict(timelines)
 
 
 def make_camera_displays(db, source, runid):
