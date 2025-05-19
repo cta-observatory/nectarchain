@@ -15,16 +15,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11"
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
-    "ctapipe~=0.19",
+    "ctapipe~=0.24.0",
     "ctapipe-io-nectarcam",
     "pandas",
-    "scipy==1.11.4",
+    "scipy",
     "zodb",
     "zeo",
     "lmfit",

@@ -4,16 +4,16 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - ctapipe=0.19
-  - ctapipe-io-nectarcam
-  - jinja2=3.0.1
+  - ctapipe=0.24.0
+  # - ctapipe-io-nectarcam  # TODO: should be added back when merging PR
+  - jinja2
   - jupyterlab
   - jupytext
   - pre-commit
   - pytest-runner
   - pip
   - pandas
-  - scipy=1.11.4
+  - scipy
   - sphinx
   - sphinx-automodapi
   - pydata-sphinx-theme
