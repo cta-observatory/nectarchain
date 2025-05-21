@@ -45,17 +45,17 @@ if test_dir not in sys.path:
 
 
 class TestRunner(QWidget):
-    """The ``TestRunner`` class is a GUI application that allows the\
-        user to run various tests and display the results.
+    """The ``TestRunner`` class is a GUI application that allows the user to run\
+     various tests and display the results.
     The class provides the following functionality:
     - Allows the user to select a test from a dropdown menu.
     - Dynamically generates input fields based on the selected test.
     - Runs the selected test and displays the output in a text box.
-    - Displays the test results in a plot canvas, with navigation buttons\
-        to switch between multiple plots.
+    - Displays the test results in a plot canvas, with navigation buttons to switch\
+     between multiple plots.
     - Provides a dark-themed UI with custom styling for various UI elements.
     The class uses the PyQt5 library for the GUI implementation and the Matplotlib\
-        library for plotting the test results.
+     library for plotting the test results.
     """
 
     test_modules = {
@@ -533,7 +533,8 @@ class TestRunner(QWidget):
         else:
             self.prev_button.setEnabled(False)
 
-    def cleanup_tempdir(self):
+    @staticmethod
+    def cleanup_tempdir():
         """Remove old plot files in temp directory."""
         for i in range(1, 3):
             plot_file = os.path.join(tempfile.gettempdir(), f"plot{i}.pkl")
