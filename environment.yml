@@ -21,6 +21,7 @@ dependencies:
   - h5py # needed into TRR (should be removed to use I/O methods of containers)
   - pyqt
   - pip:
+    - git+https://github.com/jlenain/ctapipe_io_nectarcam.git@ctapipe-0.24-bis  # TODO: should be removed when merging PR
     - zeo
     - zodb
     - mechanize
