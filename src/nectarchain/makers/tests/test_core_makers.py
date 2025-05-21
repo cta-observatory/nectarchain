@@ -385,7 +385,7 @@ class TestEventsLoopNectarCAMCalibrationTool(TestBaseNectarCAMCalibrationTool):
 
         _ = tool_instance_run_file._finish_components()
 
-        assert mock_finish_components.called_with([MockComponent().finish()], 0)
+        mock_finish_components.assert_called()
 
     @patch("nectarchain.makers.core.HDF5TableWriter")
     def test_write_container_with_nectarcam_container(
