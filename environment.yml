@@ -22,6 +22,7 @@ dependencies:
   - pyqt
   - protozfits
   - pip:
+    - git+https://github.com/jlenain/ctapipe_io_nectarcam.git@ctapipe-0.24-bis  # TODO: should be removed when merging PR
     - zeo
     - zodb
     - mechanize
