@@ -23,6 +23,9 @@ dependencies = [
     "ctapipe~=0.24.0",
     # "ctapipe-io-nectarcam",  # TODO: should be added back when merging this PR
     "ctapipe-io-nectarcam @ git+https://github.com/jlenain/ctapipe_io_nectarcam.git@ctapipe-0.24-bis",  # TODO: should be removed when merging PR
+    "bokeh",
+    "iminuit",
+    "matplotlib",
     "pandas",
     "scipy",
     "zodb",
