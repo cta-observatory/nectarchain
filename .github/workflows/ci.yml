@@ -27,7 +27,7 @@ jobs:
       - name: Set up Python environment
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.11"
       - name: Runs pre-commit hooks
         uses: pre-commit/action@v3.0.1
         with:
@@ -185,7 +185,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: 3.11
 
       - name: Install dependencies for Qt 5 on Ubuntu
         run: |
