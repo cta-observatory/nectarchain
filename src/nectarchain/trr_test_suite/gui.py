@@ -81,56 +81,9 @@ class TestRunner(QWidget):
         # , bottom for output)
         main_layout = QVBoxLayout()
 
-        self.setStyleSheet(
-            """
-            QWidget {
-                background-color: #2e2e2e;  /* Dark background */
-                color: #ffffff;  /* Light text */
-            }
-            QLabel {
-                font-weight: bold;
-                color: #ffffff;  /* Light text */
-            }
-            QComboBox {
-                background-color: #444444;  /* Dark combo box */
-                color: #ffffff;  /* Light text */
-                border: 1px solid #888888;  /* Light border */
-                min-width: 200px;  /* Set a minimum width */
-            }
-            QLineEdit {
-                background-color: #444444;  /* Dark input field */
-                color: #ffffff;  /* Light text */
-                border: 1px solid #888888;  /* Light border */
-                padding: 5px;  /* Add padding */
-                min-width: 200px;  /* Fixed width */
-            }
-            QTextEdit {
-                background-color: #1e1e1e;  /* Dark output box */
-                color: #ffffff;  /* Light text */
-                border: 1px solid #888888;  /* Light border */
-                padding: 5px;  /* Add padding */
-                min-width: 800px;  /* Set a minimum width to match the canvas */
-            }
-            QTextEdit:focus {
-                border: 1px solid #00ff00;  /* Green border on focus for visibility */
-            }
-            QPushButton {
-                background-color: #4caf50;  /* Green button */
-                color: white;  /* White text */
-                border: none;  /* No border */
-                padding: 10px;  /* Add padding */
-                border-radius: 5px;  /* Rounded corners */
-            }
-            QPushButton:disabled {
-                background-color: rgba(76, 175, 80, 0.5);  /* Transparent green when\
-                    disabled */
-                color: rgba(255, 255, 255, 0.5);  /* Light text when disabled */
-            }
-            QPushButton:hover {
-                background-color: #45a049;  /* Darker green on hover */
-            }
-            """
-        )
+        style_path = os.path.join(os.path.dirname(__file__), "styles/gui_style.qss")
+        with open(style_path, "r") as style_file:
+            self.setStyleSheet(style_file.read())
 
         # Horizontal layout for test options (left) and plot canvas (right)
         top_layout = QHBoxLayout()
@@ -313,20 +266,12 @@ class TestRunner(QWidget):
                     # Create tiny grey circle help button with a white question mark
                     help_button = QPushButton("?", self)
                     help_button.setFixedSize(16, 16)  # Smaller button size
-                    help_button.setStyleSheet(
-                        """
-                        QPushButton {
-                            background-color: grey;
-                            color: white;
-                            border-radius: 8px;  /* Circular button */
-                            font-weight: bold;
-                            font-size: 10px;  /* Smaller font size */
-                        }
-                        QPushButton:hover {
-                            background-color: darkgrey;  /* Change color on hover */
-                        }
-                        """
+
+                    button_style_path = os.path.join(
+                        os.path.dirname(__file__), "styles/help_button_style.qss"
                     )
+                    with open(button_style_path, "r") as button_style_file:
+                        help_button.setStyleSheet(button_style_file.read())
                     help_button.setToolTip(param_info["help"])
 
                     # # Use lambda to capture the current param's help text
