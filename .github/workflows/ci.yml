@@ -57,10 +57,10 @@ jobs:
             install-method: "pip"
             extra-args: ["codecov"]
           # macos 14 image is arm64 based
-          #- os: "macos-14"
-          #  python-version: "3.11"
-          #  ctapipe-version: "v0.24.0"
-          #  install-method: "mamba"
+          - os: "macos-14"
+            python-version: "3.11"
+            ctapipe-version: "v0.24.0"
+            install-method: "mamba"
 
     env :
       DISPLAY: ":99.0"
