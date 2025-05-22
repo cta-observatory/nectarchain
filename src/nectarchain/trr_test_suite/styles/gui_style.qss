@@ -1,0 +1,46 @@
+QWidget {
+    background-color: #2e2e2e;  /* Dark background */
+    color: #ffffff;  /* Light text */
+}
+QLabel {
+    font-weight: bold;
+    color: #ffffff;  /* Light text */
+}
+QComboBox {
+    background-color: #444444;  /* Dark combo box */
+    color: #ffffff;  /* Light text */
+    border: 1px solid #888888;  /* Light border */
+    min-width: 200px;  /* Set a minimum width */
+}
+QLineEdit {
+    background-color: #444444;  /* Dark input field */
+    color: #ffffff;  /* Light text */
+    border: 1px solid #888888;  /* Light border */
+    padding: 5px;  /* Add padding */
+    min-width: 200px;  /* Fixed width */
+}
+QTextEdit {
+    background-color: #1e1e1e;  /* Dark output box */
+    color: #ffffff;  /* Light text */
+    border: 1px solid #888888;  /* Light border */
+    padding: 5px;  /* Add padding */
+    min-width: 800px;  /* Set a minimum width to match the canvas */
+}
+QTextEdit:focus {
+    border: 1px solid #00ff00;  /* Green border on focus for visibility */
+}
+QPushButton {
+    background-color: #4caf50;  /* Green button */
+    color: white;  /* White text */
+    border: none;  /* No border */
+    padding: 10px;  /* Add padding */
+    border-radius: 5px;  /* Rounded corners */
+}
+QPushButton:disabled {
+    background-color: rgba(76, 175, 80, 0.5);  /* Transparent green when\
+        disabled */
+    color: rgba(255, 255, 255, 0.5);  /* Light text when disabled */
+}
+QPushButton:hover {
+    background-color: #45a049;  /* Darker green on hover */
+}
