@@ -74,7 +74,7 @@ numpydoc_class_members_toctree = False
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext"}
 
 # have all links automatically associated with the right domain.
 default_role = "py:obj"
