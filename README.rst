@@ -9,7 +9,7 @@ in its Northern site. The analysis is heavily based on
 `ctapipe <https://github.com/cta-observatory/ctapipe>`__, adding custom
 code for NectarCAM calibration.
 
-``nectarchain`` is currently pinned to ``ctapipe`` version 0.19.
+``nectarchain`` is currently pinned to ``ctapipe`` version 0.24.0.
 
 This code is under rapid development. It is not recommended for
 production use unless you are an expert or developer!

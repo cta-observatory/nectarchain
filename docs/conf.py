@@ -74,7 +74,7 @@ numpydoc_class_members_toctree = False
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext"}
 
 # have all links automatically associated with the right domain.
 default_role = "py:obj"
@@ -92,13 +92,13 @@ autodoc_mock_imports = [
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.9", None),
+    "python": ("https://docs.python.org/3.11", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "traitlets": ("https://traitlets.readthedocs.io/en/stable/", None),
-    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.19.3/", None),
+    "ctapipe": ("https://ctapipe.readthedocs.io/en/v0.24.0/", None),
 }
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
