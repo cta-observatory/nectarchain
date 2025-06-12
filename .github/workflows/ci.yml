@@ -56,6 +56,11 @@ jobs:
             ctapipe-version: "v0.24.0"
             install-method: "pip"
             extra-args: ["codecov"]
+          # macos 13 image is x86-based
+          - os: "macos-13"
+            python-version: "3.11"
+            ctapipe-version: "v0.24.0"
+            install-method: "mamba"
           # macos 14 image is arm64 based
           - os: "macos-14"
             python-version: "3.11"
