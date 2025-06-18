@@ -56,7 +56,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         if self.max_events is None:
             filename = (
                 f"{self.name}_run{self.run_number}_{self.method}"
-                f"{str_extractor_kwargs}.h5"
+                f"_{str_extractor_kwargs}.h5"
             )
         else:
             filename = (
