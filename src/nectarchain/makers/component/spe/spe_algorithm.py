@@ -1149,11 +1149,14 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
     def __fix_parameters(self) -> None:
         """Fixes the values of the ``n`` and ``pp`` parameters by setting their frozen
         attribute to True."""
-        self.log.info("updating parameters by fixing pp and n")
         pp = self._parameters["pp"]
-        pp.frozen = True
         n = self._parameters["n"]
+        pp.frozen = True
         n.frozen = True
+        self.log.info(
+            f"updating parameters by fixing pp={pp} and n={n}"
+            )
+
 
 
 class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
@@ -1251,13 +1254,14 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         same_luminosity : bool
             Whether to fix the luminosity parameter.
         """
-        self.log.info("updating parameters by fixing pp, n and res")
         pp = self._parameters["pp"]
         pp.frozen = True
         n = self._parameters["n"]
         n.frozen = True
         resolution = self._parameters["resolution"]
         resolution.frozen = True
+        self.log.info(
+            f"updating parameters by fixing pp={pp}, n={n} and res={resolution}")
         if self.same_luminosity:
             self.log.info("fixing luminosity")
             luminosity = self._parameters["luminosity"]
