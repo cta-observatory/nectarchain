@@ -176,19 +176,17 @@ class ChargesComponent(ArrayDataComponent):
 
         __image = CtapipeExtractor.get_image_peak_time(
             imageExtractor(
-                wfs_hg_tmp, self.TEL_ID, constants.HIGH_GAIN, broken_pixels_hg
+                np.array([wfs_hg_tmp, wfs_lg_tmp]),
+                self.TEL_ID,
+                None,
+                np.array([broken_pixels_hg, broken_pixels_lg]),
             )
         )
-        self.__charges_hg[f"{name}"].append(__image[0])
-        self.__peak_hg[f"{name}"].append(__image[1])
+        self.__charges_hg[f"{name}"].append(__image[0][0])
+        self.__peak_hg[f"{name}"].append(__image[1][0])
 
-        __image = CtapipeExtractor.get_image_peak_time(
-            imageExtractor(
-                wfs_lg_tmp, self.TEL_ID, constants.LOW_GAIN, broken_pixels_lg
-            )
-        )
-        self.__charges_lg[f"{name}"].append(__image[0])
-        self.__peak_lg[f"{name}"].append(__image[1])
+        self.__charges_lg[f"{name}"].append(__image[0][1])
+        self.__peak_lg[f"{name}"].append(__image[1][1])
 
     @staticmethod
     def _get_extractor_kwargs_from_method_and_kwargs(method: str, kwargs: dict):
@@ -568,44 +566,42 @@ class ChargesComponent(ArrayDataComponent):
         imageExtractor = __class__._get_imageExtractor(
             method=method, subarray=subarray, **kwargs
         )
+        out = np.array(
+            [
+                CtapipeExtractor.get_image_peak_time(
+                    imageExtractor(
+                        waveforms=np.array(
+                            [waveformsContainer.wfs_hg[i], waveformsContainer.wfs_lg[i]]
+                        ),
+                        tel_id=tel_id,
+                        selected_gain_channel=None,
+                        broken_pixels=np.array(
+                            [
+                                waveformsContainer.broken_pixels_hg[i],
+                                waveformsContainer.broken_pixels_lg[i],
+                            ]
+                        ),
+                    )
+                )
+                for i in range(len(waveformsContainer.wfs_hg))
+            ]
+        )
+        # by setting selected_gain_channel to None, we can now pass to ctapipe extractor
+        # waveforms in (n_ch, n_pix, n_samples)
+        # then out hase shape (n_events, 2, n_ch, n_pi)
         if channel == constants.HIGH_GAIN:
-            out = np.array(
-                [
-                    CtapipeExtractor.get_image_peak_time(
-                        imageExtractor(
-                            waveformsContainer.wfs_hg[i],
-                            tel_id,
-                            channel,
-                            waveformsContainer.broken_pixels_hg[i],
-                        )
-                    )
-                    for i in range(len(waveformsContainer.wfs_hg))
-                ]
-            ).transpose(1, 0, 2)
-            return ChargesContainer.fields["charges_hg"].dtype.type(
-                out[0]
-            ), ChargesContainer.fields["peak_hg"].dtype.type(out[1])
+            index = 0
+            gain_label = "hg"
         elif channel == constants.LOW_GAIN:
-            out = np.array(
-                [
-                    CtapipeExtractor.get_image_peak_time(
-                        imageExtractor(
-                            waveformsContainer.wfs_lg[i],
-                            tel_id,
-                            channel,
-                            waveformsContainer.broken_pixels_lg[i],
-                        )
-                    )
-                    for i in range(len(waveformsContainer.wfs_lg))
-                ]
-            ).transpose(1, 0, 2)
-            return ChargesContainer.fields["charges_lg"].dtype.type(
-                out[0]
-            ), ChargesContainer.fields["peak_lg"].dtype.type(out[1])
+            index = 1
+            gain_label = "lg"
         else:
             raise ArgumentError(
                 None, f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
             )
+        return ChargesContainer.fields[f"charges_{gain_label}"].dtype.type(
+            out[:, 0, index, :]
+        ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(out[:, 1, index, :])
 
     @staticmethod
     def histo_hg(
