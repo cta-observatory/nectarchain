@@ -222,7 +222,6 @@ if __name__ == "__main__":
     kwargs.pop("figpath")
     kwargs.pop("display")
     kwargs.pop("HHV_run_number")
-
     # args.HHV_run_number = 3942
     # kwargs['run_number'] = [3936]
     # kwargs['overwrite'] = True

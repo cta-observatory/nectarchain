@@ -67,7 +67,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--extractor_kwargs",
-    default={"window_width": 7, "window_shift": 3},
+    default={"window_width": 8, "window_shift": 4},
     help="charge extractor kwargs",
     type=json.loads,
 )
