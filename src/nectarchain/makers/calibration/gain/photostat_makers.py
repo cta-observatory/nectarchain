@@ -57,6 +57,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
@@ -122,18 +123,18 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             if len(FF_files) != 1 or len(Ped_files) != 1:
                 self.log.info(
                     f"{len(FF_files)} computed charges FF files found"
-                    f"with max_events >"
+                    f" with max_events >"
                     f"{self.max_events} for run {self.run_number}"
-                    f"with extraction method"
+                    f" with extraction method"
                     f"{self.method} and {str_extractor_kwargs},\n reload charges"
-                    f"from event loop"
+                    f" from event loop"
                 )
                 self.log.info(
                     f"{len(Ped_files)} computed charges FF files found"
-                    f"with max_events >"
+                    f" with max_events >"
                     f"{self.max_events} for run {self.Ped_run_number}"
-                    f"with extraction"
-                    f"method FullWaveformSum,\n reload charges from event loop"
+                    f" with extraction"
+                    f" method FullWaveformSum,\n reload charges from event loop"
                 )
 
             super().start(
@@ -162,7 +163,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     self.components[
                         0
                     ]._FF_chargesContainers = merge_map_ArrayDataContainer(
-                        chargesContainers
+                        next(chargesContainers)
                     )
                 else:
                     self.log.info("merging along slices")
@@ -196,7 +197,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     self.components[
                         0
                     ]._Ped_chargesContainers = merge_map_ArrayDataContainer(
-                        chargesContainers
+                        next(chargesContainers)
                     )
                 else:
                     self.log.info("merging along slices")
