@@ -18,6 +18,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         self.SumBadPixels_ped = []
         self.SumBadPixels = []
+
         self.BadPixelTimeline_ped = None
         self.BadPixelTimeline = None
 
@@ -26,12 +27,12 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.PixelTimeline_Figures_Names_Dict = {}
 
         self.figure_keys = {
-            "phy": f"BPX-TIMELINE-ALL-{self.gain_c}-GAIN",
+            "all": f"BPX-TIMELINE-ALL-{self.gain_c}-GAIN",
             "ped": f"BPX-TIMELINE-PED-{self.gain_c}-GAIN",
         }
 
         self.figure_filenames = {
-            "phy": f"_BPX_Timeline_{self.gain_c}Gain_All.png",
+            "all": f"_BPX_Timeline_{self.gain_c}Gain_All.png",
             "ped": f"_BPX_Timeline_{self.gain_c}Gain_Ped.png",
         }
 
@@ -44,20 +45,23 @@ class PixelTimelineHighLowGain(DQMSummary):
 
     def ProcessEvent(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
+        pixels = evt.nectarcam.tel[0].svc.pixel_ids
 
         status = np.zeros(self.Pix, dtype=int)
-        np.put(status, pixel, pixelBAD[pixel])
+        np.put(status, pixels, pixelBAD[pixels])
         bad_count = np.sum(status)
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
             self.SumBadPixels_ped.append(bad_count)
             self.SumBadPixels.append(0)
+
         else:
             self.counter_evt += 1
             self.SumBadPixels.append(bad_count)
             self.SumBadPixels_ped.append(0)
+
+        return None
 
     def FinishRun(self):
         self.BadPixelTimeline_ped = (
@@ -95,7 +99,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
     def PlotResults(self, name, FigPath):
         for key, data, count, label in [
-            ("phy", self.BadPixelTimeline, self.counter_evt, "Physical events"),
+            ("all", self.BadPixelTimeline, self.counter_evt, "Physical events"),
             ("ped", self.BadPixelTimeline_ped, self.counter_ped, "Pedestal events"),
         ]:
             if count == 0:

@@ -1,4 +1,3 @@
-import ctapipe.instrument.camera.readout
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
@@ -14,7 +13,8 @@ from matplotlib import pyplot as plt
 from traitlets.config.loader import Config
 
 from ..makers.component import ChargesComponent
-from ..makers.component.core import ArrayDataComponent
+
+# from ..makers.component.core import ArrayDataComponent
 from ..makers.extractor.utils import CtapipeExtractor
 from .dqm_summary_processor import DQMSummary
 
@@ -24,10 +24,13 @@ __all__ = ["ChargeIntegrationHighLowGain"]
 class ChargeIntegrationHighLowGain(DQMSummary):
     def __init__(self, gaink):
         self.k = gaink
+        self.gain_c = "High" if gaink == 0 else "Low"
+
         self.Pix = None
         self.Samp = None
         self.counter_evt = None
         self.counter_ped = None
+
         self.image_all = []
         self.peakpos_all = []
         self.image_ped = []
@@ -35,8 +38,6 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.ped_all = []
         self.ped_ped = []
         self.camera = None
-        self.cmap = None
-        self.subarray = None
         self.integrator = None
         self.pixelBAD = None
         self.image_all = []
@@ -69,19 +70,12 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+        subarray = Reader1.subarray
+
+        self.camera = subarray.tel[0].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
 
-        self.cmap = "gnuplot2"
-
-        self.subarray = Reader1.subarray
-        subarray = Reader1.subarray
-        subarray.tel[
-            0
-        ].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name(
-            "NectarCam"
-        )
         if charges_kwargs:
             extractor_kwargs = (
                 ChargesComponent._get_extractor_kwargs_from_method_and_kwargs(
@@ -99,76 +93,59 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.integrator = GlobalPeakWindowSum(subarray, config=config)
 
     def ProcessEvent(self, evt, noped):
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
         self.pixelBADplot = evt.mon.tel[0].pixel_status.hardware_failing_pixels
-        pixels = pixel
-        self.pixels = pixels
+        self.pixels = evt.nectarcam.tel[0].svc.pixel_ids
 
-        (
-            broken_pixels_hg,
-            broken_pixels_lg,
-        ) = ArrayDataComponent._compute_broken_pixels_event(evt, pixels)
+        # TODO: Broken pixel computation not yet implemented in nectarchain
+        # The following line can be uncommented once it is there
+        # (
+        #     broken_pixels_hg,
+        #     broken_pixels_lg,
+        # ) = ArrayDataComponent._compute_broken_pixels_event(evt, pixels)
+        #
+        # if self.k == 0:
+        #     self.pixelBAD = broken_pixels_hg
+        #     channel = constants.HIGH_GAIN
+        # if self.k == 1:
+        #     self.pixelBAD = broken_pixels_lg
+        #     channel = constants.LOW_GAIN
 
+        # TODO: in the meantime, we do something simpler for broken pixels:
+        self.pixelBAD = self.pixelBADplot
         if self.k == 0:
-            self.pixelBAD = broken_pixels_hg
             channel = constants.HIGH_GAIN
         if self.k == 1:
-            self.pixelBAD = broken_pixels_lg
             channel = constants.LOW_GAIN
 
-        waveform = evt.r0.tel[0].waveform[self.k]
-        waveform = waveform[pixels]
-        ped = np.mean(waveform[:, 20])
+        waveform = evt.r0.tel[0].waveform[self.k][self.pixels]
 
         if noped:
-            w_noped = waveform - ped
-            try:
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=w_noped,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
-                )
-            except IndexError:
-                w_noped = w_noped[np.newaxis, :]
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=w_noped,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
-                )
+            ped = np.mean(waveform[:, 20])
+            waveform = waveform - ped
 
-            image = output[0]
-            peakpos = output[1]
-
-        else:
-            try:
-                waveform = waveform[np.newaxis, :]
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=waveform,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
+        try:
+            waveform = waveform[np.newaxis, :]
+            output = CtapipeExtractor.get_image_peak_time(
+                self.integrator(
+                    waveforms=waveform,
+                    tel_id=0,
+                    selected_gain_channel=channel,
+                    broken_pixels=self.pixelBAD,
                 )
-            except IndexError:
-                waveform = waveform[np.newaxis, :]
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=waveform,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
+            )
+        except IndexError:
+            waveform = waveform[np.newaxis, :]
+            output = CtapipeExtractor.get_image_peak_time(
+                self.integrator(
+                    waveforms=waveform,
+                    tel_id=0,
+                    selected_gain_channel=channel,
+                    broken_pixels=self.pixelBAD,
                 )
+            )
 
-            image = output[0]
-            peakpos = output[1]
+        image = output[0]
+        peakpos = output[1]
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
@@ -188,16 +165,22 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         # rms, percentile, mean deviation, median, mean,
         self.image_all = np.array(self.image_all, dtype=float)
-        self.image_all_median = np.median(self.image_all, axis=0)
-        self.image_all_average = np.mean(self.image_all, axis=0)
-        self.image_all_std = np.std(self.image_all, axis=0)
-        self.image_all_rms = np.sqrt(np.sum(self.image_all**2, axis=0))
+        if self.image_all.size:
+            self.image_all_stats = {
+                "average": np.mean(self.image_all, axis=0),
+                "median": np.median(self.image_all, axis=0),
+                "std": np.std(self.image_all, axis=0),
+                "rms": np.sqrt(np.sum(self.image_all**2, axis=0)),
+            }
 
         self.ped_all = np.array(self.ped_all, dtype=float)
-        self.ped_all_average = np.mean(self.ped_all, axis=0)
-        self.ped_all_median = np.median(self.ped_all, axis=0)
-        self.ped_all_std = np.std(self.ped_all, axis=0)
-        self.ped_all_rms = np.sqrt(np.sum(self.ped_all**2, axis=0))
+        if self.ped_all.size:
+            self.ped_all_stats = {
+                "average": np.mean(self.ped_all, axis=0),
+                "median": np.median(self.ped_all, axis=0),
+                "std": np.std(self.ped_all, axis=0),
+                "rms": np.sqrt(np.sum(self.ped_all**2, axis=0)),
+            }
 
         if self.counter_ped > 0:
             self.image_ped = np.array(self.image_ped, dtype=float)
@@ -214,31 +197,15 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
     def GetResults(self):
         if self.k == 0:
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-HIGH-GAIN"
-            ] = self.image_all_average
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-HIGH-GAIN"
-            ] = self.image_all_median
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-RMS-HIGH-GAIN"
-            ] = self.image_all_rms
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-STD-HIGH-GAIN"
-            ] = self.image_all_std
+            for k, v in self.image_all_stats.items():
+                self.ChargeInt_Results_Dict[
+                    f"CHARGE-INTEGRATION-IMAGE-ALL-{k.upper()}-HIGH-GAIN"
+                ] = v
 
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-AVERAGE-HIGH-GAIN"
-            ] = self.ped_all_average
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-MEDIAN-HIGH-GAIN"
-            ] = self.ped_all_median
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-RMS-HIGH-GAIN"
-            ] = self.ped_all_rms
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-STD-HIGH-GAIN"
-            ] = self.ped_all_std
+            for k, v in self.ped_all_stats.items():
+                self.ChargeInt_Results_Dict[
+                    f"PED-INTEGRATION-IMAGE-ALL-{k.upper()}-HIGH-GAIN"
+                ] = v
 
             if self.counter_ped > 0:
                 self.ChargeInt_Results_Dict[
@@ -333,7 +300,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration MEAN plot
         if self.counter_evt > 0:
             fig1, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_all_average
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -360,7 +327,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig2, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_ped_average
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -388,7 +355,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration MEDIAN plot
         if self.counter_evt > 0:
             fig3, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_all_median
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -415,7 +382,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig4, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_ped_median
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -443,7 +410,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration STD plot
         if self.counter_evt > 0:
             fig5, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_all_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -470,7 +437,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig6, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_ped_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -498,7 +465,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration RMS plot
         if self.counter_evt > 0:
             fig7, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_all_rms
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -525,7 +492,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig8, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
+            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
             disp.image = self.image_ped_rms
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
