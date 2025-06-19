@@ -150,7 +150,7 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average")
             full_name = name + "_CameraTemperature_Mean.png"
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE"
@@ -166,7 +166,7 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average 1")
             full_name = name + "_CameraTemperature_average1.png"
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"] = fig1
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
@@ -182,7 +182,7 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average 2")
             full_name = name + "_CameraTemperature_average2.png"
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath + full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = fig2
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"

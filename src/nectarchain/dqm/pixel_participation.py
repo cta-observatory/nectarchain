@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
@@ -119,7 +121,7 @@ class PixelParticipationHighLowGain(DQMSummary):
 
             fig_key = self.figure_keys[key]
             fig_name = name + self.figure_filenames[key]
-            fig_path = FigPath + fig_name
+            fig_path = os.path.join(FigPath, fig_name)
 
             self.PixelParticipation_Figures_Dict[fig_key] = fig
             self.PixelParticipation_Figures_Names_Dict[fig_key] = fig_path

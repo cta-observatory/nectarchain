@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
@@ -147,7 +149,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig1
             full_name = name + "_Camera_Mean_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -168,7 +170,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig2
             full_name = name + "_Pedestal_Mean_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath

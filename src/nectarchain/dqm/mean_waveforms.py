@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -118,7 +120,8 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         for i, x in enumerate(array_plot):
             key = titles[i]
             fig_key = self.figure_keys[key]
-            fig_name = FigPath + name + self.figure_filenames[key]
+            full_name = name + self.figure_filenames[key]
+            fig_name = os.path.join(FigPath, full_name)
 
             part_fig, part_ax = plt.subplots()
 

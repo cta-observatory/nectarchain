@@ -1,3 +1,6 @@
+import os
+
+import ctapipe.instrument.camera.readout
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
@@ -13,8 +16,7 @@ from matplotlib import pyplot as plt
 from traitlets.config.loader import Config
 
 from ..makers.component import ChargesComponent
-
-# from ..makers.component.core import ArrayDataComponent
+from ..makers.component.core import ArrayDataComponent
 from ..makers.extractor.utils import CtapipeExtractor
 from .dqm_summary_processor import DQMSummary
 
@@ -41,23 +43,12 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.integrator = None
         self.pixelBAD = None
         self.image_all = []
-        self.image_all_median = None
-        self.image_all_average = None
-        self.image_all_std = None
-        self.image_all_rms = None
-        self.ped_all_median = None
-        self.ped_all_average = None
-        self.ped_all_std = None
-        self.ped_all_rms = None
         self.image_ped = []
-        self.image_ped_median = None
-        self.image_ped_average = None
-        self.image_ped_std = None
-        self.image_ped_rms = None
-        self.ped_ped_median = None
-        self.ped_ped_average = None
-        self.ped_ped_std = None
-        self.ped_ped_rms = None
+        self.image_all_stats = None
+        self.image_ped_stats = None
+        self.ped_all_stats = None
+        self.ped_ped_stats = None
+
         self.ChargeInt_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
@@ -70,10 +61,18 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        subarray = Reader1.subarray
-
-        self.camera = subarray.tel[0].camera.geometry.transform_to(
+        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
             EngineeringCameraFrame()
+        )
+
+        self.cmap = "gnuplot2"
+
+        self.subarray = Reader1.subarray
+        subarray = Reader1.subarray
+        subarray.tel[
+            0
+        ].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name(
+            "NectarCam"
         )
 
         if charges_kwargs:
@@ -93,59 +92,43 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.integrator = GlobalPeakWindowSum(subarray, config=config)
 
     def ProcessEvent(self, evt, noped):
+        pixel = evt.nectarcam.tel[0].svc.pixel_ids
         self.pixelBADplot = evt.mon.tel[0].pixel_status.hardware_failing_pixels
-        self.pixels = evt.nectarcam.tel[0].svc.pixel_ids
+        pixels = pixel
+        self.pixels = pixels
 
-        # TODO: Broken pixel computation not yet implemented in nectarchain
-        # The following line can be uncommented once it is there
-        # (
-        #     broken_pixels_hg,
-        #     broken_pixels_lg,
-        # ) = ArrayDataComponent._compute_broken_pixels_event(evt, pixels)
-        #
-        # if self.k == 0:
-        #     self.pixelBAD = broken_pixels_hg
-        #     channel = constants.HIGH_GAIN
-        # if self.k == 1:
-        #     self.pixelBAD = broken_pixels_lg
-        #     channel = constants.LOW_GAIN
+        (
+            broken_pixels_hg,
+            broken_pixels_lg,
+        ) = ArrayDataComponent._compute_broken_pixels_event(evt, pixels)
 
-        # TODO: in the meantime, we do something simpler for broken pixels:
-        self.pixelBAD = self.pixelBADplot
         if self.k == 0:
+            self.pixelBAD = broken_pixels_hg
             channel = constants.HIGH_GAIN
         if self.k == 1:
+            self.pixelBAD = broken_pixels_lg
             channel = constants.LOW_GAIN
 
-        waveform = evt.r0.tel[0].waveform[self.k][self.pixels]
+        waveform = evt.r0.tel[0].waveform[self.k]
+        waveform = waveform[pixels]
+        ped = np.mean(waveform[:, 20])
 
         if noped:
-            ped = np.mean(waveform[:, 20])
-            waveform = waveform - ped
-
-        try:
-            waveform = waveform[np.newaxis, :]
+            w_noped = waveform - ped
             output = CtapipeExtractor.get_image_peak_time(
-                self.integrator(
-                    waveforms=waveform,
-                    tel_id=0,
-                    selected_gain_channel=channel,
-                    broken_pixels=self.pixelBAD,
-                )
-            )
-        except IndexError:
-            waveform = waveform[np.newaxis, :]
-            output = CtapipeExtractor.get_image_peak_time(
-                self.integrator(
-                    waveforms=waveform,
-                    tel_id=0,
-                    selected_gain_channel=channel,
-                    broken_pixels=self.pixelBAD,
-                )
+                self.integrator(w_noped, 0, channel, self.pixelBAD)
             )
 
-        image = output[0]
-        peakpos = output[1]
+            image = output[0]
+            peakpos = output[1]
+
+        else:
+            output = CtapipeExtractor.get_image_peak_time(
+                self.integrator(waveform, 0, channel, self.pixelBAD)
+            )
+
+            image = output[0]
+            peakpos = output[1]
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
@@ -184,109 +167,50 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             self.image_ped = np.array(self.image_ped, dtype=float)
-            self.image_ped_median = np.median(self.image_ped, axis=0)
-            self.image_ped_average = np.mean(self.image_ped, axis=0)
-            self.image_ped_std = np.std(self.image_ped, axis=0)
-            self.image_ped_rms = np.sqrt(np.sum(self.image_ped**2, axis=0))
+            if self.image_ped.size:
+                self.image_ped_stats = {
+                    "average": np.mean(self.image_ped, axis=0),
+                    "median": np.median(self.image_ped, axis=0),
+                    "std": np.std(self.image_ped, axis=0),
+                    "rms": np.sqrt(np.sum(self.image_ped**2, axis=0)),
+                }
 
             self.ped_ped = np.array(self.ped_ped, dtype=float)
-            self.ped_ped_average = np.mean(self.ped_ped, axis=0)
-            self.ped_ped_median = np.median(self.ped_ped, axis=0)
-            self.ped_ped_std = np.std(self.ped_ped, axis=0)
-            self.ped_ped_rms = np.sqrt(np.sum(self.ped_ped**2, axis=0))
+            if self.ped_ped.size:
+                self.ped_ped_stats = {
+                    "average": np.mean(self.ped_ped, axis=0),
+                    "median": np.median(self.ped_ped, axis=0),
+                    "std": np.std(self.ped_ped, axis=0),
+                    "rms": np.sqrt(np.sum(self.ped_ped**2, axis=0)),
+                }
 
     def GetResults(self):
-        if self.k == 0:
-            for k, v in self.image_all_stats.items():
+        for k, v in self.image_all_stats.items():
+            self.ChargeInt_Results_Dict[
+                (
+                    f"CHARGE-INTEGRATION-IMAGE-ALL-{k.upper()}-"
+                    f"{self.gain_c.upper()}-GAIN"
+                )
+            ] = v
+
+        for k, v in self.ped_all_stats.items():
+            self.ChargeInt_Results_Dict[
+                f"PED-INTEGRATION-IMAGE-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
+            ] = v
+
+        if self.counter_ped > 0:
+            for k, v in self.image_ped_stats.items():
                 self.ChargeInt_Results_Dict[
-                    f"CHARGE-INTEGRATION-IMAGE-ALL-{k.upper()}-HIGH-GAIN"
+                    (
+                        f"CHARGE-INTEGRATION-PED-ALL-{k.upper()}-"
+                        f"{self.gain_c.upper()}-GAIN"
+                    )
                 ] = v
 
-            for k, v in self.ped_all_stats.items():
+            for k, v in self.ped_ped_stats.items():
                 self.ChargeInt_Results_Dict[
-                    f"PED-INTEGRATION-IMAGE-ALL-{k.upper()}-HIGH-GAIN"
+                    f"PED-INTEGRATION-PED-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
                 ] = v
-
-            if self.counter_ped > 0:
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-AVERAGE-HIGH-GAIN"
-                ] = self.image_ped_average
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-MEDIAN-HIGH-GAIN"
-                ] = self.image_ped_median
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-RMS-HIGH-GAIN"
-                ] = self.image_ped_rms
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-STD-HIGH-GAIN"
-                ] = self.image_ped_std
-
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-AVERAGE-HIGH-GAIN"
-                ] = self.ped_ped_average
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-MEDIAN-HIGH-GAIN"
-                ] = self.ped_ped_median
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-RMS-HIGH-GAIN"
-                ] = self.ped_ped_rms
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-STD-HIGH-GAIN"
-                ] = self.ped_ped_std
-
-        if self.k == 1:
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-LOW-GAIN"
-            ] = self.image_all_average
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-LOW-GAIN"
-            ] = self.image_all_median
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-RMS-LOW-GAIN"
-            ] = self.image_all_rms
-            self.ChargeInt_Results_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-STD-LOW-GAIN"
-            ] = self.image_all_std
-
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-AVERAGE-LOW-GAIN"
-            ] = self.ped_all_average
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-MEDIAN-LOW-GAIN"
-            ] = self.ped_all_median
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-RMS-LOW-GAIN"
-            ] = self.ped_all_rms
-            self.ChargeInt_Results_Dict[
-                "PED-INTEGRATION-IMAGE-ALL-STD-LOW-GAIN"
-            ] = self.ped_all_std
-
-            if self.counter_ped > 0:
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-AVERAGE-LOW-GAIN"
-                ] = self.image_ped_average
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-MEDIAN-LOW-GAIN"
-                ] = self.image_ped_median
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-RMS-LOW-GAIN"
-                ] = self.image_ped_rms
-                self.ChargeInt_Results_Dict[
-                    "CHARGE-INTEGRATION-PED-ALL-STD-LOW-GAIN"
-                ] = self.image_ped_std
-
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-AVERAGE-LOW-GAIN"
-                ] = self.ped_ped_average
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-MEDIAN-LOW-GAIN"
-                ] = self.ped_ped_median
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-RMS-LOW-GAIN"
-                ] = self.ped_ped_rms
-                self.ChargeInt_Results_Dict[
-                    "PED-INTEGRATION-PED-ALL-STD-LOW-GAIN"
-                ] = self.ped_ped_std
 
         return self.ChargeInt_Results_Dict
 
@@ -301,7 +225,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_evt > 0:
             fig1, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_all_average
+            disp.image = self.image_all_stats["average"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -315,7 +239,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Mean %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Mean_%sGain_All.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-%s-GAIN" % gain_c
             ] = fig1
@@ -342,7 +266,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Mean %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Mean_%sGain_Ped.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-AVERAGE-%s-GAIN" % gain_c
             ] = fig2
@@ -356,7 +280,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_evt > 0:
             fig3, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_all_median
+            disp.image = self.image_all_stats["median"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -370,7 +294,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Median %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Median_%sGain_All.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-%s-GAIN" % gain_c
             ] = fig3
@@ -383,7 +307,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_ped > 0:
             fig4, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_ped_median
+            disp.image = self.image_ped_stats["median"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -397,7 +321,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Median %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Median_%sGain_Ped.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-MEDIAN-%s-GAIN" % gain_c
             ] = fig4
@@ -411,7 +335,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_evt > 0:
             fig5, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_all_std
+            disp.image = self.image_all_stats["std"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -425,7 +349,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration STD %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Std_%sGain_All.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-STD-%s-GAIN" % gain_c
             ] = fig5
@@ -438,7 +362,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_ped > 0:
             fig6, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_ped_std
+            disp.image = self.image_ped_all["std"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -452,7 +376,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration STD %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Std_%sGain_Ped.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-STD-%s-GAIN" % gain_c
             ] = fig6
@@ -466,7 +390,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_evt > 0:
             fig7, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_all_rms
+            disp.image = self.image_all_stats["rms"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -480,7 +404,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration RMS %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Rms_%sGain_All.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-RMS-%s-GAIN" % gain_c
             ] = fig7
@@ -493,7 +417,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_ped > 0:
             fig8, disp = plt.subplots()
             disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            disp.image = self.image_ped_rms
+            disp.image = self.image_ped_stats["rms"]
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
                 2,
@@ -507,7 +431,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration RMS %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Rms_%sGain_Ped.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-RMS-%s-GAIN" % gain_c
             ] = fig8
@@ -545,7 +469,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge spectrum %s gain (ALL)" % gain_c)
 
             full_name = name + "_Charge_Spectrum_%sGain_All.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-SPECTRUM-ALL-%s-GAIN" % gain_c
             ] = fig9
@@ -582,7 +506,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge spectrum %s gain (PED)" % gain_c)
 
             full_name = name + "_Charge_Spectrum_%sGain_Ped.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-SPECTRUM-PED-%s-GAIN" % gain_c
             ] = fig10

@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -114,7 +116,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
             key_id = self.figure_keys[key]
             filename = name + self.figure_filenames[key]
-            full_path = FigPath + filename
+            full_path = os.path.join(FigPath, filename)
 
             self.PixelTimeline_Figures_Dict[key_id] = fig
             self.PixelTimeline_Figures_Names_Dict[key_id] = full_path
