@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -6,6 +7,10 @@ from matplotlib import pyplot as plt
 from .dqm_summary_processor import DQMSummary
 
 __all__ = ["PixelTimelineHighLowGain"]
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 class PixelTimelineHighLowGain(DQMSummary):
@@ -70,8 +75,8 @@ class PixelTimelineHighLowGain(DQMSummary):
             np.array(self.SumBadPixels_ped, dtype=float) / self.Pix
         )
         self.BadPixelTimeline = np.array(self.SumBadPixels, dtype=float) / self.Pix
-        print(self.BadPixelTimeline)
-        print(self.BadPixelTimeline_ped)
+        log.debug(f"BadPixelTimeline is:\n{self.BadPixelTimeline}")
+        log.debug(f"BadPixelTimeline_ped is:\n{self.BadPixelTimeline_ped}")
 
     def GetResults(self):
         # ASSIGN RESUTLS TO DICT

@@ -1,13 +1,19 @@
+import logging
+
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
 __all__ = ["DQMSummary"]
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 class DQMSummary:
     def __init__(self):
-        print("Processor 0")
+        log.debug("Processor 0")
 
     def DefineForRun(self, reader1):
         for i, evt1 in enumerate(reader1):
@@ -17,21 +23,21 @@ class DQMSummary:
         return self.Pix, self.Samp
 
     def ConfigureForRun(self):
-        print("Processor 1")
+        log.debug("Processor 1")
 
     def ProcessEvent(self, evt, noped):
-        print("Processor 2")
+        log.debug("Processor 2")
 
     def FinishRun(self, M, M_ped, counter_evt, counter_ped):
-        print("Processor 3")
+        log.debug("Processor 3")
 
     def GetResults(self):
-        print("Processor 4")
+        log.debug("Processor 4")
 
     def PlotResults(
         self, name, FigPath, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
     ):
-        print("Processor 5")
+        log.debug("Processor 5")
 
     @staticmethod
     def _create_hdu(name, content):
@@ -58,10 +64,12 @@ class DQMSummary:
                     hdu = self._create_hdu(name, content)
                     hdulist.append(hdu)
                 except TypeError as e:
-                    print(f"Caught {type(e).__name__}, skipping {name}. Details: {e}")
+                    log.warning(
+                        f"Caught {type(e).__name__}, skipping {name}. Details: {e}"
+                    )
                     pass
 
-        FileName = path + "_Results.fits"
-        print(FileName)
-        hdulist.writeto(FileName, overwrite=True)
+        output_filename = path + "_Results.fits"
+        log.info(f"Saving DQM results in {output_filename}")
+        hdulist.writeto(output_filename, overwrite=True)
         hdulist.info()

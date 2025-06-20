@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -10,6 +11,10 @@ from matplotlib import pyplot as plt
 from .dqm_summary_processor import DQMSummary
 
 __all__ = ["CameraMonitoring"]
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 class CameraMonitoring(DQMSummary):
@@ -60,7 +65,7 @@ class CameraMonitoring(DQMSummary):
         SqlFileName = (
             SqlFilePath + "/nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
         )
-        print("SqlFileName", SqlFileName)
+        log.info("SqlFileName", SqlFileName)
         con = sqlite3.connect(SqlFileName)
         cursor = con.cursor()
         try:
@@ -73,8 +78,10 @@ class CameraMonitoring(DQMSummary):
             self.DrawerTemp = cursor.fetchall()
             cursor.close()
         except sqlite3.Error as err:
-            print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
+            log.error(
+                f"Drawer temperature could not be retrieved. Received error "
+                f"code: {err}"
+            )
 
     def ProcessEvent(self, evt, noped):
         trigger_time = evt.trigger.time.value
@@ -126,8 +133,10 @@ class CameraMonitoring(DQMSummary):
 
             self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
         except Exception as err:
-            print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
+            log.error(
+                f"Drawer temperature could not be retrieved. Received error "
+                f"code: {err}"
+            )
 
     def GetResults(self):
         try:
@@ -135,8 +144,10 @@ class CameraMonitoring(DQMSummary):
                 "CAMERA-TEMPERATURE-AVERAGE"
             ] = self.DrawerTemp_mean
         except Exception as err:
-            print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
+            log.error(
+                f"Drawer temperature could not be retrieved. Received error "
+                f"code: {err}"
+            )
 
         return self.CameraMonitoring_Results_Dict
 
@@ -189,6 +200,6 @@ class CameraMonitoring(DQMSummary):
             ] = FullPath
 
         except Exception as err:
-            print("Error Code: ", err)
+            log.error(f"Received error code: {err}")
 
         return self.ChargeInt_Figures_Dict, self.ChargeInt_Figures_Names_Dict

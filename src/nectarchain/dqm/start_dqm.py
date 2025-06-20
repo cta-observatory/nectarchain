@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import sys
 import time
@@ -20,6 +21,10 @@ from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 def main():
@@ -88,11 +93,11 @@ def main():
 
     # Reading arguments, paths and plot-boolean
     NectarPath = args.input_paths
-    print("Input file path:", NectarPath)
+    log.info("Input file path:", NectarPath)
 
     # Defining and printing the paths of the output files.
     output_path = args.output_paths
-    print("Output path:", output_path)
+    log.info("Output path:", output_path)
 
     if args.runnb is not None:
         # Grab runs automatically from DIRAC is the -r option is provided
@@ -102,7 +107,7 @@ def main():
         _, filelist = dm.findrun(args.runnb)
         args.input_files = [s.name for s in filelist]
     elif args.input_files is None:
-        print("Input files should be provided, exiting...")
+        log.error("Input files should be provided, exiting...")
         sys.exit(1)
 
     # OTHERWISE READ THE RUNS FROM ARGS
@@ -110,10 +115,9 @@ def main():
 
     # THE PATH OF INPUT FILES
     path = f"{NectarPath}/runs/{path1}"
-    print("Input files:")
-    print(path)
+    log.debug(f"Input files:\n{path}")
     for arg in args.input_files[1:]:
-        print(arg)
+        log.debug(arg)
 
     # Defining and printing the options
     PlotFig = args.plot
@@ -121,10 +125,10 @@ def main():
     method = args.method
     extractor_kwargs = args.extractor_kwargs
 
-    print("Plot:", PlotFig)
-    print("Noped:", noped)
-    print("method:", method)
-    print("extractor_kwargs:", extractor_kwargs)
+    log.info(f"Plot: {PlotFig}")
+    log.info(f"Noped: {noped}")
+    log.info(f"method: {method}")
+    log.info(f"extractor_kwargs: {extractor_kwargs}")
 
     kwargs = {"method": method, "extractor_kwargs": extractor_kwargs}
     charges_kwargs = {}
@@ -132,14 +136,12 @@ def main():
     for key in tool.traits().keys():
         if key in kwargs.keys():
             charges_kwargs[key] = kwargs[key]
-    print(charges_kwargs)
+    log.info(charges_kwargs)
 
     def GetName(RunFile):
         name = RunFile.split("/")[-1]
-        name = (
-            name.split(".")[0] + "_" + name.split(".")[1]
-        )  # + '_' +name.split('.')[2]
-        print(name)
+        name = name.split(".")[0] + "_" + name.split(".")[1]
+        log.debug(name)
         return name
 
     def CreateFigFolder(name, type):
