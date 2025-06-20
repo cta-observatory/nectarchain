@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# Time-stamp: "2023-05-30 13:09:04 jlenain"
 
 import argparse
 import logging
