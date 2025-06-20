@@ -9,17 +9,17 @@
     min : 0.01,
     max : 5.0
   },
-  pp : { 
+  pp : { #useless bc use HHVStd result
     value : 0.42,
     min : .NAN,
     max : .NAN
   }, 
-  resolution : {
+  resolution : { #useless bc use HHVStd result
     value : 0.54,
     min : .NAN,
     max : .NAN
   },
-  n : {
+  n : { #useless bc use HHVStd result
     value : 0.813,
     min : .NAN,
     max : .NAN
