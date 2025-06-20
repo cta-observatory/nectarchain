@@ -17,7 +17,7 @@ if ! dirac-proxy-init -M -g cta_nectarcam --pwstdin < ~/.dirac.pwd; then
     exit 1
 fi
 
-remoteParentDir="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm"
+remoteParentDir="/ctao/user/j/jlenain/nectarcam/dqm"
 nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
 
 python ${nectarchainScriptDir}/parse_dqm_fits_file.py -r $(dls ${remoteParentDir} | grep -ve "/vo.cta" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')
