@@ -1,4 +1,4 @@
-name: Build and deploy as Apptainer container image to GitHub Container Registry
+name: Apptainer image
 
 on:
   pull_request: []
