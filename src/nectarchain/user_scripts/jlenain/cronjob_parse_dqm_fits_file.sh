@@ -20,4 +20,4 @@ fi
 remoteParentDir="/ctao/user/j/jlenain/nectarcam/dqm"
 nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
 
-python ${nectarchainScriptDir}/parse_dqm_fits_file.py -r $(dls ${remoteParentDir} | grep -ve "/vo.cta" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')
+python ${nectarchainScriptDir}/parse_dqm_fits_file.py -r $(dls ${remoteParentDir} | grep -ve "/ctao" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')
