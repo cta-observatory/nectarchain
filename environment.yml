@@ -5,7 +5,7 @@ channels:
 dependencies:
   - python=3.11
   - ctapipe=0.19
-  - ctapipe-io-nectarcam
+  - ctapipe-io-nectarcam=0.1
   - jinja2=3.0.1
   - jupyterlab
   - jupytext
