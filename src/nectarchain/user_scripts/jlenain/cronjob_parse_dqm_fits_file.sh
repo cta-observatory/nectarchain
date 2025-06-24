@@ -12,7 +12,7 @@ exec 1>"$LOGFILE" 2>&1
 conda activate nectar-dev
 
 # Initialize DIRAC proxy from user certificate:
-if ! dirac-proxy-init -M -g cta_nectarcam --pwstdin < ~/.dirac.pwd; then
+if ! dirac-proxy-init -M -g ctao_nectarcam --pwstdin < ~/.dirac.pwd; then
     echo "DIRAC proxy initialization failed..."
     exit 1
 fi
