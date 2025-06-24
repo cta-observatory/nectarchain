@@ -173,7 +173,7 @@ for run in runlist:
     # Force job to be run from a given Computing Element:
     # j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
     j.setDestination(["LCG.GRIF.fr"])
-    j.setTag(["16GBMemory"])
+    # j.setTag(["16GBMemory"])
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")
     j.setBannedSites(
