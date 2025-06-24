@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# Time-stamp: "2023-05-30 13:09:04 jlenain"
 
 import argparse
 import logging
@@ -173,7 +171,8 @@ for run in runlist:
     # j.setExecutable(f'{executable_wrapper}', '<SOME POSSIBLE ARGUMENTS such as run number>')
     j.setExecutable(f"{executable_wrapper}", f"-r {run}")
     # Force job to be run from a given Computing Element:
-    j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
+    # j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
+    j.setDestination(["LCG.GRIF.fr"])
     # j.setTag(["16GBMemory"])
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")

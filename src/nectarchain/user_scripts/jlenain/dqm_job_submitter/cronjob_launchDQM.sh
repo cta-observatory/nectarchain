@@ -13,8 +13,9 @@ exec 1>"$LOGFILE" 2>&1
 source /opt/cta/mambaforge/etc/profile.d/conda.sh
 conda activate ctadirac
 
-localParentDir="/data/nvme/ZFITS"
+localParentDir="/data/nvme/NectarCAMQM/ZFITS"
 remoteParentDir="/vo.cta.in2p3.fr/nectarcam"
+remoteParentDir="/ctao/nectarcam"
 nectarchainScriptDir="$HOME/local/src/python/cta-observatory/nectarchain/src/nectarchain/user_scripts/jlenain/dqm_job_submitter"
 
 cd $nectarchainScriptDir || (echo "Failed to cd into ${nectarchainScriptDir}, exiting..."; exit 1)
@@ -30,7 +31,7 @@ for run in $(find ${localParentDir} -type f -name "NectarCAM*.fits.fz" | awk -F.
         echo "  Run $run: number of local and remote files matching, will attempt to submit a DQM job"
         # Has this DQM run already been submitted ?
         if [ $(dstat | grep --count -e "NectarCAM DQM run ${run}") -eq 0 ]; then
-            yyyymmdd=$(find ${localParentDir} -type f -name "NectarCAM.Run${run}.????.fits.fz" | head -n 1 | awk -F/ '{print $6}')
+            yyyymmdd=$(find ${localParentDir} -type f -name "NectarCAM.Run${run}.????.fits.fz" | head -n 1 | awk -F/ '{print $7}')
             yyyy=${yyyymmdd:0:4}
             mm=${yyyymmdd:4:2}
             dd=${yyyymmdd:6:2}
