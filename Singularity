@@ -38,8 +38,11 @@ From: condaforge/mambaforge
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt -y install software-properties-common curl
     apt -y install xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
     curl -L https://repository.egi.eu/sw/production/cas/1/current/GPG-KEY-EUGridPMA-RPM-3 | apt-key add -
-    add-apt-repository -y 'deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core'
-    apt -y install ca-policy-egi-core || apt -y install -f
+    # add-apt-repository -y 'deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core'
+    # cf. https://askubuntu.com/a/952022
+    echo "deb https://repository.egi.eu/sw/production/cas/1/current egi-igtf core" | tee /etc/apt/sources.list.d/egi.list
+    apt -y -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true update
+    apt-get -y -o APT::Get::AllowUnauthenticated=true install ca-policy-egi-core || apt -y install -f
 
     . /opt/conda/etc/profile.d/conda.sh
     . /opt/conda/etc/profile.d/mamba.sh
