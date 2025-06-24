@@ -22,7 +22,7 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "ctapipe~=0.19",
-    "ctapipe-io-nectarcam~=0.1",
+    "ctapipe-io-nectarcam==0.1",
     "pandas",
     "scipy==1.11.4",
     "zodb",
