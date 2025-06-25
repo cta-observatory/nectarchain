@@ -111,7 +111,7 @@ EOF
     echo "## Activate nectarchain environment" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/mamba.sh" >> /.singularity_bash
-    echo "mamba activate nectarchain" >> /.singularity_bash
+    echo "conda activate nectarchain" >> /.singularity_bash
 
 %runscript
     echo "This is a mambaforge container with a nectarchain environment"
