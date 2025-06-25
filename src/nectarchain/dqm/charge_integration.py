@@ -300,8 +300,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration MEAN plot
         if self.counter_evt > 0:
             fig1, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
-            # disp = CameraDisplay(self.subarray.tels[0].camera)
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_all_average
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -328,7 +327,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig2, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_ped_average
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -356,7 +355,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration MEDIAN plot
         if self.counter_evt > 0:
             fig3, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_all_median
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -383,7 +382,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig4, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_ped_median
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -411,7 +410,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration STD plot
         if self.counter_evt > 0:
             fig5, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_all_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -438,7 +437,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig6, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_ped_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -466,7 +465,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         # Charge integration RMS plot
         if self.counter_evt > 0:
             fig7, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_all_rms
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
@@ -493,7 +492,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if self.counter_ped > 0:
             fig8, disp = plt.subplots()
-            disp = CameraDisplay(self.camera[~self.pixelBADplot[0]])
+            disp = CameraDisplay(geometry=self.camera)
             disp.image = self.image_ped_rms
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(
