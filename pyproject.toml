@@ -20,7 +20,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "ctapipe~=0.24.0",
+    "ctapipe~=0.24",
     "ctapipe-io-nectarcam>0.1",
     "bokeh",
     "iminuit",
