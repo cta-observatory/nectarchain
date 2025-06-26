@@ -567,6 +567,19 @@ class ChargesComponent(ArrayDataComponent):
         if tel_id is None:
             tel_id = __class__.TEL_ID.default_value
 
+        # by setting selected_gain_channel to None, we can now pass to ctapipe extractor
+        # waveforms in (n_ch, n_pix, n_samples)
+        # then out hase shape (n_events, 2, n_ch, n_pi)
+        if channel == constants.HIGH_GAIN:
+            gain_label = "hg"
+        elif channel == constants.LOW_GAIN:
+            gain_label = "lg"
+        else:
+            raise ArgumentError(
+                None,
+                f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}",
+            )
+
         imageExtractor = __class__._get_imageExtractor(
             method=method, subarray=subarray, **kwargs
         )
@@ -590,17 +603,7 @@ class ChargesComponent(ArrayDataComponent):
                 for i in range(len(waveformsContainer.wfs_hg))
             ]
         )
-        # by setting selected_gain_channel to None, we can now pass to ctapipe extractor
-        # waveforms in (n_ch, n_pix, n_samples)
-        # then out hase shape (n_events, 2, n_ch, n_pi)
-        if channel == constants.HIGH_GAIN:
-            gain_label = "hg"
-        elif channel == constants.LOW_GAIN:
-            gain_label = "lg"
-        else:
-            raise ArgumentError(
-                None, f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
-            )
+
         return ChargesContainer.fields[f"charges_{gain_label}"].dtype.type(
             out[:, 0, channel, :]
         ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(
