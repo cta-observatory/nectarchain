@@ -115,17 +115,50 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         if noped:
             w_noped = waveform - ped
-            output = CtapipeExtractor.get_image_peak_time(
-                self.integrator(w_noped, 0, channel, self.pixelBAD)
-            )
+            try:
+                output = CtapipeExtractor.get_image_peak_time(
+                    self.integrator(
+                        waveforms=w_noped,
+                        tel_id=0,
+                        selected_gain_channel=channel,
+                        broken_pixels=self.pixelBAD,
+                    )
+                )
+            except IndexError:
+                w_noped = w_noped[np.newaxis, :]
+                output = CtapipeExtractor.get_image_peak_time(
+                    self.integrator(
+                        waveforms=w_noped,
+                        tel_id=0,
+                        selected_gain_channel=channel,
+                        broken_pixels=self.pixelBAD,
+                    )
+                )
 
             image = output[0]
             peakpos = output[1]
 
         else:
-            output = CtapipeExtractor.get_image_peak_time(
-                self.integrator(waveform, 0, channel, self.pixelBAD)
-            )
+            try:
+                waveform = waveform[np.newaxis, :]
+                output = CtapipeExtractor.get_image_peak_time(
+                    self.integrator(
+                        waveforms=waveform,
+                        tel_id=0,
+                        selected_gain_channel=channel,
+                        broken_pixels=self.pixelBAD,
+                    )
+                )
+            except IndexError:
+                waveform = waveform[np.newaxis, :]
+                output = CtapipeExtractor.get_image_peak_time(
+                    self.integrator(
+                        waveforms=waveform,
+                        tel_id=0,
+                        selected_gain_channel=channel,
+                        broken_pixels=self.pixelBAD,
+                    )
+                )
 
             image = output[0]
             peakpos = output[1]
