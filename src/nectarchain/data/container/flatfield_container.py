@@ -75,16 +75,9 @@ class FlatFieldContainer(NectarCAMContainer):
         description="the flat field coefficients, per event",
     )
 
-    # masked_wfs = Field(
-    #    type=np.ndarray,
-    #    dtype=np.uint64,
-    #    ndim=4,
-    #    description="Masked array for amplitude integration",
-    # )
-
     bad_pixels = Field(
         type=np.ndarray,
         dtype=np.uint16,
-        ndim=2,
+        ndim=1,
         description="pixels considered as bad in at least one gain channels",
     )

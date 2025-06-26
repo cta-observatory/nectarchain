@@ -37,7 +37,7 @@ parser.add_argument(
 parser.add_argument(
     "-p",
     "--path",
-    default="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm",
+    default="/ctao/user/j/jlenain/nectarcam/dqm",
     help="path on DIRAC where to grab DQM outputs (optional).",
     type=str,
 )

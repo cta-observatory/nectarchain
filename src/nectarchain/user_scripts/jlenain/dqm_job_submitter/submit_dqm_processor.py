@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# Time-stamp: "2023-05-30 13:09:04 jlenain"
 
 import argparse
 import logging
@@ -74,11 +72,17 @@ executable_wrapper = "dqm_processor.sh"
 
 ## or from DIRAC FileCatalog directory listing:
 processDate = time.Time(args.date)
-dfcDir = f"/vo.cta.in2p3.fr/nectarcam/{processDate.ymdhms[0]}/{processDate.ymdhms[0]}{str(processDate.ymdhms[1]).zfill(2)}{str(processDate.ymdhms[2]).zfill(2)}"
+dfcDir = (
+    f"/ctao/nectarcam/NectarCAMQM/{processDate.ymdhms[0]}"
+    f"/{processDate.ymdhms[0]}{str(processDate.ymdhms[1]).zfill(2)}{str(processDate.ymdhms[2]).zfill(2)}"
+)
 
 # The relevant DB file may be stored in the directory corresponding to the day after:
 processDateTomorrow = processDate + 1.0 * u.day
-dfcDirTomorrow = f"/vo.cta.in2p3.fr/nectarcam/{processDateTomorrow.ymdhms[0]}/{processDateTomorrow.ymdhms[0]}{str(processDateTomorrow.ymdhms[1]).zfill(2)}{str(processDateTomorrow.ymdhms[2]).zfill(2)}"
+dfcDirTomorrow = (
+    f"/ctao/nectarcam/NectarCAMQM/{processDateTomorrow.ymdhms[0]}"
+    f"/{processDateTomorrow.ymdhms[0]}{str(processDateTomorrow.ymdhms[1]).zfill(2)}{str(processDateTomorrow.ymdhms[2]).zfill(2)}"
+)
 
 # Sometimes, for unknown reason, the connection to the DFC can fail, try a few times:
 sleep_time = 2
@@ -147,7 +151,7 @@ if len(sqlfilelist) == 0:
 logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
 
 # Check already existing DQM outputs
-dfcOutDir = "/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm"
+dfcOutDir = "/ctao/user/j/jlenain/nectarcam/dqm"
 infos = dfc.listDirectory(dfcOutDir)
 if not infos["OK"] or not infos["Value"]["Successful"]:
     logger.critical(
@@ -173,7 +177,8 @@ for run in runlist:
     # j.setExecutable(f'{executable_wrapper}', '<SOME POSSIBLE ARGUMENTS such as run number>')
     j.setExecutable(f"{executable_wrapper}", f"-r {run}")
     # Force job to be run from a given Computing Element:
-    j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
+    # j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
+    j.setDestination(["LCG.GRIF.fr"])
     # j.setTag(["16GBMemory"])
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")
