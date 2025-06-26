@@ -534,12 +534,16 @@ class ChargesComponent(ArrayDataComponent):
 
         Parameters
         ----------
-        waveformContainer : WaveformsContainer
+        waveformsContainer : WaveformsContainer
             The waveforms container object.
+        subarray : SubarrayDescription
+            The subarray to work on.
         channel : int
             The channel to compute charges for.
         method : str, optional
             The charge extraction method to use (default is ``FullWaveformSum``).
+        tel_id : int, optional
+            The telescope ID on which charges will be computed.
         kwargs
             Additional keyword arguments to pass to the charge extraction method.
 
@@ -590,18 +594,18 @@ class ChargesComponent(ArrayDataComponent):
         # waveforms in (n_ch, n_pix, n_samples)
         # then out hase shape (n_events, 2, n_ch, n_pi)
         if channel == constants.HIGH_GAIN:
-            index = 0
             gain_label = "hg"
         elif channel == constants.LOW_GAIN:
-            index = 1
             gain_label = "lg"
         else:
             raise ArgumentError(
                 None, f"channel must be {constants.LOW_GAIN} or {constants.HIGH_GAIN}"
             )
         return ChargesContainer.fields[f"charges_{gain_label}"].dtype.type(
-            out[:, 0, index, :]
-        ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(out[:, 1, index, :])
+            out[:, 0, channel, :]
+        ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(
+            out[:, 1, channel, :]
+        )
 
     @staticmethod
     def histo_hg(
