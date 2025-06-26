@@ -232,8 +232,8 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             subarray=instance.subarray,
             method="FullWaveformSum",
         )
-        assert output1.shape == (2, 3)
-        assert output2.shape == (2, 3)
+        assert output1.shape == (1, 3)
+        assert output2.shape == (1, 3)
         assert np.isclose(
             output1.mean(), 10 * np.mean(1000 * np.random.rand(2, 3, 10)), rtol=2000
         )
@@ -244,8 +244,8 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             subarray=instance.subarray,
             method="FullWaveformSum",
         )
-        assert output1.shape == (2, 3)
-        assert output2.shape == (2, 3)
+        assert output1.shape == (1, 3)
+        assert output2.shape == (1, 3)
         assert np.isclose(
             output1.mean(), 10 * np.mean(np.random.rand(2, 3, 10)), rtol=2
         )

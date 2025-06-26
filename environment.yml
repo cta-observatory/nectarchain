@@ -4,22 +4,23 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - ctapipe=0.19
-  - ctapipe-io-nectarcam=0.1
-  - jinja2=3.0.1
+  - ctapipe=0.24
+  - ctapipe-io-nectarcam>0.1
+  - jinja2
   - jupyterlab
   - jupytext
   - pre-commit
   - pytest-runner
   - pip
   - pandas
-  - scipy=1.11.4
+  - scipy
   - sphinx
   - sphinx-automodapi
   - pydata-sphinx-theme
   - lmfit # needed into TRR
   - h5py # needed into TRR (should be removed to use I/O methods of containers)
   - pyqt
+  - protozfits
   - pip:
     - zeo
     - zodb

@@ -27,7 +27,7 @@ jobs:
       - name: Set up Python environment
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.11"
       - name: Runs pre-commit hooks
         uses: pre-commit/action@v3.0.1
         with:
@@ -40,30 +40,31 @@ jobs:
       matrix:
         include:
           - os: "ubuntu-latest"
-            python-version: "3.9"
-            ctapipe-version: "v0.19.3"
+            python-version: "3.10"
+            ctapipe-version: "v0.24.0"
             install-method: "mamba"
           - os: "ubuntu-latest"
             python-version: "3.10"
-            ctapipe-version: "v0.19.3"
-            install-method: "mamba"
-          - os: "ubuntu-latest"
-            python-version: "3.10"
-            ctapipe-version: "v0.19.3"
+            ctapipe-version: "v0.24.0"
             install-method: "pip"
           - os: "ubuntu-latest"
             python-version: "3.11"
-            ctapipe-version: "v0.19.3"
+            ctapipe-version: "v0.24.0"
             install-method: "mamba"
           - os: "ubuntu-latest"
             python-version: "3.11"
-            ctapipe-version: "v0.19.3"
+            ctapipe-version: "v0.24.0"
             install-method: "pip"
             extra-args: ["codecov"]
+          # macos 13 image is x86-based
+          - os: "macos-13"
+            python-version: "3.11"
+            ctapipe-version: "v0.24.0"
+            install-method: "mamba"
           # macos 14 image is arm64 based
           - os: "macos-14"
             python-version: "3.11"
-            ctapipe-version: "v0.19.3"
+            ctapipe-version: "v0.24.0"
             install-method: "mamba"
 
     env :
@@ -189,7 +190,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: 3.11
 
       - name: Install dependencies for Qt 5 on Ubuntu
         run: |

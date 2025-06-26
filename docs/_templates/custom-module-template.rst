@@ -36,7 +36,9 @@
       :template: custom-class-template.rst
       :nosignatures:
    {% for item in classes %}
+      {%- if not item.startswith('TestRunner') %}
       {{ item }}
+      {%- endif -%}
    {%- endfor %}
    {% endif %}
    {% endblock %}

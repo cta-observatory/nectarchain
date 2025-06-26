@@ -1,0 +1,10 @@
+QPushButton {
+    background-color: grey;
+    color: white;
+    border-radius: 8px;  /* Circular button */
+    font-weight: bold;
+    font-size: 10px;  /* Smaller font size */
+}
+QPushButton:hover {
+    background-color: darkgrey;  /* Change color on hover */
+}
