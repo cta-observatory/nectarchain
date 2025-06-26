@@ -21,8 +21,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "ctapipe~=0.24.0",
-    # "ctapipe-io-nectarcam",  # TODO: should be added back when merging this PR
-    "ctapipe-io-nectarcam @ git+https://github.com/jlenain/ctapipe_io_nectarcam.git@ctapipe-0.24-bis",  # TODO: should be removed when merging PR
+    "ctapipe-io-nectarcam>0.1",
     "bokeh",
     "iminuit",
     "matplotlib",

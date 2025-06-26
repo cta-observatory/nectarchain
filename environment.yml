@@ -5,7 +5,7 @@ channels:
 dependencies:
   - python=3.11
   - ctapipe=0.24.0
-  # - ctapipe-io-nectarcam  # TODO: should be added back when merging PR
+  - ctapipe-io-nectarcam>0.1
   - jinja2
   - jupyterlab
   - jupytext
@@ -22,7 +22,6 @@ dependencies:
   - pyqt
   - protozfits
   - pip:
-    - git+https://github.com/jlenain/ctapipe_io_nectarcam.git@ctapipe-0.24-bis  # TODO: should be removed when merging PR
     - zeo
     - zodb
     - mechanize
