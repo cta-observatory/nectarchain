@@ -6,7 +6,7 @@ dependencies:
   - python=3.11
 <<<<<<< ctapipe-0.24-bis
   - ctapipe=0.24
-  - ctapipe-io-nectarcam>0.1
+  - ctapipe-io-nectarcam=0.2
   - jinja2
 =======
   - ctapipe=0.19
