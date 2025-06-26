@@ -111,57 +111,33 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         waveform = evt.r0.tel[0].waveform[self.k]
         waveform = waveform[pixels]
-        ped = np.mean(waveform[:, 20])
 
         if noped:
-            w_noped = waveform - ped
-            try:
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=w_noped,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
-                )
-            except IndexError:
-                w_noped = w_noped[np.newaxis, :]
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=w_noped,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
-                )
+            ped = np.mean(waveform[:, 20])
+            waveform = waveform - ped
 
-            image = output[0]
-            peakpos = output[1]
-
-        else:
-            try:
-                waveform = waveform[np.newaxis, :]
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=waveform,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
+        try:
+            output = CtapipeExtractor.get_image_peak_time(
+                self.integrator(
+                    waveforms=waveform,
+                    tel_id=0,
+                    selected_gain_channel=channel,
+                    broken_pixels=self.pixelBAD,
                 )
-            except IndexError:
-                waveform = waveform[np.newaxis, :]
-                output = CtapipeExtractor.get_image_peak_time(
-                    self.integrator(
-                        waveforms=waveform,
-                        tel_id=0,
-                        selected_gain_channel=channel,
-                        broken_pixels=self.pixelBAD,
-                    )
+            )
+        except IndexError:
+            waveform = waveform[np.newaxis, :]
+            output = CtapipeExtractor.get_image_peak_time(
+                self.integrator(
+                    waveforms=waveform,
+                    tel_id=0,
+                    selected_gain_channel=channel,
+                    broken_pixels=self.pixelBAD,
                 )
+            )
 
-            image = output[0]
-            peakpos = output[1]
+        image = output[0]
+        peakpos = output[1]
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
