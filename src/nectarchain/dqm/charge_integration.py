@@ -92,15 +92,13 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.integrator = GlobalPeakWindowSum(subarray, config=config)
 
     def ProcessEvent(self, evt, noped):
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
+        self.pixels = evt.nectarcam.tel[0].svc.pixel_ids
         self.pixelBADplot = evt.mon.tel[0].pixel_status.hardware_failing_pixels
-        pixels = pixel
-        self.pixels = pixels
 
         (
             broken_pixels_hg,
             broken_pixels_lg,
-        ) = ArrayDataComponent._compute_broken_pixels_event(evt, pixels)
+        ) = ArrayDataComponent._compute_broken_pixels_event(evt, self.pixels)
 
         if self.k == 0:
             self.pixelBAD = broken_pixels_hg
@@ -110,10 +108,10 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             channel = constants.LOW_GAIN
 
         waveform = evt.r0.tel[0].waveform[self.k]
-        waveform = waveform[pixels]
+        waveform = waveform[self.pixels]
 
+        ped = np.mean(waveform[:, 20])
         if noped:
-            ped = np.mean(waveform[:, 20])
             waveform = waveform - ped
 
         try:
