@@ -572,8 +572,12 @@ class ChargesComponent(ArrayDataComponent):
         # then out hase shape (n_events, 2, n_ch, n_pi)
         if channel == constants.HIGH_GAIN:
             gain_label = "hg"
+            waveforms = waveformsContainer.wfs_hg
+            broken_pixels = waveformsContainer.broken_pixels_hg
         elif channel == constants.LOW_GAIN:
             gain_label = "lg"
+            waveforms = waveformsContainer.wfs_lg
+            broken_pixels = waveformsContainer.broken_pixels_lg
         else:
             raise ArgumentError(
                 None,
@@ -587,20 +591,12 @@ class ChargesComponent(ArrayDataComponent):
             [
                 CtapipeExtractor.get_image_peak_time(
                     imageExtractor(
-                        waveforms=np.array(
-                            [waveformsContainer.wfs_hg[i], waveformsContainer.wfs_lg[i]]
-                        ),
+                        waveforms=waveforms,
                         tel_id=tel_id,
                         selected_gain_channel=None,
-                        broken_pixels=np.array(
-                            [
-                                waveformsContainer.broken_pixels_hg[i],
-                                waveformsContainer.broken_pixels_lg[i],
-                            ]
-                        ),
+                        broken_pixels=broken_pixels,
                     )
                 )
-                for i in range(len(waveformsContainer.wfs_hg))
             ]
         )
 
