@@ -1,7 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
-from matplotlib import pyplot as plt
 
 from .dqm_summary_processor import DQMSummary
 
@@ -13,14 +13,12 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.k = gaink
         self.Pix = None
         self.Samp = None
-        self.counter_evt = None
-        self.counter_ped = None
+        self.counter_evt = 0
+        self.counter_ped = 0
         self.BadPixels_ped = None
         self.BadPixels = None
         self.camera = None
-        self.camera2 = None
-        self.cmap = None
-        self.cmap2 = None
+        self.cmap = "gnuplot2"
         self.PixelParticipation_Results_Dict = {}
         self.PixelParticipation_Figures_Dict = {}
         self.PixelParticipation_Figures_Names_Dict = {}
@@ -33,38 +31,27 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.counter_ped = 0
         self.BadPixels_ped = np.zeros(self.Pix)
         self.BadPixels = np.zeros(self.Pix)
-
         self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
 
-        self.camera2 = Reader1.subarray.tel[0].camera.geometry.transform_to(
-            EngineeringCameraFrame()
-        )
-
-        self.cmap = "gnuplot2"
-        self.cmap2 = "gnuplot2"
-
     def ProcessEvent(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        if len(pixel) < self.Pix:
-            pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
-            pixel = list(pixel)
-            pixels = np.concatenate([pixel21, pixel])
-        else:
-            pixels = pixel
+        pixels = evt.nectarcam.tel[0].svc.pixel_ids
 
+        # Ensure 'pixels' is fixed length
+        if len(pixels) < self.Pix:
+            missing = np.arange(start=0, stop=self.Pix - len(pixels), step=1, dtype=int)
+            pixels = np.concatenate([missing, pixels])
+
+        bad_pixels = np.array(pixelBAD[pixels]).astype(int)
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            BadPixels_ped1 = list(map(int, pixelBAD[pixels]))
-            self.BadPixels_ped += BadPixels_ped1
+            self.BadPixels_ped += bad_pixels
 
         else:
             self.counter_evt += 1
-            BadPixels1 = list(map(int, pixelBAD[pixels]))
-            self.BadPixels += BadPixels1
-        return None
+            self.BadPixels += bad_pixels
 
     def FinishRun(self):
         self.BadPixels_ped = np.array(self.BadPixels_ped)
