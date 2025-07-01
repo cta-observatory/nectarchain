@@ -127,7 +127,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         return self.MeanCameraDisplay_Results_Dict
 
-    def plot_results(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -149,7 +149,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig1
             full_name = name + "_Camera_Mean_%sGain.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -170,7 +170,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig2
             full_name = name + "_Pedestal_Mean_%sGain.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath

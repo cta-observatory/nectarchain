@@ -85,7 +85,7 @@ class PixelParticipationHighLowGain(DQMSummary):
 
         return self.PixelParticipation_Results_Dict
 
-    def plot_results(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -117,7 +117,7 @@ class PixelParticipationHighLowGain(DQMSummary):
                 "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig
             full_name = name + "_Camera_BPX_%sGain.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.PixelParticipation_Figures_Names_Dict[
                 "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -126,7 +126,7 @@ class PixelParticipationHighLowGain(DQMSummary):
                 "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig
             full_name = name + "_Pedestal_BPX_%sGain.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.PixelParticipation_Figures_Names_Dict[
                 "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath

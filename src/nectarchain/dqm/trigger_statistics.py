@@ -105,7 +105,7 @@ class TriggerStatistics(DQMSummary):
         }
         return self.TriggerStat_Results_Dict
 
-    def plot_results(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         w = 1
         n1 = np.array(self.event_times.max() - self.event_times.min(), dtype=object)
         n = math.ceil(n1 / w)
@@ -135,7 +135,7 @@ class TriggerStatistics(DQMSummary):
         plt.xlabel("Trigger type")
         plt.grid()
         full_name = name + "_Trigger_Statistics.png"
-        FullPath = os.path.join(FigPath, full_name)
+        FullPath = os.path.join(fig_path, full_name)
 
         self.TriggerStat_Figures_Dict["TRIGGER-STATISTICS"] = fig1
         self.TriggerStat_Figures_Names_Dict["TRIGGER-STATISTICS"] = FullPath
@@ -191,7 +191,7 @@ class TriggerStatistics(DQMSummary):
             % astropytime.Time(self.run_start, format="unix").iso
         )
         full_name = name + "_Event_rate.png"
-        FullPath = os.path.join(FigPath, full_name)
+        FullPath = os.path.join(fig_path, full_name)
 
         self.TriggerStat_Figures_Dict["EVENT-TIME"] = fig2
         self.TriggerStat_Figures_Names_Dict["EVENT-TIME"] = FullPath
@@ -242,7 +242,7 @@ class TriggerStatistics(DQMSummary):
             % astropytime.Time(self.run_start, format="unix").iso
         )
         full_name = name + "_Event_IDs.png"
-        FullPath = os.path.join(FigPath, full_name)
+        FullPath = os.path.join(fig_path, full_name)
 
         self.TriggerStat_Figures_Dict["EVENT-ID"] = fig3
         self.TriggerStat_Figures_Names_Dict["EVENT-ID"] = FullPath

@@ -104,7 +104,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         return self.PixelTimeline_Results_Dict
 
-    def plot_results(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         for key, data, count, label in [
             ("all", self.BadPixelTimeline, self.counter_evt, "Physical events"),
             ("ped", self.BadPixelTimeline_ped, self.counter_ped, "Pedestal events"),
@@ -121,7 +121,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
             key_id = self.figure_keys[key]
             filename = name + self.figure_filenames[key]
-            full_path = os.path.join(FigPath, filename)
+            full_path = os.path.join(fig_path, filename)
 
             self.PixelTimeline_Figures_Dict[key_id] = fig
             self.PixelTimeline_Figures_Names_Dict[key_id] = full_path

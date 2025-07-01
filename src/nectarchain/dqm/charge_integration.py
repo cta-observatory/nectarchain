@@ -221,7 +221,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         return self.ChargeInt_Results_Dict
 
-    def plot_results(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -246,7 +246,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Mean %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Mean_%sGain_All.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-%s-GAIN" % gain_c
             ] = fig1
@@ -273,7 +273,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Mean %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Mean_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-AVERAGE-%s-GAIN" % gain_c
             ] = fig2
@@ -301,7 +301,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Median %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Median_%sGain_All.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-%s-GAIN" % gain_c
             ] = fig3
@@ -328,7 +328,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration Median %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Median_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-MEDIAN-%s-GAIN" % gain_c
             ] = fig4
@@ -356,7 +356,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration STD %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Std_%sGain_All.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-STD-%s-GAIN" % gain_c
             ] = fig5
@@ -383,7 +383,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration STD %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Std_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-STD-%s-GAIN" % gain_c
             ] = fig6
@@ -411,7 +411,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration RMS %s Gain (ALL)" % gain_c)
 
             full_name = name + "_ChargeInt_Rms_%sGain_All.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-ALL-RMS-%s-GAIN" % gain_c
             ] = fig7
@@ -438,7 +438,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge Integration RMS %s Gain (PED)" % gain_c)
 
             full_name = name + "_ChargeInt_Rms_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-IMAGE-PED-RMS-%s-GAIN" % gain_c
             ] = fig8
@@ -476,7 +476,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge spectrum %s gain (ALL)" % gain_c)
 
             full_name = name + "_Charge_Spectrum_%sGain_All.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-SPECTRUM-ALL-%s-GAIN" % gain_c
             ] = fig9
@@ -513,7 +513,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             plt.title("Charge spectrum %s gain (PED)" % gain_c)
 
             full_name = name + "_Charge_Spectrum_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(FigPath, full_name)
+            FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
                 "CHARGE-INTEGRATION-SPECTRUM-PED-%s-GAIN" % gain_c
             ] = fig10

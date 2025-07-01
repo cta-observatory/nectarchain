@@ -105,7 +105,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
         return self.MeanWaveForms_Results_Dict
 
-    def plot_results(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         wf_list = np.array(self.wf_list_plot)
 
         colors = ["blue", "red"]
@@ -121,7 +121,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
             key = titles[i]
             fig_key = self.figure_keys[key]
             full_name = name + self.figure_filenames[key]
-            fig_name = os.path.join(FigPath, full_name)
+            fig_name = os.path.join(fig_path, full_name)
 
             part_fig, part_ax = plt.subplots()
 

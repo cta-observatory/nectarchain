@@ -183,7 +183,7 @@ def main():
     # print(reader.file_list)
 
     name = GetName(path)
-    ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
+    ParentFolderName, ChildrenFolderName, fig_path = CreateFigFolder(name, 0)
     ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
     # LIST OF PROCESSES TO RUN
@@ -272,7 +272,7 @@ def main():
     if PlotFig:
         for p in processors:
             processor_figure_dict, processor_figure_name_dict = p.plot_results(
-                name, FigPath
+                name, fig_path
             )
 
             for fig_plot in processor_figure_dict:

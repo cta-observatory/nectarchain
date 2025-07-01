@@ -39,7 +39,7 @@ class DQMSummary:
         log.debug("Processor 4")
 
     def plot_results(
-        self, name, FigPath, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
+        self, name, fig_path, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
     ):
         log.debug("Processor 5")
 
