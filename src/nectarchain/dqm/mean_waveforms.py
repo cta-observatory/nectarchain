@@ -145,10 +145,10 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         full_ax.grid()
 
         combined_key = self.figure_keys["combined"]
-        combined_name = name + self.figure_filenames["combined"]
+        combined_path = os.path.join(fig_path, name + self.figure_filenames["combined"])
 
         self.MeanWaveForms_Figures_Dict[combined_key] = full_fig
-        self.MeanWaveForms_Figures_Names_Dict[combined_key] = combined_name
+        self.MeanWaveForms_Figures_Names_Dict[combined_key] = combined_path
 
         plt.close(full_fig)
 
