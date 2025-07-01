@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
@@ -115,7 +117,7 @@ class PixelParticipationHighLowGain(DQMSummary):
                 "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig
             full_name = name + "_Camera_BPX_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.PixelParticipation_Figures_Names_Dict[
                 "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -124,7 +126,7 @@ class PixelParticipationHighLowGain(DQMSummary):
                 "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig
             full_name = name + "_Pedestal_BPX_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(FigPath, full_name)
             self.PixelParticipation_Figures_Names_Dict[
                 "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
