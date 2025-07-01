@@ -53,7 +53,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **charges_kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **charges_kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -91,7 +91,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             )
             self.integrator = GlobalPeakWindowSum(subarray, config=config)
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         self.pixels = evt.nectarcam.tel[0].svc.pixel_ids
         self.pixelBADplot = evt.mon.tel[0].pixel_status.hardware_failing_pixels
 
@@ -148,7 +148,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.peakpos_all.append(peakpos)
             self.ped_all.append(ped)
 
-    def FinishRun(self):
+    def finish_run(self):
         self.peakpos_all = np.array(self.peakpos_all, dtype=float)
         if self.counter_ped > 0:
             self.peakpos_ped = np.array(self.peakpos_ped, dtype=float)
@@ -191,7 +191,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                     "rms": np.sqrt(np.sum(self.ped_ped**2, axis=0)),
                 }
 
-    def GetResults(self):
+    def get_results(self):
         for k, v in self.image_all_stats.items():
             self.ChargeInt_Results_Dict[
                 (
@@ -221,7 +221,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         return self.ChargeInt_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"

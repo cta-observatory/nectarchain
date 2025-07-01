@@ -40,7 +40,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
             "combined": f"_MeanWaveforms_CombinedPlot_{gain_c}Gain.png",
         }
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         """Initialize waveform buffers and counters for a new run."""
         self.Pix = Pix
         self.Samp = Samp
@@ -56,7 +56,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
         self.wf_list_plot = np.arange(1, Samp + 1)
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         waveform = evt.r0.tel[0].waveform[self.k]
 
         if evt.trigger.event_type.value == 32:  # only peds now
@@ -67,7 +67,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
             self.Mwf += waveform
         return None
 
-    def FinishRun(self):
+    def finish_run(self):
         """Compute mean waveforms over events and pixels."""
 
         if self.counter_evt > 0:
@@ -82,7 +82,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
         return None
 
-    def GetResults(self):
+    def get_results(self):
         """Store waveform statistics in results dictionary by gain and type."""
 
         if self.k == 0:
@@ -105,7 +105,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
         return self.MeanWaveForms_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         wf_list = np.array(self.wf_list_plot)
 
         colors = ["blue", "red"]

@@ -44,7 +44,7 @@ class CameraMonitoring(DQMSummary):
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -83,14 +83,14 @@ class CameraMonitoring(DQMSummary):
                 f"code: {err}"
             )
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
 
         self.event_times.append(trigger_time)
         self.event_id.append(trigger_id)
 
-    def FinishRun(self):
+    def finish_run(self):
         try:
             self.event_id = np.array(self.event_id)
             self.event_times = np.array(self.event_times)
@@ -138,7 +138,7 @@ class CameraMonitoring(DQMSummary):
                 f"code: {err}"
             )
 
-    def GetResults(self):
+    def get_results(self):
         try:
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
@@ -151,7 +151,7 @@ class CameraMonitoring(DQMSummary):
 
         return self.CameraMonitoring_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         try:
             fig, disp = plt.subplots()
             disp = CameraDisplay(self.camera)

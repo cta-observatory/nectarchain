@@ -43,14 +43,14 @@ class PixelTimelineHighLowGain(DQMSummary):
             "ped": f"_BPX_Timeline_{self.gain_c}Gain_Ped.png",
         }
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
         self.counter_evt = 0
         self.counter_ped = 0
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
         pixels = evt.nectarcam.tel[0].svc.pixel_ids
 
@@ -70,7 +70,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         return None
 
-    def FinishRun(self):
+    def finish_run(self):
         self.BadPixelTimeline_ped = (
             np.array(self.SumBadPixels_ped, dtype=float) / self.Pix
         )
@@ -78,7 +78,7 @@ class PixelTimelineHighLowGain(DQMSummary):
         log.debug(f"BadPixelTimeline is:\n{self.BadPixelTimeline}")
         log.debug(f"BadPixelTimeline_ped is:\n{self.BadPixelTimeline_ped}")
 
-    def GetResults(self):
+    def get_results(self):
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -104,7 +104,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         return self.PixelTimeline_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         for key, data, count, label in [
             ("all", self.BadPixelTimeline, self.counter_evt, "Physical events"),
             ("ped", self.BadPixelTimeline_ped, self.counter_ped, "Pedestal events"),

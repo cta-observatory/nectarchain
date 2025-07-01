@@ -25,7 +25,7 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.PixelParticipation_Figures_Dict = {}
         self.PixelParticipation_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -37,7 +37,7 @@ class PixelParticipationHighLowGain(DQMSummary):
             EngineeringCameraFrame()
         )
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
         pixels = evt.nectarcam.tel[0].svc.pixel_ids
 
@@ -55,11 +55,11 @@ class PixelParticipationHighLowGain(DQMSummary):
             self.counter_evt += 1
             self.BadPixels += bad_pixels
 
-    def FinishRun(self):
+    def finish_run(self):
         self.BadPixels_ped = np.array(self.BadPixels_ped)
         self.BadPixels = np.array(self.BadPixels)
 
-    def GetResults(self):
+    def get_results(self):
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -85,7 +85,7 @@ class PixelParticipationHighLowGain(DQMSummary):
 
         return self.PixelParticipation_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"

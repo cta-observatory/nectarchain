@@ -33,12 +33,12 @@ class TriggerStatistics(DQMSummary):
         self.TriggerStat_Figures_Dict = {}
         self.TriggerStat_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         trigger_type = evt.trigger.event_type.value
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
@@ -49,7 +49,7 @@ class TriggerStatistics(DQMSummary):
         self.event_id.append(trigger_id)
         self.run_times.append(trigger_run_time)
 
-    def FinishRun(self):
+    def finish_run(self):
         self.triggers = np.unique(self.event_type)
         pedestal_num = 32
         physical_num = 2
@@ -89,7 +89,7 @@ class TriggerStatistics(DQMSummary):
         self.event_wrong_times = self.event_times[self.event_times < self.run_start]
         self.event_times = self.event_times[self.event_times > self.run_start]
 
-    def GetResults(self):
+    def get_results(self):
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
         self.TriggerStat_Results_Dict["TRIGGER-STATISTICS"] = {
             "All": [len(self.event_times)],
@@ -105,7 +105,7 @@ class TriggerStatistics(DQMSummary):
         }
         return self.TriggerStat_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         w = 1
         n1 = np.array(self.event_times.max() - self.event_times.min(), dtype=object)
         n = math.ceil(n1 / w)
@@ -252,6 +252,6 @@ class TriggerStatistics(DQMSummary):
 
 
 # TODO
-# continue GetResults
+# continue get_results
 # adjust histogram displays
 # Choose between starting since run star time or event start time ?

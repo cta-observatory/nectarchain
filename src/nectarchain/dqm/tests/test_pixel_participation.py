@@ -28,7 +28,7 @@ class TestPixelParticipation:
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
 
-        Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN).DefineForRun(reader1)
+        Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN).define_for_run(reader1)
 
         evt = None
         for evt in tqdm(reader1, total=1):

@@ -195,17 +195,17 @@ def main():
 
     # START
     for p in processors:
-        Pix, Samp = p.DefineForRun(reader1)
+        Pix, Samp = p.define_for_run(reader1)
         break
 
     for p in processors:
-        p.ConfigureForRun(path, Pix, Samp, reader1, **charges_kwargs)
+        p.configure_for_run(path, Pix, Samp, reader1, **charges_kwargs)
 
     for evt in tqdm(
         reader, total=args.max_events if args.max_events else len(reader), unit="ev"
     ):
         for p in processors:
-            p.ProcessEvent(evt, noped)
+            p.process_event(evt, noped)
 
     # for the rest of the event files
     for arg in args.input_files[1:]:
@@ -221,18 +221,18 @@ def main():
                 unit="ev",
             ):
                 for p in processors:
-                    p.ProcessEvent(evt, noped)
+                    p.process_event(evt, noped)
 
     for p in processors:
-        p.FinishRun()
+        p.finish_run()
 
     dict_num = 0
     for p in processors:
-        NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.GetResults()
+        NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.get_results()
         dict_num += 1
 
     # Write all results in 1 fits file:
-    p.WriteAllResults(ResPath, NESTED_DICT)
+    p.write_all_results(ResPath, NESTED_DICT)
     if args.write_db:
         db = DQMDB(read_only=False)
         if db.insert(name, NESTED_DICT):
@@ -243,7 +243,7 @@ def main():
     # if plot option in arguments, it will construct the figures and save them
     if PlotFig:
         for p in processors:
-            processor_figure_dict, processor_figure_name_dict = p.PlotResults(
+            processor_figure_dict, processor_figure_name_dict = p.plot_results(
                 name, FigPath
             )
 

@@ -14,27 +14,31 @@ log.handlers = logging.getLogger("__main__").handlers
 class DQMSummary:
     def __init__(self):
         log.debug("Processor 0")
+        self.FirstReader = None
+        self.Samp = None
+        self.Pix = None
 
-    def DefineForRun(self, reader1):
+    def define_for_run(self, reader1):
+        self.FirstReader = reader1
         for i, evt1 in enumerate(reader1):
-            self.FirstReader = reader1
+            # we just need to access the first event
             self.Samp = len(evt1.r0.tel[0].waveform[0][0])
             self.Pix = len(evt1.r0.tel[0].waveform[0])
-        return self.Pix, self.Samp
+            break
 
-    def ConfigureForRun(self):
+    def configure_for_run(self):
         log.debug("Processor 1")
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         log.debug("Processor 2")
 
-    def FinishRun(self, M, M_ped, counter_evt, counter_ped):
+    def finish_run(self, M, M_ped, counter_evt, counter_ped):
         log.debug("Processor 3")
 
-    def GetResults(self):
+    def get_results(self):
         log.debug("Processor 4")
 
-    def PlotResults(
+    def plot_results(
         self, name, FigPath, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
     ):
         log.debug("Processor 5")
@@ -56,7 +60,7 @@ class DQMSummary:
         hdu.name = name
         return hdu
 
-    def WriteAllResults(self, path, DICT):
+    def write_all_results(self, path, DICT):
         hdulist = fits.HDUList()
         for i, j in DICT.items():
             for name, content in j.items():

@@ -33,7 +33,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.MeanCameraDisplay_Figures_Dict = {}
         self.MeanCameraDisplay_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -47,7 +47,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         self.cmap = "gnuplot2"
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
         if len(pixel) < self.Pix:
@@ -69,7 +69,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         return None
 
-    def FinishRun(self):
+    def finish_run(self):
         if self.counter_evt > 0:
             self.CameraAverage = np.array(self.CameraAverage)
             self.CameraAverage = self.CameraAverage.sum(axis=0)
@@ -89,7 +89,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 self.CameraAverage_ped_overEvents / self.Samp
             )
 
-    def GetResults(self):
+    def get_results(self):
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -127,7 +127,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         return self.MeanCameraDisplay_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, FigPath):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
