@@ -42,8 +42,6 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.camera = None
         self.integrator = None
         self.pixelBAD = None
-        self.image_all = []
-        self.image_ped = []
         self.image_all_stats = None
         self.image_ped_stats = None
         self.ped_all_stats = None
@@ -221,236 +219,85 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         return self.ChargeInt_Results_Dict
 
+    def _plot_camera_image(self, image, title, text, filename, key, fig_path):
+        fig, disp = plt.subplots()
+        disp = CameraDisplay(geometry=self.camera)
+        disp.image = image
+        disp.cmap = plt.cm.coolwarm
+        disp.axes.text(2, -0.8, text, fontsize=12, rotation=90)
+        disp.add_colorbar()
+        plt.title(title)
+        full_path = os.path.join(fig_path, filename)
+        self.ChargeInt_Figures_Dict[key] = fig
+        self.ChargeInt_Figures_Names_Dict[key] = full_path
+        plt.close()
+
     def plot_results(self, name, fig_path):
-        # titles = ['All', 'Pedestals']
-        if self.k == 0:
-            gain_c = "High"
-        if self.k == 1:
-            gain_c = "Low"
-
-        # Charge integration MEAN plot
         if self.counter_evt > 0:
-            fig1, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_all_stats["average"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
+            # Charge integration MEAN plot
+            image = self.image_all_stats["average"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration Mean {self.gain_c} Gain (ALL)"
+            filename = name + f"_ChargeInt_Mean_{self.gain_c}Gain_All.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            plt.title("Charge Integration Mean %s Gain (ALL)" % gain_c)
+            # Charge integration MEDIAN plot
+            image = self.image_all_stats["median"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration Median {self.gain_c} Gain (ALL)"
+            filename = name + f"_ChargeInt_Median_{self.gain_c}Gain_All.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            full_name = name + "_ChargeInt_Mean_%sGain_All.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-%s-GAIN" % gain_c
-            ] = fig1
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-%s-GAIN" % gain_c
-            ] = FullPath
+            # Charge integration STD plot
+            image = self.image_all_stats["std"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration STD {self.gain_c} Gain (ALL)"
+            filename = name + f"_ChargeInt_Std_{self.gain_c}Gain_All.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-ALL-STD-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            plt.close()
+            # Charge integration RMS plot
+            image = self.image_all_stats["rms"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration RMS {self.gain_c} Gain (ALL)"
+            filename = name + f"_ChargeInt_Rms_{self.gain_c}Gain_All.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-ALL-RMS-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
         if self.counter_ped > 0:
-            fig2, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_ped_average
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
+            image = self.image_ped_stats["average"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration Mean {self.gain_c} Gain (PED)"
+            filename = name + f"_ChargeInt_Mean_{self.gain_c}Gain_Ped.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-PED-AVERAGE-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            plt.title("Charge Integration Mean %s Gain (PED)" % gain_c)
+            image = self.image_ped_stats["median"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration Median {self.gain_c} Gain (PED)"
+            filename = name + f"_ChargeInt_Median_{self.gain_c}Gain_Ped.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-PED-MEDIAN-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            full_name = name + "_ChargeInt_Mean_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-AVERAGE-%s-GAIN" % gain_c
-            ] = fig2
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-AVERAGE-%s-GAIN" % gain_c
-            ] = FullPath
+            image = self.image_ped_all["std"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration STD {self.gain_c} Gain (PED)"
+            filename = name + f"_ChargeInt_Std_{self.gain_c}Gain_Ped.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-PED-STD-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            plt.close()
-
-        # Charge integration MEDIAN plot
-        if self.counter_evt > 0:
-            fig3, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_all_stats["median"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
-
-            plt.title("Charge Integration Median %s Gain (ALL)" % gain_c)
-
-            full_name = name + "_ChargeInt_Median_%sGain_All.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-%s-GAIN" % gain_c
-            ] = fig3
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
-
-        if self.counter_ped > 0:
-            fig4, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_ped_stats["median"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
-
-            plt.title("Charge Integration Median %s Gain (PED)" % gain_c)
-
-            full_name = name + "_ChargeInt_Median_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-MEDIAN-%s-GAIN" % gain_c
-            ] = fig4
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-MEDIAN-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
-
-        # Charge integration STD plot
-        if self.counter_evt > 0:
-            fig5, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_all_stats["std"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
-
-            plt.title("Charge Integration STD %s Gain (ALL)" % gain_c)
-
-            full_name = name + "_ChargeInt_Std_%sGain_All.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-STD-%s-GAIN" % gain_c
-            ] = fig5
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-STD-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
-
-        if self.counter_ped > 0:
-            fig6, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_ped_all["std"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
-
-            plt.title("Charge Integration STD %s Gain (PED)" % gain_c)
-
-            full_name = name + "_ChargeInt_Std_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-STD-%s-GAIN" % gain_c
-            ] = fig6
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-STD-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
-
-        # Charge integration RMS plot
-        if self.counter_evt > 0:
-            fig7, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_all_stats["rms"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
-
-            plt.title("Charge Integration RMS %s Gain (ALL)" % gain_c)
-
-            full_name = name + "_ChargeInt_Rms_%sGain_All.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-RMS-%s-GAIN" % gain_c
-            ] = fig7
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-ALL-RMS-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
-
-        if self.counter_ped > 0:
-            fig8, disp = plt.subplots()
-            disp = CameraDisplay(geometry=self.camera)
-            disp.image = self.image_ped_stats["rms"]
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(
-                2,
-                -0.8,
-                f"{gain_c} gain integrated charge (DC)",
-                fontsize=12,
-                rotation=90,
-            )
-            disp.add_colorbar()
-
-            plt.title("Charge Integration RMS %s Gain (PED)" % gain_c)
-
-            full_name = name + "_ChargeInt_Rms_%sGain_Ped.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-RMS-%s-GAIN" % gain_c
-            ] = fig8
-            self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-IMAGE-PED-RMS-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
+            image = self.image_ped_stats["rms"]
+            text = f"{self.gain_c} gain integrated charge (DC)"
+            title = f"Charge Integration RMS {self.gain_c} Gain (PED)"
+            filename = name + f"_ChargeInt_Rms_{self.gain_c}Gain_Ped.png"
+            key = f"CHARGE-INTEGRATION-IMAGE-PED-RMS-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
 
         # Charge integration SPECTRUM
         if self.counter_evt > 0:
-            fig9, disp = plt.subplots()
+            fig, _ = plt.subplots()
             for i in range(len(self.pixels)):
                 plt.hist(
                     self.image_all[:, i],
@@ -473,21 +320,22 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             )
             plt.legend()
             plt.xlabel("Charge (DC)")
-            plt.title("Charge spectrum %s gain (ALL)" % gain_c)
+            plt.title("Charge spectrum %s gain (ALL)" % self.gain_c)
 
-            full_name = name + "_Charge_Spectrum_%sGain_All.png" % gain_c
+            full_name = name + "_Charge_Spectrum_%sGain_All.png" % self.gain_c
             FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-SPECTRUM-ALL-%s-GAIN" % gain_c
-            ] = fig9
+                "CHARGE-INTEGRATION-SPECTRUM-ALL-%s-GAIN" % self.gain_c
+            ] = fig
             self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-SPECTRUM-ALL-%s-GAIN" % gain_c
+                "CHARGE-INTEGRATION-SPECTRUM-ALL-%s-GAIN" % self.gain_c
             ] = FullPath
 
-            plt.close()
+            plt.close(fig)
+            del fig
 
         if self.counter_ped > 0:
-            fig10, disp = plt.subplots()
+            fig, _ = plt.subplots()
             for i in range(len(self.pixels)):
                 plt.hist(
                     self.image_ped[:, i],
@@ -510,15 +358,15 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             )
             plt.legend()
             plt.xlabel("Charge (DC)")
-            plt.title("Charge spectrum %s gain (PED)" % gain_c)
+            plt.title("Charge spectrum %s gain (PED)" % self.gain_c)
 
-            full_name = name + "_Charge_Spectrum_%sGain_Ped.png" % gain_c
+            full_name = name + "_Charge_Spectrum_%sGain_Ped.png" % self.gain_c
             FullPath = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict[
-                "CHARGE-INTEGRATION-SPECTRUM-PED-%s-GAIN" % gain_c
-            ] = fig10
+                "CHARGE-INTEGRATION-SPECTRUM-PED-%s-GAIN" % self.gain_c
+            ] = fig
             self.ChargeInt_Figures_Names_Dict[
-                "CHARGE-INTEGRATION-SPECTRUM-PED-%s-GAIN" % gain_c
+                "CHARGE-INTEGRATION-SPECTRUM-PED-%s-GAIN" % self.gain_c
             ] = FullPath
 
             plt.close()
