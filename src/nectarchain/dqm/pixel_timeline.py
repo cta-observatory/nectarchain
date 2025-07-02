@@ -79,7 +79,8 @@ class PixelTimelineHighLowGain(DQMSummary):
         log.debug(f"BadPixelTimeline_ped is:\n{self.BadPixelTimeline_ped}")
 
     def get_results(self):
-        # ASSIGN RESUTLS TO DICT
+        """Store results to output dictionary"""
+
         if self.k == 0:
             if self.counter_evt > 0:
                 self.PixelTimeline_Results_Dict[

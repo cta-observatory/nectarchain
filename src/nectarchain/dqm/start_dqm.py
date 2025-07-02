@@ -284,9 +284,6 @@ def main():
     end = time.time()
     print(f"Processing time: {end-start:.2f} s.")
 
-    # TODO
-    # Reduce code by using loops: for figs and results
-
 
 if __name__ == "__main__":
     main()

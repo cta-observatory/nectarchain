@@ -20,11 +20,10 @@ class DQMSummary:
 
     def define_for_run(self, reader1):
         self.FirstReader = reader1
-        for i, evt1 in enumerate(reader1):
-            # we just need to access the first event
-            self.Samp = len(evt1.r0.tel[0].waveform[0][0])
-            self.Pix = len(evt1.r0.tel[0].waveform[0])
-            break
+        # we just need to access the first event
+        evt1 = next(iter(reader1))
+        self.Samp = len(evt1.r0.tel[0].waveform[0][0])
+        self.Pix = len(evt1.r0.tel[0].waveform[0])
         return self.Pix, self.Samp
 
     def configure_for_run(self):
