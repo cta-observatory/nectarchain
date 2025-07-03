@@ -1,5 +1,5 @@
-from ctapipe.io import EventSource
 from ctapipe.utils import get_dataset_path
+from ctapipe_io_nectarcam import LightNectarCAMEventSource as EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN
 from tqdm import tqdm
 from traitlets.config import Config

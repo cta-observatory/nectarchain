@@ -6,7 +6,7 @@ import sys
 import time
 
 # ctapipe imports
-from ctapipe.io import EventSource
+from ctapipe_io_nectarcam import LightNectarCAMEventSource as EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
 from matplotlib import pyplot as plt
 from tqdm import tqdm
