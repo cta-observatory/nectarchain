@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import os
 import sys
 from time import sleep
 
@@ -65,7 +66,7 @@ if args.date is None:
     )
     sys.exit(1)
 
-executable_wrapper = "dqm_processor.sh"
+executable_wrapper = os.path.join(os.path.dirname(__file__), "dqm_processor.sh")
 
 ## Possible massive job processing via loop on run numbers:
 # for run in ['2720', '3277', '...']:
