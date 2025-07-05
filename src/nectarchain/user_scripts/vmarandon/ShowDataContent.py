@@ -1,6 +1,7 @@
 try:
-    import sys
     import argparse
+    import sys
+
     from DataUtils import CountEventTypes, DataReader
     from Utils import CustomFormatter
 
@@ -10,13 +11,20 @@ except ImportError as e:
 
 
 def ShowDataContent(arglist):
-    p = argparse.ArgumentParser(description='Print the data content of a given run',
-                                epilog='examples:\n'
-                                '\t python %(prog)s --run 123456  \n',
-                                formatter_class=CustomFormatter)
+    p = argparse.ArgumentParser(
+        description="Print the data content of a given run",
+        epilog="examples:\n" "\t python %(prog)s --run 123456  \n",
+        formatter_class=CustomFormatter,
+    )
 
-    p.add_argument("--run", dest='run', type=int, help="Run number to be converted")
-    p.add_argument("--data-path",dest='dataPath',type=str,default=None,help="Path to the rawdata directory. The program will recursively search in all directory for matching rawdata")
+    p.add_argument("--run", dest="run", type=int, help="Run number to be converted")
+    p.add_argument(
+        "--data-path",
+        dest="dataPath",
+        type=str,
+        default=None,
+        help="Path to the rawdata directory. The program will recursively search in all directory for matching rawdata",
+    )
 
     args = p.parse_args(arglist)
 
@@ -24,8 +32,7 @@ def ShowDataContent(arglist):
         p.print_help()
         return -1
 
-
-    event_types = CountEventTypes(run=args.run,path=args.dataPath)
+    event_types = CountEventTypes(run=args.run, path=args.dataPath)
     print(f"run {args.run}:")
     for t, n in event_types.items():
         print(f"\t{t} --> {n} events")
@@ -36,4 +43,3 @@ def ShowDataContent(arglist):
 if __name__ == "__main__":
     retval = ShowDataContent(sys.argv[1:])
     sys.exit(retval)
-
