@@ -5,23 +5,24 @@ try:
     import bz2
     import lzma
     import pickle
+    import protozfits
     from glob import glob
 
     from enum import Enum
 
     import astropy.units as u
 
-    from ctapipe_io_nectarcam import NectarCAMEventSource, EventSource
+    from ctapipe_io_nectarcam import NectarCAMEventSource, EventSource, TriggerBits
     from ctapipe.containers import EventType
 
     #from traitlets.config import Config
-    from astropy.time import TimeDelta
+    from astropy.time import Time, TimeDelta
 
 
     from DBHandler import DB
     from FileHandler import GetNectarCamEvents, DataReader
     #from Utils import GetRunURL
-    from Utils import GetDefaultDataPath
+    from Utils import GetDefaultDataPath, GetRunURL
     from tqdm import tqdm
 
     from collections import defaultdict
@@ -31,6 +32,34 @@ except ImportError as e:
     raise SystemExit
 
 
+def GetFirstLastEventTime(run,path=None):
+    if path is None:
+        path = GetDefaultDataPath()
+
+    try:
+        files = glob(GetRunURL(run,path))
+        files.sort()
+        evt_times = list()
+        if len(files)>0:
+            for file in tqdm(files):
+                with protozfits.File(file,pure_protobuf=False) as f:
+                    nEvents = len(f.Events)
+                    # get first event time
+                    ranges = [range(nEvents),reversed(range(nEvents))]
+                    for r in ranges:
+                        for i in r:
+                            t_s   = f.Events[i].event_time_s
+                            if t_s !=0:
+                                t_qns = f.Events[i].event_time_qns
+                                evt_times.append( Time(t_s,t_qns*1.e-9/4.,format="unix_tai") )
+                                break
+            print(len(evt_times))
+            evt_times.sort()
+            return  evt_times[0],evt_times[-1] 
+        else:
+            print(f"Can't find files for run {run}")
+    except Exception as err:
+        print(err)
 
 def GetTotalEventCounts(run,path=None):
 
@@ -39,7 +68,11 @@ def GetTotalEventCounts(run,path=None):
 
     ## in case one does not have the "latest" version of the ctapipe_io_nectarcam (for ctapipe 0.19)
     ## otherwise the len(data) would work !
+    #print(f'{path = }')
     data = GetNectarCamEvents(run,path,applycalib=False)
+    #print(f'{data = }')
+    #print(f'{type(data) = }')
+    
     
     tot_events = 0
     
@@ -57,19 +90,61 @@ def CountEventTypes(run,path=None):
     if path is None:
         path = GetDefaultDataPath()
 
-    trig_types = defaultdict(int)
+    data = DataReader(run,path)
+    ok = data.Connect("trigger")
+    if not ok:
+        data = GetNectarCamEvents(run,path,applycalib=False,load_feb_info=False)
+
+    #print(data)
+    nEvents = GetTotalEventCounts(run,path)
+
+    return CountEventTypesFromData(data,total=nEvents)
+    
+def CountEventTypesFromData(data,total=None):
+    #print("THERE")
+    trig_types = dict() #defaultdict(int)
+    try:
+        for i, evt in enumerate(tqdm(data,total=total)):
+            if i == total:
+                break
+            if evt.trigger.event_type not in trig_types:
+                trig_types[ evt.trigger.event_type ] = 0
+            trig_types[ evt.trigger.event_type ] += 1
+    except Exception as err:
+        print(err)
+    return trig_types
+
+
+
+def CountEventTriggers(run,path=None):
+    if path is None:
+        path = GetDefaultDataPath()
+
 
     data = DataReader(run,path)
     ok = data.Connect("trigger")
     if not ok:
-        data = GetNectarCamEvents(run,path,applycalib=False)
+        data = GetNectarCamEvents(run,path,applycalib=False,load_feb_info=False)
 
     nEvents = GetTotalEventCounts(run,path)
 
-    for evt in tqdm(data,total=nEvents):
-        trig_types[ evt.trigger.event_type ] += 1
+    return CountEventTriggersFromData(data,total=nEvents)
+
+def CountEventTriggersFromData(data,total=None):
+    #from IPython import embed
+    trig_types = dict() #defaultdict(int)
+    try:
+        for i, evt in enumerate(tqdm(data,total=total)):
+            if i == total:
+                break
+            #embed()
+            trig = TriggerBits( int(evt.nectarcam.tel[0].evt.ucts_trigger_type) )
+            if trig not in trig_types:
+                trig_types[ trig ] = 0
+            trig_types[ trig ] += 1
+    except Exception as err:
+        print(err)
     return trig_types
-    
 
 
 

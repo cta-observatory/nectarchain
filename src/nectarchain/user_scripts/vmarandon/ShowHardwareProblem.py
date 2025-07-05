@@ -6,7 +6,8 @@ try:
 
     import argparse
 
-    import matplotlib
+    #import matplotlib
+    #matplotlib.use('TKAgg')
     from matplotlib import pyplot as plt
 
     from FileHandler import DataReader, GetNectarCamEvents
@@ -51,6 +52,8 @@ def ShowHardwareProblem(arglist):
     p.add_argument("--list",dest="listEvent",action='store_true',help="List pixels for which there is hardware problems")
     p.add_argument("--savefig",dest="savefig",action='store_true',help='Save figure')
     p.add_argument("--debug",dest="debug",action='store_true',help='Debug mode (only 10000 events processed)')
+    p.add_argument("--batch",dest="batch",action='store_true',help='batch mode')
+    p.add_argument("--nevents",dest="nUserEvents",type=int,default=-1,help="Number of events to analyse")
 
     args = p.parse_args(arglist)
 
@@ -70,26 +73,33 @@ def ShowHardwareProblem(arglist):
         data = GetNectarCamEvents(args.run,path,applycalib=False)
 
     dataevents = GetTotalEventCounts(args.run,path)
+    camstats = CameraStats(use_jit=True)
 
-    camstats = CameraStats()
+    useUserEvents = (args.nUserEvents>0 and args.nUserEvents<dataevents)
+    nEvents = args.nUserEvents if useUserEvents else dataevents
 
     sum_failing = None
     counter = 0
+    
     try:
-        for evt in tqdm(data,total=dataevents):
-            hardware_failing = evt.mon.tel[args.telId].pixel_status.hardware_failing_pixels
-            camstats.add( hardware_failing )
-            
-            if sum_failing is not None:
-                sum_failing += hardware_failing
-            else:
-                sum_failing = hardware_failing.copy().astype(int)
+        for i, evt in enumerate(tqdm(data,total=nEvents)):
+            if useUserEvents and i>=nEvents:
+                break
 
+            hardware_failing = evt.mon.tel[args.telId].pixel_status.hardware_failing_pixels
+            camstats.add( hardware_failing.astype(int) )
+
+            # if sum_failing is not None:
+            #     sum_failing += hardware_failing
+            # else:
+            #     sum_failing = hardware_failing.copy().astype(int)
 
             if args.debug:
                 counter += 1
                 if counter > 10000:
                     break
+
+            
     except Exception as e:
         print(e)
     
@@ -107,21 +117,28 @@ def ShowHardwareProblem(arglist):
 
     if args.savefig:
         figname = f'run_{args.run}_Hardware_Failing_Pixels_Counter.png'
+        fig_counts.savefig(figname)
 
-    fig_counts.show()
     
 
-    fig_counts2, axs_counts2 = plt.subplots(nrows=1,ncols=2, figsize=(12,6))
+    # try:
+    #     fig_counts2, axs_counts2 = plt.subplots(nrows=1,ncols=2, figsize=(12,6))
 
-    cam_count_hg2 = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(sum_failing[0],mask=sum_failing[0]==0.), title=f'HG Hardware Failing Counts 2\nrun {args.run}',ax=axs_counts2[0],show_frame=False,allow_pick=True)
-    cam_count_hg2.highlight_pixels(range(1855),linewidth=lw,color='grey')
-    cam_count_hg2.add_colorbar()
+    #     cam_count_hg2 = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(sum_failing[0],mask=sum_failing[0]==0.), title=f'HG Hardware Failing Counts\nrun {args.run}',ax=axs_counts2[0],show_frame=False,allow_pick=True,norm='log')
+    #     cam_count_hg2.highlight_pixels(range(1855),linewidth=lw,color='grey')
+    #     cam_count_hg2.add_colorbar()
+        
+    #     cam_count_lg2 = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(sum_failing[1],mask=sum_failing[1]==0.), title=f'LG Hardware Failing Counts\nrun {args.run}',ax=axs_counts2[1],show_frame=False,allow_pick=True,norm='log')
+    #     cam_count_lg2.highlight_pixels(range(1855),linewidth=lw,color='grey')
+    #     cam_count_lg2.add_colorbar()
+
+    #     if args.savefig:
+    #         figname = f'run_{args.run}_Hardware_Failing_Pixels_Counter_LogScale.png'
+    #         fig_counts2.savefig(figname)
+
+    # except Exception as err:
+    #     print(f"Problem showing logscale counts figure: {err}")
     
-    cam_count_lg2 = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(sum_failing[1],mask=sum_failing[1]==0.), title=f'LG Hardware Failing Counts 2\nrun {args.run}',ax=axs_counts2[1],show_frame=False,allow_pick=True)
-    cam_count_lg2.highlight_pixels(range(1855),linewidth=lw,color='grey')
-    cam_count_lg2.add_colorbar()
-
-    fig_counts2.show()
 
 
 
@@ -130,18 +147,46 @@ def ShowHardwareProblem(arglist):
     cam_frac_hg = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(camstats.mean[0]*100,mask=camstats.mean[0]==0.), title=f'HG Hardware Failing Fraction (%)\nrun {args.run}',ax=axs_frac[0],show_frame=False,allow_pick=True)
     cam_frac_hg.add_colorbar()
     cam_frac_hg.highlight_pixels(range(1855),linewidth=lw,color='grey')
+    cam_frac_hg.set_limits_minmax(0.,100.)
     cam_frac_hg.colorbar.set_label('%')
 
     cam_frac_lg = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(camstats.mean[1]*100,mask=camstats.mean[1]==0.), title=f'LG Hardware Failing Fraction (%)\nrun {args.run}',ax=axs_frac[1],show_frame=False,allow_pick=True)
     cam_frac_lg.add_colorbar()
     cam_frac_lg.highlight_pixels(range(1855),linewidth=lw,color='grey')
+    cam_frac_lg.set_limits_minmax(0.,100.)
     cam_frac_lg.colorbar.set_label('%')
 
     if args.savefig:
         figname = f'run_{args.run}_Hardware_Failing_Pixels_Fraction.png'
+        fig_frac.savefig(figname)
 
-    fig_frac.show()
+
+
+    if not args.batch:
+        fig_counts.show()
+        #fig_counts2.show()
+        fig_frac.show()
     
+
+    # fig_frac2, axs_frac2 = plt.subplots(nrows=1,ncols=2, figsize=(12,6))
+
+    # cam_frac_hg2 = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(camstats.mean[0]*100,mask=camstats.mean[0]==0.), title=f'HG Hardware Failing Fraction (%)\nrun {args.run}',ax=axs_frac2[0],show_frame=False,allow_pick=True,norm='log')
+    # cam_frac_hg2.add_colorbar()
+    # cam_frac_hg2.highlight_pixels(range(1855),linewidth=lw,color='grey')
+    # cam_frac_hg2.set_limits_minmax(0.,100.)
+    # cam_frac_hg2.colorbar.set_label('%')
+
+    # cam_frac_lg2 = CameraDisplay(geometry=GetCamera(), cmap='turbo', image=ma.array(camstats.mean[1]*100,mask=camstats.mean[1]==0.), title=f'LG Hardware Failing Fraction (%)\nrun {args.run}',ax=axs_frac2[1],show_frame=False,allow_pick=True,norm='log')
+    # cam_frac_lg2.add_colorbar()
+    # cam_frac_lg2.highlight_pixels(range(1855),linewidth=lw,color='grey')
+    # cam_frac_lg2.set_limits_minmax(0.,100.)
+    # cam_frac_lg2.colorbar.set_label('%')
+
+    # if args.savefig:
+    #     figname = f'run_{args.run}_Hardware_Failing_Pixels_Fraction_LogScale.png'
+    #     fig_frac2.savefig(figname)
+
+    # fig_frac2.show()
     
     #embed()
 
@@ -156,9 +201,10 @@ def ShowHardwareProblem(arglist):
 
 
     #plt.show()
-    input("Press Enter to quit\n")
+    if not args.batch:
+        input("Press Enter to quit\n")
 
-    embed()
+    #embed()
 
 
 

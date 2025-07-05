@@ -2,6 +2,7 @@ try:
     import sys
     import os
     import lz4.frame
+    import gzip
     import bz2
     import lzma
     import pickle
@@ -10,6 +11,10 @@ try:
     from enum import Enum
 
     from ctapipe_io_nectarcam import NectarCAMEventSource
+    try:
+        from ctapipe_io_nectarcam import BlockNectarCAMEventSource
+    except ImportError as err:
+        print(err)
     from traitlets.config import Config
 
     from DBHandler import DB
@@ -81,6 +86,7 @@ class SingleFile:
             str_index = '*'
 
         filename = f'run{run}.{name}.{str_index}.pickle.lz4'
+        #filename = f'run{run}.{name}.{str_index}.pickle.gz'
         full_path = os.path.join(path,filename)
         file_list = glob(full_path)
         file_list.sort()
@@ -90,12 +96,15 @@ class SingleFile:
     def __create_filename(self,name,run,path,index):
         str_index = f'{index}'.zfill(self._indexLength)
         filename = f'run{run}.{name}.{str_index}.pickle.lz4'
+        #filename = f'run{run}.{name}.{str_index}.pickle.gz'
         full_path = os.path.join(path,filename)
         return full_path
     
     def __open_file__(self):
         open_mode = 'wb' if self._mode == OpenMode.WRITE else 'rb'
-        self._file = lz4.frame.open( self._fileList[self._currentFileIndex], open_mode )
+        self._file = lz4.frame.open( self._fileList[self._currentFileIndex], open_mode, compression_level=lz4.frame.COMPRESSIONLEVEL_MINHC, block_size=lz4.frame.BLOCKSIZE_MAX4MB)
+        #self._file = gzip.open( self._fileList[self._currentFileIndex], open_mode )
+        #self._file = mgzip.open( self._fileList[self._currentFileIndex], open_mode, thread=4 )
 
     def __close_file__(self):
         if self._file is not None:
@@ -256,6 +265,7 @@ class DataReader:
             #prefix = os.path.join(self._path, f'run{self._runnumber}.')
             prefix = f'run{self._runnumber}.'
             suffix = ".pickle.lz4"
+            #suffix = ".pickle.gz"
             #files = glob(prefix + '*' + suffix)
             #print(files)
             files = FindFiles(prefix + '*' + suffix,self._path)
@@ -426,12 +436,15 @@ class FileHandler:
 
     def Connect(self,name):
         fileName = f'run{self.runNumber}.{name}.pickle.lz4'
+        #fileName = f'run{self.runNumber}.{name}.pickle.gz'
         fullPath = os.path.join(self.dataPath,fileName)
         print(f'Opening file [{fullPath}]')
         try:
             #with lzma.open( fullPath, 'rb' ) as f :
             #with bz2.BZ2File( fullPath, 'rb' ) as f :
             with lz4.frame.open( fullPath, 'rb' ) as f :
+            #with gzip.open( fullPath, 'rb' ) as f :
+            #with mgzip.open( fullPath, 'rb',thread=4 ) as f :
                 x = pickle.load(f)
                 if name not in self.dictinfos:
                     self.dictinfos[name] = x
@@ -468,16 +481,11 @@ class FileHandler:
 
 
 ## Retrieve the data with the standard way of ctapipe_io_nectarcam
-def GetNectarCamEvents(run,path=None,data_block=-1,applycalib=True):
-    #path_regexp=f'{data_path}/*/NectarCAM.Run{runnum}.000[0-9].fits.fz'
-    #path_regexp=f'{data_path}/*/NectarCAM.Run{runnum}.*.fits.fz'
-    #path = glob(path_regexp)
-    #path.sort()
-    #print(path)
+def GetNectarCamEvents(run,path=None,applycalib=True,*args,**kwargs):
 
     if path is None:
         path = GetDefaultDataPath()
-
+    
     if not applycalib:
         config = Config(dict(NectarCAMEventSource=dict(
             NectarCAMR0Corrections=dict(
@@ -486,19 +494,34 @@ def GetNectarCamEvents(run,path=None,data_block=-1,applycalib=True):
                 select_gain=False,
             ))))
 
-    #print(f"run: {run} path: {path} data_block: {data_block}")
-    #print(f'TEST: {GetRunURL(run,path)}')
-
-    if data_block == -1:
-        if applycalib:
-            reader = NectarCAMEventSource(input_url=GetRunURL(run,path))
-        else:
-            reader = NectarCAMEventSource(input_url=GetRunURL(run,path),config=config)
+    print(GetRunURL(run,path))
+    if applycalib:
+        #print("applycalib")
+        try:
+            reader = BlockNectarCAMEventSource(input_url=GetRunURL(run,path),*args,**kwargs)
+            #print("IF")
+        except Exception:
+            try:
+                reader = NectarCAMEventSource(input_url=GetRunURL(run,path),*args,**kwargs)
+            except Exception as err:
+                print(f"Can't get a valid reader --> Is the run [{run}] ok ?")
+                reader = None
     else:
-        if applycalib:
-            reader = NectarCAMEventSource(input_filelist=GetBlockListFromURL(GetRunURL(run,path),data_block))
-        else:
-            reader = NectarCAMEventSource(input_filelist=GetBlockListFromURL(GetRunURL(run,path),data_block),config=config)
+        #print("do no applycalib")
+        try:
+            reader = BlockNectarCAMEventSource(input_url=GetRunURL(run,path),config=config,*args,**kwargs)
+            #print("ELSE")
+        except Exception as err:
+            print(err)
+            try:
+                reader = NectarCAMEventSource(input_url=GetRunURL(run,path),config=config,*args,**kwargs)
+            except Exception as err:
+                print(f"Can't get a valid reader --> Is the run [{run}] ok ?")
+                reader = None
+        #reader = BlockNectarCAMEventSource(input_url=GetRunURL(run,path),config=config,*args,**kwargs)
+    
+    #print(f"reader: {reader}")
+    #print(type(reader))
     return reader
 
 

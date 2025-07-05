@@ -9,6 +9,8 @@ try:
     import pickle
     import lz4.frame
 
+    #from datetime import datetime, timedelta
+
 
     from ctapipe.io import EventSource
     from ctapipe.instrument import CameraGeometry
@@ -17,7 +19,8 @@ try:
 
     from scipy.interpolate import InterpolatedUnivariateSpline
 
-
+    import astropy
+    from astropy.time import Time
 
     from tqdm import tqdm
 
@@ -28,14 +31,14 @@ try:
     #from scipy.interpolate import splrep, BSpline
 
 
-    #from FileHandler import GetNectarCamEvents #, DataReader
+    #from FileHandler import GetNectarCamEvents #, DataReer
 
 except ImportError as e:
     print(e)
     raise SystemExit
 
-#Let's do a multi-inheritence for the fun, since argp-arse does not
-#provide it, maybe because it was too easy....
+# Let's do a multi-inheritence for the fun, since argp-arse does not
+# provide it, maybe because it was too easy....
 # thanks : http://stackoverflow.com/questions/18462610
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     pass
@@ -62,7 +65,21 @@ def ConvertTitleToName(title: str):
 
 
 def GetDefaultDataPath():
-    return os.environ.get( 'NECTARCAMDATA' , '/Users/vm273425/Programs/NectarCAM/data')
+    return os.environ.get( 'NECTARCAMDATA' , './')
+
+def GetDefaultDBPath():
+    return os.environ.get( 'NECTARCAMDB' , './')
+
+def GetDAQTimeFromTime(t):
+    if isinstance(t, astropy.time.core.Time):
+        print("GetDAQTimeFromTime> converting to datetime")
+        t = t.to_datetime()
+    if t.hour>=12:
+        daq_time = datetime.datetime(year=t.year,month=t.month,day=t.day,hour=12)
+    else:
+        t_past = t - datetime.timedelta(seconds=86400)
+        daq_time = datetime.datetime(year=t_past.year,month=t_past.month,day=t_past.day,hour=12)
+    return daq_time
 
 def GetDAQDateFromTime(t):
      # A datetime is expected
@@ -78,13 +95,16 @@ def GetDAQDateFromTime(t):
 def GetDBNameFromTime(t):
      return "nectarcam_monitoring_db_" + GetDAQDateFromTime(t) + ".sqlite"
 
+def ReformatTime(t):
+    return Time(t.value,format=t.format,precision=9)
+
 def NaNFiltered(x):
     return x[~np.isnan(x)]
 
 def ReplaceNaN(x,val=0):
     x[ np.isnan(x) ] = val
 
-#def RemoveVal(x,val=0):
+# def RemoveVal(x,val=0):
 #    x[ x == val ] = np.nan
 def FindFile(filename,path):
     #print(f"FindFile> {filename = } {path = }")
@@ -92,15 +112,23 @@ def FindFile(filename,path):
         if filename in filenames:
             return os.path.join(dirpath,filename)
 
-def FindFiles(filename,path):
+def FindFiles(filename,path,recursive=True,remove_hidden_files=True):
     # As it is regular expression, you should not use * but .* , etc...
     filename = filename.replace('.*','*').replace('*','.*') # dirty trick to have the wild card * working as one can use in a command line
     files = list()
     for (dirpath, _ , filenames) in os.walk(path):
-        for f in filenames:
-            #print(f"{filename = } {f = }")
-            if re.match(filename,f):
-                files.append( os.path.join(dirpath,f))
+        ## Go for a pedestrian way as list comprehension is a bit unreadable in this case:
+        for name in filenames:
+            matchPattern = re.match(filename,name)
+            hidden_file = name.startswith(".")
+            if matchPattern and not (hidden_file and remove_hidden_files):
+                files.append( os.path.abspath( os.path.join(dirpath,name) ) )
+        if not recursive:
+            break            
+        # for f in filenames:
+        #     #print(f"{filename = } {f = }")
+        #     if re.match(filename,f):
+        #         files.append( os.path.join(dirpath,f))
     return files
 
 def FindDataPath(run,dataPath):
@@ -112,7 +140,7 @@ def FindDataPath(run,dataPath):
 
 
 def GetRunURL(run,path):
-    pattern = f'NectarCAM.Run{run}.'
+    pattern = f'NectarCAM.Run{run:04}.'
     runpath = ''
     for (dirpath, dirnames, filenames) in os.walk(path):
         for f in filenames:
@@ -137,7 +165,6 @@ def GetBlockListFromURL(run_url,data_block):
     files.sort()
     #print(f"GetBlockListFromURL> {files[ 2*data_block : 2*(data_block+1) ]}")
     return files[ 2*data_block : 2*(data_block+1) ]
-
 
 
 def GetCamera():
@@ -171,22 +198,23 @@ class IntegrationMethod(enum.Enum):
     USERPEAK = enum.auto()
 
 
-
-
 def SignalIntegration(waveform,exclusion_mask=None, method = IntegrationMethod.PEAKSEARCH,left_bound=5,right_bound=7,camera=None,peakpositions=None):
     wvf = waveform.astype(float)
     if exclusion_mask is not None:
         wvf[ exclusion_mask ] = 0.
 
     if method == IntegrationMethod.PEAKSEARCH:
-        charge, time = PeakIntegration(waveform, left_bound=left_bound, right_bound=right_bound)
+        charge, time = PeakIntegration(wvf, left_bound=left_bound, right_bound=right_bound)
     elif method == IntegrationMethod.NNSEARCH:
         if camera is None:
             camera = GetCamera()
-        charge, time = NeighborPeakIntegration(waveform, camera.neighbor_matrix, left_bound=5, right_bound=7)
+        if len(wvf.shape) == 3:
+            charge, time = NeighborPeakIntegration2Gain(wvf, camera.neighbor_matrix, left_bound=5, right_bound=7)
+        else:
+            charge, time = NeighborPeakIntegrationGainSelected(wvf, camera.neighbor_matrix, left_bound=5, right_bound=7)
     elif method == IntegrationMethod.USERPEAK:
         #print("HERE")
-        charge, time = UserPeakIntegration(waveform,peakpositions=peakpositions,left_bound=left_bound,right_bound=right_bound)
+        charge, time = UserPeakIntegration(wvf,peakpositions=peakpositions,left_bound=left_bound,right_bound=right_bound)
     else:
         print("I Don't know about this method !")
 
@@ -225,7 +253,7 @@ def PeakIntegration(waveform, left_bound=5, right_bound=7):
     return integrated_signal, signal_timeslice
 
 @njit(parallel=True)
-def NeighborPeakIntegration(waveform, neighbor_matrix, left_bound=5, right_bound=7):
+def NeighborPeakIntegration2Gain(waveform, neighbor_matrix, left_bound=5, right_bound=7):
 
     wvf_shape = waveform.shape
     n_channel = wvf_shape[0]
@@ -253,6 +281,34 @@ def NeighborPeakIntegration(waveform, neighbor_matrix, left_bound=5, right_bound
                 up_bound = peak_pos + right_bound
             integrated_signal[chan,pix] = np.sum( chan_wvf[pix,lo_bound:up_bound]  )
             signal_timeslice[chan,pix] = peak_pos
+            
+    return integrated_signal, signal_timeslice
+@njit(parallel=True)
+def NeighborPeakIntegrationGainSelected(waveform, neighbor_matrix, left_bound=5, right_bound=7):
+
+    wvf_shape = waveform.shape
+    n_pixels = wvf_shape[0]
+    n_samples = wvf_shape[1]
+
+    integrated_signal = np.zeros( (n_pixels,) )
+    signal_timeslice = np.zeros( (n_pixels,) )
+
+    integ_window = left_bound+right_bound
+
+    for pix in prange(n_pixels):
+        neighbor_trace = np.sum(waveform[ neighbor_matrix[pix] ],axis=0)
+        peak_pos = np.argmax(neighbor_trace)
+        if (peak_pos-left_bound) < 0:
+            lo_bound = 0
+            up_bound = integ_window
+        elif (peak_pos + right_bound) > n_samples:
+            lo_bound = n_samples-integ_window
+            up_bound = n_samples
+        else:
+            lo_bound = peak_pos - left_bound
+            up_bound = peak_pos + right_bound
+        integrated_signal[pix] = np.sum( waveform[pix,lo_bound:up_bound]  )
+        signal_timeslice[pix] = peak_pos
             
     return integrated_signal, signal_timeslice
 
@@ -326,7 +382,7 @@ def getPixelRiseTime(waveform):
 # def GetPixelMaxRiseTime(waveform):
 #     nsamples = len(waveform)
 #     times = np.arange(0,nsamples)
-    
+
 #     times_oversample =  np.linspace(0,nsamples-1,2*nsamples-1)
 #     f = sp.interpolate.interp1d(times, waveform,fill_value="extrapolate",kind="linear")
 #     wvf_oversample = f(times_oversample)
@@ -348,7 +404,6 @@ def getPixelRiseTime(waveform):
 #     newtimes = np.linspace(times_oversample[pos_min],times_oversample[pos_max],nbins)
 #     newtrace = sp.interpolate.BSpline(*tck)(newtimes)
 #     return newtimes[ np.argmax(newtrace) ]
-
 
 
 # def GetPixelT0Spline(waveform):
@@ -395,12 +450,12 @@ def getPixelRiseTime(waveform):
 #                 up_bound = peak_pos + right_bound
 #             integrated_signal[chan,pix] = np.sum( chan_wvf[pix,lo_bound:up_bound]  )
 #             signal_timeslice[chan,pix] = peak_pos
-            
+
 #     return integrated_signal, signal_timeslice
 
 
-
 def GetEventTypeFromString(event_str):
+    #print(f"event_str: [{event_str}]")
     
     if event_str == "FLATFIELD":
         evt_type = EventType.FLATFIELD
@@ -440,3 +495,98 @@ def read_simple_data(fileName):
     """Read info from a file using pickle"""
     with lz4.frame.open( fileName, 'rb' ) as f :
         return pickle.load(f)
+
+
+class TriggerInfos:
+    def __init__(
+        self,
+        trigs=None,
+        event_id=None,
+        event_types=None,
+        event_times=None,
+        busy_counts=None,
+        trig_pats=None,
+        feb_abs_evt_id=None,
+        feb_evt_id=None,
+        feb_pps_cnt=None,
+        feb_ts1=None,
+        feb_ts2_trig=None,
+        feb_ts2_pps=None,
+        ext_device=None,
+        ucts_stereo_pattern=None,
+        ucts_trigger_type=None,
+        missing_module_info=None,
+    ):
+        self.trigs = trigs
+        self.event_id = event_id
+        self.event_types = event_types
+        self.event_times = event_times
+        self.busy_counts = busy_counts
+        self.trig_pats = trig_pats
+        self.feb_abs_evt_id = feb_abs_evt_id
+        self.feb_evt_id = feb_evt_id
+        self.feb_pps_cnt = feb_pps_cnt
+        self.feb_ts1 = feb_ts1
+        self.feb_ts2_trig = feb_ts2_trig
+        self.feb_ts2_pps = feb_ts2_pps
+        self.ext_device = ext_device
+        self.ucts_stereo_pattern = ucts_stereo_pattern
+        self.ucts_trigger_type = ucts_trigger_type
+        self.missing_module_info = missing_module_info
+
+    def get_event_deltat(self,unit="µs"):
+        dt = np.array( [0.,] + [ dt.to_value(unit) for dt in self.event_times[1:] - self.event_times[:-1] ] ) 
+        return dt
+
+    def get_feb_time_ns(self):
+        rough_ts = self.feb_pps_cnt*1.e9 + self.feb_ts1*8.
+        prec_ts = rough_ts + self.feb_ts2_trig - self.feb_ts2_pps
+        return prec_ts
+
+    def get_feb_deltat_ns(self):
+        feb_times = self.get_feb_time_ns()
+        dt_feb_ns = np.zeros_like(feb_times)
+        dt_feb_ns[1:] = (feb_times[1:] - feb_times[:-1])
+        return dt_feb_ns
+    
+    def get_trigger_time_datetime(self):
+        return np.array( [t.to_datetime() for t in tqdm(self.event_times)])
+
+    def get_delta_busy(self):
+        db = np.zeros_like( self.busy_counts )
+        db[1:] = self.busy_counts[1:]-self.busy_counts[:-1] 
+        return db
+    
+class LightEvent:
+
+    class Charge:
+        def __init__(self):
+            self.tel = dict()
+            self.method = None
+    
+    class Saturated:
+        def __init__(self):
+            self.tel = dict()
+    
+    class Timing:
+        def __init__(self):
+            self.tel = dict()
+
+    class Pedestal:
+        def __init__(self):
+            self.tel = dict()
+
+    class FWHM:
+        def __init__(self):
+            self.tel = dict()
+
+    def __init__(self,r0=None,trigger=None,nectarcam=None,mon=None):
+        self.r0 = r0
+        self.trigger = trigger
+        self.nectarcam = nectarcam
+        self.mon = mon
+        self.charge = LightEvent.Charge()
+        self.timing = LightEvent.Timing()
+        self.pedestal = LightEvent.Pedestal()
+        self.saturated = LightEvent.Saturated()
+        self.fwhm = LightEvent.FWHM()
