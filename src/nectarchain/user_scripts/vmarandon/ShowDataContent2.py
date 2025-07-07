@@ -2,7 +2,8 @@ try:
     import argparse
     import sys
 
-    from DataUtils import CountEventTypes, DataReader
+    from DataUtils import CountEventTriggers, DataReader
+    from IPython import embed
     from Utils import CustomFormatter
 
 except ImportError as e:
@@ -10,7 +11,7 @@ except ImportError as e:
     raise SystemExit
 
 
-def ShowDataContent(arglist):
+def ShowDataContent2(arglist):
     p = argparse.ArgumentParser(
         description="Print the data content of a given run",
         epilog="examples:\n" "\t python %(prog)s --run 123456  \n",
@@ -25,6 +26,7 @@ def ShowDataContent(arglist):
         default=None,
         help="Path to the rawdata directory. The program will recursively search in all directory for matching rawdata",
     )
+    # p.add_argument("--nevents",dest="nEvents",type=int,default=-1,help="Number of event to be analysed")
 
     args = p.parse_args(arglist)
 
@@ -32,14 +34,15 @@ def ShowDataContent(arglist):
         p.print_help()
         return -1
 
-    event_types = CountEventTypes(run=args.run, path=args.dataPath)
+    event_types = CountEventTriggers(run=args.run, path=args.dataPath)
     print(f"run {args.run}:")
+    # embed()
     for t, n in event_types.items():
-        print(f"\t{t} --> {n} events")
+        print(f"\t{t.name} --> {n} events")
 
     return 0
 
 
 if __name__ == "__main__":
-    retval = ShowDataContent(sys.argv[1:])
+    retval = ShowDataContent2(sys.argv[1:])
     sys.exit(retval)
