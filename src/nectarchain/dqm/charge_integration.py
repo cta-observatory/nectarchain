@@ -221,7 +221,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
     def _plot_camera_image(self, image, title, text, filename, key, fig_path):
         fig, disp = plt.subplots()
-        disp = CameraDisplay(geometry=self.camera)
+        disp = CameraDisplay(geometry=self.camera[~self.pixelBADplot[0]])
         disp.image = image
         disp.cmap = plt.cm.coolwarm
         disp.axes.text(2, -0.8, text, fontsize=12, rotation=90)
