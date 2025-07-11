@@ -85,11 +85,14 @@ def main():
         help="Maximum number of events to loop through in each run slice",
     )
     parser.add_argument("-i", "--input-files", nargs="+", help="Local input files")
+    parser.add_argument("--log", default="info", help="debug output", type=str)
 
     parser.add_argument("input_paths", help="Input paths")
     parser.add_argument("output_paths", help="Output paths")
 
     args, leftovers = parser.parse_known_args()
+
+    log.setLevel(args.log.upper())
 
     # Reading arguments, paths and plot-boolean
     NectarPath = args.input_paths
