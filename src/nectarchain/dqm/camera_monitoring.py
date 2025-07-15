@@ -65,7 +65,7 @@ class CameraMonitoring(DQMSummary):
         SqlFileName = (
             SqlFilePath + "/nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
         )
-        log.info("SqlFileName", SqlFileName)
+        log.info(f"SqlFileName: {SqlFileName}")
         con = sqlite3.connect(SqlFileName)
         cursor = con.cursor()
         try:

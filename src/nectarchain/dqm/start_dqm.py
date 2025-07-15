@@ -96,11 +96,11 @@ def main():
 
     # Reading arguments, paths and plot-boolean
     NectarPath = args.input_paths
-    log.info("Input file path:", NectarPath)
+    log.info(f"Input file path: {NectarPath}")
 
     # Defining and printing the paths of the output files.
     output_path = args.output_paths
-    log.info("Output path:", output_path)
+    log.info(f"Output path: {output_path}")
 
     if args.runnb is not None:
         # Grab runs automatically from DIRAC is the -r option is provided
@@ -139,7 +139,7 @@ def main():
     for key in tool.traits().keys():
         if key in kwargs.keys():
             charges_kwargs[key] = kwargs[key]
-    log.info(charges_kwargs)
+    log.info(f"charges_kwargs: {charges_kwargs}")
 
     def GetName(RunFile):
         name = RunFile.split("/")[-1]
