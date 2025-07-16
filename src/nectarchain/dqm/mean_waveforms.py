@@ -125,8 +125,13 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
             part_fig, part_ax = plt.subplots()
 
-            part_ax.plot(wf_list, x.T, color=colors[i], alpha=0.005, linewidth=1)
-            full_ax.plot(wf_list, x.T, color=colors[i], alpha=0.005, linewidth=1)
+            for ipix in range(self.Pix):
+                part_ax.plot(
+                    wf_list, x[ipix, :], color=colors[i], alpha=0.005, linewidth=1
+                )
+                full_ax.plot(
+                    wf_list, x[ipix, :], color=colors[i], alpha=0.005, linewidth=1
+                )
 
             part_ax.set_title(f"Mean Waveforms {key.capitalize()} ({self.gain_c} Gain)")
             part_ax.set_xlabel("Samples")
