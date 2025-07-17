@@ -195,7 +195,7 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average 2")
             full_name = name + "_CameraTemperature_average2.png"
-            full_path = os.path.join(fig_path + full_name)
+            full_path = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = fig2
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
