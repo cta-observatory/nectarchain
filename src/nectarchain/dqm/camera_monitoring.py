@@ -60,6 +60,7 @@ class CameraMonitoring(DQMSummary):
             self.run_start1 = evt1.nectarcam.tel[0].svc.date
 
         SqlFileDate = astropytime.Time(self.run_start1, format="unix").iso.split(" ")[0]
+        log.debug(f"SqlFileDate is {SqlFileDate}")
 
         SqlFilePath = os.path.split(path)[0]
         SqlFileName = (
@@ -70,7 +71,8 @@ class CameraMonitoring(DQMSummary):
         cursor = con.cursor()
         try:
             # print(cursor.fetchall())
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            # cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
             # TempData = cursor.execute(
             #     """SELECT * FROM monitoring_drawer_temperatures"""
             # )
