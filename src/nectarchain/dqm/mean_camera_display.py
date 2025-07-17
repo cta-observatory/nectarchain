@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
@@ -31,7 +33,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.MeanCameraDisplay_Figures_Dict = {}
         self.MeanCameraDisplay_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -45,7 +47,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         self.cmap = "gnuplot2"
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
         if len(pixel) < self.Pix:
@@ -67,7 +69,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         return None
 
-    def FinishRun(self):
+    def finish_run(self):
         if self.counter_evt > 0:
             self.CameraAverage = np.array(self.CameraAverage)
             self.CameraAverage = self.CameraAverage.sum(axis=0)
@@ -87,7 +89,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 self.CameraAverage_ped_overEvents / self.Samp
             )
 
-    def GetResults(self):
+    def get_results(self):
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -125,7 +127,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         return self.MeanCameraDisplay_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -147,7 +149,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig1
             full_name = name + "_Camera_Mean_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(fig_path, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -168,7 +170,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig2
             full_name = name + "_Pedestal_Mean_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(fig_path, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
