@@ -164,7 +164,7 @@ def main():
 
     # INITIATE
     path = path
-    print(path)
+    log.debug(path)
 
     # Read and seek
     config = None
@@ -241,7 +241,7 @@ def main():
     # for the rest of the event files
     for arg in args.input_files[1:]:
         path2 = f"{NectarPath}/runs/{arg}"
-        print(path2)
+        log.debug(path2)
 
         with EventSource(
             input_url=path2, config=config, max_events=args.max_events
@@ -285,7 +285,7 @@ def main():
                 plt.close()
 
     end = time.time()
-    print(f"Processing time: {end-start:.2f} s.")
+    log.info(f"Processing time: {end-start:.2f} s.")
 
 
 if __name__ == "__main__":
