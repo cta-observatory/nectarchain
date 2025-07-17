@@ -25,6 +25,8 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.MeanWaveForms_Figures_Dict = {}
         self.MeanWaveForms_Figures_Names_Dict = {}
 
+        self.wf_list_plot = None
+
         gain_c = "High" if self.k == 0 else "Low"
         self.gain_c = gain_c
 
@@ -54,17 +56,17 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.Mwf_average = np.zeros((Pix, Samp))
         self.Mwf_ped_average = np.zeros((Pix, Samp))
 
-        self.wf_list_plot = np.arange(1, Samp + 1)
+        self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
-        waveform = evt.r0.tel[0].waveform[self.k]
-
-        if evt.trigger.event_type.value == 32:  # only peds now
-            self.counter_ped += 1
-            self.Mwf_ped += waveform
-        else:
-            self.counter_evt += 1
-            self.Mwf += waveform
+        for ipix in range(self.Pix):
+            waveform = evt.r0.tel[0].waveform[self.k][ipix]
+            if evt.trigger.event_type.value == 32:  # only peds now
+                self.counter_ped += 1
+                self.Mwf_ped[ipix, :] += waveform
+            else:
+                self.counter_evt += 1
+                self.Mwf[ipix, :] += waveform
         return None
 
     def finish_run(self):
@@ -85,23 +87,16 @@ class MeanWaveFormsHighLowGain(DQMSummary):
     def get_results(self):
         """Store waveform statistics in results dictionary by gain and type."""
 
-        if self.k == 0:
+        self.MeanWaveForms_Results_Dict.update(
+            {f"WF-PHY-AVERAGE-PIX-{self.gain_c.upper()}-GAIN": self.Mwf_Mean_overPix}
+        )
+        if self.counter_ped > 0:
             self.MeanWaveForms_Results_Dict.update(
-                {"WF-PHY-AVERAGE-PIX-HIGH-GAIN": self.Mwf_Mean_overPix}
+                {
+                    f"WF-AVERAGE-PED-PIX"
+                    f"-{self.gain_c.upper()}-GAIN": self.Mwf_ped_Mean_overPix
+                }
             )
-            if self.counter_ped > 0:
-                self.MeanWaveForms_Results_Dict.update(
-                    {"WF-AVERAGE-PED-PIX-HIGH-GAIN": self.Mwf_ped_Mean_overPix}
-                )
-
-        elif self.k == 1:
-            self.MeanWaveForms_Results_Dict.update(
-                {"WF-AVERAGE-PIX-LOW-GAIN": self.Mwf_Mean_overPix}
-            )
-            if self.counter_ped > 0:
-                self.MeanWaveForms_Results_Dict.update(
-                    {"WF-PHY-AVERAGE-PED-PIX-LOW-GAIN": self.Mwf_ped_Mean_overPix}
-                )
 
         return self.MeanWaveForms_Results_Dict
 
