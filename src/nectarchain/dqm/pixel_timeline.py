@@ -118,7 +118,7 @@ class PixelTimelineHighLowGain(DQMSummary):
             ax.set_xlabel("Timeline")
             ax.set_ylabel("BPX fraction (%)")
             ax.set_title(f"BPX Timeline {self.gain_c} gain ({key.capitalize()})")
-            ax.legend()
+            ax.legend(loc="upper right")
 
             key_id = self.figure_keys[key]
             filename = name + self.figure_filenames[key]

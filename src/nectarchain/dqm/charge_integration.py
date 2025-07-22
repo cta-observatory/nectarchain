@@ -318,7 +318,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                 alpha=1,
                 label="Camera average",
             )
-            plt.legend()
+            plt.legend(loc="upper right")
             plt.xlabel("Charge (DC)")
             plt.title("Charge spectrum %s gain (ALL)" % self.gain_c)
 
@@ -356,7 +356,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                 alpha=1,
                 label="Camera average",
             )
-            plt.legend()
+            plt.legend(loc="upper right")
             plt.xlabel("Charge (DC)")
             plt.title("Charge spectrum %s gain (PED)" % self.gain_c)
 

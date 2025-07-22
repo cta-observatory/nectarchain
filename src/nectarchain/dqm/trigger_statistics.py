@@ -183,7 +183,7 @@ class TriggerStatistics(DQMSummary):
             alpha=0.5,
             label="Other events (%s)" % len(self.event_other_times),
         )
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.xlabel("Time")
         plt.grid()
         plt.title(
@@ -234,7 +234,7 @@ class TriggerStatistics(DQMSummary):
             alpha=0.5,
             label="Other events (%s)" % len(self.event_other_id),
         )
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.xlabel("ID")
         plt.grid()
         plt.title(
