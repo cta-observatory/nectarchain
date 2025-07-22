@@ -87,16 +87,13 @@ class MeanWaveFormsHighLowGain(DQMSummary):
     def get_results(self):
         """Store waveform statistics in results dictionary by gain and type."""
 
-        self.MeanWaveForms_Results_Dict.update(
-            {f"WF-PHY-AVERAGE-PIX-{self.gain_c.upper()}-GAIN": self.Mwf_Mean_overPix}
-        )
+        self.MeanWaveForms_Results_Dict[
+            f"WF-PHY-AVERAGE-PIX-{self.gain_c.upper()}-GAIN"
+        ] = self.Mwf_Mean_overPix
         if self.counter_ped > 0:
-            self.MeanWaveForms_Results_Dict.update(
-                {
-                    f"WF-AVERAGE-PED-PIX"
-                    f"-{self.gain_c.upper()}-GAIN": self.Mwf_ped_Mean_overPix
-                }
-            )
+            self.MeanWaveForms_Results_Dict[
+                f"WF-AVERAGE-PED-PIX-{self.gain_c.upper()}-GAIN"
+            ] = self.Mwf_ped_Mean_overPix
 
         return self.MeanWaveForms_Results_Dict
 
