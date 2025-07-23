@@ -70,7 +70,10 @@ def main():
         type=int,
     )
     parser.add_argument(
-        "--r0", action="store_true", help="Disable all R0->R1 corrections"
+        "--r0",
+        action="store_true",
+        default=False,
+        help="Disable all R0->R1 " "corrections",
     )
     parser.add_argument(
         "--max-events",
@@ -79,19 +82,22 @@ def main():
         help="Maximum number of events to loop through in each run slice",
     )
     parser.add_argument("-i", "--input-files", nargs="+", help="Local input files")
+    parser.add_argument("--log", default="info", help="debug output", type=str)
 
     parser.add_argument("input_paths", help="Input paths")
     parser.add_argument("output_paths", help="Output paths")
 
     args, leftovers = parser.parse_known_args()
 
+    log.setLevel(args.log.upper())
+
     # Reading arguments, paths and plot-boolean
     NectarPath = args.input_paths
-    log.info("Input file path:", NectarPath)
+    log.info(f"Input file path: {NectarPath}")
 
     # Defining and printing the paths of the output files.
     output_path = args.output_paths
-    log.info("Output path:", output_path)
+    log.info(f"Output path: {output_path}")
 
     if args.runnb is not None:
         # Grab runs automatically from DIRAC is the -r option is provided
@@ -130,7 +136,7 @@ def main():
     for key in tool.traits().keys():
         if key in kwargs.keys():
             charges_kwargs[key] = kwargs[key]
-    log.info(charges_kwargs)
+    log.info(f"charges_kwargs: {charges_kwargs}")
 
     def GetName(RunFile):
         name = RunFile.split("/")[-1]
@@ -155,7 +161,7 @@ def main():
 
     # INITIATE
     path = path
-    print(path)
+    log.debug(path)
 
     # Read and seek
     config = None
@@ -183,8 +189,8 @@ def main():
     # LIST OF PROCESSES TO RUN
     ####################################################################################
     processors = [
-        ChargeIntegrationHighLowGain(HIGH_GAIN),
-        ChargeIntegrationHighLowGain(LOW_GAIN),
+        ChargeIntegrationHighLowGain(HIGH_GAIN, args.r0),
+        ChargeIntegrationHighLowGain(LOW_GAIN, args.r0),
     ]
 
     # LIST OF DICT RESULTS
@@ -212,7 +218,7 @@ def main():
     # for the rest of the event files
     for arg in args.input_files[1:]:
         path2 = f"{NectarPath}/runs/{arg}"
-        print(path2)
+        log.debug(path2)
 
         with EventSource(
             input_url=path2, config=config, max_events=args.max_events
@@ -256,7 +262,7 @@ def main():
                 plt.close()
 
     end = time.time()
-    print(f"Processing time: {end-start:.2f} s.")
+    log.info(f"Processing time: {end-start:.2f} s.")
 
 
 if __name__ == "__main__":
