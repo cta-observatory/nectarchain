@@ -100,9 +100,9 @@ class TriggerStatistics(DQMSummary):
             "Wrong times": [len(self.event_wrong_times)],
         }
         self.TriggerStat_Results_Dict["START-TIMES"] = {
-            "Run start time": self.run_start1,
-            "First event": self.run_start,
-            "Last event": self.run_end,
+            "Run start time": [self.run_start1],
+            "First event": [self.run_start],
+            "Last event": [self.run_end],
         }
         return self.TriggerStat_Results_Dict
 
