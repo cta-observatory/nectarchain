@@ -11,7 +11,7 @@ __all__ = ["TriggerStatistics"]
 
 
 class TriggerStatistics(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -32,6 +32,7 @@ class TriggerStatistics(DQMSummary):
         self.TriggerStat_Results_Dict = {}
         self.TriggerStat_Figures_Dict = {}
         self.TriggerStat_Figures_Names_Dict = {}
+        super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples

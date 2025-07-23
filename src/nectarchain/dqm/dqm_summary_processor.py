@@ -12,18 +12,23 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class DQMSummary:
-    def __init__(self):
+    def __init__(self, r0=False):
         log.debug("Processor 0")
         self.FirstReader = None
         self.Samp = None
         self.Pix = None
+        self.r0 = r0
 
     def define_for_run(self, reader1):
         self.FirstReader = reader1
         # we just need to access the first event
         evt1 = next(iter(reader1))
-        self.Samp = len(evt1.r0.tel[0].waveform[0][0])
-        self.Pix = len(evt1.r0.tel[0].waveform[0])
+        if self.r0:
+            self.Samp = evt1.r0.tel[0].waveform.shape[-1]
+            self.Pix = evt1.r0.tel[0].waveform.shape[-2]
+        else:
+            self.Samp = evt1.r1.tel[0].waveform.shape[-1]
+            self.Pix = evt1.r1.tel[0].waveform.shape[-2]
         return self.Pix, self.Samp
 
     def configure_for_run(self):

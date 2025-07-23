@@ -11,7 +11,7 @@ __all__ = ["MeanCameraDisplayHighLowGain"]
 
 
 class MeanCameraDisplayHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -32,6 +32,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.MeanCameraDisplay_Results_Dict = {}
         self.MeanCameraDisplay_Figures_Dict = {}
         self.MeanCameraDisplay_Figures_Names_Dict = {}
+        super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
@@ -57,14 +58,22 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         else:
             pixels = pixel
 
+        if self.r0:
+            waveforms = evt.r0.tel[0].waveform[self.k]
+        else:
+            # This should accommodate cases were the shape of waveforms is 2D
+            # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
+            # (1, 1855, 60) for single-gain channel
+            waveforms = evt.r1.tel[0].waveform
+
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            self.CameraAverage_ped1 = evt.r0.tel[0].waveform[self.k].sum(axis=1)
+            self.CameraAverage_ped1 = waveforms.sum(axis=-1)
             self.CameraAverage_ped.append(self.CameraAverage_ped1[pixels])
 
         else:
             self.counter_evt += 1
-            self.CameraAverage1 = evt.r0.tel[0].waveform[self.k].sum(axis=1)
+            self.CameraAverage1 = waveforms.sum(axis=-1)
             self.CameraAverage.append(self.CameraAverage1[pixels])
 
         return None

@@ -26,7 +26,7 @@ class TestCameraMonitoring:
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
 
-        Pix, Samp = CameraMonitoring(HIGH_GAIN).define_for_run(reader1)
+        Pix, Samp = CameraMonitoring(HIGH_GAIN, r0=True).define_for_run(reader1)
 
         sql_file_date = None
         for evt in tqdm(reader1, total=1):

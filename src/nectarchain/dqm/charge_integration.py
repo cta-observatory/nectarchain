@@ -24,7 +24,7 @@ __all__ = ["ChargeIntegrationHighLowGain"]
 
 
 class ChargeIntegrationHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.gain_c = "High" if gaink == 0 else "Low"
 
@@ -50,6 +50,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.ChargeInt_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
+        super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **charges_kwargs):
         # define number of pixels and samples
@@ -105,7 +106,13 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.pixelBAD = broken_pixels_lg
             channel = constants.LOW_GAIN
 
-        waveform = evt.r0.tel[0].waveform[self.k]
+        if self.r0:
+            waveform = evt.r0.tel[0].waveform[self.k]
+        else:
+            # This should accommodate cases were the shape of waveforms is 2D
+            # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
+            # (1, 1855, 60) for single-gain channel
+            waveform = evt.r1.tel[0].waveform
         waveform = waveform[self.pixels]
 
         ped = np.mean(waveform[:, 20])
@@ -190,18 +197,19 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                 }
 
     def get_results(self):
-        for k, v in self.image_all_stats.items():
-            self.ChargeInt_Results_Dict[
-                (
-                    f"CHARGE-INTEGRATION-IMAGE-ALL-{k.upper()}-"
-                    f"{self.gain_c.upper()}-GAIN"
-                )
-            ] = v
+        if self.counter_evt > 0:
+            for k, v in self.image_all_stats.items():
+                self.ChargeInt_Results_Dict[
+                    (
+                        f"CHARGE-INTEGRATION-IMAGE-ALL-{k.upper()}-"
+                        f"{self.gain_c.upper()}-GAIN"
+                    )
+                ] = v
 
-        for k, v in self.ped_all_stats.items():
-            self.ChargeInt_Results_Dict[
-                f"PED-INTEGRATION-IMAGE-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
-            ] = v
+            for k, v in self.ped_all_stats.items():
+                self.ChargeInt_Results_Dict[
+                    f"PED-INTEGRATION-IMAGE-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
+                ] = v
 
         if self.counter_ped > 0:
             for k, v in self.image_ped_stats.items():
@@ -281,7 +289,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             key = f"CHARGE-INTEGRATION-IMAGE-PED-MEDIAN-{self.gain_c.upper()}-GAIN"
             self._plot_camera_image(image, title, text, filename, key, fig_path)
 
-            image = self.image_ped_all["std"]
+            image = self.image_ped_stats["std"]
             text = f"{self.gain_c} gain integrated charge (DC)"
             title = f"Charge Integration STD {self.gain_c} Gain (PED)"
             filename = name + f"_ChargeInt_Std_{self.gain_c}Gain_Ped.png"

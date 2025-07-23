@@ -14,7 +14,7 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class PixelTimelineHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.gain_c = "High" if gaink == 0 else "Low"
 
@@ -42,6 +42,8 @@ class PixelTimelineHighLowGain(DQMSummary):
             "all": f"_BPX_Timeline_{self.gain_c}Gain_All.png",
             "ped": f"_BPX_Timeline_{self.gain_c}Gain_Ped.png",
         }
+
+        super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples

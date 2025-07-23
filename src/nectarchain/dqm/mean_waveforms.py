@@ -9,7 +9,7 @@ __all__ = ["MeanWaveFormsHighLowGain"]
 
 
 class MeanWaveFormsHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -42,6 +42,8 @@ class MeanWaveFormsHighLowGain(DQMSummary):
             "combined": f"_MeanWaveforms_CombinedPlot_{gain_c}Gain.png",
         }
 
+        super().__init__(r0)
+
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         """Initialize waveform buffers and counters for a new run."""
         self.Pix = Pix
@@ -60,7 +62,13 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
     def process_event(self, evt, noped):
         for ipix in range(self.Pix):
-            waveform = evt.r0.tel[0].waveform[self.k][ipix]
+            if self.r0:
+                waveform = evt.r0.tel[0].waveform[self.k][ipix]
+            else:
+                # This should accommodate cases were the shape of waveforms is 2D
+                # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
+                # (1, 1855, 60) for single-gain channel
+                waveform = evt.r1.tel[0].waveform[..., ipix, :]
             if evt.trigger.event_type.value == 32:  # only peds now
                 self.counter_ped += 1
                 self.Mwf_ped[ipix, :] += waveform

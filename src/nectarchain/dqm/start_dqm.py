@@ -76,7 +76,10 @@ def main():
         type=int,
     )
     parser.add_argument(
-        "--r0", action="store_true", help="Disable all R0->R1 corrections"
+        "--r0",
+        action="store_true",
+        default=False,
+        help="Disable all R0->R1 " "corrections",
     )
     parser.add_argument(
         "--max-events",
@@ -192,18 +195,18 @@ def main():
     # LIST OF PROCESSES TO RUN
     ####################################################################################
     processors = [
-        TriggerStatistics(HIGH_GAIN),
-        MeanWaveFormsHighLowGain(HIGH_GAIN),
-        MeanWaveFormsHighLowGain(LOW_GAIN),
-        MeanCameraDisplayHighLowGain(HIGH_GAIN),
-        MeanCameraDisplayHighLowGain(LOW_GAIN),
-        ChargeIntegrationHighLowGain(HIGH_GAIN),
-        ChargeIntegrationHighLowGain(LOW_GAIN),
-        CameraMonitoring(HIGH_GAIN),
-        PixelParticipationHighLowGain(HIGH_GAIN),
-        PixelParticipationHighLowGain(LOW_GAIN),
-        PixelTimelineHighLowGain(HIGH_GAIN),
-        PixelTimelineHighLowGain(LOW_GAIN),
+        TriggerStatistics(HIGH_GAIN, args.r0),
+        MeanWaveFormsHighLowGain(HIGH_GAIN, args.r0),
+        MeanWaveFormsHighLowGain(LOW_GAIN, args.r0),
+        MeanCameraDisplayHighLowGain(HIGH_GAIN, args.r0),
+        MeanCameraDisplayHighLowGain(LOW_GAIN, args.r0),
+        ChargeIntegrationHighLowGain(HIGH_GAIN, args.r0),
+        ChargeIntegrationHighLowGain(LOW_GAIN, args.r0),
+        CameraMonitoring(HIGH_GAIN, args.r0),
+        PixelParticipationHighLowGain(HIGH_GAIN, args.r0),
+        PixelParticipationHighLowGain(LOW_GAIN, args.r0),
+        PixelTimelineHighLowGain(HIGH_GAIN, args.r0),
+        PixelTimelineHighLowGain(LOW_GAIN, args.r0),
     ]
 
     # LIST OF DICT RESULTS
