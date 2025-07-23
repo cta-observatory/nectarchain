@@ -61,6 +61,11 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
+        if evt.trigger.event_type.value == 32:  # only peds now
+            self.counter_ped += 1
+        else:
+            self.counter_evt += 1
+
         for ipix in range(self.Pix):
             if self.r0:
                 waveform = evt.r0.tel[0].waveform[self.k][ipix]
@@ -70,10 +75,8 @@ class MeanWaveFormsHighLowGain(DQMSummary):
                 # (1, 1855, 60) for single-gain channel
                 waveform = evt.r1.tel[0].waveform[..., ipix, :]
             if evt.trigger.event_type.value == 32:  # only peds now
-                self.counter_ped += 1
                 self.Mwf_ped[ipix, :] += waveform
             else:
-                self.counter_evt += 1
                 self.Mwf[ipix, :] += waveform
         return None
 
