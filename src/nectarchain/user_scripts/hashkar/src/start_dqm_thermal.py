@@ -1,11 +1,12 @@
 import argparse
 import json
+import logging
 import os
 import sys
 import time
 
 # ctapipe imports
-from ctapipe.io import EventSource
+from ctapipe_io_nectarcam import LightNectarCAMEventSource as EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -14,6 +15,10 @@ from traitlets.config import Config
 from nectarchain.dqm.charge_integration import ChargeIntegrationHighLowGain
 from nectarchain.dqm.db_utils import DQMDB
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 def main():
@@ -65,7 +70,10 @@ def main():
         type=int,
     )
     parser.add_argument(
-        "--r0", action="store_true", help="Disable all R0->R1 corrections"
+        "--r0",
+        action="store_true",
+        default=False,
+        help="Disable all R0->R1 " "corrections",
     )
     parser.add_argument(
         "--max-events",
@@ -74,19 +82,22 @@ def main():
         help="Maximum number of events to loop through in each run slice",
     )
     parser.add_argument("-i", "--input-files", nargs="+", help="Local input files")
+    parser.add_argument("--log", default="info", help="debug output", type=str)
 
     parser.add_argument("input_paths", help="Input paths")
     parser.add_argument("output_paths", help="Output paths")
 
     args, leftovers = parser.parse_known_args()
 
+    log.setLevel(args.log.upper())
+
     # Reading arguments, paths and plot-boolean
     NectarPath = args.input_paths
-    print("Input file path:", NectarPath)
+    log.info(f"Input file path: {NectarPath}")
 
     # Defining and printing the paths of the output files.
     output_path = args.output_paths
-    print("Output path:", output_path)
+    log.info(f"Output path: {output_path}")
 
     if args.runnb is not None:
         # Grab runs automatically from DIRAC is the -r option is provided
@@ -96,7 +107,7 @@ def main():
         _, filelist = dm.findrun(args.runnb)
         args.input_files = [s.name for s in filelist]
     elif args.input_files is None:
-        print("Input files should be provided, exiting...")
+        log.error("Input files should be provided, exiting...")
         sys.exit(1)
 
     # OTHERWISE READ THE RUNS FROM ARGS
@@ -104,10 +115,9 @@ def main():
 
     # THE PATH OF INPUT FILES
     path = f"{NectarPath}/runs/{path1}"
-    print("Input files:")
-    print(path)
+    log.debug(f"Input files:\n{path}")
     for arg in args.input_files[1:]:
-        print(arg)
+        log.debug(arg)
 
     # Defining and printing the options
     PlotFig = args.plot
@@ -115,10 +125,10 @@ def main():
     method = args.method
     extractor_kwargs = args.extractor_kwargs
 
-    print("Plot:", PlotFig)
-    print("Noped:", noped)
-    print("method:", method)
-    print("extractor_kwargs:", extractor_kwargs)
+    log.info(f"Plot: {PlotFig}")
+    log.info(f"Noped: {noped}")
+    log.info(f"method: {method}")
+    log.info(f"extractor_kwargs: {extractor_kwargs}")
 
     kwargs = {"method": method, "extractor_kwargs": extractor_kwargs}
     charges_kwargs = {}
@@ -126,14 +136,12 @@ def main():
     for key in tool.traits().keys():
         if key in kwargs.keys():
             charges_kwargs[key] = kwargs[key]
-    print(charges_kwargs)
+    log.info(f"charges_kwargs: {charges_kwargs}")
 
     def GetName(RunFile):
         name = RunFile.split("/")[-1]
-        name = (
-            name.split(".")[0] + "_" + name.split(".")[1]
-        )  # + '_' +name.split('.')[2]
-        print(name)
+        name = name.split(".")[0] + "_" + name.split(".")[1]
+        log.debug(name)
         return name
 
     def CreateFigFolder(name, type):
@@ -153,7 +161,7 @@ def main():
 
     # INITIATE
     path = path
-    print(path)
+    log.debug(path)
 
     # Read and seek
     config = None
@@ -175,14 +183,14 @@ def main():
     # print(reader.file_list)
 
     name = GetName(path)
-    ParentFolderName, ChildrenFolderName, FigPath = CreateFigFolder(name, 0)
+    ParentFolderName, ChildrenFolderName, fig_path = CreateFigFolder(name, 0)
     ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
     # LIST OF PROCESSES TO RUN
     ####################################################################################
     processors = [
-        ChargeIntegrationHighLowGain(HIGH_GAIN),
-        ChargeIntegrationHighLowGain(LOW_GAIN),
+        ChargeIntegrationHighLowGain(HIGH_GAIN, args.r0),
+        ChargeIntegrationHighLowGain(LOW_GAIN, args.r0),
     ]
 
     # LIST OF DICT RESULTS
@@ -195,22 +203,22 @@ def main():
 
     # START
     for p in processors:
-        Pix, Samp = p.DefineForRun(reader1)
+        Pix, Samp = p.define_for_run(reader1)
         break
 
     for p in processors:
-        p.ConfigureForRun(path, Pix, Samp, reader1, **charges_kwargs)
+        p.configure_for_run(path, Pix, Samp, reader1, **charges_kwargs)
 
     for evt in tqdm(
         reader, total=args.max_events if args.max_events else len(reader), unit="ev"
     ):
         for p in processors:
-            p.ProcessEvent(evt, noped)
+            p.process_event(evt, noped)
 
     # for the rest of the event files
     for arg in args.input_files[1:]:
         path2 = f"{NectarPath}/runs/{arg}"
-        print(path2)
+        log.debug(path2)
 
         with EventSource(
             input_url=path2, config=config, max_events=args.max_events
@@ -221,18 +229,18 @@ def main():
                 unit="ev",
             ):
                 for p in processors:
-                    p.ProcessEvent(evt, noped)
+                    p.process_event(evt, noped)
 
     for p in processors:
-        p.FinishRun()
+        p.finish_run()
 
     dict_num = 0
     for p in processors:
-        NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.GetResults()
+        NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.get_results()
         dict_num += 1
 
     # Write all results in 1 fits file:
-    p.WriteAllResults(ResPath, NESTED_DICT)
+    p.write_all_results(ResPath, NESTED_DICT)
     if args.write_db:
         db = DQMDB(read_only=False)
         if db.insert(name, NESTED_DICT):
@@ -243,8 +251,8 @@ def main():
     # if plot option in arguments, it will construct the figures and save them
     if PlotFig:
         for p in processors:
-            processor_figure_dict, processor_figure_name_dict = p.PlotResults(
-                name, FigPath
+            processor_figure_dict, processor_figure_name_dict = p.plot_results(
+                name, fig_path
             )
 
             for fig_plot in processor_figure_dict:
@@ -254,10 +262,7 @@ def main():
                 plt.close()
 
     end = time.time()
-    print(f"Processing time: {end-start:.2f} s.")
-
-    # TODO
-    # Reduce code by using loops: for figs and results
+    log.info(f"Processing time: {end-start:.2f} s.")
 
 
 if __name__ == "__main__":

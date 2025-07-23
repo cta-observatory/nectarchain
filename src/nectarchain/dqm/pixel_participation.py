@@ -1,7 +1,9 @@
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
-from matplotlib import pyplot as plt
 
 from .dqm_summary_processor import DQMSummary
 
@@ -9,23 +11,22 @@ __all__ = ["PixelParticipationHighLowGain"]
 
 
 class PixelParticipationHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
-        self.counter_evt = None
-        self.counter_ped = None
+        self.counter_evt = 0
+        self.counter_ped = 0
         self.BadPixels_ped = None
         self.BadPixels = None
         self.camera = None
-        self.camera2 = None
-        self.cmap = None
-        self.cmap2 = None
+        self.cmap = "gnuplot2"
         self.PixelParticipation_Results_Dict = {}
         self.PixelParticipation_Figures_Dict = {}
         self.PixelParticipation_Figures_Names_Dict = {}
+        super().__init__(r0)
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -33,44 +34,33 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.counter_ped = 0
         self.BadPixels_ped = np.zeros(self.Pix)
         self.BadPixels = np.zeros(self.Pix)
-
         self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
 
-        self.camera2 = Reader1.subarray.tel[0].camera.geometry.transform_to(
-            EngineeringCameraFrame()
-        )
-
-        self.cmap = "gnuplot2"
-        self.cmap2 = "gnuplot2"
-
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        if len(pixel) < self.Pix:
-            pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
-            pixel = list(pixel)
-            pixels = np.concatenate([pixel21, pixel])
-        else:
-            pixels = pixel
+        pixels = evt.nectarcam.tel[0].svc.pixel_ids
 
+        # Ensure 'pixels' is fixed length
+        if len(pixels) < self.Pix:
+            missing = np.arange(start=0, stop=self.Pix - len(pixels), step=1, dtype=int)
+            pixels = np.concatenate([missing, pixels])
+
+        bad_pixels = np.array(pixelBAD[pixels]).astype(int)
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            BadPixels_ped1 = list(map(int, pixelBAD[pixels]))
-            self.BadPixels_ped += BadPixels_ped1
+            self.BadPixels_ped += bad_pixels
 
         else:
             self.counter_evt += 1
-            BadPixels1 = list(map(int, pixelBAD[pixels]))
-            self.BadPixels += BadPixels1
-        return None
+            self.BadPixels += bad_pixels
 
-    def FinishRun(self):
+    def finish_run(self):
         self.BadPixels_ped = np.array(self.BadPixels_ped)
         self.BadPixels = np.array(self.BadPixels)
 
-    def GetResults(self):
+    def get_results(self):
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -96,7 +86,7 @@ class PixelParticipationHighLowGain(DQMSummary):
 
         return self.PixelParticipation_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -128,7 +118,7 @@ class PixelParticipationHighLowGain(DQMSummary):
                 "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig
             full_name = name + "_Camera_BPX_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(fig_path, full_name)
             self.PixelParticipation_Figures_Names_Dict[
                 "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -137,7 +127,7 @@ class PixelParticipationHighLowGain(DQMSummary):
                 "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig
             full_name = name + "_Pedestal_BPX_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(fig_path, full_name)
             self.PixelParticipation_Figures_Names_Dict[
                 "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath

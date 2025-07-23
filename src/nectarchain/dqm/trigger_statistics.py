@@ -1,4 +1,5 @@
 import math
+import os
 
 import numpy as np
 from astropy import time as astropytime
@@ -10,7 +11,7 @@ __all__ = ["TriggerStatistics"]
 
 
 class TriggerStatistics(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -31,13 +32,14 @@ class TriggerStatistics(DQMSummary):
         self.TriggerStat_Results_Dict = {}
         self.TriggerStat_Figures_Dict = {}
         self.TriggerStat_Figures_Names_Dict = {}
+        super().__init__(r0)
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         trigger_type = evt.trigger.event_type.value
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
@@ -48,7 +50,7 @@ class TriggerStatistics(DQMSummary):
         self.event_id.append(trigger_id)
         self.run_times.append(trigger_run_time)
 
-    def FinishRun(self):
+    def finish_run(self):
         self.triggers = np.unique(self.event_type)
         pedestal_num = 32
         physical_num = 2
@@ -88,7 +90,7 @@ class TriggerStatistics(DQMSummary):
         self.event_wrong_times = self.event_times[self.event_times < self.run_start]
         self.event_times = self.event_times[self.event_times > self.run_start]
 
-    def GetResults(self):
+    def get_results(self):
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
         self.TriggerStat_Results_Dict["TRIGGER-STATISTICS"] = {
             "All": [len(self.event_times)],
@@ -104,7 +106,7 @@ class TriggerStatistics(DQMSummary):
         }
         return self.TriggerStat_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         w = 1
         n1 = np.array(self.event_times.max() - self.event_times.min(), dtype=object)
         n = math.ceil(n1 / w)
@@ -134,7 +136,7 @@ class TriggerStatistics(DQMSummary):
         plt.xlabel("Trigger type")
         plt.grid()
         full_name = name + "_Trigger_Statistics.png"
-        FullPath = FigPath + full_name
+        FullPath = os.path.join(fig_path, full_name)
 
         self.TriggerStat_Figures_Dict["TRIGGER-STATISTICS"] = fig1
         self.TriggerStat_Figures_Names_Dict["TRIGGER-STATISTICS"] = FullPath
@@ -182,7 +184,7 @@ class TriggerStatistics(DQMSummary):
             alpha=0.5,
             label="Other events (%s)" % len(self.event_other_times),
         )
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.xlabel("Time")
         plt.grid()
         plt.title(
@@ -190,7 +192,7 @@ class TriggerStatistics(DQMSummary):
             % astropytime.Time(self.run_start, format="unix").iso
         )
         full_name = name + "_Event_rate.png"
-        FullPath = FigPath + full_name
+        FullPath = os.path.join(fig_path, full_name)
 
         self.TriggerStat_Figures_Dict["EVENT-TIME"] = fig2
         self.TriggerStat_Figures_Names_Dict["EVENT-TIME"] = FullPath
@@ -233,7 +235,7 @@ class TriggerStatistics(DQMSummary):
             alpha=0.5,
             label="Other events (%s)" % len(self.event_other_id),
         )
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.xlabel("ID")
         plt.grid()
         plt.title(
@@ -241,7 +243,7 @@ class TriggerStatistics(DQMSummary):
             % astropytime.Time(self.run_start, format="unix").iso
         )
         full_name = name + "_Event_IDs.png"
-        FullPath = FigPath + full_name
+        FullPath = os.path.join(fig_path, full_name)
 
         self.TriggerStat_Figures_Dict["EVENT-ID"] = fig3
         self.TriggerStat_Figures_Names_Dict["EVENT-ID"] = FullPath
@@ -251,6 +253,6 @@ class TriggerStatistics(DQMSummary):
 
 
 # TODO
-# continue GetResults
+# continue get_results
 # adjust histogram displays
 # Choose between starting since run star time or event start time ?

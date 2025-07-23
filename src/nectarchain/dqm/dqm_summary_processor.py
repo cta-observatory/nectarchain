@@ -1,37 +1,52 @@
+import logging
+
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
 __all__ = ["DQMSummary"]
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 class DQMSummary:
-    def __init__(self):
-        print("Processor 0")
+    def __init__(self, r0=False):
+        log.debug("Processor 0")
+        self.FirstReader = None
+        self.Samp = None
+        self.Pix = None
+        self.r0 = r0
 
-    def DefineForRun(self, reader1):
-        for i, evt1 in enumerate(reader1):
-            self.FirstReader = reader1
-            self.Samp = len(evt1.r0.tel[0].waveform[0][0])
-            self.Pix = len(evt1.r0.tel[0].waveform[0])
+    def define_for_run(self, reader1):
+        self.FirstReader = reader1
+        # we just need to access the first event
+        evt1 = next(iter(reader1))
+        if self.r0:
+            self.Samp = evt1.r0.tel[0].waveform.shape[-1]
+            self.Pix = evt1.r0.tel[0].waveform.shape[-2]
+        else:
+            self.Samp = evt1.r1.tel[0].waveform.shape[-1]
+            self.Pix = evt1.r1.tel[0].waveform.shape[-2]
         return self.Pix, self.Samp
 
-    def ConfigureForRun(self):
-        print("Processor 1")
+    def configure_for_run(self):
+        log.debug("Processor 1")
 
-    def ProcessEvent(self, evt, noped):
-        print("Processor 2")
+    def process_event(self, evt, noped):
+        log.debug("Processor 2")
 
-    def FinishRun(self, M, M_ped, counter_evt, counter_ped):
-        print("Processor 3")
+    def finish_run(self, M, M_ped, counter_evt, counter_ped):
+        log.debug("Processor 3")
 
-    def GetResults(self):
-        print("Processor 4")
+    def get_results(self):
+        log.debug("Processor 4")
 
-    def PlotResults(
-        self, name, FigPath, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
+    def plot_results(
+        self, name, fig_path, k, M, M_ped, Mean_M_overPix, Mean_M_ped_overPix
     ):
-        print("Processor 5")
+        log.debug("Processor 5")
 
     @staticmethod
     def _create_hdu(name, content):
@@ -50,7 +65,7 @@ class DQMSummary:
         hdu.name = name
         return hdu
 
-    def WriteAllResults(self, path, DICT):
+    def write_all_results(self, path, DICT):
         hdulist = fits.HDUList()
         for i, j in DICT.items():
             for name, content in j.items():
@@ -58,10 +73,12 @@ class DQMSummary:
                     hdu = self._create_hdu(name, content)
                     hdulist.append(hdu)
                 except TypeError as e:
-                    print(f"Caught {type(e).__name__}, skipping {name}. Details: {e}")
+                    log.warning(
+                        f"Caught {type(e).__name__}, skipping {name}. Details: {e}"
+                    )
                     pass
 
-        FileName = path + "_Results.fits"
-        print(FileName)
-        hdulist.writeto(FileName, overwrite=True)
+        output_filename = path + "_Results.fits"
+        log.info(f"Saving DQM results in {output_filename}")
+        hdulist.writeto(output_filename, overwrite=True)
         hdulist.info()
