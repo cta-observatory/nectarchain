@@ -1,4 +1,9 @@
+import argparse
+import logging
 import os
+import pathlib
+import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,8 +11,37 @@ from ctapipe_io_nectarcam import constants
 
 from nectarchain.makers.calibration import FlatfieldNectarCAMCalibrationTool
 
-# Define the global environment variable NECTARCAMDATA (folder where are the runs)
-os.environ["NECTARCAMDATA"] = "./20231222"
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
+# Option and argument parser
+parser = argparse.ArgumentParser(
+    description="Give a run number and the location of the runs folder (NECTARCAMDATA)",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "-r",
+    "--run",
+    default=None,
+    help="Flatfield run number",
+    type=int,
+)
+parser.add_argument(
+    "-p",
+    "--path",
+    default=".",
+    help="path to runs folder (NECTARCAMDATA)",
+    type=str,
+)
+
+args = parser.parse_args()
+
+if args.run is None:
+    log.error(f"At least one run number should be provided (use -r).")
+    sys.exit(1)
+
+os.environ["NECTARCAMDATA"] = args.path
 
 
 def get_gain(output_from_FlatFieldComponent):
@@ -133,11 +167,11 @@ gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
 
 # empty list of bad pixels
 bad_pixels_array = list([])
-run_number = 4940
+run_number = args.run
 max_events = 10000
 window_width = 12
 window_shift = 5
-outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldTests/1FF_{}.h5".format(run_number)
+outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldOutput/1FF_{}.h5".format(run_number)
 
 # Initial call
 tool = FlatfieldNectarCAMCalibrationTool(
@@ -161,6 +195,10 @@ tool.setup()
 tool.start()
 FlatFieldOutput = tool.finish(return_output_component=True)[0]
 
+if len(FlatFieldOutput.event_id) == 0:
+    log.error(f"There are no flatfield events")
+    sys.exit(1)
+
 print("\n\tIntermediate output file %s" % outfile)
 
 print(
@@ -168,7 +206,7 @@ print(
 taking into account bad pixels *** \n"
 )
 
-outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldTests/2FF_{}.h5".format(run_number)
+outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldOutput/2FF_{}.h5".format(run_number)
 
 # Second call with updated gain aray and bad pixels
 tool = FlatfieldNectarCAMCalibrationTool(
