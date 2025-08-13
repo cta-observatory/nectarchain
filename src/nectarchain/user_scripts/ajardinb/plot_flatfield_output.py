@@ -16,7 +16,7 @@ log.handlers = logging.getLogger("__main__").handlers
 
 # Option and argument parser
 parser = argparse.ArgumentParser(
-    description="Give run number, run location (if no access to DIRAC) and output location",
+    description="Give a run number and the location of the folder containing the flatfield output files",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
