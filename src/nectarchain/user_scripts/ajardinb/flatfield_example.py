@@ -17,7 +17,7 @@ log.handlers = logging.getLogger("__main__").handlers
 
 # Option and argument parser
 parser = argparse.ArgumentParser(
-    description="Give a run number and the location to the runs folder (NECTARCAMDATA)",
+    description="Give a run number and the location of the runs folder (NECTARCAMDATA)",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
