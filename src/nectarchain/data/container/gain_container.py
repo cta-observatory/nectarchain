@@ -43,7 +43,7 @@ class GainContainer(NectarCAMContainer):
     pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
 
     @classmethod
-    def from_hdf5(cls, path):
+    def from_hdf5(cls, path, group_name="data"):
         """Class method to read a GainContainer from an HDF5 file.
 
         Args:
@@ -52,7 +52,9 @@ class GainContainer(NectarCAMContainer):
         Yields:
             GainContainer: The container from the data in the HDF5 file.
         """
-        return super(__class__, cls)._container_from_hdf5(path, container_class=cls)
+        return super(__class__, cls)._container_from_hdf5(
+            path, container_class=cls, group_name=group_name
+        )
 
 
 class SPEfitContainer(GainContainer):

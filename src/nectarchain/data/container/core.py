@@ -54,7 +54,9 @@ class NectarCAMContainer(Container):
     """
 
     @staticmethod
-    def _container_from_hdf5(path, container_class, index_component=0):
+    def _container_from_hdf5(
+        path, container_class, index_component=0, group_name="data"
+    ):
         """Static method to read a container from an HDF5 file.
 
         Parameters:
@@ -74,7 +76,9 @@ class NectarCAMContainer(Container):
         container = container_class()
         with HDF5TableReader(path) as reader:
             tableReader = reader.read(
-                table_name=f"/data/{container_class.__name__}_{index_component}",
+                table_name=(
+                    f"/{group_name}/{container_class.__name__}_{index_component}"
+                ),
                 containers=container_class,
             )
             container = next(tableReader)
@@ -82,7 +86,7 @@ class NectarCAMContainer(Container):
         yield container
 
     @classmethod
-    def from_hdf5(cls, path, index_component=0):
+    def from_hdf5(cls, path, index_component=0, group_name="data"):
         """Reads a container from an HDF5 file.
 
         Parameters:
@@ -99,7 +103,10 @@ class NectarCAMContainer(Container):
         """
 
         return cls._container_from_hdf5(
-            path, container_class=cls, index_component=index_component
+            path,
+            container_class=cls,
+            index_component=index_component,
+            group_name=group_name,
         )
 
 
