@@ -320,7 +320,7 @@ class CalibrationWriterNectarCAM(Tool):
         # (`N_pixels`)
         self.output_containers["pedestal"].n_events = self.input_containers[
             "pedestal"
-        ].nevents
+        ].nevents.astype(np.int64)
         self.output_containers["pedestal"].sample_time = (
             np.mean(
                 [
@@ -386,10 +386,12 @@ class CalibrationWriterNectarCAM(Tool):
 
         log.info(f"Copying data from {type(self.input_containers['flatfield'])}...")
 
-        FF_coeff_per_pixel_per_event = self.input_containers["flatfield"].FF_coef
+        FF_coeff_per_pixel_per_event = self.input_containers[
+            "flatfield"
+        ].FF_coef.astype(np.float64)
         charge_per_pixel_per_event = self.input_containers[
             "flatfield"
-        ].amp_int_per_pix_per_event
+        ].amp_int_per_pix_per_event.astype(np.float64)
         FF_pixel_mask = np.isin(
             self.input_containers["flatfield"].pixels_id,
             self.input_containers["flatfield"].bad_pixels[0],
@@ -451,7 +453,7 @@ class CalibrationWriterNectarCAM(Tool):
         self.output_containers[
             "pixel_status"
         ].flatfield_failing_pixels = FF_failing_pixels
-
+        log.debug(self.output_containers["flatfield"].charge_mean.dtype)
         return
 
     def _set_usable_pixels(self):
