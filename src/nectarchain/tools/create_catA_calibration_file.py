@@ -206,7 +206,8 @@ class CalibrationWriterNectarCAM(Tool):
     def _add_missing_pixels(self):
         """
         Zero-pads NectarCAM containers with missing pixels due to hardware failing
-        pixels (e.g. an incomplete camera).
+        pixels (e.g. an incomplete camera). For boolean arrays related to pixel status,
+        one-padding is applied.
         """
 
         log.info("Checking for missing pixels in input data...")
@@ -228,11 +229,16 @@ class CalibrationWriterNectarCAM(Tool):
                         continue
 
                     # Reshape fields to fully pixelated camera with zero-padding
+                    # Or one-padding for boolean arrays of failing/missing pixels
+                    # NOTE: NectarCAMPedestalContainer stores bad pixels as np.int8
                     shape_new_field = list(field.shape)
                     shape_new_field[pixel_axis] = N_PIXELS
-                    new_field = np.zeros(shape_new_field, dtype=field.dtype)
+                    if field.dtype == bool or field.dtype == np.int8:
+                        new_field = np.ones(shape_new_field, dtype=field.dtype)
+                    else:
+                        new_field = np.zeros(shape_new_field, dtype=field.dtype)
 
-                    # Copy data in slices so that the correct axis is zero-padded
+                    # Copy data in slices so that the correct axis is zero/one-padded
                     # Also sorts the arrays in terms of `PIXEL_INDEX`
                     pixel_pos = np.searchsorted(PIXEL_INDEX, pixels_id)
                     slc = [slice(None)] * field.ndim
