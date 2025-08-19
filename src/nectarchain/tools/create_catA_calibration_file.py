@@ -212,7 +212,7 @@ class CalibrationWriterNectarCAM(Tool):
 
         log.info("Checking for missing pixels in input data...")
 
-        hardware_failing_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
+        hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
 
         for container in self.input_containers.values():
             pixels_id = container.pixels_id
@@ -253,15 +253,15 @@ class CalibrationWriterNectarCAM(Tool):
 
             # If pixels are missing it's due to hardware, so update the pixel status
             for ch in range(N_GAINS):
-                hardware_failing_pixels[ch] = np.logical_and(
-                    hardware_failing_pixels[ch],
+                hardware_working_pixels[ch] = np.logical_and(
+                    hardware_working_pixels[ch],
                     np.isin(PIXEL_INDEX, pixels_id),
                 )
 
         # Set the hardware failing pixels status in the pixel status container
         self.output_containers[
             "pixel_status"
-        ].hardware_failing_pixels = hardware_failing_pixels
+        ].hardware_failing_pixels = ~hardware_working_pixels
         return
 
     def _fill_output_containers(self):
@@ -473,7 +473,7 @@ class CalibrationWriterNectarCAM(Tool):
             self.output_containers["pixel_status"].flatfield_failing_pixels,
         ]
 
-        self.output_containers["calibration"].unusable_pixels = np.logical_and.reduce(
+        self.output_containers["calibration"].unusable_pixels = np.logical_or.reduce(
             pixel_status_arrays
         )
 
