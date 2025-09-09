@@ -1,11 +1,11 @@
+import argparse
+import copy
+import glob
 import json
 import logging
 import os
 import sys
 from pathlib import Path
-import argparse
-import copy
-import glob
 
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
@@ -13,7 +13,8 @@ from nectarchain.makers.extractor.utils import CtapipeExtractor
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
-    description=f"compute high and low gain with the Photo-statistic method, output data are saved in $NECTARCAMDATA/../PhotoStat/",
+    description=f"compute high and low gain with the Photo-statistic\
+        method, output data are saved in $NECTARCAMDATA/../PhotoStat/",
 )
 # run numbers
 parser.add_argument(
@@ -60,13 +61,13 @@ parser.add_argument(
         "SlidingWindowMaxSum",
         "TwoPassWindowSum",
     ],
-    default="LocalPeakWindowSum",
+    default="GlobalPeakWindowSum",
     help="charge extractor method",
     type=str,
 )
 parser.add_argument(
     "--extractor_kwargs",
-    default={"window_width": 16, "window_shift": 4},
+    default={"window_width": 8, "window_shift": 4},
     help="charge extractor kwargs",
     type=json.loads,
 )
@@ -124,10 +125,20 @@ def main(
     str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
         args.extractor_kwargs
     )
-    path = DataManagement.find_SPE_HHV(
+    # path = DataManagement.find_SPE_HHV(
+    #    run_number=args.HHV_run_number,
+    #    method=args.method,
+    #    str_extractor_kwargs=str_extractor_kwargs,
+    # )
+    # path = DataManagement.find_SPE_nominal(
+    #    run_number=args.HHV_run_number,
+    #    method=args.method,
+    #    str_extractor_kwargs=str_extractor_kwargs,
+    # )
+    path = DataManagement.find_SPE_nominal(
         run_number=args.HHV_run_number,
-        method=args.method,
-        str_extractor_kwargs=str_extractor_kwargs,
+        method="GlobalPeakWindowSum",
+        str_extractor_kwargs=f"window_width_8_window_shift_4",
     )
     if len(path) == 1:
         log.info(
@@ -195,6 +206,11 @@ if __name__ == "__main__":
     kwargs.pop("verbosity")
     kwargs.pop("figpath")
     kwargs.pop("HHV_run_number")
+
+    kwargs["FF_run_number"] = [3937]
+    kwargs["Ped_run_number"] = [3938]
+    kwargs["overwrite"] = True
+    args.HHV_run_number = 3936
 
     log.info(f"arguments passed to main are : {kwargs}")
     main(log=log, **kwargs)

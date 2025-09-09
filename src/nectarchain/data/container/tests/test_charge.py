@@ -1,7 +1,4 @@
-import glob
-
 import numpy as np
-import pytest
 from ctapipe.containers import EventType
 from ctapipe.io import HDF5TableWriter
 
@@ -131,7 +128,7 @@ class TestChargesContainer:
             mode="w",
             group_name="data",
         )
-        writer.write(table_name="ChargesContainer", containers=charge_container)
+        writer.write(table_name="ChargesContainer_0", containers=charge_container)
         writer.close()
 
         loaded_charge_container = next(ChargesContainer.from_hdf5(tmp_path))

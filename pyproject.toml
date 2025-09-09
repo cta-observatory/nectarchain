@@ -27,6 +27,8 @@ dependencies = [
     "scipy==1.11.4",
     "zodb",
     "zeo",
+    "pyqt6",
+    "pyqtgraph",
 ]
 
 # needed for setuptools_scm, we don't define a static version
@@ -45,7 +47,6 @@ test = [
 dev = [
     "setuptools_scm",
 ]
-
 docs = [
     "sphinx",
     "sphinx-autodoc-typehints",
@@ -55,11 +56,16 @@ docs = [
     "numpydoc",
     "tomli; python_version < '3.11'"
 ]
-
 # we can use self-references to simplify all
 all = [
     "nectarchain[test,docs,dev]",
 ]
+
+
+[tool.pytest.ini_options]
+addopts = "--ignore=src/nectarchain/user_scripts"
+
+
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -67,3 +73,13 @@ exclude = ["nectarchain._dev_version"]
 
 [tool.setuptools_scm]
 write_to = "src/nectarchain/_version.py"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]  # This ensures it mimics Flake8's error codes.
+exclude = ["build/", "dist/", "*.pyc"] 
+
+[tool.ruff]
+line-length = 88
+
+[tool.black]
+line-length = 88

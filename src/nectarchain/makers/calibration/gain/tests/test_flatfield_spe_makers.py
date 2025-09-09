@@ -1,168 +1,128 @@
-# import astropy.units as u
-# import numpy as np
-import pytest
+import tempfile
+from unittest.mock import patch
 
-# from nectarchain.makers.calibration.gain import (
-#     FlatFieldSingleHHVSPEMaker,
-#     FlatFieldSingleHHVStdSPEMaker,
-# )
-# from nectarchain.makers.calibration.gain.flatfield_spe_makers import FlatFieldSPEMaker
-# from nectarchain.makers.calibration.gain.parameters import Parameter, Parameters
+import numpy as np
+from ctapipe.utils import get_dataset_path
 
-# from nectarchain.data.container import ChargesContainer
-
-
-pytest.skip(
-    "Some classes to be imported here were dropped from nectarchain,"
-    "skipping all these tests entirely",
-    allow_module_level=True,
+from nectarchain.data import SPEfitContainer
+from nectarchain.makers.calibration import (
+    FlatFieldSPECombinedStdNectarCAMCalibrationTool,
+    FlatFieldSPEHHVNectarCAMCalibrationTool,
+    FlatFieldSPEHHVStdNectarCAMCalibrationTool,
+    FlatFieldSPENominalNectarCAMCalibrationTool,
+    FlatFieldSPENominalStdNectarCAMCalibrationTool,
 )
+from nectarchain.makers.component.spe.spe_algorithm import SPEalgorithm
 
 
-# class FlatFieldSPEMakerforTest(FlatFieldSPEMaker):
-#     def make():
-#         pass
+class TestFlatFieldSPENominalNectarCAMCalibrationTool:
+    RUN_NUMBER = 3938
+    RUN_FILE = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
+    NPIXELS = 1834
+    METHOD = "GlobalPeakWindowSum"
+    EXTRACTOR_KWARGS = {"window_width": 3, "window_shift": 1}
+    MULTIPROC = True
+    NPROC = 2
+    CHUNKSIZE = 1
+    ASKED_PIXELS_ID = [50, 100, 200, 300]
+    EVENTS_PER_SLICE = 11
+    CLASS = [
+        FlatFieldSPENominalNectarCAMCalibrationTool,
+        FlatFieldSPENominalStdNectarCAMCalibrationTool,
+        FlatFieldSPEHHVNectarCAMCalibrationTool,
+        FlatFieldSPEHHVStdNectarCAMCalibrationTool,
+    ]
+
+    def test_core(self):
+        for _class in self.CLASS:
+            tool = _class(
+                run_number=self.RUN_NUMBER,
+                run_file=self.RUN_FILE,
+                npixels=self.NPIXELS,
+                extractor_kwargs=self.EXTRACTOR_KWARGS,
+                method=self.METHOD,
+                multiproc=self.MULTIPROC,
+                chunksize=self.CHUNKSIZE,
+                nproc=self.NPROC,
+                asked_pixels_id=self.ASKED_PIXELS_ID,
+                reload_events=True,
+                events_per_slice=self.EVENTS_PER_SLICE,
+            )
+            assert isinstance(tool, _class)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            outfile = (
+                tmpdirname
+                + f"/{np.random.random()}"
+                + "_testFlatFieldSPENominalStdNectarCAMCalibrationTool.h5"
+            )
+            tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
+                run_number=self.RUN_NUMBER,
+                output_path=outfile,
+                run_file=self.RUN_FILE,
+                npixels=self.NPIXELS,
+                extractor_kwargs=self.EXTRACTOR_KWARGS,
+                method=self.METHOD,
+                multiproc=self.MULTIPROC,
+                chunksize=self.CHUNKSIZE,
+                nproc=self.NPROC,
+                asked_pixels_id=self.ASKED_PIXELS_ID,
+                reload_events=True,
+                events_per_slice=self.EVENTS_PER_SLICE,
+            )
+            tool.setup()
+            tool.start()
+            output = tool.finish(return_output_component=True, tol=100)
+        assert isinstance(output[0], SPEfitContainer)
 
 
-# def create_fake_chargeContainer():
-#     pixels_id = np.array([2, 4, 3, 8, 6, 9, 7, 1, 5, 10])
-#     nevents = 40
-#     npixels = 10
-#     rng = np.random.default_rng()
-#     charges_hg = rng.integers(low=0, high=1000, size=(nevents, npixels))
-#     charges_lg = rng.integers(low=0, high=1000, size=(nevents, npixels))
-#     peak_hg = rng.integers(low=0, high=60, size=(nevents, npixels))
-#     peak_lg = rng.integers(low=0, high=60, size=(nevents, npixels))
-#     run_number = 1234
-#     return ChargesContainer(
-#         charges_hg=charges_hg,
-#         charges_lg=charges_lg,
-#         peak_hg=peak_hg,
-#         peak_lg=peak_lg,
-#         run_number=run_number,
-#         pixels_id=pixels_id,
-#         nevents=nevents,
-#         npixels=npixels,
-#     )
-#
-#
-# class TestFlatFieldSPEMaker:
-#     # Tests that the object can be initialized without errors
-#     def test_initialize_object(self):
-#         pixels_id = [2, 3, 5]
-#         flat_field_spe_maker = FlatFieldSPEMakerforTest(pixels_id)
-#         assert isinstance(flat_field_spe_maker, FlatFieldSPEMakerforTest)
-#
-#     # Tests that parameters can be read from a YAML file
-#     def test_read_parameters_from_yaml(self):
-#         pixels_id = [2, 3, 5]
-#         flat_field_spe_maker = FlatFieldSPEMakerforTest(pixels_id)
-#         flat_field_spe_maker.read_param_from_yaml("parameters_signal.yaml")
-#         assert flat_field_spe_maker.parameters.size == 6
-#         assert isinstance(flat_field_spe_maker.parameters, Parameters)
-#
-#     # Tests that parameters can be updated from a YAML file
-#     def test_update_parameters_from_yaml(self):
-#         pixels_id = [2, 3, 5]
-#         flat_field_spe_maker = FlatFieldSPEMakerforTest(pixels_id)
-#         flat_field_spe_maker.read_param_from_yaml("parameters_signal.yaml")
-#         flat_field_spe_maker.read_param_from_yaml(
-#             "parameters_signalStd.yaml", only_update=True
-#         )
-#         assert flat_field_spe_maker.parameters.parameters[-2].value == 0.697
-#
-#     # Tests that parameters can be updated from a fit
-#     def test_update_parameters_from_fit(self):
-#         pixels_id = [2]
-#         flat_field_spe_maker = FlatFieldSPEMakerforTest(pixels_id)
-#         flat_field_spe_maker.read_param_from_yaml("parameters_signal.yaml")
-#
-#     # Tests that the table can be updated from parameters
-#     def test_update_table_from_parameters(self):
-#         pixels_id = [2, 3, 5]
-#         flat_field_spe_maker = FlatFieldSPEMakerforTest(pixels_id)
-#         flat_field_spe_maker._parameters.append(
-#             Parameter(name="param1", value=1, unit=u.dimensionless_unscaled)
-#         )
-#         flat_field_spe_maker._parameters.append(
-#             Parameter(name="param2", value=2, unit=u.dimensionless_unscaled)
-#         )
-#
-#         flat_field_spe_maker._update_table_from_parameters()
-#
-#         assert "param1" in flat_field_spe_maker._results.colnames
-#         assert "param1_error" in flat_field_spe_maker._results.colnames
-#         assert "param2" in flat_field_spe_maker._results.colnames
-#         assert "param2_error" in flat_field_spe_maker._results.colnames
-#
-#
-# class TestFlatFieldSingleHHVSPEMaker:
-#     # Tests that creating an instance of FlatFieldSingleHHVSPEMaker with valid input
-#     # parameters is successful
-#     def test_create_instance_valid_input(self):
-#         charge = [1, 2, 3]
-#         counts = [10, 20, 30]
-#         pixels_id = [2, 3, 5]
-#         maker = FlatFieldSingleHHVSPEMaker(charge, counts, pixels_id)
-#         assert isinstance(maker, FlatFieldSingleHHVSPEMaker)
-#
-#     # Tests that creating an instance of FlatFieldSingleHHVSPEMaker with invalid
-#     # input parameters raises an error
-#     def test_create_instance_invalid_input(self):
-#         charge = [1, 2, 3]
-#          counts = [10, 20]  # Invalid input, counts
-#         # and charge must have the same length
-#         pixels_id = [2, 3, 5]
-#
-#         with pytest.raises(Exception):
-#             FlatFieldSingleHHVSPEMaker(charge, counts, pixels_id)
-#
-#     # Tests that calling create_from_chargeContainer method with valid input
-#     # parameters is successful
-#     def test_create_from_ChargeContainer_valid_input(self):
-#         chargeContainer = create_fake_chargeContainer()
-#          maker = (FlatFieldSingleHHVSPEMaker.
-#                   create_from_chargesContainer(chargeContainer))
-#         assert isinstance(maker, FlatFieldSingleHHVSPEMaker)
-#
-#     def test_fill_results_table_from_dict(self):
-#         pass
-#
-#     def test_NG_Likelihood_Chi2(self):
-#         pass
-#
-#     def test_cost(self):
-#         pass
-#
-#     def test_make_fit_array_from_parameters(self):
-#         pass
-#
-#     def test_run_fit(self):
-#         pass
-#
-#     def test_make(self):
-#         pass
-#
-#     def test_plot_single(self):
-#         pass
-#
-#     def test_display(self):
-#         pass
-#
-#
-# class TestFlatFieldSingleHHVStdSPEMaker:
-#     def test_create_instance(self):
-#         charge = [1, 2, 3]
-#         counts = [
-#             10,
-#             20,
-#             30,
-#         ]  # Invalid input, counts and charge must have the same length
-#         pixels_id = [2, 3, 5]
-#         instance = FlatFieldSingleHHVStdSPEMaker(charge, counts, pixels_id)
-#         assert isinstance(instance, FlatFieldSingleHHVStdSPEMaker)
-#
-#
-# class TestFlatFieldSingleNominalSPEMaker:
-#     def test_create_instance(self):
-#         pass
+class TestFlatFieldSPECombinedStdNectarCAMCalibrationTool(
+    TestFlatFieldSPENominalNectarCAMCalibrationTool
+):
+    SPE_RESULT = "./tmp/run1234.h5"
+
+    def test_core(self):
+        SPEalgorithm.window_length.default_value = 1
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            outfile = (
+                tmpdirname
+                + f"/{np.random.random()}"
+                + "_testFlatFieldSPENominalStdNectarCAMCalibrationTool.h5"
+            )
+            tool = FlatFieldSPECombinedStdNectarCAMCalibrationTool(
+                run_number=self.RUN_NUMBER,
+                output_path=outfile,
+                run_file=self.RUN_FILE,
+                npixels=self.NPIXELS,
+                extractor_kwargs=self.EXTRACTOR_KWARGS,
+                method=self.METHOD,
+                multiproc=self.MULTIPROC,
+                chunksize=self.CHUNKSIZE,
+                nproc=self.NPROC,
+                asked_pixels_id=self.ASKED_PIXELS_ID,
+                reload_events=True,
+                events_per_slice=self.EVENTS_PER_SLICE,
+                SPE_result=self.SPE_RESULT,
+            )
+            tool.setup()
+            spe_fit_container = SPEfitContainer(
+                likelihood=np.random.randn(self.NPIXELS, 3),
+                p_value=np.random.randn(self.NPIXELS, 3),
+                pedestal=60 + 5 * np.random.randn(self.NPIXELS, 3),
+                pedestalWidth=5 + 0.1 * np.random.randn(self.NPIXELS, 3),
+                resolution=np.random.rand(self.NPIXELS, 3),
+                luminosity=np.random.rand(self.NPIXELS, 3),
+                mean=60 + 5 * np.random.randn(self.NPIXELS, 3),
+                n=np.random.rand(self.NPIXELS, 3),
+                pp=np.random.rand(self.NPIXELS, 3),
+                is_valid=np.ones((self.NPIXELS), dtype=bool),
+                high_gain=np.random.randn(self.NPIXELS, 3) * 5 + 300,
+                low_gain=np.random.randn(self.NPIXELS, 3) * 1 + 60,
+                pixels_id=tool.event_source.nectarcam_service.pixel_ids,
+            )
+            with patch(
+                "nectarchain.data.container.SPEfitContainer.from_hdf5",
+                return_value=(spe_fit_container for i in range(10)),
+            ):
+                tool.start()
+                output = tool.finish(return_output_component=True, tol=100)
+        assert isinstance(output[0], SPEfitContainer)

@@ -9,7 +9,7 @@ However, some environment variables are needed for ``nectarchain`` to work prope
 Mandatory
 ---------
 
-:``NECTARCAMDATA``: path to local NectarCAM data. It can contain ``fits.fz`` run files, `~nectarchain.data.container.waveformsContainer.WaveformsContainer` or `~nectarchain.data.container.chargesContainer.ChargesContainer` HDF5 files. This is also where the `~nectarchain.data.management.DataManagement.findrun` method will automatically store NectarCAM run files when fetched from DIRAC.
+:``NECTARCAMDATA``: path to local NectarCAM data. It can contain ``fits.fz`` run files, `~nectarchain.data.container.waveforms_container.WaveformsContainer` or `~nectarchain.data.container.charges_container.ChargesContainer` HDF5 files. This is also where the `~nectarchain.data.management.DataManagement.findrun` method will automatically store NectarCAM run files when fetched from DIRAC.
 
 Optional
 --------
