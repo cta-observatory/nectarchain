@@ -21,7 +21,7 @@ jobs:
     name: Lint
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set up Python environment
@@ -87,7 +87,7 @@ jobs:
         if: matrix.os == 'macos-14'
         run: |
           brew install pyqt
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -183,7 +183,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
