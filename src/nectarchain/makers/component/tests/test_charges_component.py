@@ -215,6 +215,10 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             self.METHOD,
             extractor_kwargs=self.EXTRACTOR_KWARGS,
         )
+        assert output.charges_hg.shape == waveforms_container_1.wfs_hg.shape[:2]
+        assert output.charges_lg.shape == waveforms_container_1.wfs_lg.shape[:2]
+        assert output.peak_hg.shape == waveforms_container_1.wfs_hg.shape[:2]
+        assert output.peak_lg.shape == waveforms_container_1.wfs_lg.shape[:2]
         assert isinstance(output, ChargesContainer)
 
     def test_compute_charges(self, waveforms_container_1, instance):
