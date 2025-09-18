@@ -87,7 +87,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                 files = []
             if len(files) != 1:
                 self.log.info(
-                    f"{len(files)} computed wavforms files found with max_events >="
+                    f"{len(files)} computed waveforms files found with max_events >="
                     f"{self.max_events}  for run {self.run_number}, reload waveforms"
                     f"from event loop"
                 )
@@ -99,7 +99,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                 )
             else:
                 self.log.info(
-                    f"{files[0]} is the computed wavforms files found"
+                    f"{files[0]} is the computed waveforms files found"
                     f"with max_events >="
                     f"{self.max_events}  for run {self.run_number}"
                 )
