@@ -588,7 +588,6 @@ class ChargesComponent(ArrayDataComponent):
             method=method, subarray=subarray, **kwargs
         )
         out = np.array(
-            [
                 CtapipeExtractor.get_image_peak_time(
                     imageExtractor(
                         waveforms=waveforms,
@@ -597,13 +596,13 @@ class ChargesComponent(ArrayDataComponent):
                         broken_pixels=broken_pixels,
                     )
                 )
-            ]
-        )
-
+            )
+        #bc waveforms are in (n_events, n_pix, n_samples), out is in (2, n_events, n_pix) 
+        #with the fist dimenssion for charge and the second for peak time
         return ChargesContainer.fields[f"charges_{gain_label}"].dtype.type(
-            out[:, 0, channel, :]
+            out[0,...]
         ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(
-            out[:, 1, channel, :]
+            out[1,...]
         )
 
     @staticmethod
