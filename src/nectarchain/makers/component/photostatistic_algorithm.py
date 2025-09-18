@@ -290,7 +290,7 @@ class PhotoStatisticAlgorithm(Component):
             - np.power(self.BHG * self.meanChargeHG, 2)
         ) / (self.meanChargeHG * (1 + np.power(self.SPE_resolution[0], 2)))
 
-    @property        
+    @property
     def gainHG_err(self) -> float:
         """Calculates and returns the gain for high gain charge data.
 
@@ -299,12 +299,14 @@ class PhotoStatisticAlgorithm(Component):
         """
         return np.sqrt(
             np.power(
-                self.gainHG * (-2 * self.SPE_resolution[0]) * np.mean(self.SPE_resolution[1:],axis=0),
-                2
+                self.gainHG
+                * (-2 * self.SPE_resolution[0])
+                * np.mean(self.SPE_resolution[1:], axis=0),
+                2,
             )
         )
-    
-    @property        
+
+    @property
     def gainLG_err(self) -> float:
         """Calculates and returns the gain for high gain charge data.
 
@@ -313,8 +315,10 @@ class PhotoStatisticAlgorithm(Component):
         """
         return np.sqrt(
             np.power(
-                self.gainLG * (-2 * self.SPE_resolution[0]) * np.mean(self.SPE_resolution[1:],axis=0),
-                2
+                self.gainLG
+                * (-2 * self.SPE_resolution[0])
+                * np.mean(self.SPE_resolution[1:], axis=0),
+                2,
             )
         )
 

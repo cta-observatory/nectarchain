@@ -221,8 +221,7 @@ class FlatFieldSPECombinedStdNectarCAMCalibrationTool(
             if "run" in word:
                 HHVrun = int(word.split("run")[-1])
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            method=self.method,
-            extractor_kwargs=self.extractor_kwargs
+            method=self.method, extractor_kwargs=self.extractor_kwargs
         )
         if self.max_events is None:
             filename = (

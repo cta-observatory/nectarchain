@@ -57,7 +57,6 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
