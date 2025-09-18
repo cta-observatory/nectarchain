@@ -187,6 +187,15 @@ if __name__ == "__main__":
     kwargs = copy.deepcopy(vars(args))
 
     kwargs["log_level"] = args.verbosity
+    if any("pydevd" in mod for mod in sys.modules) : 
+        kwargs["max_events"] = [1000]
+        kwargs["asked_pixels_id"] = [1,10,100,1000]
+        kwargs["run_number"] = [3942]
+        kwargs["overwrite"]  =True
+        kwargs["HHV"] = True
+        kwargs["method"] = "LocalPeakWindowSum"
+        kwargs["extractor_kwargs"] = {'window_width': 10, 'peak_search_window': 4}
+        kwargs["log_level"] = "DEBUG"
 
     os.makedirs(
         f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
