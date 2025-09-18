@@ -268,8 +268,8 @@ class TriggerMapContainer(Container):
             if len(reader._h5file.root.__members__) > 1 and slice_index is None:
                 log.info(
                     f"reading {container_class.__name__} containing"
-                    f"{len(reader._h5file.root.__members__)}"
-                    f"slices, will return a generator"
+                    f" {len(reader._h5file.root.__members__)}"
+                    f" slices, will return a generator"
                 )
                 for data in np.sort(reader._h5file.root.__members__):
                     # container.containers[data] =
@@ -312,7 +312,7 @@ class TriggerMapContainer(Container):
                             f"table save, unable to load"
                         )
 
-                yield container
+                    yield container
             else:
                 if slice_index is None:
                     log.info(
