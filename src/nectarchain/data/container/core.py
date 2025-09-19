@@ -262,7 +262,6 @@ class TriggerMapContainer(Container):
         if isinstance(path, str):
             path = Path(path)
         module = importlib.import_module(f"{container_class.__module__}")  # noqa :F841
-        container = eval(f"module.{container_class.__name__}")()
 
         with HDF5TableReader(path) as reader:
             if len(reader._h5file.root.__members__) > 1 and slice_index is None:
@@ -272,6 +271,7 @@ class TriggerMapContainer(Container):
                     f" slices, will return a generator"
                 )
                 for data in np.sort(reader._h5file.root.__members__):
+                    container = eval(f"module.{container_class.__name__}")()
                     # container.containers[data] =
                     # eval(f"module.{container_class.__name__}s")()
 
@@ -314,6 +314,7 @@ class TriggerMapContainer(Container):
 
                     yield container
             else:
+                container = eval(f"module.{container_class.__name__}")()
                 if slice_index is None:
                     log.info(
                         f"reading {container_class.__name__} containing"
