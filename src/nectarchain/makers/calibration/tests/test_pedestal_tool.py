@@ -1,7 +1,8 @@
-import tempfile
-import tables
-import numpy as np
 import os
+import tempfile
+
+import numpy as np
+import tables
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import N_SAMPLES
 
@@ -37,7 +38,7 @@ class TestPedestalCalibrationTool:
             n_pixels = runs["N pixels"][i]
             with tempfile.TemporaryDirectory() as tmpdirname:
                 outfile = tmpdirname + "/pedestal.h5"
-                try : 
+                try:
                     os.remove(outfile)
                 except FileNotFoundError:
                     pass
@@ -91,8 +92,8 @@ class TestPedestalCalibrationTool:
                     if "combined" in key:
                         continue
                     pedestalContainer = _pedestalContainer.containers[key]
-                    list_slices.append(int(key.split('data_')[1]))
-                    
+                    list_slices.append(int(key.split("data_")[1]))
+
                     assert pedestalContainer.nsamples == N_SAMPLES
                     assert np.allclose(
                         pedestalContainer.nevents, events_per_slice, atol=7
@@ -115,17 +116,19 @@ class TestPedestalCalibrationTool:
                         N_SAMPLES,
                     )
                     j += 1
-                assert (np.sort(list_slices) == np.arange(1, n_slices[i]+1)).all()
-                
+                assert (np.sort(list_slices) == np.arange(1, n_slices[i] + 1)).all()
+
                 # Check combined results
                 group_name = "data_combined"
                 with tables.open_file(outfile, mode="r") as f:
                     keys = list(f.root._v_children)
                     assert group_name in keys
                 pedestalContainers = next(
-                    NectarCAMPedestalContainers.from_hdf5(outfile, slice_index="combined")
+                    NectarCAMPedestalContainers.from_hdf5(
+                        outfile, slice_index="combined"
                     )
-                
+                )
+
                 pedestalContainer = pedestalContainers.containers[group_name]
                 assert pedestalContainer.nsamples == N_SAMPLES
                 assert np.all(pedestalContainer.nevents == max_events[i])
