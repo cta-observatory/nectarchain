@@ -198,7 +198,8 @@ class TestRunner(QWidget):
         # Set the main layout to the window
         self.setLayout(main_layout)
         self.setWindowTitle("Test Runner GUI")
-        self.showFullScreen()
+        # self.showFullScreen()
+        self.show()
 
     def get_parameters_from_module(self, module):
         # Fetch parameters from the module
