@@ -107,7 +107,7 @@ parser.add_argument(
         "HHVfixed",
         "nominal",
     ],
-    description="SPE configuration to use, either HHVfree, HHVfixed or nominal.\
+    help="SPE configuration to use, either HHVfree, HHVfixed or nominal.\
         From ICRC2025 proceedings, we recommend to use resoltion at nominal for the SPE fit.",
 )
 
