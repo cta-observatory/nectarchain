@@ -328,6 +328,15 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         if self.output_path.exists() and self.overwrite:
             os.remove(self.output_path)
 
+        if self.events_per_slice is not None and self.events_per_slice > len(
+            self.event_source
+        ):
+            self.log.warning(
+                "events_per_slice is larger than the number of events in the run, "
+                "setting events_per_slice to None"
+            )
+            self.events_per_slice = None
+
         self._init_writer(sliced=not (self.events_per_slice is None), slice_index=1)
 
         self._n_traited_events = 0

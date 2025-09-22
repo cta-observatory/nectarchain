@@ -588,23 +588,21 @@ class ChargesComponent(ArrayDataComponent):
             method=method, subarray=subarray, **kwargs
         )
         out = np.array(
-            [
-                CtapipeExtractor.get_image_peak_time(
-                    imageExtractor(
-                        waveforms=waveforms,
-                        tel_id=tel_id,
-                        selected_gain_channel=None,
-                        broken_pixels=broken_pixels,
-                    )
+            CtapipeExtractor.get_image_peak_time(
+                imageExtractor(
+                    waveforms=waveforms,
+                    tel_id=tel_id,
+                    selected_gain_channel=None,
+                    broken_pixels=broken_pixels,
                 )
-            ]
+            )
         )
-
+        # bc waveforms shape is (n_events, n_pix, n_samples),
+        # out is (2, n_events, n_pix)
+        # with the first dimension for charge and the second for peak time
         return ChargesContainer.fields[f"charges_{gain_label}"].dtype.type(
-            out[:, 0, channel, :]
-        ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(
-            out[:, 1, channel, :]
-        )
+            out[0, ...]
+        ), ChargesContainer.fields[f"peak_{gain_label}"].dtype.type(out[1, ...])
 
     @staticmethod
     def histo_hg(

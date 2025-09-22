@@ -1149,11 +1149,11 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
     def __fix_parameters(self) -> None:
         """Fixes the values of the ``n`` and ``pp`` parameters by setting their frozen
         attribute to True."""
-        self.log.info("updating parameters by fixing pp and n")
         pp = self._parameters["pp"]
-        pp.frozen = True
         n = self._parameters["n"]
+        pp.frozen = True
         n.frozen = True
+        self.log.info(f"updating parameters by fixing pp={pp} and n={n}")
 
 
 class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
@@ -1251,13 +1251,15 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         same_luminosity : bool
             Whether to fix the luminosity parameter.
         """
-        self.log.info("updating parameters by fixing pp, n and res")
         pp = self._parameters["pp"]
         pp.frozen = True
         n = self._parameters["n"]
         n.frozen = True
         resolution = self._parameters["resolution"]
         resolution.frozen = True
+        self.log.info(
+            f"updating parameters by fixing pp={pp}, n={n} and res={resolution}"
+        )
         if self.same_luminosity:
             self.log.info("fixing luminosity")
             luminosity = self._parameters["luminosity"]
@@ -1310,7 +1312,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         pixel_id : int
             The pixel ID.
         nectarGainSPEresult : QTable
-            The fitted data obtained from a 1400V run.
+            The fitted data obtained from a 1400 V run.
         ``**kwargs``
             Arbitrary keyword arguments.
 
@@ -1324,14 +1326,15 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         )
         luminosity = param["luminosity"]
         resolution = param["resolution"]
-        pp = param["pp"]
-        n = param["n"]
+        # pp = param["pp"]
+        # n = param["n"]
 
         index = np.where(pixel_id == nectarGainSPEresult.pixels_id)[0][0]
 
         resolution.value = nectarGainSPEresult.resolution[index][0]
-        pp.value = nectarGainSPEresult.pp[index][0]
-        n.value = nectarGainSPEresult.n[index][0]
+        # I prefer to keep pp and n from the yaml config file to better know what we do
+        # pp.value = nectarGainSPEresult.pp[index][0]
+        # n.value = nectarGainSPEresult.n[index][0]
 
         if luminosity.frozen:
             luminosity.value = nectarGainSPEresult.luminosity[index].value

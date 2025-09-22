@@ -215,6 +215,10 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             self.METHOD,
             extractor_kwargs=self.EXTRACTOR_KWARGS,
         )
+        assert output.charges_hg.shape == waveforms_container_1.wfs_hg.shape[:2]
+        assert output.charges_lg.shape == waveforms_container_1.wfs_lg.shape[:2]
+        assert output.peak_hg.shape == waveforms_container_1.wfs_hg.shape[:2]
+        assert output.peak_lg.shape == waveforms_container_1.wfs_lg.shape[:2]
         assert isinstance(output, ChargesContainer)
 
     def test_compute_charges(self, waveforms_container_1, instance):
@@ -232,8 +236,8 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             subarray=instance.subarray,
             method="FullWaveformSum",
         )
-        assert output1.shape == (1, 3)
-        assert output2.shape == (1, 3)
+        assert output1.shape == waveforms_container_1.wfs_hg.shape[:2]
+        assert output2.shape == waveforms_container_1.wfs_hg.shape[:2]
         assert np.isclose(
             output1.mean(), 10 * np.mean(1000 * np.random.rand(2, 3, 10)), rtol=2000
         )
@@ -244,8 +248,8 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             subarray=instance.subarray,
             method="FullWaveformSum",
         )
-        assert output1.shape == (1, 3)
-        assert output2.shape == (1, 3)
+        assert output1.shape == waveforms_container_1.wfs_lg.shape[:2]
+        assert output2.shape == waveforms_container_1.wfs_lg.shape[:2]
         assert np.isclose(
             output1.mean(), 10 * np.mean(np.random.rand(2, 3, 10)), rtol=2
         )

@@ -1,6 +1,8 @@
+import os
 import tempfile
 
 import numpy as np
+import tables
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import N_SAMPLES
 
@@ -36,6 +38,12 @@ class TestPedestalCalibrationTool:
             n_pixels = runs["N pixels"][i]
             with tempfile.TemporaryDirectory() as tmpdirname:
                 outfile = tmpdirname + "/pedestal.h5"
+                try:
+                    os.remove(outfile)
+                except FileNotFoundError:
+                    pass
+                except Exception as e:
+                    raise e
 
                 # run tool
                 tool = PedestalNectarCAMCalibrationTool(
@@ -76,18 +84,16 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(output.pedestal_std_lg, 2.5, atol=2.3)
 
                 # Check output on disk
-                # FIXME: use tables for the moment, update when h5 reader in nectarchain
-                #  is working
-                pedestalContainers = next(
-                    NectarCAMPedestalContainers.from_hdf5(outfile)
-                )
+                pedestalContainers = NectarCAMPedestalContainers.from_hdf5(outfile)
                 j = 0
-                for key, pedestalContainer in pedestalContainers.containers.items():
+                list_slices = []
+                for _pedestalContainer in pedestalContainers:
+                    key = list(_pedestalContainer.containers.keys())[0]
                     if "combined" in key:
                         continue
-                    # Check individual groups
-                    group_name = "data_{}".format(i + 1)
-                    assert group_name in pedestalContainers.containers.keys()
+                    pedestalContainer = _pedestalContainer.containers[key]
+                    list_slices.append(int(key.split("data_")[1]))
+
                     assert pedestalContainer.nsamples == N_SAMPLES
                     assert np.allclose(
                         pedestalContainer.nevents, events_per_slice, atol=7
@@ -110,11 +116,19 @@ class TestPedestalCalibrationTool:
                         N_SAMPLES,
                     )
                     j += 1
+                assert (np.sort(list_slices) == np.arange(1, n_slices[i] + 1)).all()
+
                 # Check combined results
-                pedestalContainers = next(
-                    NectarCAMPedestalContainers.from_hdf5(outfile)
-                )
                 group_name = "data_combined"
+                with tables.open_file(outfile, mode="r") as f:
+                    keys = list(f.root._v_children)
+                    assert group_name in keys
+                pedestalContainers = next(
+                    NectarCAMPedestalContainers.from_hdf5(
+                        outfile, slice_index="combined"
+                    )
+                )
+
                 pedestalContainer = pedestalContainers.containers[group_name]
                 assert pedestalContainer.nsamples == N_SAMPLES
                 assert np.all(pedestalContainer.nevents == max_events[i])

@@ -3,6 +3,7 @@ import os
 import pathlib
 
 import numpy as np
+import tables
 from ctapipe.core.traits import ComponentNameList
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN, N_GAINS
 
@@ -55,18 +56,28 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         Method that combines sliced results to reduce memory load
         Can only be called after the file with the sliced results has been saved to disk
         """
+        already_combined = False
+        with tables.open_file(self.output_path, mode="r") as f:
+            keys = list(f.root._v_children)
+            if "data_combined" in keys:
+                log.error(
+                    "Trying to combine results that already contain combined data"
+                )
+                already_combined = True
 
         # re-open results
-        pedestalContainers = next(
-            NectarCAMPedestalContainers.from_hdf5(self.output_path)
-        )
+        if already_combined:
+            pedestalContainers = NectarCAMPedestalContainers.from_hdf5(
+                self.output_path,
+                slice_index="combined",
+            )
+        else:
+            pedestalContainers = NectarCAMPedestalContainers.from_hdf5(self.output_path)
+
         # Loop over sliced results to fill the combined results
-        if "data_combined" in pedestalContainers.containers.keys():
-            log.error("Trying to combine results that already contain combined data")
         self.log.info("Combine sliced results")
-        for i, (_, pedestalContainer) in enumerate(
-            pedestalContainers.containers.items()
-        ):
+        for i, _pedestalContainer in enumerate(pedestalContainers):
+            pedestalContainer = list(_pedestalContainer.containers.values())[0]
             if i == 0:
                 # initialize fields for the combined results based on first slice
                 nsamples = pedestalContainer.nsamples

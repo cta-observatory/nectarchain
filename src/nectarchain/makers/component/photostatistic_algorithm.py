@@ -94,8 +94,8 @@ class PhotoStatisticAlgorithm(Component):
             ],
             dtype=bool,
         )
-        out["SPE_resolution"] = SPE_result.resolution[mask_SPE].T[0]
-        out["SPE_high_gain"] = SPE_result.high_gain[mask_SPE].T[0]
+        out["SPE_resolution"] = SPE_result.resolution[mask_SPE].T
+        out["SPE_high_gain"] = SPE_result.high_gain[mask_SPE].T
 
         out["pixels_id"] = SPEFFPed_intersection
         out["FFcharge_hg"] = ChargesComponent.select_charges_hg(
@@ -120,7 +120,7 @@ class PhotoStatisticAlgorithm(Component):
         try:
             self.__FFcharge_hg[0] * self.__FFcharge_lg[0] * self.__Pedcharge_hg[
                 0
-            ] * self.__Pedcharge_lg[0] * self.__SPE_resolution * self._pixels_id
+            ] * self.__Pedcharge_lg[0] * self.__SPE_resolution[0] * self._pixels_id
         except Exception as e:
             log.error(e, exc_info=True)
             raise e
@@ -132,11 +132,13 @@ class PhotoStatisticAlgorithm(Component):
         mask = np.array(
             [pixel_id in pixels_id for pixel_id in self._pixels_id], dtype=bool
         )
+        gainHG_err = self.gainHG_err * mask
+        gainLG_err = self.gainLG_err * mask
         self._results.high_gain = np.array(
-            (self.gainHG * mask, np.zeros(self.npixels), np.zeros(self.npixels))
+            (self.gainHG * mask, gainHG_err, gainHG_err)
         ).T
         self._results.low_gain = np.array(
-            (self.gainLG * mask, np.zeros(self.npixels), np.zeros(self.npixels))
+            (self.gainLG * mask, gainLG_err, gainLG_err)
         ).T
         self._results.is_valid = mask
 
@@ -144,7 +146,7 @@ class PhotoStatisticAlgorithm(Component):
         if figpath:
             os.makedirs(figpath, exist_ok=True)
             fig = __class__.plot_correlation(
-                self._results.high_gain.T[0], self.__SPE_high_gain
+                self._results.high_gain.T[0], self.__SPE_high_gain[0]
             )
             fig.savefig(f"{figpath}/plot_correlation_Photo_Stat_SPE.pdf")
             fig.clf()
@@ -286,7 +288,39 @@ class PhotoStatisticAlgorithm(Component):
             np.power(self.sigmaChargeHG, 2)
             - np.power(self.sigmaPedHG, 2)
             - np.power(self.BHG * self.meanChargeHG, 2)
-        ) / (self.meanChargeHG * (1 + np.power(self.SPE_resolution, 2)))
+        ) / (self.meanChargeHG * (1 + np.power(self.SPE_resolution[0], 2)))
+
+    @property
+    def gainHG_err(self) -> float:
+        """Calculates and returns the gain for high gain charge data.
+
+        Returns:
+            float: The gain for high gain charge data.
+        """
+        return np.sqrt(
+            np.power(
+                self.gainHG
+                * (-2 * self.SPE_resolution[0])
+                * np.mean(self.SPE_resolution[1:], axis=0),
+                2,
+            )
+        )
+
+    @property
+    def gainLG_err(self) -> float:
+        """Calculates and returns the gain for high gain charge data.
+
+        Returns:
+            float: The gain for high gain charge data.
+        """
+        return np.sqrt(
+            np.power(
+                self.gainLG
+                * (-2 * self.SPE_resolution[0])
+                * np.mean(self.SPE_resolution[1:], axis=0),
+                2,
+            )
+        )
 
     @property
     def sigmaPedLG(self) -> float:
@@ -357,7 +391,7 @@ class PhotoStatisticAlgorithm(Component):
             np.power(self.sigmaChargeLG, 2)
             - np.power(self.sigmaPedLG, 2)
             - np.power(self.BLG * self.meanChargeLG, 2)
-        ) / (self.meanChargeLG * (1 + np.power(self.SPE_resolution, 2)))
+        ) / (self.meanChargeLG * (1 + np.power(self.SPE_resolution[0], 2)))
 
     @property
     def results(self):
