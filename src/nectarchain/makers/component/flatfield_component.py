@@ -72,7 +72,7 @@ class FlatFieldComponent(NectarCAMComponent):
     ).tag(config=True)
 
     charge_extraction_method = Unicode(
-        defaut_value=None,
+        default_value=None,
         help="name of the charge extraction method",
         allow_none=True,
     ).tag(config=True)
@@ -102,6 +102,9 @@ class FlatFieldComponent(NectarCAMComponent):
         log.info(f"List of bad pixels : {self.bad_pix}")
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        log.debug(
+            f"charge extraction method type: {type(self.charge_extraction_method)}"
+        )
         if event.trigger.event_type.value == EventType.FLATFIELD.value:
             # print("event :", (self.__event_id, self.__event_type))
             self.__event_id.append(np.uint32(event.index.event_id))
