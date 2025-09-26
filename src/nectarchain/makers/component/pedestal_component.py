@@ -496,8 +496,6 @@ class PedestalEstimationComponent(NectarCAMComponent):
         self._waveformsContainers = waveformsContainers.containers[
             EventType.SKY_PEDESTAL
         ]
-        # log.info('JPL: waveformsContainers=',waveformsContainers.containers[
-        # EventType.SKY_PEDESTAL].nsamples)
 
         # Check if waveforms container is empty
         if self._waveformsContainers is None:
