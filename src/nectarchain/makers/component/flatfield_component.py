@@ -171,7 +171,7 @@ class FlatFieldComponent(NectarCAMComponent):
             self.__FF_coef.append(FF_coef)
 
     @staticmethod
-    def subtract_pedestal(wfs, window=20):
+    def subtract_pedestal_from_first_samples(wfs, window=20):
         """
         Subtract the pedestal defined as the average of the first samples of each trace
 
