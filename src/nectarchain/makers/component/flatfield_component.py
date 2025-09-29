@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Bool, Integer, List, Unicode
+from ctapipe.core.traits import Bool, Integer, List, Path, Unicode
 from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
 from ctapipe.image.extractor import LocalPeakWindowSum  # noqa: F401
 from ctapipe_io_nectarcam import constants
@@ -10,6 +10,7 @@ from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from traitlets.config.loader import Config
 
 from nectarchain.data.container import FlatFieldContainer
+from nectarchain.data.container.pedestal_container import NectarCAMPedestalContainer
 from nectarchain.makers.component import NectarCAMComponent
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -56,6 +57,12 @@ class FlatFieldComponent(NectarCAMComponent):
         help="the duration of the extraction window in ns",
     ).tag(config=True)
 
+    pedestal_file = Path(
+        default_value=None,
+        help="Path to h5 file with pedestal calibration coefficients",
+        allow_none=True,
+    ).tag(config=True)
+
     gain = List(
         default_value=None,
         help="default gain value",
@@ -93,6 +100,7 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__amp_int_per_pix_per_event = []
         self.__FF_coef = []
         self.__bad_pixels = []
+        self.__pedestal_container = None
 
         log.info(f"Charge extraction method : {self.charge_extraction_method}")
         log.info(
@@ -100,6 +108,24 @@ class FlatFieldComponent(NectarCAMComponent):
         )
         log.info(f"Gain : {self.gain}")
         log.info(f"List of bad pixels : {self.bad_pix}")
+
+        try:
+            self.__pedestal_container = next(
+                NectarCAMPedestalContainer.from_hdf5(
+                    self.pedestal_file, group_name="data_combined"
+                )
+            )
+            if (
+                self.__pedestal_container["pedestal_mean_hg"] is None
+                or self.__pedestal_container["pedestal_mean_lg"] is None
+            ):
+                raise ValueError("Pedestal container is not filled")
+            log.info(f"Loading pedestals from {self.pedestal_file}")
+        except Exception as e:
+            log.warning(f"Could not load pedestal file {self.pedestal_file}: {e}")
+            log.warning(
+                "Computing pedestal as mean of first 20 samples of the waveform"
+            )
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         log.debug(
@@ -113,8 +139,12 @@ class FlatFieldComponent(NectarCAMComponent):
 
             wfs = event.r0.tel[0].waveform
 
-            # subtract pedestal using the mean of the 20 first samples
-            wfs_pedsub = self.subtract_pedestal(wfs, 20)
+            # subtract pedestal container if filled
+            # otherwise use the mean of the 20 first samples
+            if self.__pedestal_container is not None:
+                wfs_pedsub = self.subtract_pedestal_from_container(wfs)
+            else:
+                wfs_pedsub = self.subtract_pedestal_from_first_samples(wfs, window=20)
 
             # mask bad pixels
             self.__bad_pixels = np.array(self.bad_pix)
@@ -169,6 +199,23 @@ class FlatFieldComponent(NectarCAMComponent):
             # flat-field coefficients
             FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
             self.__FF_coef.append(FF_coef)
+
+    def subtract_pedestal_from_container(self, wfs):
+        """
+        Substract the pedestal from a given `NectarCAMPedestalContainer`
+
+        Args:
+            wfs: raw waveforms
+
+        Returns:
+            wfs_pedsub: waveforms substracted from the pedestal
+        """
+
+        wfs_pedsub = np.copy(wfs)
+        wfs_pedsub[constants.HIGH_GAIN] -= self.__pedestal_container["pedestal_mean_hg"]
+        wfs_pedsub[constants.LOW_GAIN] -= self.__pedestal_container["pedestal_mean_lg"]
+
+        return wfs_pedsub
 
     @staticmethod
     def subtract_pedestal_from_first_samples(wfs, window=20):
