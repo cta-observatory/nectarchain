@@ -4,10 +4,13 @@ import math
 
 import numpy as np
 from ctapipe.core.component import Component
+from ctapipe_io_nectarcam import constants
 from iminuit import Minuit
 from scipy import interpolate, signal
 from scipy.special import gammainc
 from scipy.stats import chi2, norm
+
+from ..data.container.core import NectarCAMContainer
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -68,6 +71,77 @@ class ComponentUtils:
             "componentName is not a valid component, this component is not known as a "
             "child of NectarCAMComponent"
         )
+
+
+class ContainerUtils:
+    @staticmethod
+    def add_missing_pixels_to_container(container: NectarCAMContainer):
+        """
+        Zero-pads fields of `NectarCAMContainer`s with missing pixels (due to e.g. an
+        incomplete camera). For boolean arrays related to pixel status, one-padding is
+        applied.
+        """
+
+        # Make sure the container has `pixels_id` values
+        try:
+            pixels_id_input = container.pixels_id
+        except Exception as e:
+            raise ValueError(f"{container} has no field named `pixels_id`: {e}")
+
+        # Do nothing if there are no missing pixels
+        if len(pixels_id_input) == constants.N_PIXELS:
+            log.info("Input container already contains data for all pixels!")
+            return
+
+        log.info(
+            f"Input container contains data for "
+            f"{len(pixels_id_input)}/{constants.N_PIXELS} pixels, "
+            "will add missing pixels and fill missing-pixel data with NaN values"
+        )
+
+        log.debug(f"Original container: {container}")
+
+        for name, field in zip(container.keys(), container.values()):
+            # Update the pixels_id with the full camera
+            if name == "pixels_id":
+                setattr(
+                    container,
+                    "pixels_id",
+                    constants.PIXEL_INDEX.astype(pixels_id_input.dtype),
+                )
+            elif isinstance(field, np.ndarray):
+                # Find pixel axis if there is one
+                pixel_axis = None
+                for i, dim in enumerate(field.shape):
+                    if dim == len(pixels_id_input):
+                        pixel_axis = i
+                        break
+                if pixel_axis is None:
+                    continue
+
+                # Reshape fields to full camera with NaN values for missing pixels
+                # One-padding for boolean / np.int8 arrays of failing/missing pixels
+                # NOTE: NectarCAMPedestalContainer stores bad pixels as np.int8
+                shape_new_field = list(field.shape)
+                shape_new_field[pixel_axis] = constants.N_PIXELS
+                if field.dtype == bool or field.dtype == np.int8:
+                    new_field = np.ones(shape_new_field, dtype=field.dtype)
+                else:
+                    new_field = np.full(shape_new_field, np.nan, dtype=field.dtype)
+
+                # Copy data in slices so that the correct axis is zero/one-padded
+                # Also sorts the arrays in terms of `PIXEL_INDEX`
+                pixel_pos = np.searchsorted(constants.PIXEL_INDEX, pixels_id_input)
+                slc = [slice(None)] * field.ndim
+                slc[pixel_axis] = pixel_pos
+                new_field[tuple(slc)] = field
+
+                # Update the container
+                setattr(container, name, new_field)
+
+        log.debug(f"Updated container: {container}")
+
+        return
 
 
 class multiprocessing:
