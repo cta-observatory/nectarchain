@@ -79,124 +79,145 @@ class TestWaveformsNectarCAMCalibrationTool:
         assert output.wfs_hg.dtype == np.uint16
         assert output.wfs_lg.dtype == np.uint16
 
-    def test_base(self):
+    def test_base_1(self):
+        """
+        Test basic functionality, including IO on disk
+        """
+        self._test_base(None, None)
+
+    def test_base_2(self):
+        """
+        Test basic functionality, including IO on disk
+        """
+        self._test_base(10, None)
+
+    def test_base_3(self):
+        """
+        Test basic functionality, including IO on disk
+        """
+        self._test_base(None, 10)
+
+    def test_base_4(self):
+        """
+        Test basic functionality, including IO on disk
+        """
+        self._test_base(None, 11)
+
+    def test_base_5(self):
+        """
+        Test basic functionality, including IO on disk
+        """
+        self._test_base(10, 8)
+
+    def test_base_6(self):
+        """
+        Test basic functionality, including IO on disk
+        """
+        self._test_base(None, 50)
+
+    def _test_base(self, _max_events, _events_per_slice):
         """
         Test basic functionality, including IO on disk
         """
 
-        events_per_slice = [None, None, 10, 11, 8]
-        max_events = [None, 10, None, None, 10]
-
-        for _max_events, _events_per_slice in zip(max_events, events_per_slice):
-            for i, run_number in enumerate(self.RUNS["Run number"]):
-                run_file = self.RUNS["Run file"][i]
-                n_pixels = self.RUNS["N pixels"][i]
-                with tempfile.TemporaryDirectory() as tmpdirname:
-                    outfile = tmpdirname + "/waveforms.h5"
-
-                    # run tool
-                    tool = WaveformsNectarCAMCalibrationTool(
-                        run_number=run_number,
-                        run_file=run_file,
-                        max_events=_max_events,
-                        events_per_slice=_events_per_slice,
-                        log_level=0,
-                        output_path=outfile,
-                        overwrite=self.OVERWRITE,
-                    )
-
-                    tool.setup()
-                    nevents = len(tool.event_source)
-                    assert (
-                        nevents == self.RUNS["nevents"][i]
-                        if _max_events is None
-                        else _max_events
-                    )
-                    tool.start()
-                    output_containers = tool.finish(return_output_component=True)[0]
-                    assert isinstance(output_containers, WaveformsContainers)
-                    output = output_containers.containers[self.RUNS["eventType"]]
-                    assert isinstance(output, WaveformsContainer)
-                    # Check output in memory
-                    if (
-                        _events_per_slice is not None
-                        and nevents % _events_per_slice == 0
-                    ):
-                        assert output.nevents is None
+        for i, run_number in enumerate(self.RUNS["Run number"]):
+            run_file = self.RUNS["Run file"][i]
+            n_pixels = self.RUNS["N pixels"][i]
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                outfile = tmpdirname + "/waveforms.h5"
+                # run tool
+                tool = WaveformsNectarCAMCalibrationTool(
+                    run_number=run_number,
+                    run_file=run_file,
+                    max_events=_max_events,
+                    events_per_slice=_events_per_slice,
+                    log_level=0,
+                    output_path=outfile,
+                    overwrite=self.OVERWRITE,
+                )
+                tool.setup()
+                nevents = len(tool.event_source)
+                assert (
+                    nevents == self.RUNS["nevents"][i]
+                    if _max_events is None
+                    else _max_events
+                )
+                tool.start()
+                output_containers = tool.finish(return_output_component=True)[0]
+                assert isinstance(output_containers, WaveformsContainers)
+                output = output_containers.containers[self.RUNS["eventType"]]
+                assert isinstance(output, WaveformsContainer)
+                # Check output in memory
+                if _events_per_slice is not None and nevents % _events_per_slice == 0:
+                    assert output.nevents is None
+                else:
+                    assert output.nsamples == N_SAMPLES
+                    if _events_per_slice is None:
+                        assert (
+                            output.nevents == nevents
+                        )  # nevents has been validated before
                     else:
-                        assert output.nsamples == N_SAMPLES
-                        if _events_per_slice is None:
-                            assert (
-                                output.nevents == nevents
-                            )  # nevents has been validated before
-                        else:
-                            assert output.nevents == nevents % _events_per_slice
-
-                        self.general_structure_testing(
-                            output,
-                            (
-                                nevents
-                                if _events_per_slice is None
-                                else nevents % _events_per_slice
-                            ),
-                            n_pixels,
-                            run_number,
-                        )
-
-                        if _events_per_slice is None and _max_events is None:
-                            # content only checked for the full run
-                            assert np.min(output.ucts_timestamp) == np.uint64(
-                                self.RUNS["expected_ucts_timestamp_min"][i]
-                            )
-                            assert np.max(output.ucts_timestamp) == np.uint64(
-                                self.RUNS["expected_ucts_timestamp_max"][i]
-                            )
-                            assert output.wfs_lg.min() == self.RUNS["wfs_lg_min"][i]
-                            assert output.wfs_lg.max() == self.RUNS["wfs_lg_max"][i]
-                            assert (
-                                int(10 * output.wfs_lg.mean())
-                                == self.RUNS["wfs_lg_mean"][i]
-                            )
-                            assert (
-                                int(10 * output.wfs_lg.std())
-                                == self.RUNS["wfs_lg_std"][i]
-                            )
-                            assert output.wfs_hg.min() == self.RUNS["wfs_hg_min"][i]
-                            assert output.wfs_hg.max() == self.RUNS["wfs_hg_max"][i]
-                            assert (
-                                int(10 * output.wfs_hg.mean())
-                                == self.RUNS["wfs_hg_mean"][i]
-                            )
-                            assert (
-                                int(10 * output.wfs_hg.std())
-                                == self.RUNS["wfs_hg_std"][i]
-                            )
-
-                    # Check output on disk
-                    assert Path(outfile).exists()
-
-                    waveformsContainers = WaveformsContainers.from_hdf5(outfile)
-                    ncontainers = 0
-                    for container in waveformsContainers:
-                        ncontainers += 1
-                        assert isinstance(container, WaveformsContainers)
-                        output = container.containers[self.RUNS["eventType"]]
-                        if _events_per_slice is None:
-                            expected_nevents = nevents
-                        else:
-                            if nevents % _events_per_slice == 0:
-                                expected_nevents = _events_per_slice
-                            else:
-                                if ncontainers == 1:
-                                    expected_nevents = nevents % _events_per_slice
-                                else:
-                                    expected_nevents = _events_per_slice
-                        self.general_structure_testing(
-                            output, expected_nevents, n_pixels, run_number
-                        )
-
-                    assert (
-                        ncontainers == 1
-                        if _events_per_slice is None
-                        else round(nevents / _events_per_slice)
+                        assert output.nevents == nevents % _events_per_slice
+                    self.general_structure_testing(
+                        output,
+                        (
+                            nevents
+                            if _events_per_slice is None
+                            else nevents % _events_per_slice
+                        ),
+                        n_pixels,
+                        run_number,
                     )
+                    if _events_per_slice is None and _max_events is None:
+                        # content only checked for the full run
+                        assert np.min(output.ucts_timestamp) == np.uint64(
+                            self.RUNS["expected_ucts_timestamp_min"][i]
+                        )
+                        assert np.max(output.ucts_timestamp) == np.uint64(
+                            self.RUNS["expected_ucts_timestamp_max"][i]
+                        )
+                        assert output.wfs_lg.min() == self.RUNS["wfs_lg_min"][i]
+                        assert output.wfs_lg.max() == self.RUNS["wfs_lg_max"][i]
+                        assert (
+                            int(10 * output.wfs_lg.mean())
+                            == self.RUNS["wfs_lg_mean"][i]
+                        )
+                        assert (
+                            int(10 * output.wfs_lg.std()) == self.RUNS["wfs_lg_std"][i]
+                        )
+                        assert output.wfs_hg.min() == self.RUNS["wfs_hg_min"][i]
+                        assert output.wfs_hg.max() == self.RUNS["wfs_hg_max"][i]
+                        assert (
+                            int(10 * output.wfs_hg.mean())
+                            == self.RUNS["wfs_hg_mean"][i]
+                        )
+                        assert (
+                            int(10 * output.wfs_hg.std()) == self.RUNS["wfs_hg_std"][i]
+                        )
+                # Check output on disk
+                assert Path(outfile).exists()
+                waveformsContainers = WaveformsContainers.from_hdf5(outfile)
+                for ncontainers, container in enumerate(waveformsContainers):
+                    assert isinstance(container, WaveformsContainers)
+                    output = container.containers[self.RUNS["eventType"]]
+                    if _events_per_slice is None:
+                        expected_nevents = nevents
+                    else:
+                        if nevents % _events_per_slice == 0:
+                            expected_nevents = _events_per_slice
+                        else:
+                            if (
+                                nevents - ((ncontainers) * _events_per_slice)
+                                < _events_per_slice
+                            ):
+                                expected_nevents = nevents % _events_per_slice
+                            else:
+                                expected_nevents = _events_per_slice
+                    self.general_structure_testing(
+                        output, expected_nevents, n_pixels, run_number
+                    )
+                assert (
+                    ncontainers == 0
+                    if _events_per_slice is None or _events_per_slice > nevents
+                    else round(nevents / _events_per_slice)
+                )

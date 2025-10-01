@@ -67,7 +67,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--extractor_kwargs",
-    default={"window_width": 7, "window_shift": 3},
+    default={"window_width": 8, "window_shift": 4},
     help="charge extractor kwargs",
     type=json.loads,
 )
@@ -100,6 +100,16 @@ parser.add_argument(
     help="run number of which the SPE fit has ever been performed",
     type=int,
 )
+parser.add_argument(
+    "--SPE_config",
+    choices=[
+        "HHVfree",
+        "HHVfixed",
+        "nominal",
+    ],
+    help="SPE configuration to use, either HHVfree, HHVfixed or nominal.\
+        From ICRC2025 proceedings, we recommend to use resoltion at nominal for the SPE fit.",
+)
 
 args = parser.parse_args()
 
@@ -125,31 +135,32 @@ def main(
     str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
         method=args.method, extractor_kwargs=args.extractor_kwargs
     )
-    try:
-        log.info("try to access SPE computed at HHV with fixed pp and n")
+    if args.SPE_config is None:
+        raise ValueError(
+            "You must specify the SPE_config to use, either HHVfree, HHVfixed or nominal"
+        )
+    if args.SPE_config == "HHVfree":
         path = DataManagement.find_SPE_HHV(
             run_number=args.SPE_run_number,
             method=args.method,
             str_extractor_kwargs=str_extractor_kwargs,
+            free_pp_n=True,
         )
-    except Exception as e:
-        log.warning(e)
-        log.info("try to access SPE computed at HHV with free pp and n")
-        try:
-            path = DataManagement.find_SPE_HHV(
-                run_number=args.SPE_run_number,
-                method=args.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                free_pp_n=True,
-            )
-        except Exception as _e:
-            log.warning(_e)
-            path = DataManagement.find_SPE_nominal(
-                run_number=args.SPE_run_number,
-                method=args.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                free_pp_n=False,
-            )
+    elif args.SPE_config == "HHVfixed":
+        path = DataManagement.find_SPE_HHV(
+            run_number=args.SPE_run_number,
+            method=args.method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            free_pp_n=False,
+        )
+    elif args.SPE_config == "nominal":
+        path = DataManagement.find_SPE_nominal(
+            run_number=args.SPE_run_number,
+            method=args.method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            free_pp_n=False,
+        )
+    log.info(f"Using SPE path : {path[0]}")
 
     for _FF_run_number, _Ped_run_number, _max_events in zip(
         FF_run_number, Ped_run_number, max_events

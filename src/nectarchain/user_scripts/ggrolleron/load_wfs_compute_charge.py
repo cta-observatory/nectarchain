@@ -171,6 +171,7 @@ if __name__ == "__main__":
 
     # to quiet numba
     logging.getLogger("numba").setLevel(logging.WARNING)
+
     # run of interest
     # spe_run_number = [2633,2634,3784]
     # ff_run_number = [2608]
@@ -179,8 +180,17 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     kwargs = copy.deepcopy(vars(args))
-
     kwargs["log_level"] = args.verbosity
+
+    if any("pydevd" in mod for mod in sys.modules):
+        kwargs["max_events"] = [1000]
+        kwargs["reload_wfs"] = False
+        kwargs["run_number"] = [3942]
+        kwargs["overwrite"] = True
+        kwargs["method"] = "LocalPeakWindowSum"
+        kwargs["extractor_kwargs"] = {"window_width": 10, "peak_search_window": 4}
+        kwargs["events_per_slice"] = 800
+        kwargs["log_level"] = "DEBUG"
 
     os.makedirs(os.environ.get("NECTARCHAIN_LOG", "/tmp"), exist_ok=True)
     os.makedirs(
