@@ -22,6 +22,10 @@ from nectarchain.dqm.db_utils import DQMDB
 logging.basicConfig(format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+prefix = "NectarCAM"
+cameras = [f"{prefix}" + "QM"]
+cameras.extend([f"{prefix+str(i)}" for i in range(2, 10)])
+
 # Option and argument parser
 parser = argparse.ArgumentParser(
     description="Fetch a DQM output on DIRAC, parse it and feed ZODB",
@@ -48,6 +52,14 @@ parser.add_argument(
     default=None,
     help="process a specific run or a list of runs.",
 )
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=cameras,
+    default=[camera for camera in cameras if "QM" in camera][0],
+    help="Process data for a specific NectarCAM camera. Default: Qualification Model.",
+    type=str,
+)
 args = parser.parse_args()
 
 if args.runs is None:
@@ -59,13 +71,13 @@ db_read_keys = list(db_read.root.keys())
 db_read.abort_and_close()
 
 for run in args.runs:
-    if not args.force and f"NectarCAM_Run{run}" in db_read_keys:
+    if not args.force and f"{args.camera}_Run{run}" in db_read_keys:
         logger.warning(
-            f'The run {run} is already present in the DB, will not parse this DQM run, or consider forcing it with the "--force" option.'
+            f'The run {run} is already present in the DB for the camera {args.camera}, will not parse this DQM run, or consider forcing it with the "--force" option.'
         )
         continue
 
-    lfn = f"{args.path}/NectarCAM_DQM_Run{run}.tar.gz"
+    lfn = f"{args.path}/{args.camera}/NectarCAM_DQM_Run{run}.tar.gz"
 
     if not os.path.exists(os.path.basename(lfn)):
         DIRAC.initialize()
@@ -83,7 +95,7 @@ for run in args.runs:
             tar.extractall(".")
     except FileNotFoundError as e:
         logger.warning(
-            f"Could not fetch DQM results from DIRAC for run {run}, received error {e}, skipping this run..."
+            f"Could not fetch DQM results from DIRAC for run ${args.camera} {run}, received error {e}, skipping this run..."
         )
         continue
 
@@ -108,7 +120,7 @@ for run in args.runs:
 
     try:
         db = DQMDB(read_only=False)
-        db.insert(f"NectarCAM_Run{run}", outdict)
+        db.insert(f"{args.camera}_Run{run}", outdict)
         db.commit_and_close()
     except ZEO.Exceptions.ClientDisconnected as e:
         logger.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
