@@ -13,6 +13,8 @@ from nectarchain.data.container import FlatFieldContainer
 from nectarchain.data.container.pedestal_container import NectarCAMPedestalContainer
 from nectarchain.makers.component import NectarCAMComponent
 
+from ...utils import ContainerUtils
+
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
@@ -100,7 +102,8 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__amp_int_per_pix_per_event = []
         self.__FF_coef = []
         self.__bad_pixels = []
-        self.__pedestal_container = None
+
+        self._init_pedestal_container()
 
         log.info(f"Charge extraction method : {self.charge_extraction_method}")
         log.info(
@@ -109,20 +112,39 @@ class FlatFieldComponent(NectarCAMComponent):
         log.info(f"Gain : {self.gain}")
         log.info(f"List of bad pixels : {self.bad_pix}")
 
-        try:
-            self.__pedestal_container = next(
-                NectarCAMPedestalContainer.from_hdf5(
-                    self.pedestal_file, group_name="data_combined"
+    def _init_pedestal_container(self):
+        self.__pedestal_container = None
+
+        if self.pedestal_file is not None:
+            group_names = ["data_combined", "data"]
+            exceptions = []
+            for group_name in group_names:
+                try:
+                    self.__pedestal_container = next(
+                        NectarCAMPedestalContainer.from_hdf5(
+                            self.pedestal_file, group_name=group_name
+                        )
+                    )
+                    if (
+                        self.__pedestal_container["pedestal_mean_hg"] is None
+                        or self.__pedestal_container["pedestal_mean_lg"] is None
+                    ):
+                        raise ValueError("Pedestal container is not filled")
+                    log.info(f"Loaded pedestals from {self.pedestal_file}")
+                    ContainerUtils.add_missing_pixels_to_container(
+                        self.__pedestal_container
+                    )
+                    break
+                except Exception as e:
+                    log.debug(f"Failed to load with group_name ``{group_name}``: {e}")
+                    log.debug("Adding exception to ``exceptions`` list")
+                    exceptions.append(e)
+            if self.__pedestal_container is None:
+                log.warning(
+                    f"Failed to load pedestal file {self.pedestal_file}: {exceptions}"
                 )
-            )
-            if (
-                self.__pedestal_container["pedestal_mean_hg"] is None
-                or self.__pedestal_container["pedestal_mean_lg"] is None
-            ):
-                raise ValueError("Pedestal container is not filled")
-            log.info(f"Loading pedestals from {self.pedestal_file}")
-        except Exception as e:
-            log.warning(f"Could not load pedestal file {self.pedestal_file}: {e}")
+
+        if self.__pedestal_container is None:
             log.warning(
                 "Computing pedestal as mean of first 20 samples of the waveform"
             )
