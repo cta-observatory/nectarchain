@@ -24,6 +24,7 @@ dependencies:
   - pip:
     - zeo
     - zodb
+    - persistent<6.2
     - mechanize
     - browser-cookie3
     - pyqtgraph

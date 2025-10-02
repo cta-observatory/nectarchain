@@ -26,6 +26,7 @@ dependencies = [
     "iminuit",
     "matplotlib",
     "pandas",
+    "persistent<6.2",
     "scipy",
     "zodb",
     "zeo",

@@ -1,7 +1,4 @@
-import sys
-
 import numpy as np
-import pytest
 
 # bokeh imports
 from bokeh.io import output_file, save
@@ -40,7 +37,6 @@ def test_make_camera_displays():
         make_camera_displays(test_dict, test_dict[runid], runid)
 
 
-@pytest.mark.skipif(sys.platform == "darwin")
 def test_bokeh(tmp_path):
     from nectarchain.dqm.bokeh_app.app_hooks import get_rundata, make_camera_displays
 
