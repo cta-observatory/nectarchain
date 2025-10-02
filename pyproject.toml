@@ -27,7 +27,7 @@ dependencies = [
     "matplotlib",
     "pandas",
     "scipy",
-    "zodb",
+    "zodb<6.1",
     "zeo",
     "lmfit",
     "h5py",

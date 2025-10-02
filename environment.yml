@@ -23,7 +23,7 @@ dependencies:
   - protozfits
   - pip:
     - zeo
-    - zodb
+    - zodb<6.1
     - mechanize
     - browser-cookie3
     - pyqtgraph
