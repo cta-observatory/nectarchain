@@ -15,6 +15,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.k = gaink
         self.Pix = None
         self.Samp = None
+        self.tel_id = None
         self.CameraAverage = None
         self.CameraAverage_ped = None
         self.counter_evt = None
@@ -39,18 +40,20 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.Pix = Pix
         self.Samp = Samp
 
+        self.tel_id = Reader1.subarray.tel_ids[0]
+
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+        self.camera = Reader1.subarray.tel[self.tel_id].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
 
         self.cmap = "gnuplot2"
 
     def process_event(self, evt, noped):
-        self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
+        self.pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels
+        pixel = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
         if len(pixel) < self.Pix:
             pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
             pixel = list(pixel)
@@ -59,12 +62,12 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
             pixels = pixel
 
         if self.r0:
-            waveforms = evt.r0.tel[0].waveform[self.k]
+            waveforms = evt.r0.tel[self.tel_id].waveform[self.k]
         else:
             # This should accommodate cases were the shape of waveforms is 2D
             # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
             # (1, 1855, 60) for single-gain channel
-            waveforms = evt.r1.tel[0].waveform
+            waveforms = evt.r1.tel[self.tel_id].waveform
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1

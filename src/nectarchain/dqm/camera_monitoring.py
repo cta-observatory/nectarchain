@@ -25,6 +25,7 @@ class CameraMonitoring(DQMSummary):
         self.camera = None
         self.cmap = None
         self.subarray = None
+        self.tel_id = None
         self.event_id = []
         self.event_times = []
         self.DrawerTemp = None
@@ -49,8 +50,9 @@ class CameraMonitoring(DQMSummary):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
+        self.tel_id = Reader1.subarray.tel_ids[0]
 
-        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+        self.camera = Reader1.subarray.tel[self.tel_id].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
         self.cmap = "gnuplot2"
@@ -58,7 +60,7 @@ class CameraMonitoring(DQMSummary):
         self.subarray = Reader1.subarray
 
         for i, evt1 in enumerate(Reader1):
-            self.run_start1 = evt1.nectarcam.tel[0].svc.date
+            self.run_start1 = evt1.nectarcam.tel[self.tel_id].svc.date
 
         SqlFileDate = astropytime.Time(self.run_start1, format="unix").iso.split(" ")[0]
         log.debug(f"SqlFileDate is {SqlFileDate}")

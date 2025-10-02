@@ -20,6 +20,7 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         self.Pix = None
         self.Samp = None
+        self.tel_id = None
         self.counter_evt = None
         self.counter_ped = None
 
@@ -51,10 +52,11 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.Samp = Samp
         self.counter_evt = 0
         self.counter_ped = 0
+        self.tel_id = Reader1.subarray.tel_ids[0]
 
     def process_event(self, evt, noped):
-        pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
-        pixels = evt.nectarcam.tel[0].svc.pixel_ids
+        pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels[self.k]
+        pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
         status = np.zeros(self.Pix, dtype=int)
         np.put(status, pixels, pixelBAD[pixels])
