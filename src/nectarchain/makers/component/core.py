@@ -6,8 +6,7 @@ from collections.abc import Iterable
 import numpy as np
 from ctapipe.containers import EventType
 from ctapipe.core import Component, TelescopeComponent
-from ctapipe.core.traits import ComponentNameList, Integer, Unicode
-from ctapipe.instrument import CameraGeometry
+from ctapipe.core.traits import ComponentNameList
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.constants import N_PIXELS
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
@@ -43,12 +42,31 @@ class NectarCAMComponent(TelescopeComponent):
     ).tag(config=True)
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        if len(subarray.tel_ids) != 1:
+            msg = "Subarray with more than one telescope is not supported"
+            log.error(msg)
+            raise ValueError(msg)
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
+        self.__tel_id = subarray.tel_ids[0]
+        self.__camera_name = subarray.tel[self.__tel_id].camera.geometry.name
+        self.__camera = subarray.tel[self.__tel_id].camera
         self.__pixels_id = parent._event_source.nectarcam_service.pixel_ids
         self.__run_number = parent.run_number
         self.__npixels = parent.npixels
+
+    @property
+    def tel_id(self):
+        return copy.deepcopy(self.__tel_id)
+
+    @property
+    def camera_name(self):
+        return copy.deepcopy(self.__camera_name)
+
+    @property
+    def camera(self):
+        return copy.deepcopy(self.__camera)
 
     @abstractmethod
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
@@ -80,20 +98,6 @@ class NectarCAMComponent(TelescopeComponent):
 
 
 class ArrayDataComponent(NectarCAMComponent):
-    TEL_ID = Integer(
-        default_value=0,
-        help="The telescope ID",
-        read_only=True,
-    ).tag(config=True)
-
-    CAMERA_NAME = Unicode(
-        default_value="NectarCam-003",
-        help="The camera name",
-        read_only=True,
-    ).tag(config=True)
-
-    CAMERA = CameraGeometry.from_name(CAMERA_NAME.default_value)
-
     # trigger_list = List(
     #    help="List of trigger(EventType) inside the instance",
     #    default_value=[],
@@ -104,9 +108,7 @@ class ArrayDataComponent(NectarCAMComponent):
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
         self.__nsamples = parent._event_source.nectarcam_service.num_samples
-
         self.trigger_list = []
-
         # data we want to compute
         self.__ucts_timestamp = {}
         self.__ucts_busy_counter = {}
@@ -216,25 +218,20 @@ class ArrayDataComponent(NectarCAMComponent):
 
         self.__event_id[f"{name}"].append(np.uint32(event.index.event_id))
         self.__ucts_timestamp[f"{name}"].append(
-            event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_timestamp
+            event.nectarcam.tel[self.tel_id].evt.ucts_timestamp
         )
         self.__event_type[f"{name}"].append(event.trigger.event_type.value)
         self.__ucts_busy_counter[f"{name}"].append(
-            event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_busy_counter
+            event.nectarcam.tel[self.tel_id].evt.ucts_busy_counter
         )
         self.__ucts_event_counter[f"{name}"].append(
-            event.nectarcam.tel[__class__.TEL_ID.default_value].evt.ucts_event_counter
+            event.nectarcam.tel[self.tel_id].evt.ucts_event_counter
         )
-        if (
-            event.nectarcam.tel[__class__.TEL_ID.default_value].evt.trigger_pattern
-            is None
-        ):
+        if event.nectarcam.tel[self.tel_id].evt.trigger_pattern is None:
             self.__trig_pattern_all[f"{name}"].append(np.empty((4, N_PIXELS)).T)
         else:
             self.__trig_pattern_all[f"{name}"].append(
-                event.nectarcam.tel[
-                    __class__.TEL_ID.default_value
-                ].evt.trigger_pattern.T
+                event.nectarcam.tel[self.tel_id].evt.trigger_pattern.T
             )
         broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
             event, self._pixels_id

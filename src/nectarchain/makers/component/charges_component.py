@@ -177,7 +177,7 @@ class ChargesComponent(ArrayDataComponent):
         __image = CtapipeExtractor.get_image_peak_time(
             imageExtractor(
                 np.array([wfs_hg_tmp, wfs_lg_tmp]),
-                self.TEL_ID,
+                self.tel_id,
                 None,
                 np.array([broken_pixels_hg, broken_pixels_lg]),
             )
@@ -260,7 +260,7 @@ class ChargesComponent(ArrayDataComponent):
             chargesContainer = ChargesContainer(
                 run_number=ChargesContainer.fields["run_number"].type(self._run_number),
                 npixels=ChargesContainer.fields["npixels"].type(self._npixels),
-                camera=self.CAMERA_NAME,
+                camera=self.camera_name,
                 pixels_id=ChargesContainer.fields["pixels_id"].dtype.type(
                     self._pixels_id
                 ),
@@ -473,7 +473,8 @@ class ChargesComponent(ArrayDataComponent):
     @staticmethod
     def create_from_waveforms(
         waveformsContainer: WaveformsContainer,
-        subarray=SubarrayDescription,
+        subarray: SubarrayDescription,
+        tel_id: int,
         method: str = "FullWaveformSum",
         **kwargs,
     ) -> ChargesContainer:
@@ -503,6 +504,7 @@ class ChargesComponent(ArrayDataComponent):
             waveformsContainer=waveformsContainer,
             channel=constants.HIGH_GAIN,
             subarray=subarray,
+            tel_id=tel_id,
             method=method,
             **kwargs,
         )
@@ -511,6 +513,7 @@ class ChargesComponent(ArrayDataComponent):
             waveformsContainer=waveformsContainer,
             channel=constants.LOW_GAIN,
             subarray=subarray,
+            tel_id=tel_id,
             method=method,
             **kwargs,
         )
@@ -526,8 +529,8 @@ class ChargesComponent(ArrayDataComponent):
         waveformsContainer: WaveformsContainer,
         channel: int,
         subarray: SubarrayDescription,
+        tel_id: int,
         method: str = "FullWaveformSum",
-        tel_id: int = None,
         **kwargs,
     ):
         """Compute charge from waveforms.
@@ -563,9 +566,6 @@ class ChargesComponent(ArrayDataComponent):
         # (TypeError :  inference is not possible with python <3.9 (Numba conflict bc
         # there is no inference...))
         from ..extractor.utils import CtapipeExtractor
-
-        if tel_id is None:
-            tel_id = __class__.TEL_ID.default_value
 
         # by setting selected_gain_channel to None, we can now pass to ctapipe extractor
         # waveforms in (n_ch, n_pix, n_samples)

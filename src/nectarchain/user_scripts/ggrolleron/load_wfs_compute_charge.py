@@ -185,7 +185,7 @@ if __name__ == "__main__":
     if any("pydevd" in mod for mod in sys.modules):
         kwargs["max_events"] = [1000]
         kwargs["reload_wfs"] = False
-        kwargs["run_number"] = [3942]
+        kwargs["run_number"] = [6511]
         kwargs["overwrite"] = True
         kwargs["method"] = "LocalPeakWindowSum"
         kwargs["extractor_kwargs"] = {"window_width": 10, "peak_search_window": 4}

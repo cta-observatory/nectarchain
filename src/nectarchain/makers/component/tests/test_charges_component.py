@@ -202,6 +202,7 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             waveforms_containers,
             subarray=instance.subarray,
             method=self.METHOD,
+            tel_id=instance.tel_id,
             extractor_kwargs=self.EXTRACTOR_KWARGS,
         )
         assert isinstance(output, ChargesContainers)
@@ -212,7 +213,8 @@ class TestChargesComponent(BaseTestArrayDataComponent):
         output = ChargesComponent.create_from_waveforms(
             waveforms_container_1,
             instance.subarray,
-            self.METHOD,
+            tel_id=instance.tel_id,
+            method=self.METHOD,
             extractor_kwargs=self.EXTRACTOR_KWARGS,
         )
         assert output.charges_hg.shape == waveforms_container_1.wfs_hg.shape[:2]
@@ -227,6 +229,7 @@ class TestChargesComponent(BaseTestArrayDataComponent):
                 waveforms_container_1,
                 channel=1000,
                 subarray=instance.subarray,
+                tel_id=instance.tel_id,
                 method=self.METHOD,
                 extractor_kwargs=self.EXTRACTOR_KWARGS,
             )
@@ -234,6 +237,7 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             waveforms_container_1,
             channel=constants.HIGH_GAIN,
             subarray=instance.subarray,
+            tel_id=instance.tel_id,
             method="FullWaveformSum",
         )
         assert output1.shape == waveforms_container_1.wfs_hg.shape[:2]
@@ -246,6 +250,7 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             waveforms_container_1,
             channel=constants.LOW_GAIN,
             subarray=instance.subarray,
+            tel_id=instance.tel_id,
             method="FullWaveformSum",
         )
         assert output1.shape == waveforms_container_1.wfs_lg.shape[:2]

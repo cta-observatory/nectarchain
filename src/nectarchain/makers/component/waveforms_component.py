@@ -28,8 +28,6 @@ class WaveformsComponent(ArrayDataComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-
-        self.__geometry = subarray.tel[self.TEL_ID].camera
         self.__wfs_hg = {}
         self.__wfs_lg = {}
 
@@ -41,7 +39,8 @@ class WaveformsComponent(ArrayDataComponent):
         nsamples: np.uint8,
         subarray: SubarrayDescription,
         pixels_id: int,
-        tel_id: int = None,
+        tel_id: int,
+        camera: str,
     ) -> WaveformsContainer:
         """Create a container for the extracted waveforms from a list of events.
 
@@ -53,20 +52,20 @@ class WaveformsComponent(ArrayDataComponent):
             nsamples (int): The number of samples in the waveforms.
             subarray (SubarrayDescription): The subarray description instance.
             pixels_id (int): The ID of the pixels to extract waveforms from.
+            tel_id (int): The ID of the telescope to extract waveforms from.
+            camera (str): The name of the camera.
 
         Returns:
             WaveformsContainer: A container object that contains the extracted waveforms
             and other relevant information.
         """
-        if tel_id is None:
-            tel_id = __class__.TEL_ID.default_value
 
         container = WaveformsContainer(
             run_number=run_number,
             npixels=npixels,
             nsamples=nsamples,
             subarray=subarray,
-            camera=__class__.CAMERA_NAME,
+            camera=camera,
             pixels_id=pixels_id,
         )
 
@@ -164,7 +163,7 @@ class WaveformsComponent(ArrayDataComponent):
                 npixels=WaveformsContainer.fields["npixels"].type(self._npixels),
                 nsamples=WaveformsContainer.fields["nsamples"].type(self._nsamples),
                 # subarray=self.subarray,
-                camera=self.CAMERA_NAME,
+                camera=self.camera_name,
                 pixels_id=WaveformsContainer.fields["pixels_id"].dtype.type(
                     self._pixels_id
                 ),
@@ -269,21 +268,13 @@ class WaveformsComponent(ArrayDataComponent):
         return res
 
     @property
-    def _geometry(self):
-        """Returns the private __geometry attribute of the WaveformsMaker class.
-
-        :return: The value of the private __geometry attribute.
-        """
-        return self.__geometry
-
-    @property
     def geometry(self):
         """Returns a deep copy of the geometry attribute.
 
         Returns:
             A deep copy of the geometry attribute.
         """
-        return copy.deepcopy(self.__geometry)
+        return self.camera.geometry
 
     @property
     def _wfs_lg(self):

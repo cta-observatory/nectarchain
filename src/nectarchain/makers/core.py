@@ -348,8 +348,6 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     def _setup_eventsource(self, *args, **kwargs):
         self._load_eventsource(*args, **kwargs)
-        self.__npixels = self._event_source.nectarcam_service.num_pixels
-        self.__pixels_id = self._event_source.nectarcam_service.pixel_ids
 
     def _setup_components(self, *args, **kwargs):
         self.log.info("setup of components")
@@ -503,6 +501,17 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             raise e
 
     @property
+    def tel_id(self):
+        """
+        Getter method for the tel_id attribute.
+        """
+        if len(self._event_source.subarray.tel_ids) != 1:
+            msg = "Subaray with more than one telescope is not supported"
+            self.log.error(msg)
+            raise ValueError(msg)
+        return self._event_source.subarray.tel_ids[0]
+
+    @property
     def event_source(self):
         """
         Getter method for the _event_source attribute.
@@ -527,28 +536,28 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         """
         Getter method for the _npixels attribute.
         """
-        return self.__npixels
+        return self._event_source.nectarcam_service.num_pixels
 
     @property
     def _pixels_id(self):
         """
         Getter method for the _pixels_id attribute.
         """
-        return self.__pixels_id
+        return self._event_source.nectarcam_service.pixel_ids
 
     @property
     def npixels(self):
         """
         Getter method for the npixels attribute.
         """
-        return copy.deepcopy(self.__npixels)
+        return copy.deepcopy(self._npixels)
 
     @property
     def pixels_id(self):
         """
         Getter method for the pixels_id attribute.
         """
-        return copy.deepcopy(self.__pixels_id)
+        return copy.deepcopy(self._pixels_id)
 
 
 class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
