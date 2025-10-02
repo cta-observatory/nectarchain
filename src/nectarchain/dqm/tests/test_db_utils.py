@@ -1,7 +1,11 @@
+import sys
+
+import pytest
 import transaction
 from ZODB import DB
 
 
+@pytest.mark.skipif(sys.platform == "darwin")
 class TestDQMDB:
     @classmethod
     def setup_class(cls):

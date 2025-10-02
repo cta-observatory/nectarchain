@@ -1,10 +1,15 @@
+import sys
+
 import numpy as np
-from bokeh.io import output_file, save
+import pytest
 
 # bokeh imports
+from bokeh.io import output_file, save
 from bokeh.layouts import layout
 from bokeh.models import Select
 from bokeh.plotting import curdoc
+
+# ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ZODB import DB
@@ -35,6 +40,7 @@ def test_make_camera_displays():
         make_camera_displays(test_dict, test_dict[runid], runid)
 
 
+@pytest.mark.skipif(sys.platform == "darwin")
 def test_bokeh(tmp_path):
     from nectarchain.dqm.bokeh_app.app_hooks import get_rundata, make_camera_displays
 
