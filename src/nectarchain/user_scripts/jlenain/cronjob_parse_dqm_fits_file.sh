@@ -21,7 +21,7 @@ function help ()
     usage
     cat <<EOF
 
-This script dynamically launch NectarCAM DQM runs on DIRAC after data transfer.
+This script parse DQM results and feed them into the ZODB data base for visualization through Bokeh.
 
 OPTIONS:
      -h                       This help message.
