@@ -1,10 +1,12 @@
 import numpy as np
-from bokeh.io import output_file, save
 
 # bokeh imports
+from bokeh.io import output_file, save
 from bokeh.layouts import layout
 from bokeh.models import Select
 from bokeh.plotting import curdoc
+
+# ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ZODB import DB
