@@ -40,6 +40,11 @@ class DataManagement:
         ----------
         run_number: int
             the run number
+        search_on_GRID: bool
+            If enabled, search for data on the EGI grid via DIRAC, and fetch
+            them automatically
+        camera: str
+            The NectarCAM camera for which data are search for. (Default: NectarCAMQM)
 
         Returns
         -------
