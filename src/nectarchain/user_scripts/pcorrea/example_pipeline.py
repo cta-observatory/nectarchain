@@ -19,6 +19,7 @@ os.environ["NECTARCAMDATA"] = "/data/users/pcorrea"
 
 ped_run_number = 6249
 FF_run_number = 6252
+FF_SPE_run_number = 3936
 max_events = 3000
 events_per_slice = 1000
 progress_bar = True
@@ -32,7 +33,7 @@ gain_array[0] = gain_array[0] * gain_default
 gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
 
 config = Config()
-config.FlatfieldNectarCAMCalibrationTool.gain = gain_array.tolist()
+# config.FlatfieldNectarCAMCalibrationTool.gain = gain_array.tolist()
 
 
 def main():
@@ -40,6 +41,7 @@ def main():
         config=config,
         ped_run_number=ped_run_number,
         FF_run_number=FF_run_number,
+        FF_SPE_run_number=FF_SPE_run_number,
         max_events=max_events,
         events_per_slice=events_per_slice,
         progress_bar=progress_bar,

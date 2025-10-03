@@ -113,6 +113,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             config=config,
             run_number=self.FF_run_number,
             pedestal_file=self.ped_output_path,
+            gain_file=self.gain_output_path,
             output_path=self.FF_output_path,
         )
 
@@ -194,10 +195,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         return config
 
     def start(self):
-        # run_tool(self.pedestal_tool)
+        run_tool(self.pedestal_tool)
         run_tool(self.gain_tool)
-        # run_tool(self.flatfield_tool)
-        pass
+        run_tool(self.flatfield_tool)
 
     def finish(self):
         # TODO: write calibration file
