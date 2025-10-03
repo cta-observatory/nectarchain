@@ -32,7 +32,9 @@ class TestCameraMonitoring:
         sql_file_date = None
         for evt in tqdm(reader1, total=1):
             run_start1 = evt.nectarcam.tel[tel_id].svc.date
-            sql_file_date = astropytime.Time(run_start1, format="unix").iso.split(" ")[0]
+            sql_file_date = astropytime.Time(run_start1, format="unix").iso.split(" ")[
+                0
+            ]
 
         assert Pix + Samp == 1915
         assert sql_file_date == "2023-01-23"
