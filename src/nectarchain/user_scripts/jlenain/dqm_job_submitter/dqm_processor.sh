@@ -114,7 +114,7 @@ echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
 # cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 $NECTARCAMDATA $NECTARDIR -i $LISTRUNS"
-cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --runnb $runnb $NECTARCAMDATA $NECTARDIR"
+cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --runnb $runnb --camera $camera $NECTARCAMDATA $NECTARDIR"
 echo \$cmd
 eval \$cmd
 EOF
