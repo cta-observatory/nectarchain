@@ -31,6 +31,11 @@ def main():
     """
     Main DQM script
     """
+
+    prefix = "NectarCAM"
+    cameras = [f"{prefix}" + "QM"]
+    cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
+
     # Create an ArgumentParser object
     parser = argparse.ArgumentParser(
         description="NectarCAM Data Quality Monitoring tool"
@@ -76,6 +81,15 @@ def main():
         type=int,
     )
     parser.add_argument(
+        "-c",
+        "--camera",
+        choices=cameras,
+        default=[camera for camera in cameras if "QM" in camera][0],
+        help="""Process data for a specific NectarCAM camera.
+ Default: NectarCAMQM (Qualification Model).""",
+        type=str,
+    )
+    parser.add_argument(
         "--r0",
         action="store_true",
         default=False,
@@ -110,7 +124,7 @@ def main():
         from nectarchain.data.management import DataManagement
 
         dm = DataManagement()
-        _, filelist = dm.findrun(args.runnb)
+        _, filelist = dm.findrun(args.runnb, camera=args.camera)
         args.input_files = [s.name for s in filelist]
     elif args.input_files is None:
         log.error("Input files should be provided, exiting...")
