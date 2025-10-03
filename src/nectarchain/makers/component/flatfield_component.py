@@ -21,6 +21,9 @@ log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["FlatFieldComponent"]
 
+GAIN_DEFAULT = 58.0
+HILO_DEFAULT = 13.0
+
 
 class FlatFieldComponent(NectarCAMComponent):
     """
@@ -65,6 +68,12 @@ class FlatFieldComponent(NectarCAMComponent):
         allow_none=True,
     ).tag(config=True)
 
+    gain_file = Path(
+        default_value=None,
+        help="Path to h5 file with gain calibration coefficients",
+        allow_none=True,
+    ).tag(config=True)
+
     gain = List(
         default_value=None,
         help="default gain value",
@@ -105,12 +114,13 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__bad_pixels = []
 
         self._init_pedestal_container()
+        self._init_gain()
 
         log.info(f"Charge extraction method : {self.charge_extraction_method}")
         log.info(
             f"Charge integration correciton : {self.charge_integration_correction}"
         )
-        log.info(f"Gain : {self.gain}")
+        # log.info(f"Gain : {self.gain}")
         log.info(f"List of bad pixels : {self.bad_pix}")
 
     def _init_pedestal_container(self):
@@ -149,6 +159,43 @@ class FlatFieldComponent(NectarCAMComponent):
             log.warning(
                 "Computing pedestal as mean of first 20 samples of the waveform"
             )
+
+    def _init_gain_container(self):
+        self.__gain_container = None
+
+        if self.gain_file is not None:
+            try:
+                self.__gain_container = next(
+                    NectarCAMPedestalContainer.from_hdf5(self.gain_file)
+                )
+                if (
+                    self.__gain_container["high_gain"] is None
+                    or self.__gain_container["low_gain"] is None
+                ):
+                    raise ValueError("Gain container is not filled")
+                log.info(f"Loaded gain coefficients from {self.gain_file}")
+                ContainerUtils.add_missing_pixels_to_container(self.__gain_container)
+            except Exception as e:
+                log.warning(f"Failed to load gain file {self.pedestal_file}: {e}")
+
+    def _init_gain(self):
+        self._init_gain_container()
+        # Prioritize gain from input file
+        if self.__gain_container is not None:
+            gain = np.stack(
+                (self.__gain_container["high_gain"], self.__gain_container["low_gain"])
+            )
+            self.gain = gain.tolist()
+        if self.gain is None:
+            log.warning(
+                f"Using GAIN_DEFAULT = {GAIN_DEFAULT} ADC/pe and "
+                f"HILO_DEFAULT = {HILO_DEFAULT}"
+            )
+            gain = np.full(
+                shape=(constants.N_GAINS, constants.N_PIXELS), fill_value=GAIN_DEFAULT
+            )
+            gain[constants.LOW_GAIN] = gain[constants.HIGH_GAIN] / HILO_DEFAULT
+            self.gain = gain.tolist()
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         log.debug(
