@@ -120,7 +120,7 @@ def main():
     log.info(f"Output path: {output_path}")
 
     if args.runnb is not None:
-        # Grab runs automatically from DIRAC is the -r option is provided
+        # Grab runs automatically from DIRAC if the -r option is provided
         from nectarchain.data.management import DataManagement
 
         dm = DataManagement()
