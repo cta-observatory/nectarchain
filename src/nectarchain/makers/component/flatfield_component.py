@@ -68,6 +68,7 @@ class FlatFieldComponent(NectarCAMComponent):
     gain = List(
         default_value=None,
         help="default gain value",
+        allow_none=True,
     ).tag(config=True)
 
     # hi_lo_ratio = Float(
