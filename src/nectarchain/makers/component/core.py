@@ -240,8 +240,12 @@ class ArrayDataComponent(NectarCAMComponent):
         self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
 
         if kwargs.get("return_wfs", False):
-            get_wfs_hg = event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id]
-            get_wfs_lg = event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id]
+            get_wfs_hg = event.r0.tel[self.tel_id].waveform[constants.HIGH_GAIN][
+                self.pixels_id
+            ]
+            get_wfs_lg = event.r0.tel[self.tel_id].waveform[constants.LOW_GAIN][
+                self.pixels_id
+            ]
             return get_wfs_hg, get_wfs_lg
 
     @abstractmethod
