@@ -3,15 +3,11 @@ import os
 import pathlib
 
 from ctapipe.core import run_tool
-from ctapipe.core.traits import Integer
+from ctapipe.core.traits import CaselessStrEnum, Integer, Path
 from traitlets.config import Config
 
-# from ..extractor.utils import CtapipeExtractor
+from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
-from .flatfield_makers import FlatfieldNectarCAMCalibrationTool
-from .gain.flatfield_spe_makers import FlatFieldSPENominalNectarCAMCalibrationTool
-from .gain.photostat_makers import PhotoStatisticNectarCAMCalibrationTool
-from .pedestal_makers import PedestalNectarCAMCalibrationTool
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -19,6 +15,14 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 __all__ = ["PipelineNectarCAMCalibrationTool"]
+
+PEDESTAL_CALIBRATION_TOOLS = {
+    name: getattr(pedestal_makers, name) for name in pedestal_makers.__all__
+}
+GAIN_CALIBRATION_TOOLS = {name: getattr(gain, name) for name in gain.__all__}
+FLATFIELD_CALIBRATION_TOOLS = {
+    name: getattr(flatfield_makers, name) for name in flatfield_makers.__all__
+}
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
@@ -28,47 +32,39 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     ped_run_number = Integer(
         help="Run number for pedestal calibration", default_value=-1
     ).tag(config=True)
-
     FF_run_number = Integer(
         help="Run number for flat-field calibration", default_value=-1
     ).tag(config=True)
+    FF_SPE_run_number = Integer(
+        help="Run number for gain calibration using SPE-fit method", default_value=-1
+    ).tag(config=True)
+    SPEfit_result_path = Path(
+        help="Path to SPE fit result for gain calibration using photostatistic method",
+        default_value=None,
+        allow_none=True,
+    ).tag(config=True)
+
+    pedestal_tool_name = CaselessStrEnum(
+        list(PEDESTAL_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the pedestal calibration",
+        default_value="PedestalNectarCAMCalibrationTool",
+    ).tag(config=True)
+    flatfield_tool_name = CaselessStrEnum(
+        list(FLATFIELD_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the flatfield calibration",
+        default_value="FlatfieldNectarCAMCalibrationTool",
+    ).tag(config=True)
+    gain_tool_name = CaselessStrEnum(
+        list(GAIN_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the gain calibration",
+        default_value="FlatFieldSPENominalNectarCAMCalibrationTool",
+    ).tag(config=True)
 
     classes = [
-        PedestalNectarCAMCalibrationTool,
-        PhotoStatisticNectarCAMCalibrationTool,
-        FlatFieldSPENominalNectarCAMCalibrationTool,
-        FlatfieldNectarCAMCalibrationTool,
+        *PEDESTAL_CALIBRATION_TOOLS.values(),
+        *GAIN_CALIBRATION_TOOLS.values(),
+        *FLATFIELD_CALIBRATION_TOOLS.values(),
     ]
-
-    def _init_output_path(self):
-        # TODO: update calib_filename with right output file (=calibration file)
-
-        if self.events_per_slice is None:
-            ext = ".h5"
-        else:
-            ext = f"_sliced{self.events_per_slice}.h5"
-        if self.max_events is None:
-            calib_filename = f"{self.name}_run{self.run_number}{ext}"
-            ped_filename = f"pedestal_run{self.ped_run_number}{ext}"
-            FF_filename = f"flatfield_run{self.ped_run_number}{ext}"
-        else:
-            calib_filename = (
-                f"{self.name}_run{self.run_number}_maxevents{self.max_events}{ext}"
-            )
-            ped_filename = (
-                f"pedestal_run{self.ped_run_number}_maxevents{self.max_events}{ext}"
-            )
-            FF_filename = (
-                f"flatfield_run{self.FF_run_number}_maxevents{self.max_events}{ext}"
-            )
-        self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/{calib_filename}"
-        )
-
-        # Set intermediate paths for each subtool
-        intermediate_dir = os.path.join(os.path.dirname(self.output_path), "tmp")
-        self.ped_output_path = pathlib.Path(f"{intermediate_dir}/{ped_filename}")
-        self.FF_output_path = pathlib.Path(f"{intermediate_dir}/{FF_filename}")
 
     def setup(self, *args, **kwargs):
         # Default run_number = -1 will raise Exception
@@ -80,24 +76,80 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Setup the configuration of all subtools
         config = self._setup_config()
 
-        # This is to ensure that output paths get correct conf values
+        # This is to ensure that default output paths get correct conf values
         if not ("output_path" in kwargs.keys()):
             self._init_output_path()
 
-        self.pedestal_tool = PedestalNectarCAMCalibrationTool(
+        # Setup pedestal tool
+        pedestal_cls = PEDESTAL_CALIBRATION_TOOLS[self.pedestal_tool_name]
+        self.pedestal_tool = pedestal_cls(
             parent=self,
             config=config,
             run_number=self.ped_run_number,
             output_path=self.ped_output_path,
         )
-
-        self.flatfield_tool = FlatfieldNectarCAMCalibrationTool(
+        # Setup gain tool
+        gain_cls = GAIN_CALIBRATION_TOOLS[self.gain_tool_name]
+        if self.gain_tool_name == "PhotoStatisticNectarCAMCalibrationTool":
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_run_number,
+                Ped_run_number=self.ped_run_number,
+                SPE_result=self.SPEfit_result_path,
+                output_path=self.gain_output_path,
+            )
+        else:  # NOTE: not sure if this will work for the SPECombinedFit method
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_run_number,
+                output_path=self.gain_output_path,
+            )
+        # Setup flatfield tool
+        flatfield_cls = FLATFIELD_CALIBRATION_TOOLS[self.flatfield_tool_name]
+        self.flatfield_tool = flatfield_cls(
             parent=self,
             config=config,
             run_number=self.FF_run_number,
             pedestal_file=self.ped_output_path,
             output_path=self.FF_output_path,
         )
+
+    def _init_output_path(self):
+        # TODO: update calib_filename with right output file (=calibration file)
+
+        if self.events_per_slice is None:
+            ext = ".h5"
+        else:
+            ext = f"_sliced{self.events_per_slice}.h5"
+        if self.max_events is not None:
+            ext = f"_maxevents{self.max_events}{ext}"
+
+        ped_filename = f"output_{self.pedestal_tool_name}_run{self.ped_run_number}{ext}"
+        FF_filename = f"output_{self.flatfield_tool_name}_run{self.FF_run_number}{ext}"
+
+        if self.gain_tool_name == "PhotoStatisticNectarCAMCalibrationTool":
+            gain_filename = (
+                f"output_{self.gain_tool_name}_FFrun_{self.FF_run_number}"
+                f"_Pedrun_{self.ped_run_number}_SPEres_{self.SPEfit_result_path}{ext}"
+            )
+        else:
+            gain_filename = (
+                f"output_{self.gain_tool_name}_run_{self.FF_SPE_run_number}{ext}"
+            )
+
+        # TODO
+        calib_filename = f"{self.name}_run{self.run_number}{ext}"
+        self.output_path = pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/{calib_filename}"
+        )
+
+        # Set intermediate paths for each subtool
+        intermediate_dir = os.path.join(os.path.dirname(self.output_path), "tmp")
+        self.ped_output_path = pathlib.Path(f"{intermediate_dir}/{ped_filename}")
+        self.gain_output_path = pathlib.Path(f"{intermediate_dir}/{gain_filename}")
+        self.FF_output_path = pathlib.Path(f"{intermediate_dir}/{FF_filename}")
 
     def _setup_config(self):
         """
@@ -142,9 +194,10 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         return config
 
     def start(self):
-        run_tool(self.pedestal_tool)
-        # TODO: run_tool(self.gain_tool)
-        run_tool(self.flatfield_tool)
+        # run_tool(self.pedestal_tool)
+        run_tool(self.gain_tool)
+        # run_tool(self.flatfield_tool)
+        pass
 
     def finish(self):
         # TODO: write calibration file
