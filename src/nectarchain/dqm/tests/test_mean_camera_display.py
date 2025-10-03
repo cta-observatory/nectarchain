@@ -24,14 +24,13 @@ class TestMeanCameraDisplayHighLowGain:
         )
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
+        tel_id = reader1.subarray.tel_ids[0]
 
-        Pix, Samp = MeanCameraDisplayHighLowGain(HIGH_GAIN, r0=True).define_for_run(
-            reader1
-        )
+        Pix, Samp = MeanCameraDisplayHighLowGain(HIGH_GAIN, r0=True).define_for_run(reader1)
 
         camera_average = None
         for evt in tqdm(reader1, total=1):
-            camera_average = evt.r0.tel[0].waveform[HIGH_GAIN].sum(axis=1)
+            camera_average = evt.r0.tel[tel_id].waveform[HIGH_GAIN].sum(axis=1)
 
         assert Pix + Samp == 1915
         assert camera_average.sum(axis=0) == 109723121
