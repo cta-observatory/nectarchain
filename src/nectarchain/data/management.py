@@ -30,7 +30,9 @@ except Exception as e:
 
 class DataManagement:
     @staticmethod
-    def findrun(run_number: int, search_on_GRID=True) -> Tuple[Path, List[Path]]:
+    def findrun(
+        run_number: int, search_on_GRID=True, camera="NectarCAMQM"
+    ) -> Tuple[Path, List[Path]]:
         """Method to find in NECTARCAMDATA the list of ``*.fits.fz`` files
         associated to run_number.
 
@@ -55,13 +57,15 @@ class DataManagement:
                 log.warning(e, exc_info=True)
                 log.info("will search files on GRID and fetch them")
                 lfns = DataManagement.get_GRID_location(
-                    run_number, basepath="/vo.cta.in2p3.fr/nectarcam"
+                    run_number, basepath=f"/ctao/nectarcam/{camera}"
                 )
-                lfns.extend(
-                    DataManagement.get_GRID_location(
-                        run_number, basepath="/ctao/nectarcam"
+                if camera == "NectarCAMQM":
+                    lfns.extend(
+                        DataManagement.get_GRID_location(
+                            run_number, basepath="/vo.cta.in2p3.fr/nectarcam"
+                        )
                     )
-                )
+
                 if not lfns:
                     not_found = FileNotFoundError(
                         f"Could not find run {run_number} on DIRAC (neither under "
