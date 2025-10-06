@@ -17,12 +17,18 @@ events_per_slice = 500
 nthreads = 30
 
 # run_list = np.arange(6882,6891)
+# run_list = np.concatenate(
+#     (
+#         np.arange(6672, 6681),
+#         np.arange(7144, 7153),
+#         np.arange(6954, 6963),
+#         np.arange(7020, 7029),
+#     )
+# )
 run_list = np.concatenate(
     (
-        np.arange(6672, 6681),
-        np.arange(7144, 7153),
-        np.arange(6954, 6963),
-        np.arange(7020, 7029),
+        np.arange(6543, 6552),
+        np.arange(7077, 7086),
     )
 )
 
@@ -34,7 +40,7 @@ def process_run(run_number):
         run_number=run_number,
         max_events=1999,
         events_per_slice=events_per_slice,
-        log_level=20,
+        log_level=0,
         output_path=outfile,
         overwrite=True,
         filter_method="ChargeDistributionFilter",
