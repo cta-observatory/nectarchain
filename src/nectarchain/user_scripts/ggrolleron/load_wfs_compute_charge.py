@@ -147,7 +147,7 @@ def main(
                 tool = WaveformsNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=_run_number,
-                    camera=args.camera,
+                    camera=camera,
                     max_events=_max_events,
                     **waveforms_kwargs,
                 )
@@ -159,7 +159,7 @@ def main(
                     tool = ChargesNectarCAMCalibrationTool(
                         progress_bar=True,
                         run_number=_run_number,
-                        camera=args.camera,
+                        camera=camera,
                         max_events=_max_events,
                         from_computed_waveforms=True,
                         **charges_kwargs,
@@ -172,7 +172,7 @@ def main(
                 tool = ChargesNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=_run_number,
-                    camera=args.camera,
+                    camera=camera,
                     max_events=_max_events,
                     from_computed_waveforms=True,
                     **charges_kwargs,

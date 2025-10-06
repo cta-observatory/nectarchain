@@ -253,7 +253,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     def _load_eventsource(self, *args, **kwargs):
         self.log.debug("loading event source")
         self.event_source = self.enter_context(
-            self.load_run(self.run_number, self.max_events, run_file=self.run_file)
+            self.load_run(
+                self.run_number,
+                self.max_events,
+                run_file=self.run_file,
+                camera=self.camera,
+            )
         )
 
     def _get_provided_component_kwargs(self, componentName: str):
