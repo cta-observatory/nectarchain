@@ -14,10 +14,7 @@ from nectarchain.makers.calibration import (
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
 )
 from nectarchain.makers.extractor.utils import CtapipeExtractor
-
-prefix = "NectarCAM"
-cameras = [f"{prefix}" + "QM"]
-cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
@@ -31,8 +28,8 @@ parser.add_argument(
 parser.add_argument(
     "-c",
     "--camera",
-    choices=cameras,
-    default=[camera for camera in cameras if "QM" in camera][0],
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
     help="""Process data for a specific NectarCAM camera.
 Default: NectarCAMQM (Qualification Model).""",
     type=str,

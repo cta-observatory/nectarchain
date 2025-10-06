@@ -29,6 +29,7 @@ from traitlets import default
 from ..data import DataManagement
 from ..data.container.core import NectarCAMContainer, TriggerMapContainer
 from ..utils import ComponentUtils
+from ..utils.constants import ALLOWED_CAMERAS
 from .component import NectarCAMComponent, get_valid_component
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -234,12 +235,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        prefix = "NectarCAM"
-        cameras = [f"{prefix}" + "QM"]
-        cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
-
-        if self.camera not in cameras and self.run_file is None:
-            raise TraitError(f"The camera field should be one of {cameras}.")
+        if self.camera not in ALLOWED_CAMERAS and self.run_file is None:
+            raise TraitError(f"The camera field should be one of {ALLOWED_CAMERAS}.")
 
         if not ("output_path" in kwargs.keys()):
             self._init_output_path()

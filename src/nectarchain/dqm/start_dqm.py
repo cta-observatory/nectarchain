@@ -21,6 +21,7 @@ from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -31,10 +32,6 @@ def main():
     """
     Main DQM script
     """
-
-    prefix = "NectarCAM"
-    cameras = [f"{prefix}" + "QM"]
-    cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
 
     # Create an ArgumentParser object
     parser = argparse.ArgumentParser(
@@ -83,8 +80,8 @@ def main():
     parser.add_argument(
         "-c",
         "--camera",
-        choices=cameras,
-        default=[camera for camera in cameras if "QM" in camera][0],
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
         help="""Process data for a specific NectarCAM camera.
  Default: NectarCAMQM (Qualification Model).""",
         type=str,

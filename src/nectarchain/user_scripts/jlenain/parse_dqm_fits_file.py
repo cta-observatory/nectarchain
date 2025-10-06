@@ -18,13 +18,11 @@ from astropy.io import fits
 from DIRAC.Interfaces.API.Dirac import Dirac
 
 from nectarchain.dqm.db_utils import DQMDB
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-prefix = "NectarCAM"
-cameras = [f"{prefix}" + "QM"]
-cameras.extend([f"{prefix+str(i)}" for i in range(2, 10)])
 
 # Option and argument parser
 parser = argparse.ArgumentParser(
@@ -55,8 +53,8 @@ parser.add_argument(
 parser.add_argument(
     "-c",
     "--camera",
-    choices=cameras,
-    default=[camera for camera in cameras if "QM" in camera][0],
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
     help="Process data for a specific NectarCAM camera. Default: Qualification Model.",
     type=str,
 )
