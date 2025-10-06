@@ -174,7 +174,6 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         help="camera for which the data will be processed",
         default_value="NectarCAMQM",
         allow_none=False,
-        read_only=True,
     ).tag(config=True)
 
     output_path = Path(

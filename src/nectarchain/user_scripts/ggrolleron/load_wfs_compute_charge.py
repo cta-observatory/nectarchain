@@ -118,6 +118,7 @@ def main(
 ):
     # print(kwargs)
     run_number = kwargs.pop("run_number")
+    camera = kwargs.pop("camera")
     max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
     if max_events is None:
         max_events = [None for i in range(len(run_number))]
