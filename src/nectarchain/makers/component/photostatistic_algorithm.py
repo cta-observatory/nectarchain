@@ -56,6 +56,8 @@ class PhotoStatisticAlgorithm(Component):
             high_gain=np.zeros((self.npixels, 3)),
             low_gain=np.zeros((self.npixels, 3)),
             pixels_id=self._pixels_id,
+            charge=np.zeros((self.npixels, 1)),
+            charge_std=np.zeros((self.npixels, 1)),
         )
 
     @classmethod
@@ -127,6 +129,7 @@ class PhotoStatisticAlgorithm(Component):
 
     def run(self, pixels_id: np.ndarray = None, **kwargs) -> None:
         log.info("running photo statistic method")
+        print(f"Shape of the charge { self.__FFcharge_hg.shape}")
         if pixels_id is None:
             pixels_id = self._pixels_id
         mask = np.array(
@@ -139,6 +142,9 @@ class PhotoStatisticAlgorithm(Component):
             (self.gainLG * mask, np.zeros(self.npixels), np.zeros(self.npixels))
         ).T
         self._results.is_valid = mask
+        print("Trying to write charges")
+        self._results.charge = self.meanChargeHG
+        self._results.charge_std = self.sigmaChargeHG
 
         figpath = kwargs.get("figpath", False)
         if figpath:
