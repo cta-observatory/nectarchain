@@ -16,6 +16,10 @@ from nectarchain.makers import (
     WaveformsNectarCAMCalibrationTool,
 )
 
+prefix = "NectarCAM"
+cameras = [f"{prefix}" + "QM"]
+cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
+
 parser = argparse.ArgumentParser(
     prog="load_wfs_compute_charge",
     description="This program load waveforms from fits.fz run files and compute charge",
@@ -24,6 +28,16 @@ parser = argparse.ArgumentParser(
 # run numbers
 parser.add_argument(
     "-r", "--run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=cameras,
+    default=[camera for camera in cameras if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # max events to be loaded
@@ -132,6 +146,7 @@ def main(
                 tool = WaveformsNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=_run_number,
+                    camera=args.camera,
                     max_events=_max_events,
                     **waveforms_kwargs,
                 )
@@ -143,6 +158,7 @@ def main(
                     tool = ChargesNectarCAMCalibrationTool(
                         progress_bar=True,
                         run_number=_run_number,
+                        camera=args.camera,
                         max_events=_max_events,
                         from_computed_waveforms=True,
                         **charges_kwargs,
@@ -155,6 +171,7 @@ def main(
                 tool = ChargesNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=_run_number,
+                    camera=args.camera,
                     max_events=_max_events,
                     from_computed_waveforms=True,
                     **charges_kwargs,

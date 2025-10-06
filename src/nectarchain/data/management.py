@@ -53,7 +53,7 @@ class DataManagement:
         """
         basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
         list = glob.glob(
-            basepath + "**/*" + str(run_number) + "*.fits.fz", recursive=True
+            basepath + "**/*" + str(run_number).zfill(4) + "*.fits.fz", recursive=True
         )
         list_path = [Path(chemin) for chemin in list]
         if len(list_path) == 0:
@@ -188,7 +188,7 @@ class DataManagement:
             catalog = DCatalog()
             with redirect_stdout(sys.stdout):
                 fccli = FileCatalogClientCLI(catalog.catalog)
-                sys.stdout = StdoutRecord(keyword=f"Run{run_number}")
+                sys.stdout = StdoutRecord(keyword=f"Run{str(run_number).zfill(4)}")
                 fccli.do_find("-q " + basepath)
                 lfns = sys.stdout.output
                 sys.stdout = sys.__stdout__

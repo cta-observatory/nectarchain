@@ -13,6 +13,8 @@ from ctapipe.core.traits import (
     ComponentNameList,
     Integer,
     Path,
+    TraitError,
+    Unicode,
     classes_with_traits,
     flag,
 )
@@ -70,7 +72,10 @@ class BaseNectarCAMCalibrationTool(Tool):
 
     @staticmethod
     def load_run(
-        run_number: int, max_events: int = None, run_file: str = None
+        run_number: int,
+        max_events: int = None,
+        run_file: str = None,
+        camera: int = "NectarCAMQM",
     ) -> LightNectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
@@ -83,6 +88,8 @@ class BaseNectarCAMCalibrationTool(Tool):
             max of events to be loaded. Defaults to -1, to load everything.
         run_file : optional
             if provided, will load this run file
+        camera : str
+            camera for which data are processed. (Default: NectarCAMQM)
 
         Returns
         -------
@@ -91,7 +98,7 @@ class BaseNectarCAMCalibrationTool(Tool):
         """
         # Load the data from the run file.
         if run_file is None:
-            generic_filename, _ = DataManagement.findrun(run_number)
+            generic_filename, _ = DataManagement.findrun(run_number, camera=camera)
             log.info(f"{str(generic_filename)} will be loaded")
             eventsource = LightNectarCAMEventSource(
                 input_url=generic_filename, max_events=max_events
@@ -110,6 +117,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     Args:
         run_number (int): The ID of the run to be processed.
+        camera (str): The NectarCAM camera for which data should be processed.
         max_events (int, optional): The maximum number of events to be loaded.
         Defaults to None.
         run_file (optional): The specific run file to be loaded.
@@ -131,6 +139,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     aliases = {
         ("i", "input"): "EventsLoopNectarCAMCalibrationTool.run_file",
         ("r", "run-number"): "EventsLoopNectarCAMCalibrationTool.run_number",
+        ("c", "camera"): "EventsLoopNectarCAMCalibrationTool.camera",
         ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
         ("o", "output"): "EventsLoopNectarCAMCalibrationTool.output_path",
         "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice",
@@ -160,6 +169,13 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     run_number = Integer(help="run number to be treated", default_value=-1).tag(
         config=True
     )
+
+    camera = Unicode(
+        help="camera for which the data will be processed",
+        default_value="NectarCAMQM",
+        allow_none=False,
+        read_only=True,
+    ).tag(config=True)
 
     output_path = Path(
         help="output filename",
@@ -218,6 +234,14 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        prefix = "NectarCAM"
+        cameras = [f"{prefix}" + "QM"]
+        cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
+
+        if self.camera not in cameras and self.run_file is None:
+            raise TraitError(f"The camera field should be one of {cameras}.")
+
         if not ("output_path" in kwargs.keys()):
             self._init_output_path()
 

@@ -11,6 +11,10 @@ from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
 from nectarchain.makers.extractor.utils import CtapipeExtractor
 
+prefix = "NectarCAM"
+cameras = [f"{prefix}" + "QM"]
+cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])
+
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
     description=f"compute high and low gain with the Photo-statistic\
@@ -22,6 +26,16 @@ parser.add_argument(
 )
 parser.add_argument(
     "--Ped_run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=cameras,
+    default=[camera for camera in cameras if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # max events to be loaded
@@ -170,6 +184,7 @@ def main(
                 progress_bar=True,
                 run_number=_FF_run_number,
                 max_events=_max_events,
+                camera=args.camera,
                 Ped_run_number=_Ped_run_number,
                 SPE_result=path[0],
                 **kwargs,
