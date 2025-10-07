@@ -148,6 +148,7 @@ def main(
     **kwargs,
 ):
     run_number = kwargs.pop("run_number")
+    camera = kwargs.pop("camera")
     max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
     if max_events is None:
         max_events = [None for i in range(len(run_number))]
@@ -182,7 +183,7 @@ def main(
             tool = FlatFieldSPECombinedStdNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=_run_number,
-                camera=args.camera,
+                camera=camera,
                 max_events=_max_events,
                 SPE_result=path[0],
                 **kwargs,

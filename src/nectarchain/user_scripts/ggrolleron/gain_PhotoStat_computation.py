@@ -131,6 +131,7 @@ def main(
 ):
     FF_run_number = kwargs.pop("FF_run_number")
     Ped_run_number = kwargs.pop("Ped_run_number")
+    camera = kwargs.pop("camera")
 
     if len(FF_run_number) != len(Ped_run_number):
         raise Exception("The number of FF and Ped runs must be the same")
@@ -181,7 +182,7 @@ def main(
                 progress_bar=True,
                 run_number=_FF_run_number,
                 max_events=_max_events,
-                camera=args.camera,
+                camera=camera,
                 Ped_run_number=_Ped_run_number,
                 SPE_result=path[0],
                 **kwargs,
