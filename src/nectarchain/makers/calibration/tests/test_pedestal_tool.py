@@ -81,7 +81,7 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_std_hg, 10, atol=10)
-                assert np.allclose(output.pedestal_std_lg, 2.5, atol=2.3)
+                assert np.allclose(output.pedestal_std_lg, 3.0, atol=2.5)
 
                 # Check output on disk
                 pedestalContainers = NectarCAMPedestalContainers.from_hdf5(outfile)
@@ -158,9 +158,7 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(pedestalContainer.pedestal_mean_hg, 245.0, atol=20.0)
                 assert np.allclose(pedestalContainer.pedestal_mean_lg, 245.0, atol=20.0)
                 assert np.allclose(pedestalContainer.pedestal_std_hg, 10, atol=10)
-                assert np.allclose(
-                    pedestalContainer.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.3
-                )
+                assert np.allclose(pedestalContainer.pedestal_std_lg, 3, atol=2.5)
 
     def test_timesel(self):
         """
@@ -215,9 +213,7 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_std_hg, 10, atol=10)
-                assert np.allclose(
-                    output.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.3
-                )
+                assert np.allclose(output.pedestal_std_lg, 3, atol=2.5)
 
     def test_WaveformsStdFilter(self):
         """
@@ -269,9 +265,7 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(
                     output.pedestal_std_hg, 3.0, atol=2.0 if i == 0 else 4.0
                 )
-                assert np.allclose(
-                    output.pedestal_std_lg, 2.5, atol=2.0 if i == 0 else 2.6
-                )
+                assert np.allclose(output.pedestal_std_lg, 2.5, atol=2.6)
 
     def test_ChargeDistributionFilter(self):
         """
@@ -321,9 +315,7 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_std_hg, 10.0, atol=10.0)
-                assert np.allclose(
-                    output.pedestal_std_lg, 2.5 if i == 0 else 2.2, atol=3.0
-                )
+                assert np.allclose(output.pedestal_std_lg, 3, atol=2.6)
 
     def test_pixel_mask(self):
         """

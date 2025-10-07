@@ -15,7 +15,6 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-
 __all__ = ["PedestalNectarCAMCalibrationTool"]
 
 
@@ -55,6 +54,8 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         """
         Method that combines sliced results to reduce memory load
         Can only be called after the file with the sliced results has been saved to disk
+        Combines sliced results efficiently in one pass
+        using an online mean/variance algorithm
         """
         already_combined = False
         with tables.open_file(self.output_path, mode="r") as f:
@@ -76,96 +77,97 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Loop over sliced results to fill the combined results
         self.log.info("Combine sliced results")
-        for i, _pedestalContainer in enumerate(pedestalContainers):
+
+        first = True
+        for _pedestalContainer in pedestalContainers:
             pedestalContainer = list(_pedestalContainer.containers.values())[0]
-            if i == 0:
-                # initialize fields for the combined results based on first slice
+
+            # usable pixel mask
+            usable_pixels = pedestalContainer.pixel_mask == 0
+            usable_pixels = np.logical_and(usable_pixels[0], usable_pixels[1])
+
+            nevents_i = pedestalContainer.nevents * usable_pixels
+            mean_hg_i = pedestalContainer.pedestal_mean_hg
+            mean_lg_i = pedestalContainer.pedestal_mean_lg
+            std_hg_i = pedestalContainer.pedestal_std_hg
+            std_lg_i = pedestalContainer.pedestal_std_lg
+
+            if first:
                 nsamples = pedestalContainer.nsamples
-                nevents = np.zeros(len(pedestalContainer.nevents))
                 pixels_id = pedestalContainer.pixels_id
                 ucts_timestamp_min = pedestalContainer.ucts_timestamp_min
                 ucts_timestamp_max = pedestalContainer.ucts_timestamp_max
-                pedestal_mean_hg = np.zeros(
-                    np.shape(pedestalContainer.pedestal_mean_hg)
-                )
-                pedestal_mean_lg = np.zeros(
-                    np.shape(pedestalContainer.pedestal_mean_lg)
-                )
-                pedestal_std_hg = np.zeros(np.shape(pedestalContainer.pedestal_std_hg))
-                pedestal_std_lg = np.zeros(np.shape(pedestalContainer.pedestal_std_lg))
-            else:
-                # otherwise consider the overall time interval
-                ucts_timestamp_min = np.minimum(
-                    ucts_timestamp_min, pedestalContainer.ucts_timestamp_min
-                )
-                ucts_timestamp_max = np.maximum(
-                    ucts_timestamp_max, pedestalContainer.ucts_timestamp_max
-                )
-            # for all slices
-            # derive from pixel mask a mask that sets usable pixels
-            # accept only pixels for which no flags were raised
-            usable_pixels = pedestalContainer.pixel_mask == 0
-            # use a pixel only if it has no flag on either channel
-            usable_pixels = np.logical_and(usable_pixels[0], usable_pixels[1])
-            # cumulated number of events
-            nevents += pedestalContainer.nevents * usable_pixels
-            # add mean, std sum elements
-            pedestal_mean_hg += (
-                pedestalContainer.pedestal_mean_hg
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+
+                nevents = np.zeros_like(nevents_i)
+                mean_hg = np.zeros_like(mean_hg_i)
+                mean_lg = np.zeros_like(mean_lg_i)
+                M2_hg = np.zeros_like(mean_hg_i)
+                M2_lg = np.zeros_like(mean_lg_i)
+                first = False
+
+            # update timestamps
+            ucts_timestamp_min = np.minimum(
+                ucts_timestamp_min, pedestalContainer.ucts_timestamp_min
             )
-            pedestal_mean_lg += (
-                pedestalContainer.pedestal_mean_lg
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+            ucts_timestamp_max = np.maximum(
+                ucts_timestamp_max, pedestalContainer.ucts_timestamp_max
             )
-            pedestal_std_hg += (
-                pedestalContainer.pedestal_std_hg**2
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+
+            old_nevents = nevents.copy()
+            nevents += nevents_i
+
+            # delta between means
+            delta_hg = mean_hg_i - mean_hg
+            delta_lg = mean_lg_i - mean_lg
+
+            # update mean (weighted)
+            mean_hg += delta_hg * (nevents_i[:, np.newaxis] / nevents[:, np.newaxis])
+            mean_lg += delta_lg * (nevents_i[:, np.newaxis] / nevents[:, np.newaxis])
+
+            # update M2 (sum of squares of differences)
+            M2_hg += std_hg_i**2 * (nevents_i[:, np.newaxis] - 1) + delta_hg**2 * (
+                old_nevents[:, np.newaxis]
+                * nevents_i[:, np.newaxis]
+                / nevents[:, np.newaxis]
             )
-            pedestal_std_lg += (
-                pedestalContainer.pedestal_std_lg**2
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+            M2_lg += std_lg_i**2 * (nevents_i[:, np.newaxis] - 1) + delta_lg**2 * (
+                old_nevents[:, np.newaxis]
+                * nevents_i[:, np.newaxis]
+                / nevents[:, np.newaxis]
             )
-        # calculate final values of mean and std
-        pedestal_mean_hg /= nevents[:, np.newaxis]
-        pedestal_mean_lg /= nevents[:, np.newaxis]
-        pedestal_std_hg /= nevents[:, np.newaxis]
-        pedestal_std_hg = np.sqrt(pedestal_std_hg)
-        pedestal_std_lg /= nevents[:, np.newaxis]
-        pedestal_std_lg = np.sqrt(pedestal_std_lg)
+
+        # finalize std
+        std_hg = np.sqrt(M2_hg / (nevents[:, np.newaxis] - 1))
+        std_lg = np.sqrt(M2_lg / (nevents[:, np.newaxis] - 1))
+
         # flag bad pixels in overall results based on same criteria as for individual
-        # slides
-        # reconstitute dictionary with cumulated results consistently with
-        # PedestalComponent
         ped_stats = {}
-        array_shape = np.append([N_GAINS], np.shape(pedestal_mean_hg))
+        array_shape = np.append([N_GAINS], np.shape(mean_hg))
         for statistic in ["mean", "std"]:
             ped_stat = np.zeros(array_shape)
             if statistic == "mean":
-                ped_stat[HIGH_GAIN] = pedestal_mean_hg
-                ped_stat[LOW_GAIN] = pedestal_mean_lg
+                ped_stat[HIGH_GAIN] = mean_hg
+                ped_stat[LOW_GAIN] = mean_lg
             elif statistic == "std":
-                ped_stat[HIGH_GAIN] = pedestal_std_hg
-                ped_stat[LOW_GAIN] = pedestal_std_lg
+                ped_stat[HIGH_GAIN] = std_hg
+                ped_stat[LOW_GAIN] = std_lg
             # Store the result in the dictionary
             ped_stats[statistic] = ped_stat
         # use flagging method from PedestalComponent
         pixel_mask = self.components[0].flag_bad_pixels(ped_stats, nevents)
 
+        # reconstitute dictionary with cumulated results consistently with
+        # PedestalComponent
         output = NectarCAMPedestalContainer(
             nsamples=nsamples,
             nevents=nevents,
             pixels_id=pixels_id,
             ucts_timestamp_min=ucts_timestamp_min,
             ucts_timestamp_max=ucts_timestamp_max,
-            pedestal_mean_hg=pedestal_mean_hg,
-            pedestal_mean_lg=pedestal_mean_lg,
-            pedestal_std_hg=pedestal_std_hg,
-            pedestal_std_lg=pedestal_std_lg,
+            pedestal_mean_hg=mean_hg,
+            pedestal_mean_lg=mean_lg,
+            pedestal_std_hg=std_hg,
+            pedestal_std_lg=std_lg,
             pixel_mask=pixel_mask,
         )
 

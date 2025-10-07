@@ -306,7 +306,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         # Flag on standard deviation per pixel
         # Standard deviation of pedestal in channel/pixel above threshold
         log.info(
-            f"Flag pixels with pedestal standard deviation in a chennel/pixel above "
+            f"Flag pixels with pedestal standard deviation in a channel/pixel above "
             f"the maximum acceptable value {self.pixel_mask_std_pixel_max}"
         )
         flag_pixel_std = np.int8(
