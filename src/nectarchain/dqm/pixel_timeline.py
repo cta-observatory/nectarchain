@@ -1,3 +1,6 @@
+import logging
+import os
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -5,70 +8,81 @@ from .dqm_summary_processor import DQMSummary
 
 __all__ = ["PixelTimelineHighLowGain"]
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 class PixelTimelineHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
+        self.gain_c = "High" if gaink == 0 else "Low"
+
         self.Pix = None
         self.Samp = None
         self.counter_evt = None
         self.counter_ped = None
+
         self.SumBadPixels_ped = []
         self.SumBadPixels = []
+
         self.BadPixelTimeline_ped = None
         self.BadPixelTimeline = None
-        self.camera = None
-        self.cmap = None
-        self.cmap2 = None
+
         self.PixelTimeline_Results_Dict = {}
         self.PixelTimeline_Figures_Dict = {}
         self.PixelTimeline_Figures_Names_Dict = {}
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+        self.figure_keys = {
+            "all": f"BPX-TIMELINE-ALL-{self.gain_c}-GAIN",
+            "ped": f"BPX-TIMELINE-PED-{self.gain_c}-GAIN",
+        }
+
+        self.figure_filenames = {
+            "all": f"_BPX_Timeline_{self.gain_c}Gain_All.png",
+            "ped": f"_BPX_Timeline_{self.gain_c}Gain_Ped.png",
+        }
+
+        super().__init__(r0)
+
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
         self.counter_evt = 0
         self.counter_ped = 0
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
-        pixel = evt.nectarcam.tel[0].svc.pixel_ids
-        if len(pixel) < self.Pix:
-            pixel21 = list(np.arange(0, self.Pix - len(pixel), 1, dtype=int))
-            pixel = list(pixel)
-            pixels = np.concatenate([pixel21, pixel])
-        else:
-            pixels = pixel
+        pixels = evt.nectarcam.tel[0].svc.pixel_ids
+
+        status = np.zeros(self.Pix, dtype=int)
+        np.put(status, pixels, pixelBAD[pixels])
+        bad_count = np.sum(status)
 
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            self.counter_evt += 1
-            BadPixels_ped1 = list(map(int, pixelBAD[pixels]))
-            SumBadPixelsEvent_ped = sum(BadPixels_ped1)
-            self.SumBadPixels_ped.append(SumBadPixelsEvent_ped)
+            self.SumBadPixels_ped.append(bad_count)
             self.SumBadPixels.append(0)
 
         else:
             self.counter_evt += 1
-            self.counter_ped += 1
-            BadPixels1 = list(map(int, pixelBAD[pixels]))
-            SumBadPixelsEvent = sum(BadPixels1)
-            self.SumBadPixels.append(SumBadPixelsEvent)
+            self.SumBadPixels.append(bad_count)
             self.SumBadPixels_ped.append(0)
 
         return None
 
-    def FinishRun(self):
+    def finish_run(self):
         self.BadPixelTimeline_ped = (
             np.array(self.SumBadPixels_ped, dtype=float) / self.Pix
         )
         self.BadPixelTimeline = np.array(self.SumBadPixels, dtype=float) / self.Pix
-        print(self.BadPixelTimeline)
-        print(self.BadPixelTimeline_ped)
+        log.debug(f"BadPixelTimeline is:\n{self.BadPixelTimeline}")
+        log.debug(f"BadPixelTimeline_ped is:\n{self.BadPixelTimeline_ped}")
 
-    def GetResults(self):
-        # ASSIGN RESUTLS TO DICT
+    def get_results(self):
+        """Store results to output dictionary"""
+
         if self.k == 0:
             if self.counter_evt > 0:
                 self.PixelTimeline_Results_Dict[
@@ -93,54 +107,29 @@ class PixelTimelineHighLowGain(DQMSummary):
 
         return self.PixelTimeline_Results_Dict
 
-    def PlotResults(self, name, FigPath):
-        # titles = ['All', 'Pedestals']
-        if self.k == 0:
-            gain_c = "High"
-        if self.k == 1:
-            gain_c = "Low"
+    def plot_results(self, name, fig_path):
+        for key, data, count, label in [
+            ("all", self.BadPixelTimeline, self.counter_evt, "Physical events"),
+            ("ped", self.BadPixelTimeline_ped, self.counter_ped, "Pedestal events"),
+        ]:
+            if count == 0:
+                continue
 
-        if self.counter_evt > 0:
-            fig1, disp = plt.subplots()
-            plt.plot(
-                np.arange(self.counter_evt),
-                self.BadPixelTimeline * 100,
-                label="Physical events",
-            )
-            plt.legend()
-            plt.xlabel("Timeline")
-            plt.ylabel("BPX fraction (%)")
-            plt.title("BPX Timeline %s gain (ALL)" % gain_c)
+            fig, ax = plt.subplots()
+            ax.plot(np.arange(count), data * 100, label=label)
+            ax.set_xlabel("Timeline")
+            ax.set_ylabel("BPX fraction (%)")
+            ax.set_title(f"BPX Timeline {self.gain_c} gain ({key.capitalize()})")
+            ax.legend(loc="upper right")
 
-            full_name = name + "_BPX_Timeline_%sGain_All.png" % gain_c
-            FullPath = FigPath + full_name
-            self.PixelTimeline_Figures_Dict["BPX-TIMELINE-ALL-%s-GAIN" % gain_c] = fig1
-            self.PixelTimeline_Figures_Names_Dict[
-                "BPX-TIMELINE-ALL-%s-GAIN" % gain_c
-            ] = FullPath
+            key_id = self.figure_keys[key]
+            filename = name + self.figure_filenames[key]
+            full_path = os.path.join(fig_path, filename)
 
-            plt.close()
+            self.PixelTimeline_Figures_Dict[key_id] = fig
+            self.PixelTimeline_Figures_Names_Dict[key_id] = full_path
 
-        if self.counter_ped > 0:
-            fig2, disp = plt.subplots()
-            plt.plot(
-                np.arange(self.counter_ped),
-                self.BadPixelTimeline_ped * 100,
-                label="Pedestal events",
-            )
-            plt.legend()
-            plt.xlabel("Timeline")
-            plt.ylabel("BPX fraction (%)")
-            plt.title("BPX Timeline %s gain (PED)" % gain_c)
-
-            full_name = name + "_BPX_Timeline_%sGain_Ped.png" % gain_c
-            FullPath = FigPath + full_name
-            self.PixelTimeline_Figures_Dict["BPX-TIMELINE-PED-%s-GAIN" % gain_c] = fig2
-            self.PixelTimeline_Figures_Names_Dict[
-                "BPX-TIMELINE-PED-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
+            plt.close(fig)
 
         return (
             self.PixelTimeline_Figures_Dict,

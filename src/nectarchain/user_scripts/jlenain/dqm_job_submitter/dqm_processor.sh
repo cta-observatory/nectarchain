@@ -45,11 +45,12 @@ WRAPPER="singularity_wrapper.sh"
 # We can instantiate a particular container version:
 # CONTAINER="oras://ghcr.io/cta-observatory/nectarchain@sha256:cf5a812bdb1113d027facceec30009759535a8579eb4caf38f56143e65cb35e7"
 # or just use the latest available:
-# CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
+CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
 # of from CVMFS:
-CONTAINER="/cvmfs/sw.cta-observatory.org/software/containers/nectarchain-latest"
+# CONTAINER="/cvmfs/sw.cta-observatory.org/software/containers/nectarchain-latest"
+# CONTAINER="/cvmfs/sw.hess-experiment.eu/software/containers/nectarchain_w_2025_03"
 OUTDIR=NectarCAM_DQM_Run${runnb}
-DIRAC_OUTDIR=/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm
+DIRAC_OUTDIR=/ctao/user/j/jlenain/nectarcam/dqm
 
 function exit_script() {
     return_code=$1
@@ -110,7 +111,7 @@ echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
 # cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 $NECTARCAMDATA $NECTARDIR -i $LISTRUNS"
-cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --plot --runnb $runnb $NECTARCAMDATA $NECTARDIR"
+cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --runnb $runnb $NECTARCAMDATA $NECTARDIR"
 echo \$cmd
 eval \$cmd
 EOF

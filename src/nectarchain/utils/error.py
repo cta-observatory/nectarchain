@@ -5,6 +5,10 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 
+class TooMuchFileException(Exception):
+    pass
+
+
 class DifferentPixelsID(Exception):
     def __init__(self, message):
         self.__message = message

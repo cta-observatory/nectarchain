@@ -1,5 +1,6 @@
 from .charges_component import ChargesComponent
 from .core import ArrayDataComponent, NectarCAMComponent, get_valid_component
+from .flatfield_component import FlatFieldComponent
 from .flatfield_spe_component import (
     FlatFieldCombinedSPEStdNectarCAMComponent,
     FlatFieldSingleHHVSPENectarCAMComponent,
@@ -40,4 +41,5 @@ __all__ = [
     "PhotoStatisticNectarCAMComponent",
     "PhotoStatisticAlgorithm",
     "GainNectarCAMComponent",
+    "FlatFieldComponent",
 ]

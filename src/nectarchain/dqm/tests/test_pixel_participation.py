@@ -1,6 +1,6 @@
 import numpy as np
-from ctapipe.io import EventSource
 from ctapipe.utils import get_dataset_path
+from ctapipe_io_nectarcam import LightNectarCAMEventSource as EventSource
 from ctapipe_io_nectarcam.constants import HIGH_GAIN
 from tqdm import tqdm
 from traitlets.config import Config
@@ -28,7 +28,9 @@ class TestPixelParticipation:
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
 
-        Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN).DefineForRun(reader1)
+        Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN, r0=True).define_for_run(
+            reader1
+        )
 
         evt = None
         for evt in tqdm(reader1, total=1):

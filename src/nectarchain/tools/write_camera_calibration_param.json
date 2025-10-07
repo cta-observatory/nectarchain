@@ -9,7 +9,7 @@
      "log_level":"DEBUG"
    },         
    "EventSource": {
-      "input_url": "/tmp/amikhno/scratch/runs/NectarCAM.Run5922.0000.fits.fz",
+      "input_url": "/ctadata/NectarCAM/2019/20190522/NectarCAM.Run1232.0000.fits.fz",
       "max_events": 1000
    },
   "PedestalCalculator":{

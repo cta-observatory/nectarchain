@@ -1,12 +1,9 @@
 import argparse
+import copy
 import json
 import os
 import sys
 from pathlib import Path
-
-os.makedirs(os.environ.get("NECTARCHAIN_LOG"), exist_ok=True)
-
-import copy
 
 from nectarchain.data.container import (
     ChargesContainer,
@@ -185,6 +182,7 @@ if __name__ == "__main__":
 
     kwargs["log_level"] = args.verbosity
 
+    os.makedirs(os.environ.get("NECTARCHAIN_LOG", "/tmp"), exist_ok=True)
     os.makedirs(
         f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
         exist_ok=True,

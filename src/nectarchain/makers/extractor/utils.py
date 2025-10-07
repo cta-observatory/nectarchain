@@ -1,3 +1,4 @@
+import importlib
 import logging
 
 from ctapipe.containers import DL1CameraContainer
@@ -25,14 +26,18 @@ class CtapipeExtractor:
         """
         return cameraContainer.image, cameraContainer.peak_time
 
-    def get_extractor_kwargs_str(extractor_kwargs):
-        if len(extractor_kwargs) == 0:
-            str_extractor_kwargs = ""
+    def get_extractor_kwargs_str(method: str, extractor_kwargs: dict):
+        ctapipe_extractor_module = importlib.import_module("ctapipe.image.extractor")
+        extractor = getattr(ctapipe_extractor_module, method)
+        str_extractor_kwargs = ""
+        for trait_name, trait in extractor.class_own_traits().items():
+            if trait_name in extractor_kwargs:
+                if trait.default()[0][2] != extractor_kwargs[trait_name]:
+                    str_extractor_kwargs += (
+                        f"{trait_name}_{extractor_kwargs[trait_name]}_"
+                    )
+        if len(str_extractor_kwargs) > 0:
+            str_extractor_kwargs = f"{str_extractor_kwargs[:-1]}"
         else:
-            extractor_kwargs_list = [
-                f"{key}_{value}" for key, value in extractor_kwargs.items()
-            ]
-            str_extractor_kwargs = extractor_kwargs_list[0]
-            for item in extractor_kwargs_list[1:]:
-                str_extractor_kwargs += f"_{item}"
+            str_extractor_kwargs = "default"
         return str_extractor_kwargs

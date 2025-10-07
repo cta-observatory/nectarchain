@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -11,9 +12,13 @@ from .dqm_summary_processor import DQMSummary
 
 __all__ = ["CameraMonitoring"]
 
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
 
 class CameraMonitoring(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -38,8 +43,9 @@ class CameraMonitoring(DQMSummary):
         self.CameraMonitoring_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
+        super().__init__(r0)
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -55,17 +61,19 @@ class CameraMonitoring(DQMSummary):
             self.run_start1 = evt1.nectarcam.tel[0].svc.date
 
         SqlFileDate = astropytime.Time(self.run_start1, format="unix").iso.split(" ")[0]
+        log.debug(f"SqlFileDate is {SqlFileDate}")
 
         SqlFilePath = os.path.split(path)[0]
         SqlFileName = (
             SqlFilePath + "/nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
         )
-        print("SqlFileName", SqlFileName)
+        log.info(f"SqlFileName: {SqlFileName}")
         con = sqlite3.connect(SqlFileName)
         cursor = con.cursor()
         try:
             # print(cursor.fetchall())
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            # cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
             # TempData = cursor.execute(
             #     """SELECT * FROM monitoring_drawer_temperatures"""
             # )
@@ -73,17 +81,19 @@ class CameraMonitoring(DQMSummary):
             self.DrawerTemp = cursor.fetchall()
             cursor.close()
         except sqlite3.Error as err:
-            print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
+            log.error(
+                f"Drawer temperature could not be retrieved. Received error "
+                f"code: {err}"
+            )
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
 
         self.event_times.append(trigger_time)
         self.event_id.append(trigger_id)
 
-    def FinishRun(self):
+    def finish_run(self):
         try:
             self.event_id = np.array(self.event_id)
             self.event_times = np.array(self.event_times)
@@ -126,23 +136,27 @@ class CameraMonitoring(DQMSummary):
 
             self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
         except Exception as err:
-            print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
+            log.error(
+                f"Drawer temperature could not be retrieved. Received error "
+                f"code: {err}"
+            )
 
-    def GetResults(self):
+    def get_results(self):
         try:
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
             ] = self.DrawerTemp_mean
         except Exception as err:
-            print("Error Code: ", err)
-            print("DRAWER TEMPERATURE COULD NOT BE RETRIEVED!")
+            log.error(
+                f"Drawer temperature could not be retrieved. Received error "
+                f"code: {err}"
+            )
 
         return self.CameraMonitoring_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         try:
-            fig, disp = plt.subplots()
+            fig, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
             disp.image = self.DrawerTemp_mean
             disp.cmap = plt.cm.coolwarm
@@ -150,11 +164,11 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average")
             full_name = name + "_CameraTemperature_Mean.png"
-            FullPath = FigPath + full_name
+            full_path = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE"
-            ] = FullPath
+            ] = full_path
 
             plt.close()
 
@@ -166,11 +180,11 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average 1")
             full_name = name + "_CameraTemperature_average1.png"
-            FullPath = FigPath + full_name
+            full_path = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"] = fig1
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
-            ] = FullPath
+            ] = full_path
 
             plt.close()
 
@@ -182,13 +196,13 @@ class CameraMonitoring(DQMSummary):
             disp.add_colorbar()
             plt.title("Camera temperature average 2")
             full_name = name + "_CameraTemperature_average2.png"
-            FullPath = FigPath + full_name
+            full_path = os.path.join(fig_path, full_name)
             self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = fig2
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
-            ] = FullPath
+            ] = full_path
 
         except Exception as err:
-            print("Error Code: ", err)
+            log.error(f"Received error code: {err}")
 
         return self.ChargeInt_Figures_Dict, self.ChargeInt_Figures_Names_Dict

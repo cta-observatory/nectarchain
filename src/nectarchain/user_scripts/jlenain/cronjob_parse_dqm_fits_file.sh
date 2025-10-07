@@ -12,12 +12,12 @@ exec 1>"$LOGFILE" 2>&1
 conda activate nectar-dev
 
 # Initialize DIRAC proxy from user certificate:
-if ! dirac-proxy-init -M -g cta_nectarcam --pwstdin < ~/.dirac.pwd; then
+if ! dirac-proxy-init -M -g ctao_nectarcam --pwstdin < ~/.dirac.pwd; then
     echo "DIRAC proxy initialization failed..."
     exit 1
 fi
 
-remoteParentDir="/vo.cta.in2p3.fr/user/j/jlenain/nectarcam/dqm"
+remoteParentDir="/ctao/user/j/jlenain/nectarcam/dqm"
 nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
 
-python ${nectarchainScriptDir}/parse_dqm_fits_file.py -r $(dls ${remoteParentDir} | grep -ve "/vo.cta" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')
+python ${nectarchainScriptDir}/parse_dqm_fits_file.py -r $(dls ${remoteParentDir} | grep -ve "/ctao" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')

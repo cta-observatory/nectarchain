@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
@@ -9,7 +11,7 @@ __all__ = ["MeanCameraDisplayHighLowGain"]
 
 
 class MeanCameraDisplayHighLowGain(DQMSummary):
-    def __init__(self, gaink):
+    def __init__(self, gaink, r0=False):
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -30,8 +32,9 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.MeanCameraDisplay_Results_Dict = {}
         self.MeanCameraDisplay_Figures_Dict = {}
         self.MeanCameraDisplay_Figures_Names_Dict = {}
+        super().__init__(r0)
 
-    def ConfigureForRun(self, path, Pix, Samp, Reader1, **kwargs):
+    def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -45,7 +48,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         self.cmap = "gnuplot2"
 
-    def ProcessEvent(self, evt, noped):
+    def process_event(self, evt, noped):
         self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
         pixel = evt.nectarcam.tel[0].svc.pixel_ids
         if len(pixel) < self.Pix:
@@ -55,19 +58,27 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         else:
             pixels = pixel
 
+        if self.r0:
+            waveforms = evt.r0.tel[0].waveform[self.k]
+        else:
+            # This should accommodate cases were the shape of waveforms is 2D
+            # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
+            # (1, 1855, 60) for single-gain channel
+            waveforms = evt.r1.tel[0].waveform
+
         if evt.trigger.event_type.value == 32:  # count peds
             self.counter_ped += 1
-            self.CameraAverage_ped1 = evt.r0.tel[0].waveform[self.k].sum(axis=1)
+            self.CameraAverage_ped1 = waveforms.sum(axis=-1)
             self.CameraAverage_ped.append(self.CameraAverage_ped1[pixels])
 
         else:
             self.counter_evt += 1
-            self.CameraAverage1 = evt.r0.tel[0].waveform[self.k].sum(axis=1)
+            self.CameraAverage1 = waveforms.sum(axis=-1)
             self.CameraAverage.append(self.CameraAverage1[pixels])
 
         return None
 
-    def FinishRun(self):
+    def finish_run(self):
         if self.counter_evt > 0:
             self.CameraAverage = np.array(self.CameraAverage)
             self.CameraAverage = self.CameraAverage.sum(axis=0)
@@ -87,7 +98,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 self.CameraAverage_ped_overEvents / self.Samp
             )
 
-    def GetResults(self):
+    def get_results(self):
         # ASSIGN RESUTLS TO DICT
         if self.k == 0:
             if self.counter_evt > 0:
@@ -125,7 +136,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
 
         return self.MeanCameraDisplay_Results_Dict
 
-    def PlotResults(self, name, FigPath):
+    def plot_results(self, name, fig_path):
         # titles = ['All', 'Pedestals']
         if self.k == 0:
             gain_c = "High"
@@ -147,7 +158,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = fig1
             full_name = name + "_Camera_Mean_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(fig_path, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PHY-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath
@@ -168,7 +179,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = fig2
             full_name = name + "_Pedestal_Mean_%sGain.png" % gain_c
-            FullPath = FigPath + full_name
+            FullPath = os.path.join(fig_path, full_name)
             self.MeanCameraDisplay_Figures_Names_Dict[
                 "CAMERA-AVERAGE-PED-DISPLAY-%s-GAIN" % gain_c
             ] = FullPath

@@ -59,7 +59,8 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
 
     def _init_output_path(self):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
+            method=self.method,
+            extractor_kwargs=self.extractor_kwargs,
         )
         if self.max_events is None:
             filename = (
@@ -96,18 +97,27 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         **kwargs,
     ):
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            self.extractor_kwargs
-        )
-        FF_files = DataManagement.find_charges(
-            run_number=self.run_number,
             method=self.method,
-            str_extractor_kwargs=str_extractor_kwargs,
-            max_events=self.max_events,
+            extractor_kwargs=self.extractor_kwargs,
         )
-        Ped_files = DataManagement.find_charges(
-            run_number=self.Ped_run_number,
-            max_events=self.max_events,
-        )
+        try:
+            FF_files = DataManagement.find_charges(
+                run_number=self.run_number,
+                method=self.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                max_events=self.max_events,
+            )
+        except Exception as e:
+            self.log.warning(f"{e}", exc_info=True)
+            FF_files = []
+        try:
+            Ped_files = DataManagement.find_charges(
+                run_number=self.Ped_run_number,
+                max_events=self.max_events,
+            )
+        except Exception as e:
+            self.log.warning(f"{e}", exc_info=True)
+            Ped_files = []
         if self.reload_events or len(FF_files) != 1 or len(Ped_files) != 1:
             if len(FF_files) != 1 or len(Ped_files) != 1:
                 self.log.info(

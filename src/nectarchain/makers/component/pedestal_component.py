@@ -316,6 +316,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         pixel_mask = pixel_mask | flag_pixel_std * PedestalFlagBits.STD_PIXEL
 
         # Return mask
+        pixel_mask = np.array(pixel_mask, dtype=np.int8)
         return pixel_mask
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
