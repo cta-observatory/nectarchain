@@ -9,6 +9,7 @@ from typing import List, Tuple
 import numpy as np
 
 from ..utils import KeepLoggingUnchanged
+from ..utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -31,7 +32,9 @@ except Exception as e:
 class DataManagement:
     @staticmethod
     def findrun(
-        run_number: int, search_on_GRID=True, camera="NectarCAMQM"
+        run_number: int,
+        search_on_GRID=True,
+        camera=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
     ) -> Tuple[Path, List[Path]]:
         """Method to find in NECTARCAMDATA the list of ``*.fits.fz`` files
         associated to run_number.
@@ -64,7 +67,7 @@ class DataManagement:
                 lfns = DataManagement.get_GRID_location(
                     run_number, basepath=f"/ctao/nectarcam/{camera}"
                 )
-                if camera == "NectarCAMQM":
+                if camera.endswith("QM"):
                     lfns.extend(
                         DataManagement.get_GRID_location(
                             run_number, basepath="/vo.cta.in2p3.fr/nectarcam"

@@ -76,7 +76,7 @@ class BaseNectarCAMCalibrationTool(Tool):
         run_number: int,
         max_events: int = None,
         run_file: str = None,
-        camera: int = "NectarCAMQM",
+        camera: int = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
     ) -> LightNectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
@@ -173,7 +173,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     camera = Unicode(
         help="camera for which the data will be processed",
-        default_value="NectarCAMQM",
+        default_value=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
         allow_none=False,
     ).tag(config=True)
 
