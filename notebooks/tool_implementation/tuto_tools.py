@@ -137,11 +137,17 @@ class MyComp(NectarCAMComponent):
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         self.__event_id.append(np.uint32(event.index.event_id))
         self.__event_type.append(event.trigger.event_type.value)
-        self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
+        self.__ucts_timestamp.append(
+            event.nectarcam.tel[self.tel_id].evt.ucts_timestamp
+        )
 
         wfs = []
-        wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
-        wfs.append(event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id])
+        wfs.append(
+            event.r0.tel[self.tel_id].waveform[constants.HIGH_GAIN][self.pixels_id]
+        )
+        wfs.append(
+            event.r0.tel[self.tel_id].waveform[constants.LOW_GAIN][self.pixels_id]
+        )
 
         #####THE JOB IS HERE######
         for i, pedestal in enumerate([self.__pedestal_hg, self.__pedestal_lg]):
