@@ -87,8 +87,8 @@ class WaveformsComponent(ArrayDataComponent):
             event_type.append(event.trigger.event_type.value)
             event_id.append(event.index.event_id)
             trig_pattern_all.append(event.nectarcam.tel[tel_id].evt.trigger_pattern.T)
-            wfs_hg.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id])
-            wfs_lg.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][pixels_id])
+            wfs_hg.append(event.r0.tel[tel_id].waveform[constants.HIGH_GAIN][pixels_id])
+            wfs_lg.append(event.r0.tel[tel_id].waveform[constants.HIGH_GAIN][pixels_id])
 
         container.wfs_hg = np.array(wfs_hg, dtype=np.uint16)
         container.wfs_lg = np.array(wfs_lg, dtype=np.uint16)
