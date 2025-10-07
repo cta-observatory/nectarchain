@@ -25,13 +25,6 @@ events_per_slice = 1000
 progress_bar = True
 overwrite = True
 
-# default gain array
-gain_default = 58.0
-hi_lo_ratio_default = 13.0
-gain_array = np.ones(shape=(constants.N_GAINS, constants.N_PIXELS))
-gain_array[0] = gain_array[0] * gain_default
-gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
-
 config = Config()
 # config.FlatfieldNectarCAMCalibrationTool.gain = gain_array.tolist()
 
