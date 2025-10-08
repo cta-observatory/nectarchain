@@ -79,19 +79,20 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         means = np.array(means)
         stds = np.array(stds)
 
-        mean = np.sum(nevents[:, :, np.newaxis] * means, axis=0) / np.sum(
-            nevents[:, :, np.newaxis], axis=0
+        total_nevents = np.sum(nevents, axis=0)
+
+        mean = (
+            np.sum(nevents[:, :, np.newaxis] * means, axis=0)
+            / total_nevents[:, np.newaxis]
         )
         num = np.sum(
             (nevents[:, :, np.newaxis] - 1) * stds**2
             + nevents[:, :, np.newaxis] * (means - mean) ** 2,
             axis=0,
         )
-        den = np.sum(nevents - 1, axis=0)
-        std = np.sqrt(num / den[:, np.newaxis])
-        nevent = np.sum(nevents, axis=0)
+        std = np.sqrt(num / (total_nevents[:, np.newaxis] - 1))
 
-        return mean, std, nevent
+        return mean, std, total_nevents
 
     def _combine_results(self):
         """
@@ -121,10 +122,8 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Loop over sliced results to fill the combined results
         self.log.info("Combine sliced results")
         nevents_list = []
-        mean_hg_list = []
-        std_hg_list = []
-        mean_lg_list = []
-        std_lg_list = []
+        mean_lists = {"hg": [], "lg": []}
+        std_lists = {"hg": [], "lg": []}
         first = True
         for _pedestalContainer in pedestalContainers:
             pedestalContainer = list(_pedestalContainer.containers.values())[0]
@@ -134,10 +133,10 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             usable_pixels = np.logical_and(usable_pixels[0], usable_pixels[1])
 
             nevents_list.append(pedestalContainer.nevents * usable_pixels)
-            mean_hg_list.append(pedestalContainer.pedestal_mean_hg)
-            mean_lg_list.append(pedestalContainer.pedestal_mean_lg)
-            std_hg_list.append(pedestalContainer.pedestal_std_hg)
-            std_lg_list.append(pedestalContainer.pedestal_std_lg)
+            mean_lists["hg"].append(pedestalContainer.pedestal_mean_hg)
+            mean_lists["lg"].append(pedestalContainer.pedestal_mean_lg)
+            std_lists["hg"].append(pedestalContainer.pedestal_std_hg)
+            std_lists["lg"].append(pedestalContainer.pedestal_std_lg)
 
             if first:
                 nsamples = pedestalContainer.nsamples
@@ -154,12 +153,16 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 ucts_timestamp_max, pedestalContainer.ucts_timestamp_max
             )
 
-        mean_hg, std_hg, nevents = self._mean_std_multisample(
-            nevents_list, mean_hg_list, std_hg_list
-        )
-        mean_lg, std_lg, nevents = self._mean_std_multisample(
-            nevents_list, mean_lg_list, std_lg_list
-        )
+        # Compute combined stats for both gains
+        results = {}
+        for gain in ["hg", "lg"]:
+            mean, std, nevents = self._mean_std_multisample(
+                nevents_list, mean_lists[gain], std_lists[gain]
+            )
+            results[gain] = {"mean": mean, "std": std}
+
+        mean_hg, std_hg = results["hg"]["mean"], results["hg"]["std"]
+        mean_lg, std_lg = results["lg"]["mean"], results["lg"]["std"]
 
         # flag bad pixels in overall results based on same criteria as for individual
         ped_stats = {}
