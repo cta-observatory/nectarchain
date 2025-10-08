@@ -110,8 +110,6 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         """
         Method that combines sliced results to reduce memory load
         Can only be called after the file with the sliced results has been saved to disk
-        Combines sliced results efficiently in one pass
-        using an online mean/variance algorithm
         """
         already_combined = False
         with tables.open_file(self.output_path, mode="r") as f:
