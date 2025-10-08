@@ -45,22 +45,12 @@ parser.add_argument(
 parser.add_argument(
     "-v",
     "--add-variance",
-    type=str,
-    default="False",
+    type=bool,
+    default=False,
     help="Enable or disable variance (True/False)",
 )
 
 args = parser.parse_args()
-
-# --- Convert to boolean ---
-if args.add_variance.lower() in ("true", "1", "t", "yes"):
-    add_variance = True
-elif args.add_variance.lower() in ("false", "0", "f", "no"):
-    add_variance = False
-else:
-    raise ValueError(
-        f"Invalid value for -v/--add-variance: {args.add_variance}. Use True or False."
-    )
 
 # --- Assign other variables ---
 run_number = args.run_number
@@ -105,9 +95,9 @@ else:
     print(f"[INFO] File {run_path} already exists, skipping computation.")
 
 print(f"[INFO] Starting analysis on {filename_ps}")
-print(f"[DEBUG] ADD_VARIANCE = {add_variance}")
+print(f"[DEBUG] ADD_VARIANCE = {args.add_variance}")
 
-if add_variance:
+if args.add_variance:
     print("[INFO] Running analysis with  variance ...")
 
 else:
@@ -751,7 +741,7 @@ if __name__ == "__main__":
     pdf.savefig(fig_pie)
 
     # Second fit with variance
-    if add_variance == True:
+    if args.add_variance:
         (
             data_varinace,
             fit_variance,
@@ -826,7 +816,7 @@ if __name__ == "__main__":
         y0_1_err = np.arctan(minuit_vals_errors_1[2] / 12)
         width_1_err = np.arctan(minuit_vals_errors_1[3] / 12)
 
-        if add_variance == True:
+        if args.add_variance:
             x0_v = np.arctan(minuit_values_variance[1] / 12)
             y0_v = np.arctan(minuit_values_variance[2] / 12)
             width_v = np.arctan(minuit_values_variance[3] / 12)
@@ -841,7 +831,7 @@ if __name__ == "__main__":
             f"{minuit_vals_errors_1[0]},{x0_1_err},"
             f"{y0_1_err},{width_1_err},{np.mean(yerr_prop_1/y_1)*100}\n"
         )
-        if add_variance == True:
+        if args.add_variance:
             f.write(
                 f"{run_number},With_v_int,{minuit_values_variance[0]},"
                 f"{x0_v},{y0_v},{width_v},"
