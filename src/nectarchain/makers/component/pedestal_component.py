@@ -306,7 +306,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
         # Flag on standard deviation per pixel
         # Standard deviation of pedestal in channel/pixel above threshold
         log.info(
-            f"Flag pixels with pedestal standard deviation in a chennel/pixel above "
+            f"Flag pixels with pedestal standard deviation in a channel/pixel above "
             f"the maximum acceptable value {self.pixel_mask_std_pixel_max}"
         )
         flag_pixel_std = np.int8(
@@ -496,31 +496,6 @@ class PedestalEstimationComponent(NectarCAMComponent):
         self._waveformsContainers = waveformsContainers.containers[
             EventType.SKY_PEDESTAL
         ]
-        # log.info('JPL: waveformsContainers=',waveformsContainers.containers[
-        # EventType.SKY_PEDESTAL].nsamples)
-
-        # If we want to filter based on charges distribution
-        # make sure that the charge distribution container is filled
-        if (
-            self.filter_method == "ChargeDistributionFilter"
-            and self._chargesContainers is None
-        ):
-            log.debug("Compute charges from waveforms")
-            chargesComponent_kwargs = {}
-            chargesComponent_configurable_traits = (
-                ComponentUtils.get_configurable_traits(ChargesComponent)
-            )
-            for key in kwargs.keys():
-                if key in chargesComponent_configurable_traits.keys():
-                    chargesComponent_kwargs[key] = kwargs[key]
-            self._chargesContainers = ChargesComponent.create_from_waveforms(
-                waveformsContainer=self._waveformsContainers,
-                subarray=self.subarray,
-                config=self.config,
-                parent=self.parent,
-                *args,
-                **chargesComponent_kwargs,
-            )
 
         # Check if waveforms container is empty
         if self._waveformsContainers is None:
@@ -535,6 +510,29 @@ class PedestalEstimationComponent(NectarCAMComponent):
             # container with no results
             return None
         else:
+            # If we want to filter based on charges distribution
+            # make sure that the charge distribution container is filled
+            if (
+                self.filter_method == "ChargeDistributionFilter"
+                and self._chargesContainers is None
+            ):
+                log.debug("Compute charges from waveforms")
+                chargesComponent_kwargs = {}
+                chargesComponent_configurable_traits = (
+                    ComponentUtils.get_configurable_traits(ChargesComponent)
+                )
+                for key in kwargs.keys():
+                    if key in chargesComponent_configurable_traits.keys():
+                        chargesComponent_kwargs[key] = kwargs[key]
+                self._chargesContainers = ChargesComponent.create_from_waveforms(
+                    waveformsContainer=self._waveformsContainers,
+                    subarray=self.subarray,
+                    config=self.config,
+                    parent=self.parent,
+                    *args,
+                    **chargesComponent_kwargs,
+                )
+
             # Build mask to filter the waveforms
             # Mask based on the high gain channel that is most sensitive to signals
             # Initialize empty mask
