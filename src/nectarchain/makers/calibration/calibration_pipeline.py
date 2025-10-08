@@ -36,10 +36,18 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         help="Run number for flat-field calibration", default_value=-1
     ).tag(config=True)
     FF_SPE_run_number = Integer(
-        help="Run number for gain calibration using SPE-fit method", default_value=-1
+        help="Run number for gain calibration at nominal voltage using SPE-fit method",
+        default_value=-1,
     ).tag(config=True)
-    SPEfit_result_path = Path(
-        help="Path to SPE fit result for gain calibration using photostatistic method",
+    FF_SPE_HHV_run_number = Integer(
+        help=(
+            "Run number for gain calibration at very-high voltage "
+            "using SPE-fit method"
+        ),
+        default_value=-1,
+    ).tag(config=True)
+    SPE_HHV_result_path = Path(
+        help="Path to SPE-fit result at very-high voltage",
         default_value=None,
         allow_none=True,
     ).tag(config=True)
@@ -90,20 +98,35 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         )
         # Setup gain tool
         gain_cls = GAIN_CALIBRATION_TOOLS[self.gain_tool_name]
-        if self.gain_tool_name == "PhotoStatisticNectarCAMCalibrationTool":
+        if "SPENominal" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_run_number,
+                output_path=self.gain_output_path,
+            )
+        elif "SPEHVV" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_HHV_run_number,
+                output_path=self.gain_output_path,
+            )
+        elif "SPECombined" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_run_number,
+                SPE_result=self.SPE_HHV_result_path,
+                output_path=self.gain_output_path,
+            )
+        elif "PhotoStatistic" in self.gain_tool_name:
             self.gain_tool = gain_cls(
                 parent=self,
                 config=config,
                 run_number=self.FF_run_number,
                 Ped_run_number=self.ped_run_number,
-                SPE_result=self.SPEfit_result_path,
-                output_path=self.gain_output_path,
-            )
-        else:  # NOTE: not sure if this will work for the SPECombinedFit method
-            self.gain_tool = gain_cls(
-                parent=self,
-                config=config,
-                run_number=self.FF_SPE_run_number,
+                SPE_result=self.SPE_HHV_result_path,
                 output_path=self.gain_output_path,
             )
         # Setup flatfield tool
