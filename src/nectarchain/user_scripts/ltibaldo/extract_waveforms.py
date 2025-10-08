@@ -8,13 +8,13 @@ log.handlers = logging.getLogger("__main__").handlers
 
 from nectarchain.makers import WaveformsNectarCAMCalibrationTool
 
-run_number = 3938
+run_number = 6954
 tool = WaveformsNectarCAMCalibrationTool(
     progress_bar=True,
     run_number=run_number,
     max_events=499,
     log_level=20,
-    events_per_slice = 100,
+    events_per_slice=100,
 )
 
 tool.initialize()
