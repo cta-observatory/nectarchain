@@ -88,6 +88,19 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         if not ("output_path" in kwargs.keys()):
             self._init_output_path()
 
+        # Setup a temporary directory to store the results of each step in the
+        # calibration pipeline
+        self.subtool_res_dir = os.path.join(os.path.dirname(self.output_path), "tmp")
+        self.ped_output_path = pathlib.Path(
+            f"{self.subtool_res_dir}/output_{self.pedestal_tool_name}.h5"
+        )
+        self.gain_output_path = pathlib.Path(
+            f"{self.subtool_res_dir}/output_{self.gain_tool_name}.h5"
+        )
+        self.FF_output_path = pathlib.Path(
+            f"{self.subtool_res_dir}/output_{self.flatfield_tool_name}.h5"
+        )
+
         # Setup pedestal tool
         pedestal_cls = PEDESTAL_CALIBRATION_TOOLS[self.pedestal_tool_name]
         self.pedestal_tool = pedestal_cls(
@@ -142,38 +155,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
     def _init_output_path(self):
         # TODO: update calib_filename with right output file (=calibration file)
-
-        if self.events_per_slice is None:
-            ext = ".h5"
-        else:
-            ext = f"_sliced{self.events_per_slice}.h5"
-        if self.max_events is not None:
-            ext = f"_maxevents{self.max_events}{ext}"
-
-        ped_filename = f"output_{self.pedestal_tool_name}_run{self.ped_run_number}{ext}"
-        FF_filename = f"output_{self.flatfield_tool_name}_run{self.FF_run_number}{ext}"
-
-        if self.gain_tool_name == "PhotoStatisticNectarCAMCalibrationTool":
-            gain_filename = (
-                f"output_{self.gain_tool_name}_FFrun_{self.FF_run_number}"
-                f"_Pedrun_{self.ped_run_number}_SPEres_{self.SPEfit_result_path}{ext}"
-            )
-        else:
-            gain_filename = (
-                f"output_{self.gain_tool_name}_run_{self.FF_SPE_run_number}{ext}"
-            )
-
-        # TODO
-        calib_filename = f"{self.name}_run{self.run_number}{ext}"
+        # Could be either fits or h5
+        calib_filename = f"{self.name}_run{self.run_number}.h5"
         self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/{calib_filename}"
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/"
+            f"{os.getpid()}/{calib_filename}"
         )
-
-        # Set intermediate paths for each subtool
-        intermediate_dir = os.path.join(os.path.dirname(self.output_path), "tmp")
-        self.ped_output_path = pathlib.Path(f"{intermediate_dir}/{ped_filename}")
-        self.gain_output_path = pathlib.Path(f"{intermediate_dir}/{gain_filename}")
-        self.FF_output_path = pathlib.Path(f"{intermediate_dir}/{FF_filename}")
 
     def _setup_config(self):
         """
