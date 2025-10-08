@@ -202,38 +202,50 @@ class PedestalEstimationComponent(NectarCAMComponent):
         )
 
     @staticmethod
-    def calculate_stats(waveformsContainers, wfs_mask, statistics):
+    def calculate_stats(container, mask, statistics):
         """Calculate statistics for the pedestals from a waveforms container.
 
         Parameters
         ----------
-        waveformsContainers : `~nectarchain.data.container.WaveformsContainer`
-            Waveforms container
-        wfs_mask : `numpy.ndarray`
-            Mask to apply to exclude outliers with shape (n_pixels,n_samples)
+        containers : `~nectarchain.data.container`
+            Waveforms or Charges container
+        mask : `numpy.ndarray`
+            Mask to apply to exclude outliers with shape (n_events,n_pixels,n_samples)
         statistics : `list`
             Names of the statistics (numpy.ma attributes) to compute
 
         Returns
         -------
         ped_stats : `dict`
-            A dictionary containing 3D (n_chan,n_pixels,n_samples) arrays for each
-            statistic.
+            A dictionary containing 3D (n_chan,n_pixels,n_samples)
+            or 2D (n_chan,n_pixels) arrays for each statistic.
         """
+
+        # Detect container type by attribute name
+        if hasattr(container, "wfs_hg"):
+            data_hg = container.wfs_hg
+            data_lg = container.wfs_lg
+            is_waveform = True
+        else:
+            data_hg = container.charges_hg
+            data_lg = container.charges_lg
+            is_waveform = False
+
+        # Adapt mask shape
+        # Waveforms: (n_events, n_pixels, n_samples)
+        # Charges: (n_events, n_pixels)
+        if not is_waveform:
+            mask = mask[:, :, 0]
 
         ped_stats = {}
 
         for stat in statistics:
             # Calculate the statistic along axis = 0, that is over events
-            ped_stat_hg = getattr(ma, stat)(
-                ma.masked_array(waveformsContainers.wfs_hg, wfs_mask), axis=0
-            )
-            ped_stat_lg = getattr(ma, stat)(
-                ma.masked_array(waveformsContainers.wfs_lg, wfs_mask), axis=0
-            )
+            ped_stat_hg = getattr(ma, stat)(ma.masked_array(data_hg, mask), axis=0)
+            ped_stat_lg = getattr(ma, stat)(ma.masked_array(data_lg, mask), axis=0)
 
             # Create a 3D array for the statistic
-            array_shape = np.append([N_GAINS], np.shape(waveformsContainers.wfs_hg[0]))
+            array_shape = np.append([N_GAINS], np.shape(data_hg[0]))
             ped_stat = np.zeros(array_shape)
             ped_stat[HIGH_GAIN] = ped_stat_hg
             ped_stat[LOW_GAIN] = ped_stat_lg
@@ -499,29 +511,6 @@ class PedestalEstimationComponent(NectarCAMComponent):
         # log.info('JPL: waveformsContainers=',waveformsContainers.containers[
         # EventType.SKY_PEDESTAL].nsamples)
 
-        # If we want to filter based on charges distribution
-        # make sure that the charge distribution container is filled
-        if (
-            self.filter_method == "ChargeDistributionFilter"
-            and self._chargesContainers is None
-        ):
-            log.debug("Compute charges from waveforms")
-            chargesComponent_kwargs = {}
-            chargesComponent_configurable_traits = (
-                ComponentUtils.get_configurable_traits(ChargesComponent)
-            )
-            for key in kwargs.keys():
-                if key in chargesComponent_configurable_traits.keys():
-                    chargesComponent_kwargs[key] = kwargs[key]
-            self._chargesContainers = ChargesComponent.create_from_waveforms(
-                waveformsContainer=self._waveformsContainers,
-                subarray=self.subarray,
-                config=self.config,
-                parent=self.parent,
-                *args,
-                **chargesComponent_kwargs,
-            )
-
         # Check if waveforms container is empty
         if self._waveformsContainers is None:
             log.warning("Waveforms container is none, pedestals cannot be evaluated")
@@ -535,6 +524,25 @@ class PedestalEstimationComponent(NectarCAMComponent):
             # container with no results
             return None
         else:
+            # Make sure that the charge distribution container is filled
+            if self._chargesContainers is None:
+                log.debug("Compute charges from waveforms")
+                chargesComponent_kwargs = {}
+                chargesComponent_configurable_traits = (
+                    ComponentUtils.get_configurable_traits(ChargesComponent)
+                )
+                for key in kwargs.keys():
+                    if key in chargesComponent_configurable_traits.keys():
+                        chargesComponent_kwargs[key] = kwargs[key]
+                self._chargesContainers = ChargesComponent.create_from_waveforms(
+                    waveformsContainer=self._waveformsContainers,
+                    subarray=self.subarray,
+                    config=self.config,
+                    parent=self.parent,
+                    *args,
+                    **chargesComponent_kwargs,
+                )
+
             # Build mask to filter the waveforms
             # Mask based on the high gain channel that is most sensitive to signals
             # Initialize empty mask
@@ -577,6 +585,9 @@ class PedestalEstimationComponent(NectarCAMComponent):
             self._ped_stats = self.calculate_stats(
                 self._waveformsContainers, self._wfs_mask, statistics
             )
+            self._charge_stats = self.calculate_stats(
+                self._chargesContainers, self._wfs_mask, statistics
+            )
 
             # calculate the number of events per pixel used to compute the quantitites
             # start wit total number of events
@@ -601,6 +612,10 @@ class PedestalEstimationComponent(NectarCAMComponent):
                 pedestal_mean_lg=self._ped_stats["mean"][LOW_GAIN],
                 pedestal_std_hg=self._ped_stats["std"][HIGH_GAIN],
                 pedestal_std_lg=self._ped_stats["std"][LOW_GAIN],
+                pedestal_charge_mean_hg=self._charge_stats["mean"][HIGH_GAIN],
+                pedestal_charge_mean_lg=self._charge_stats["mean"][LOW_GAIN],
+                pedestal_charge_std_hg=self._charge_stats["std"][HIGH_GAIN],
+                pedestal_charge_std_lg=self._charge_stats["std"][LOW_GAIN],
                 pixel_mask=pixel_mask,
             )
 
