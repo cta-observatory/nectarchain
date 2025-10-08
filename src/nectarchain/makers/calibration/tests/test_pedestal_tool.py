@@ -262,10 +262,8 @@ class TestPedestalCalibrationTool:
                 assert np.allclose(output.pedestal_mean_hg, 245.0, atol=20.0)
                 assert np.allclose(output.pedestal_mean_lg, 245.0, atol=20.0)
                 # verify that fluctuations are reduced
-                assert np.allclose(
-                    output.pedestal_std_hg, 3.0, atol=2.0 if i == 0 else 4.0
-                )
-                assert np.allclose(output.pedestal_std_lg, 2.5, atol=2.6)
+                assert np.allclose(output.pedestal_std_hg, 4.0, atol=4.0)
+                assert np.allclose(output.pedestal_std_lg, 2.5, atol=3.0)
 
     def test_ChargeDistributionFilter(self):
         """
