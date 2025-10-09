@@ -22,13 +22,13 @@ installation process (see :ref:`optional-dirac-support`), instead of:
 
 .. code-block:: console
 
-   $ mamba install dirac-grid
+   $ mamba install -c conda-forge dirac-grid
 
 one may try:
 
 .. code-block:: console
 
-  $ mamba install dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
+  $ mamba install -c conda-forge dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
 
 
 Using a container
