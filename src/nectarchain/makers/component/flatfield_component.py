@@ -194,7 +194,10 @@ class FlatFieldComponent(NectarCAMComponent):
         # Prioritize gain from input file
         if self.__gain_container is not None:
             gain = np.stack(
-                (self.__gain_container["high_gain"], self.__gain_container["low_gain"])
+                (
+                    self.__gain_container["high_gain"][..., 0],
+                    self.__gain_container["low_gain"][..., 0],
+                )
             )
             self.gain = gain.tolist()
         if self.gain is None:
