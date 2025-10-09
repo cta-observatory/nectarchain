@@ -118,7 +118,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 run_number=self.FF_SPE_run_number,
                 output_path=self.gain_output_path,
             )
-        elif "SPEHVV" in self.gain_tool_name:
+        elif "SPEHHV" in self.gain_tool_name:
             self.gain_tool = gain_cls(
                 parent=self,
                 config=config,
