@@ -9,8 +9,12 @@ from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from traitlets.config.loader import Config
 
-from nectarchain.data.container import FlatFieldContainer
-from nectarchain.data.container.pedestal_container import NectarCAMPedestalContainer
+from nectarchain.data.container import (
+    FlatFieldContainer,
+    GainContainer,
+    NectarCAMPedestalContainer,
+    SPEfitContainer,
+)
 from nectarchain.makers.component import NectarCAMComponent
 
 from ...utils import ContainerUtils
@@ -19,6 +23,7 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+GAIN_CONTAINER_CLASSES = [GainContainer, SPEfitContainer]
 __all__ = ["FlatFieldComponent"]
 
 GAIN_DEFAULT = 58.0
@@ -164,19 +169,25 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__gain_container = None
 
         if self.gain_file is not None:
-            try:
-                self.__gain_container = next(
-                    NectarCAMPedestalContainer.from_hdf5(self.gain_file)
-                )
-                if (
-                    self.__gain_container["high_gain"] is None
-                    or self.__gain_container["low_gain"] is None
-                ):
-                    raise ValueError("Gain container is not filled")
-                log.info(f"Loaded gain coefficients from {self.gain_file}")
-                ContainerUtils.add_missing_pixels_to_container(self.__gain_container)
-            except Exception as e:
-                log.warning(f"Failed to load gain file {self.pedestal_file}: {e}")
+            exceptions = []
+            for _cls in GAIN_CONTAINER_CLASSES:
+                try:
+                    self.__gain_container = next(_cls.from_hdf5(self.gain_file))
+                    if (
+                        self.__gain_container["high_gain"] is None
+                        or self.__gain_container["low_gain"] is None
+                    ):
+                        raise ValueError("Gain container is not filled")
+                    log.info(f"Loaded gain coefficients from {self.gain_file}")
+                    ContainerUtils.add_missing_pixels_to_container(
+                        self.__gain_container
+                    )
+                except Exception as e:
+                    log.debug(f"Failed to load with gain_container ``{_cls}``: {e}")
+                    log.debug("Adding exception to ``exceptions`` list")
+                    exceptions.append(e)
+            if self.__gain_container is None:
+                log.warning(f"Failed to load gain file {self.gain_file}: {exceptions}")
 
     def _init_gain(self):
         self._init_gain_container()
