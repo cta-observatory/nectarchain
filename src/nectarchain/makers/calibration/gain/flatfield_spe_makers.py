@@ -29,7 +29,7 @@ __all__ = [
 
 
 class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
-    name = "FlatFieldSPEHHVNectarCAM"
+    name = "FlatFieldSPENominalNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
         default_value=["FlatFieldSingleHHVSPENectarCAMComponent"],
