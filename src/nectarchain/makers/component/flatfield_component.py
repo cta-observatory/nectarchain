@@ -23,11 +23,11 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-GAIN_CONTAINER_CLASSES = [GainContainer, SPEfitContainer]
 __all__ = ["FlatFieldComponent"]
 
 GAIN_DEFAULT = 58.0
 HILO_DEFAULT = 13.0
+GAIN_CONTAINER_CLASSES = [GainContainer, SPEfitContainer]
 
 
 class FlatFieldComponent(NectarCAMComponent):
