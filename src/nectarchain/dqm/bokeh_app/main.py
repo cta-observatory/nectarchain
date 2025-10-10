@@ -6,7 +6,7 @@ from app_hooks import TEST_PATTERN, get_rundata, make_camera_displays, make_time
 # bokeh imports
 from bokeh.layouts import gridplot, layout, row
 from bokeh.models import Select, TabPanel, Tabs  # , NumericInput
-from bokeh.plotting import curdoc
+from bokeh.plotting import curdoc, figure
 
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
@@ -59,7 +59,23 @@ def update_camera_displays(attr, old, new):
 def update_timelines(attr, old, new):
     runid = run_select.value
     new_rundata = get_rundata(db, runid)
-    make_timelines(db, new_rundata, runid)
+
+    # Reset each timeline
+    for k in timelines.keys():
+        for kk in timelines[k].keys():
+            timelines[k][kk].line(x=0, y=0)
+
+    for parentkey in db[runid].keys():
+        if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
+            for childkey in db[runid][parentkey].keys():
+                print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
+                timelines[parentkey][childkey] = figure(title=f"{childkey}_{runid}")
+                evts = np.arange(len(new_rundata[parentkey][childkey]))
+                timelines[parentkey][childkey].line(
+                    x=evts,
+                    y=new_rundata[parentkey][childkey],
+                    line_width=3,
+                )
 
 
 print("Opening connection to ZODB")
