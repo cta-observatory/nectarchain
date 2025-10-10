@@ -66,7 +66,7 @@ runids = sorted(list(db.keys()), reverse=True)
 # VM (gets OoM killed)
 # run_dict_lengths = [len(db[r]) for r in runids]
 # runid = runids[np.argmax(run_dict_lengths)]
-runid = "NectarCAM_Run0008"
+runid = "NectarCAM_Run6310"
 print(f"We will start with run {runid}")
 
 print("Defining Select")
