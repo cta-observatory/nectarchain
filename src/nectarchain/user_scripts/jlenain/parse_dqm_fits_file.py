@@ -93,7 +93,7 @@ for run in args.runs:
             tar.extractall(".")
     except FileNotFoundError as e:
         logger.warning(
-            f"Could not fetch DQM results from DIRAC for run ${args.camera} {run}, received error {e}, skipping this run..."
+            f"Could not fetch DQM results from DIRAC for run {args.camera} {run}, received error {e}, skipping this run..."
         )
         continue
 
