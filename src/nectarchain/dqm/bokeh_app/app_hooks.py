@@ -34,10 +34,12 @@ def make_timelines(db, source, runid):
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in db[runid][parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
-                timelines[parentkey][childkey] = figure(title=childkey)
+                timelines[parentkey][childkey] = figure(title=f"{childkey}_{runid}")
                 evts = np.arange(len(source[parentkey][childkey]))
                 timelines[parentkey][childkey].line(
-                    x=evts, y=source[parentkey][childkey]
+                    x=evts,
+                    y=source[parentkey][childkey],
+                    line_width=3,
                 )
     return dict(timelines)
 

@@ -84,7 +84,6 @@ source = get_rundata(db, run_select.value)
 displays = make_camera_displays(db, source, runid)
 timelines = make_timelines(db, source, runid)
 
-run_select.on_change("value", update_camera_displays)
 run_select.on_change("value", update_camera_displays, update_timelines)
 
 controls = row(run_select)
@@ -113,15 +112,27 @@ layout_camera_displays = gridplot(
     ncols=ncols,
 )
 
-layout_timelines = gridplot(list_timelines, sizing_mode="scale_width", ncols=2)
+layout_timelines = gridplot(
+    list_timelines,
+    # sizing_mode="scale_width",
+    ncols=2,
+)
 
 # Create different tabs
 tab_camera_displays = TabPanel(child=layout_camera_displays, title="Camera displays")
 tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
 # Combine panels into tabs
-tabs = Tabs(tabs=[tab_camera_displays, tab_timelines])
+tabs = Tabs(
+    tabs=[tab_camera_displays, tab_timelines],
+    # sizing_mode="scale_width",
+)
 
 # Add to the Bokeh document
-curdoc().add_root(layout([controls, tabs]))
+curdoc().add_root(
+    layout(
+        [controls, tabs],
+        sizing_mode="scale_width",
+    )
+)
 curdoc().title = "NectarCAM Data Quality Monitoring web app"
