@@ -54,7 +54,7 @@ WRAPPER="singularity_wrapper.sh"
 # CONTAINER="/cvmfs/sw.hess-experiment.eu/software/containers/nectarchain_w_2025_03"
 # or using a local container image:
 CONTAINER="$HOME/nectarchain.sif"
-OUTDIR=NectarCAM${camera}_DQM_Run${runnb}
+OUTDIR=${camera}_DQM_Run${runnb}
 DIRAC_OUTDIR=/ctao/user/j/jlenain/nectarcam/dqm/${camera}
 
 function exit_script() {
