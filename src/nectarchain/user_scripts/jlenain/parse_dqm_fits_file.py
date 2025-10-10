@@ -75,7 +75,7 @@ for run in args.runs:
         )
         continue
 
-    lfn = f"{args.path}/{args.camera}/NectarCAM_DQM_Run{run}.tar.gz"
+    lfn = f"{args.path}/{args.camera}/{args.camera}_DQM_Run{run}.tar.gz"
 
     if not os.path.exists(os.path.basename(lfn)):
         DIRAC.initialize()
@@ -98,7 +98,7 @@ for run in args.runs:
         continue
 
     fits_file = (
-        f"./NectarCAM_DQM_Run{run}/output/NectarCAM_Run{run}/"
+        f"./{args.camera}_DQM_Run{run}/output/NectarCAM_Run{run}/"
         f"NectarCAM_Run{run}_calib/NectarCAM_Run{run}_Results.fits"
     )
 
@@ -125,12 +125,12 @@ for run in args.runs:
 
     # Remove DQM archive file and directory
     try:
-        os.remove(f"NectarCAM_DQM_Run{run}.tar.gz")
+        os.remove(f"{args.camera}_DQM_Run{run}.tar.gz")
     except OSError:
         logger.warning(
-            f"Could not remove NectarCAM_DQM_Run{run}.tar.gz or it does not exist"
+            f"Could not remove {args.camera}_DQM_Run{run}.tar.gz or it does not exist"
         )
 
-    dirpath = Path(f"./NectarCAM_DQM_Run{run}")
+    dirpath = Path(f"./{args.camera}_DQM_Run{run}")
     if dirpath.exists() and dirpath.is_dir():
         shutil.rmtree(dirpath)
