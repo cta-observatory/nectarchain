@@ -5,7 +5,7 @@ from app_hooks import TEST_PATTERN, get_rundata, make_camera_displays, make_time
 
 # bokeh imports
 from bokeh.layouts import gridplot, layout, row
-from bokeh.models import Panel, Select, Tabs  # , NumericInput
+from bokeh.models import Select, TabPanel, Tabs  # , NumericInput
 from bokeh.plotting import curdoc
 
 # ctapipe imports
@@ -116,8 +116,8 @@ layout_camera_displays = gridplot(
 layout_timelines = gridplot(list_timelines, sizing_mode="scale_width", ncols=2)
 
 # Create different tabs
-tab_camera_displays = Panel(child=layout_camera_displays, title="Camera displays")
-tab_timelines = Panel(child=layout_timelines, title="Timelines")
+tab_camera_displays = TabPanel(child=layout_camera_displays, title="Camera displays")
+tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
 # Combine panels into tabs
 tabs = Tabs(tabs=[tab_camera_displays, tab_timelines])
