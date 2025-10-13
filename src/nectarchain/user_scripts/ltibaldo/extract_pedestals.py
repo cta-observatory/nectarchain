@@ -41,9 +41,6 @@ def process_run(run_number):
     outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_test_{}.h5".format(
         run_number
     )
-    outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_test_{}.h5".format(
-        run_number
-    )
     tool = PedestalNectarCAMCalibrationTool(
         progress_bar=True,
         run_number=run_number,
