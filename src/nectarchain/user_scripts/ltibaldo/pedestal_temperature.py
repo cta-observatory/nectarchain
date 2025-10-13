@@ -12,7 +12,7 @@ from scipy import stats
 
 sns.set(style="whitegrid")
 
-rms_threshold = 42
+rms_threshold = 47
 
 data = [
     {"T": -5, "runs": np.arange(6882, 6891)},
@@ -24,7 +24,7 @@ data = [
     {"T": 25, "runs": np.arange(7020, 7029)},
 ]
 
-pixel_display = [663, 1058, 491, 631, 656, 701, 756, 757, 1612, 1629]
+pixel_display = [100, 144, 663, 1058, 491, 631, 656, 701, 756, 757, 1612, 1629]
 
 fill_value = np.nan
 slopes_ped_hg = np.full(1855, fill_value=fill_value)
@@ -46,20 +46,20 @@ for pixel_id in np.arange(1855):
     for dataset in data:
         for run_number in dataset["runs"]:
             run_number = int(run_number)
-            filename = os.environ["NECTARCAMDATA"] + "/runs/pedestal_{}.h5".format(
-                run_number
-            )
+            filename = os.environ[
+                "NECTARCAMDATA"
+            ] + "/runs/pedestal_nofilter_{}.h5".format(run_number)
             h5file = tables.open_file(filename)
             table = h5file.root["data_combined"]["NectarCAMPedestalContainer_0"][0]
             for channel in ["hg", "lg"]:
                 pedestal = table["pedestal_mean_{}".format(channel)][
                     table["pixels_id"] == pixel_id
                 ][0]
-                rms = table["pedestal_std_{}".format(channel)][
+                rms = table["pedestal_charge_std_{}".format(channel)][
                     table["pixels_id"] == pixel_id
                 ][0]
                 avgped = np.average(pedestal)
-                combrms = np.sqrt(np.sum(rms**2))
+                combrms = rms
                 temperatures.append(dataset["T"])
                 channels.append(channel)
                 avgpeds.append(avgped)
@@ -69,7 +69,9 @@ for pixel_id in np.arange(1855):
     if np.any(np.isnan(avgpeds)) or np.any(np.isnan(combrms)):
         flagged_pixels += 1
         print("Bad pixel")
-    elif np.any(np.array(pedsrms) > rms_threshold):
+    elif np.any(
+        np.array(pedsrms) > rms_threshold
+    ):  # filter on NSB OFF, FF minimum intensity
         removed_pixels += 1
         print("Removed pixel")
     else:
@@ -78,11 +80,11 @@ for pixel_id in np.arange(1855):
                 "T (deg)": temperatures,
                 "channel": channels,
                 "pedestal (ADC)": avgpeds,
-                "pedestal RMS (ADC)": pedsrms,
+                "pedestal width (ADC)": pedsrms,
             }
         )
 
-        for k, q in enumerate(["pedestal (ADC)", "pedestal RMS (ADC)"]):
+        for k, q in enumerate(["pedestal (ADC)", "pedestal width (ADC)"]):
             if pixel_id in pixel_display:
                 lm = sns.lmplot(
                     x="T (deg)",
@@ -140,6 +142,7 @@ for pixel_id in np.arange(1855):
                     "{}/pixel{}_{}.png".format(os.environ["FIGDIR"], pixel_id, k)
                 )
                 del fig
+                plt.close()
 
 print(
     "{} pixels were flagged as bad by the pedestal estimation tool".format(
@@ -177,9 +180,9 @@ for k in range(2):  # quantity to treat
         elif k == 0 and s == 1:
             ax.set_title("Pedestal slope (ADC/deg), lg, NSB OFF")
         elif k == 1 and s == 0:
-            ax.set_title("Pedestal RMS slope (ADC/deg), hg, NSB OFF")
+            ax.set_title("Pedestal width slope (ADC/deg), hg, NSB OFF")
         elif k == 1 and s == 1:
-            ax.set_title("Pedestal RMS slope (ADC/deg), lg, NSB OFF")
+            ax.set_title("Pedestal width slope (ADC/deg), lg, NSB OFF")
         plt.axvline(np.nanmean(slopes), linestyle=":")
         plt.axvline(np.nanmean(slopes) - np.nanstd(slopes), linestyle=":")
         plt.axvline(np.nanmean(slopes) + np.nanstd(slopes), linestyle=":")
@@ -192,6 +195,10 @@ for k in range(2):  # quantity to treat
         ax = plt.subplot(2, 2, s + 3)
         disp = CameraDisplay(camera)
         disp.image = slopes
+        if k == 0:
+            disp.set_limits_minmax(-0.3, 0.3)
+        elif k == 1:
+            disp.set_limits_minmax(-0.07, 0.07)
         disp.cmap = "Spectral_r"
         disp.add_colorbar()
         disp.update()

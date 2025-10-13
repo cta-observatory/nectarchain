@@ -16,29 +16,21 @@ from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 events_per_slice = 500
 nthreads = 30
 
-run_list = [7020]
-
-# run_list = np.arange(6882,6891)
-# run_list = np.concatenate(
-#     (np.arange(6882, 6891),
-#      np.arange(6672, 6681),
-#      np.arange(7144, 7153),
-#      np.arange(6954, 6963),
-#      np.arange(7020, 7029),
-#      np.arange(6543, 6552),
-#      np.arange(7077, 7086),
-#      )
-# )
-# run_list = np.concatenate(
-#     (
-#         np.arange(6543, 6552),
-#         np.arange(7077, 7086),
-#     )
-# )
+run_list = np.concatenate(
+    (
+        np.arange(6882, 6891),
+        np.arange(6672, 6681),
+        np.arange(7144, 7153),
+        np.arange(6954, 6963),
+        np.arange(7020, 7029),
+        np.arange(6543, 6552),
+        np.arange(7077, 7086),
+    )
+)
 
 
 def process_run(run_number):
-    outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_test_{}.h5".format(
+    outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_nofilter_{}.h5".format(
         run_number
     )
     tool = PedestalNectarCAMCalibrationTool(
@@ -61,9 +53,8 @@ def process_run(run_number):
     tool.finish()
 
 
-process_run(run_list[0])
-# args = [int(x) for x in run_list]
-# pool = Pool(processes=nthreads)
-# pool.map(process_run, args)
-# pool.close()
-# pool.join()
+args = [int(x) for x in run_list]
+pool = Pool(processes=nthreads)
+pool.map(process_run, args)
+pool.close()
+pool.join()
