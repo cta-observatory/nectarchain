@@ -76,7 +76,7 @@ def make_timelines(source, runid=None):
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in source[parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
-                timelines[parentkey][childkey] = figure(title=f"{childkey}_{runid}")
+                timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(source[parentkey][childkey]))
                 timelines[parentkey][childkey].line(
                     x=evts,
