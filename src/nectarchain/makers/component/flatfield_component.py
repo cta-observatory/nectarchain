@@ -246,8 +246,11 @@ class FlatFieldComponent(NectarCAMComponent):
                     wfs_pedsub, axis=-1, where=masked_wfs
                 )
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
-                amp_int_per_pix_per_event_pe = (
-                    amp_int_per_pix_per_event[:] / self.gain[:]
+                amp_int_per_pix_per_event_pe = np.divide(
+                    amp_int_per_pix_per_event,
+                    self.gain,
+                    out=np.full_like(amp_int_per_pix_per_event, np.nan),
+                    where=(np.array(self.gain) > 1e-10),  # rounding errors
                 )
 
             else:
@@ -268,8 +271,11 @@ class FlatFieldComponent(NectarCAMComponent):
                     wfs_pedsub, 0, 0, bad_pixels_mask
                 )
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
-                amp_int_per_pix_per_event_pe = (
-                    amp_int_per_pix_per_event.image[:] / self.gain[:]
+                amp_int_per_pix_per_event_pe = np.divide(
+                    amp_int_per_pix_per_event.image,
+                    self.gain,
+                    out=np.full_like(amp_int_per_pix_per_event, np.nan),
+                    where=(np.array(self.gain) > 1e-10),  # rounding errors
                 )
 
             mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
