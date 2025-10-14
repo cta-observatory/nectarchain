@@ -2,7 +2,13 @@ import collections
 import re
 
 import numpy as np
+
+# bokeh imports
+from bokeh.layouts import gridplot
+from bokeh.models import TabPanel
 from bokeh.plotting import figure
+
+# ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 
@@ -28,13 +34,13 @@ def get_rundata(src, runid):
     return run_data
 
 
-def make_timelines(db, source, runid):
+def make_timelines(source, runid=None):
     timelines = collections.defaultdict(dict)
-    for parentkey in db[runid].keys():
+    for parentkey in source.keys():
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
-            for childkey in db[runid][parentkey].keys():
+            for childkey in source[parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
-                timelines[parentkey][childkey] = figure(title=f"{childkey}_{runid}")
+                timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(source[parentkey][childkey]))
                 timelines[parentkey][childkey].line(
                     x=evts,
@@ -44,16 +50,69 @@ def make_timelines(db, source, runid):
     return dict(timelines)
 
 
-def make_camera_displays(db, source, runid):
+def update_timelines(data, timelines, runid=None):
+    # Reset each timeline
+    for k in timelines.keys():
+        for kk in timelines[k].keys():
+            timelines[k][kk].line(x=0, y=0)
+
+    timelines = make_timelines(data, runid)
+
+    list_timelines = [
+        timelines[parentkey][childkey]
+        for parentkey in timelines.keys()
+        for childkey in timelines[parentkey].keys()
+    ]
+
+    layout_timelines = gridplot(
+        list_timelines,
+        ncols=2,
+    )
+
+    tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
+
+    return tab_timelines
+
+
+def make_camera_displays(source, runid):
     displays = collections.defaultdict(dict)
-    for parentkey in db[runid].keys():
+    for parentkey in source.keys():
         if not re.match(TEST_PATTERN, parentkey):
-            for childkey in db[runid][parentkey].keys():
+            for childkey in source[parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
                 displays[parentkey][childkey] = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
                 )
     return dict(displays)
+
+
+def update_camera_displays(data, displays, runid=None):
+    ncols = 3
+
+    # Reset each display
+    for k in displays.keys():
+        for kk in displays[k].keys():
+            displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
+
+    displays = make_camera_displays(data, runid)
+
+    camera_displays = [
+        displays[parentkey][childkey].figure
+        for parentkey in displays.keys()
+        for childkey in displays[parentkey].keys()
+    ]
+
+    layout_camera_displays = gridplot(
+        camera_displays,
+        sizing_mode="scale_width",
+        ncols=ncols,
+    )
+
+    tab_camera_displays = TabPanel(
+        child=layout_camera_displays, title="Camera displays"
+    )
+
+    return tab_camera_displays
 
 
 def make_camera_display(source, parent_key, child_key):
