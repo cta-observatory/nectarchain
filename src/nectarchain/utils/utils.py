@@ -120,12 +120,15 @@ class ContainerUtils:
                     continue
 
                 # Reshape fields to full camera with NaN values for missing pixels
-                # One-padding for boolean / np.int8 arrays of failing/missing pixels
-                # NOTE: NectarCAMPedestalContainer stores bad pixels as np.int8
+                # For fields related to pixel status, apply zero/one-padding
                 shape_new_field = list(field.shape)
                 shape_new_field[pixel_axis] = constants.N_PIXELS
-                if field.dtype == bool or field.dtype == np.int8:
+                # Pixel status in NectarCAMPedestalContainer, FlatFieldContainer
+                if name in ["pixel_mask", "bad_pixels"]:
                     new_field = np.ones(shape_new_field, dtype=field.dtype)
+                # Pixel status in GainContainer
+                elif name in ["is_valid"]:
+                    new_field = np.zeros(shape_new_field, dtype=field.dtype)
                 else:
                     new_field = np.full(shape_new_field, np.nan, dtype=field.dtype)
 
