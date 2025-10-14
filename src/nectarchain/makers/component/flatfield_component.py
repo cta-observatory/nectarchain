@@ -278,7 +278,9 @@ class FlatFieldComponent(NectarCAMComponent):
                     where=(np.array(self.gain) > 1e-10),  # rounding errors
                 )
 
-            mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
+            mean_amp_cam_per_event_pe = np.nanmean(
+                amp_int_per_pix_per_event_pe, axis=-1
+            )
 
             # efficiency coefficients
             eff = np.divide(
