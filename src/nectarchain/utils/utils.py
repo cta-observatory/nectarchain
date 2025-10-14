@@ -77,9 +77,9 @@ class ContainerUtils:
     @staticmethod
     def add_missing_pixels_to_container(container: NectarCAMContainer):
         """
-        Zero-pads fields of `NectarCAMContainer`s with missing pixels (due to e.g. an
-        incomplete camera). For boolean arrays related to pixel status, one-padding is
-        applied.
+        Zero-pads fields of `~nectarchain.data.container.core.NectarCAMContainer` with
+        missing pixels (due to e.g. an incomplete camera). For boolean arrays related to
+        pixel status, one-padding is applied.
         """
 
         # Make sure the container has `pixels_id` values
