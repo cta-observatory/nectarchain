@@ -2,7 +2,6 @@ import logging
 import os
 
 import numpy as np
-from ctapipe_io_nectarcam import constants
 from traitlets.config import Config
 
 from nectarchain.makers.calibration.calibration_pipeline import (
@@ -15,45 +14,41 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
+# Set NECTARCAMDATA environment
 os.environ["NECTARCAMDATA"] = "/data/users/pcorrea"
 
+# Some the run numbers to use for each calibration tool
 ped_run_number = 6249
 FF_run_number = 6252
 FF_SPE_run_number = 3936
 FF_SPE_HHV_run_number = 3942
-max_events = 1000
+
+# Specify which tools to use for each step in the calibration
+ped_tool_name = "PedestalNectarCAMCalibrationTool"
+gain_tool_name = "FlatFieldSPENominalStdNectarCAMCalibrationTool"
+FF_tool_name = "FlatfieldNectarCAMCalibrationTool"
+
+# Path for a 1400-V result file of the SPE fit
+# used in the SPE combined fit and photostatistic method
+SPE_HHV_result_path = (
+    "/data/users/pcorrea/SPEHHV_res/"
+    "FlatFieldSPEHHVStdNectarCAM_run3942_LocalPeakWindowSum_"
+    "window_shift_4_window_width_8.h5"
+)
+
+# Some general configurations that will pass to all subtools
+max_events = 12000
 progress_bar = True
 overwrite = True
 
-ped_tool_name = "PedestalNectarCAMCalibrationTool"
-gain_tool_name = "PhotoStatisticNectarCAMCalibrationTool"
-SPE_HHV_result_path = (
-    "/data/users/pcorrea/SPEHHV_res/"
-    "output_FlatFieldSPEHHVNectarCAMCalibrationTool_run3942_maxEvents1000.h5"
-)
-
+# Some specific configurations for each subtool
 config = Config()
-# config.FlatfieldNectarCAMCalibrationTool.gain = gain_array.tolist()
-# asked_pixels_id_SPE = np.arange(100)
-# config.FlatFieldSPENominalNectarCAMCalibrationTool.asked_pixels_id = (
-#     asked_pixels_id_SPE.tolist()
-# )
-config[ped_tool_name].events_per_slice = 500
-config[gain_tool_name].multiproc = False
+config[ped_tool_name].events_per_slice = 5000
+config[gain_tool_name].multiproc = True
 config[gain_tool_name].nproc = 8
 # config[gain_tool_name].display = False
-config[gain_tool_name].asked_pixels_id = [
-    100,
-    200,
-    300,
-    400,
-    500,
-    600,
-    700,
-    800,
-    900,
-    1000,
-]
+asked_pixels_id = np.arange(100)
+config[gain_tool_name].asked_pixels_id = asked_pixels_id.tolist()
 
 
 def main():
@@ -64,7 +59,9 @@ def main():
         FF_SPE_run_number=FF_SPE_run_number,
         FF_SPE_HHV_run_number=FF_SPE_HHV_run_number,
         SPE_HHV_result_path=SPE_HHV_result_path,
+        ped_tool_name=ped_tool_name,
         gain_tool_name=gain_tool_name,
+        FF_tool_name=FF_tool_name,
         max_events=max_events,
         progress_bar=progress_bar,
         overwrite=overwrite,
