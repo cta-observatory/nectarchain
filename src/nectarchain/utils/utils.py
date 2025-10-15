@@ -79,7 +79,7 @@ class ContainerUtils:
         """
         Zero-pads fields of `~nectarchain.data.container.core.NectarCAMContainer` with
         missing pixels (due to e.g. an incomplete camera). For boolean arrays related to
-        pixel status, one-padding is applied.
+        pixel status, zero/one-padding is applied appriopriately.
         """
 
         # Make sure the container has `pixels_id` values
