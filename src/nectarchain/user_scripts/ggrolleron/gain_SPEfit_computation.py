@@ -138,6 +138,7 @@ def main(
 ):
     run_number = kwargs.pop("run_number")
     max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
+    display = kwargs.pop("display")
     if max_events is None:
         max_events = [None for i in range(len(run_number))]
 
@@ -162,6 +163,7 @@ def main(
                 progress_bar=True,
                 run_number=_run_number,
                 max_events=_max_events,
+                display_toggle=display,
                 **kwargs,
             )
             tool.setup()
@@ -169,8 +171,8 @@ def main(
                 _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{CtapipeExtractor.get_extractor_kwargs_str(tool.method,tool.extractor_kwargs)}"
             else:
                 _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{CtapipeExtractor.get_extractor_kwargs_str(tool.method,tool.extractor_kwargs)}"
-            tool.start(figpath=_figpath, display=args.display)
-            tool.finish(figpath=_figpath, display=args.display)
+            tool.start(figpath=_figpath)
+            tool.finish(figpath=_figpath)
         except Exception as e:
             log.warning(e, exc_info=True)
 
@@ -221,7 +223,6 @@ if __name__ == "__main__":
 
     kwargs.pop("verbosity")
     kwargs.pop("figpath")
-    kwargs.pop("display")
     kwargs.pop("HHV")
     kwargs.pop("free_pp_n")
 
