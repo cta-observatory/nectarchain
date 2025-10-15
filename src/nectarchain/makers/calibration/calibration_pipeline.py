@@ -6,7 +6,11 @@ from ctapipe.core import run_tool
 from ctapipe.core.traits import CaselessStrEnum, Integer, Path
 from traitlets.config import Config
 
-from . import flatfield_makers, gain, pedestal_makers
+from ...utils.constants import (
+    FLATFIELD_CALIBRATION_TOOLS,
+    GAIN_CALIBRATION_TOOLS,
+    PEDESTAL_CALIBRATION_TOOLS,
+)
 from .core import NectarCAMCalibrationTool
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -15,14 +19,6 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 __all__ = ["PipelineNectarCAMCalibrationTool"]
-
-PEDESTAL_CALIBRATION_TOOLS = {
-    name: getattr(pedestal_makers, name) for name in pedestal_makers.__all__
-}
-GAIN_CALIBRATION_TOOLS = {name: getattr(gain, name) for name in gain.__all__}
-FLATFIELD_CALIBRATION_TOOLS = {
-    name: getattr(flatfield_makers, name) for name in flatfield_makers.__all__
-}
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
