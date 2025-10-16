@@ -703,7 +703,7 @@ class SPEnominalalgorithm(SPEalgorithm):
                 self._charge[index].data[~self._charge[index].mask],
                 self._counts[index].data[~self._charge[index].mask],
                 pixel_id=_id,
-                **kwargs,
+                **dict(kwargs, display=self.display_toggle),
             )
             index_parameter = Parameter(name="index", value=index, frozen=True)
             parameters.append(index_parameter)
