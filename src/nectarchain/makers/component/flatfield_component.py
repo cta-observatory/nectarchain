@@ -9,17 +9,23 @@ from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from traitlets.config.loader import Config
 
-from nectarchain.data.container import FlatFieldContainer, NectarCAMPedestalContainer
-from nectarchain.makers.component import NectarCAMComponent
-
+from ...data.container import (
+    FlatFieldContainer,
+    GainContainer,
+    NectarCAMPedestalContainer,
+    SPEfitContainer,
+)
+from ...makers.component import NectarCAMComponent
 from ...utils import ContainerUtils
-from ...utils.constants import GAIN_CONTAINER_CLASSES, GAIN_DEFAULT, HILO_DEFAULT
+from ...utils.constants import GAIN_DEFAULT, HILO_DEFAULT
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["FlatFieldComponent"]
+
+GAIN_CONTAINER_CLASSES = [GainContainer, SPEfitContainer]
 
 
 class FlatFieldComponent(NectarCAMComponent):
