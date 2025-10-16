@@ -140,7 +140,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     aliases = {
         ("i", "input"): "EventsLoopNectarCAMCalibrationTool.run_file",
         ("r", "run-number"): "EventsLoopNectarCAMCalibrationTool.run_number",
-        ("c", "camera"): "EventsLoopNectarCAMCalibrationTool.camera",
+        "camera": "EventsLoopNectarCAMCalibrationTool.camera",
         ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
         ("o", "output"): "EventsLoopNectarCAMCalibrationTool.output_path",
         "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice",
