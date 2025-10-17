@@ -111,6 +111,12 @@ class SPEalgorithm(Component):
         help="The order of the polynome used in the savgol filter algorithm",
     ).tag(config=True)
 
+    display_toggle = Bool(
+        False,
+        read_only=False,
+        help="Enable/disable display of SPE fit results",
+    )
+
     def __init__(
         self, pixels_id: np.ndarray, config=None, parent=None, **kwargs
     ) -> None:
@@ -207,7 +213,10 @@ class SPEalgorithm(Component):
 
     @staticmethod
     def _update_parameters(
-        parameters: Parameters, charge: np.ndarray, counts: np.ndarray, **kwargs
+        parameters: Parameters,
+        charge: np.ndarray,
+        counts: np.ndarray,
+        **kwargs,
     ) -> Parameters:
         """Update the parameters of the FlatFieldSPEMaker class based on the input
         charge and counts data.
@@ -694,7 +703,7 @@ class SPEnominalalgorithm(SPEalgorithm):
                 self._charge[index].data[~self._charge[index].mask],
                 self._counts[index].data[~self._charge[index].mask],
                 pixel_id=_id,
-                **kwargs,
+                **dict(kwargs, display=self.display_toggle),
             )
             index_parameter = Parameter(name="index", value=index, frozen=True)
             parameters.append(index_parameter)
@@ -765,7 +774,6 @@ class SPEnominalalgorithm(SPEalgorithm):
     def run(
         self,
         pixels_id: np.ndarray = None,
-        display: bool = True,
         **kwargs,
     ) -> np.ndarray:
         self.log.info("running maker")
@@ -790,7 +798,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         else:
             self.log.info("creation of the minuit parameters array")
             minuitParameters_array = self._make_minuitParameters_array_from_parameters(
-                pixels_id=pixels_id, display=display, **kwargs
+                pixels_id=pixels_id, **kwargs
             )
 
             self.log.info("running fits")
@@ -855,7 +863,7 @@ class SPEnominalalgorithm(SPEalgorithm):
                     res, pixels_id, return_fit_array=True
                 )
 
-            if display:
+            if self.display_toggle:
                 self.log.info("plotting")
                 t = time.time()
                 self.display(pixels_id, **kwargs)
@@ -1343,7 +1351,6 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
     def run(
         self,
         pixels_id: np.ndarray = None,
-        display: bool = True,
         **kwargs,
     ) -> np.ndarray:
         if pixels_id is None:
@@ -1359,4 +1366,4 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
                     ],
                 )
             ]
-        return super().run(pixels_id=pixels_id, display=display, **kwargs)
+        return super().run(pixels_id=pixels_id, **kwargs)
