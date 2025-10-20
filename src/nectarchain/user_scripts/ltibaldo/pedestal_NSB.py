@@ -15,16 +15,14 @@ sns.set(style="whitegrid")
 rms_threshold = 47
 
 data = [
-    {"T": -5, "runs": np.arange(6882, 6891)},
-    {"T": 0, "runs": np.arange(6672, 6681)},
-    {"T": 5, "runs": np.arange(6543, 6552)},
-    {"T": 10, "runs": np.arange(7144, 7153)},
-    {"T": 14, "runs": np.arange(6954, 6963)},
-    {"T": 20, "runs": np.arange(7077, 7086)},
-    {"T": 25, "runs": np.arange(7020, 7029)},
+    {"NSB": 0, "runs": np.arange(7144, 7153)},
+    {"NSB": 10.6, "runs": np.arange(7153, 7162)},
+    {"NSB": 20.4, "runs": np.arange(7162, 7171)},
+    {"NSB": 39.8, "runs": np.arange(7171, 7180)},
+    {"NSB": 78.8, "runs": np.append(np.array([7180]), np.arange(7182, 7190))},
 ]
 
-pixel_display = [100, 144, 663, 1058, 491, 631, 656, 701, 756, 757, 1612, 1629]
+pixel_display = [100, 144, 240, 723, 816, 1034, 1516]
 
 fill_value = np.nan
 slopes_ped_hg = np.full(1855, fill_value=fill_value)
@@ -35,10 +33,11 @@ slopes_rms_lg = np.full(1855, fill_value=fill_value)
 removed_pixels = 0
 flagged_pixels = 0
 
+# for pixel_id in pixel_display:
 for pixel_id in np.arange(1855):
     print("Working on pixel {}".format(pixel_id))
     # fill panda dataframe
-    temperatures = []
+    nsbs = []
     channels = []
     avgpeds = []
     pedsrms = []
@@ -60,7 +59,7 @@ for pixel_id in np.arange(1855):
                 ][0]
                 avgped = np.average(pedestal)
                 combrms = rms
-                temperatures.append(dataset["T"])
+                nsbs.append(dataset["NSB"])
                 channels.append(channel)
                 avgpeds.append(avgped)
                 pedsrms.append(combrms)
@@ -69,13 +68,16 @@ for pixel_id in np.arange(1855):
     if np.any(np.isnan(avgpeds)) or np.any(np.isnan(combrms)):
         flagged_pixels += 1
         print("Bad pixel")
-    elif np.any(np.array(pedsrms) > rms_threshold):  # filter on NSB OFF
+    elif np.any(
+        np.array(pedsrms)[np.array(nsbs) == 0.0] > rms_threshold
+    ):  # filter on NSB OFF
         removed_pixels += 1
         print("Removed pixel")
     else:
         df = pd.DataFrame(
             {
-                "T (deg)": temperatures,
+                "I_NSB (mA)": nsbs,
+                "sqrt(I_NSB (mA))": np.sqrt(nsbs),
                 "channel": channels,
                 "pedestal (ADC)": avgpeds,
                 "pedestal width (ADC)": pedsrms,
@@ -83,9 +85,13 @@ for pixel_id in np.arange(1855):
         )
 
         for k, q in enumerate(["pedestal (ADC)", "pedestal width (ADC)"]):
+            if k == 0:
+                x = "I_NSB (mA)"
+            elif k == 1:
+                x = "sqrt(I_NSB (mA))"
             if pixel_id in pixel_display:
                 lm = sns.lmplot(
-                    x="T (deg)",
+                    x=x,
                     y=q,
                     hue="channel",
                     data=df,
@@ -101,7 +107,7 @@ for pixel_id in np.arange(1855):
                     _artist.set_label(s=None)
 
                 sns.violinplot(
-                    x="T (deg)",
+                    x=x,
                     y=q,
                     hue="channel",
                     split=True,
@@ -115,7 +121,7 @@ for pixel_id in np.arange(1855):
             for s, channel in enumerate(["hg", "lg"]):
                 filtered_df = df[df["channel"] == channel]
                 slope, intercept, r_value, pv, se = stats.linregress(
-                    filtered_df["T (deg)"],
+                    filtered_df[x],
                     filtered_df[q],
                 )
                 if k == 0 and s == 0:
@@ -127,17 +133,25 @@ for pixel_id in np.arange(1855):
                 elif k == 1 and s == 1:
                     slopes_rms_lg[pixel_id] = slope
                 if pixel_id in pixel_display:
-                    ax.annotate(
-                        "y = {:.4f} T + {:.4f}".format(slope, intercept),
-                        (0.05, 0.85 - s * 0.05),
-                        color=colors[s],
-                        xycoords="axes fraction",
-                    )
+                    if k == 0:
+                        ax.annotate(
+                            "y = {:.4f} I + {:.4f}".format(slope, intercept),
+                            (0.05, 0.85 - s * 0.05),
+                            color=colors[s],
+                            xycoords="axes fraction",
+                        )
+                    elif k == 1:
+                        ax.annotate(
+                            "y = {:.4f} sqrt(I) + {:.4f}".format(slope, intercept),
+                            (0.05, 0.85 - s * 0.05),
+                            color=colors[s],
+                            xycoords="axes fraction",
+                        )
 
             if pixel_id in pixel_display:
-                ax.set_title("Pixel {}, NSB OFF".format(pixel_id))
+                ax.set_title("Pixel {}, T 10 deg".format(pixel_id))
                 fig.savefig(
-                    "{}/pixel{}_{}.png".format(os.environ["FIGDIR"], pixel_id, k)
+                    "{}/pixel_{}_{}.png".format(os.environ["FIGDIR"], pixel_id, k)
                 )
                 del fig
                 plt.close()
@@ -174,13 +188,13 @@ for k in range(2):  # quantity to treat
         if k == 1:
             ax.set_yscale("log")
         if k == 0 and s == 0:
-            ax.set_title("Pedestal slope (ADC/deg), hg, NSB OFF")
+            ax.set_title("Pedestal slope (ADC/mA), hg, T 10 deg")
         elif k == 0 and s == 1:
-            ax.set_title("Pedestal slope (ADC/deg), lg, NSB OFF")
+            ax.set_title("Pedestal slope (ADC/mA), lg, T 10 deg")
         elif k == 1 and s == 0:
-            ax.set_title("Pedestal width slope (ADC/deg), hg, NSB OFF")
+            ax.set_title("Pedestal width slope (ADC/sqrt(mA)), hg, T 10 deg")
         elif k == 1 and s == 1:
-            ax.set_title("Pedestal width slope (ADC/deg), lg, NSB OFF")
+            ax.set_title("Pedestal width slope (ADC/sqrt(mA)), lg, T 10 deg")
         plt.axvline(np.nanmean(slopes), linestyle=":")
         plt.axvline(np.nanmean(slopes) - np.nanstd(slopes), linestyle=":")
         plt.axvline(np.nanmean(slopes) + np.nanstd(slopes), linestyle=":")
@@ -193,10 +207,10 @@ for k in range(2):  # quantity to treat
         ax = plt.subplot(2, 2, s + 3)
         disp = CameraDisplay(camera)
         disp.image = slopes
-        if k == 0:
-            disp.set_limits_minmax(-0.3, 0.3)
-        elif k == 1:
-            disp.set_limits_minmax(-0.07, 0.07)
+        # if k == 0:
+        #     disp.set_limits_minmax(-0.3, 0.3)
+        # elif k == 1:
+        #     disp.set_limits_minmax(-0.07, 0.07)
         disp.cmap = "Spectral_r"
         disp.add_colorbar()
         disp.update()

@@ -18,19 +18,21 @@ nthreads = 30
 
 run_list = np.concatenate(
     (
-        np.arange(6882, 6891),
-        np.arange(6672, 6681),
-        np.arange(7144, 7153),
-        np.arange(6954, 6963),
-        np.arange(7020, 7029),
-        np.arange(6543, 6552),
-        np.arange(7077, 7086),
+        # np.arange(6882, 6891),
+        # np.arange(6672, 6681),
+        # np.arange(7144, 7153),
+        # np.arange(6954, 6963),
+        # np.arange(7020, 7029),
+        # np.arange(6543, 6552),
+        # np.arange(7077, 7086),
+        np.arange(7153, 7181),
+        np.arange(7182, 7190),
     )
 )
 
 
 def process_run(run_number):
-    outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_nofilter_{}.h5".format(
+    outfile = os.environ["NECTARCAMDATA"] + "/runs/pedestal_cfilt3s_{}.h5".format(
         run_number
     )
     tool = PedestalNectarCAMCalibrationTool(
@@ -41,9 +43,9 @@ def process_run(run_number):
         log_level=0,
         output_path=outfile,
         overwrite=True,
-        filter_method="None",  # "ChargeDistributionFilter",
-        # charge_sigma_low_thr=3.0,
-        # charge_sigma_high_thr=3.0,
+        filter_method="ChargeDistributionFilter",
+        charge_sigma_low_thr=3.0,
+        charge_sigma_high_thr=3.0,
     )
 
     tool.initialize()
