@@ -15,12 +15,13 @@ sns.set(style="whitegrid")
 rms_threshold = 47
 
 data = [
-    {"NSB": 0, "runs": np.arange(7144, 7153)},
-    {"NSB": 10.6, "runs": np.arange(7153, 7162)},
-    {"NSB": 20.4, "runs": np.arange(7162, 7171)},
-    {"NSB": 39.8, "runs": np.arange(7171, 7180)},
-    {"NSB": 78.8, "runs": np.append(np.array([7180]), np.arange(7182, 7190))},
+    {"NSB": 0, "runs": np.arange(6672, 6681)},
+    {"NSB": 10.6, "runs": np.arange(6681, 6690)},
+    {"NSB": 20.4, "runs": np.arange(6690, 6699)},
+    {"NSB": 39.8, "runs": np.arange(6699, 6708)},
+    {"NSB": 78.8, "runs": np.arange(6708, 6717)},
 ]
+temp = 0.0
 
 pixel_display = [100, 144, 240, 723, 816, 1034, 1516]
 
@@ -149,7 +150,7 @@ for pixel_id in np.arange(1855):
                         )
 
             if pixel_id in pixel_display:
-                ax.set_title("Pixel {}, T 10 deg".format(pixel_id))
+                ax.set_title("Pixel {}, T {} deg".format(pixel_id, temp))
                 fig.savefig(
                     "{}/pixel_{}_{}.png".format(os.environ["FIGDIR"], pixel_id, k)
                 )
@@ -188,13 +189,17 @@ for k in range(2):  # quantity to treat
         if k == 1:
             ax.set_yscale("log")
         if k == 0 and s == 0:
-            ax.set_title("Pedestal slope (ADC/mA), hg, T 10 deg")
+            ax.set_title("Pedestal slope (ADC/mA), hg, T {} deg".format(temp))
         elif k == 0 and s == 1:
-            ax.set_title("Pedestal slope (ADC/mA), lg, T 10 deg")
+            ax.set_title("Pedestal slope (ADC/mA), lg, T {} deg".format(temp))
         elif k == 1 and s == 0:
-            ax.set_title("Pedestal width slope (ADC/sqrt(mA)), hg, T 10 deg")
+            ax.set_title(
+                "Pedestal width slope (ADC/sqrt(mA)), hg, T {} deg".format(temp)
+            )
         elif k == 1 and s == 1:
-            ax.set_title("Pedestal width slope (ADC/sqrt(mA)), lg, T 10 deg")
+            ax.set_title(
+                "Pedestal width slope (ADC/sqrt(mA)), lg, T {} deg".format(temp)
+            )
         plt.axvline(np.nanmean(slopes), linestyle=":")
         plt.axvline(np.nanmean(slopes) - np.nanstd(slopes), linestyle=":")
         plt.axvline(np.nanmean(slopes) + np.nanstd(slopes), linestyle=":")
