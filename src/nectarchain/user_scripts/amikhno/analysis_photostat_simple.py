@@ -18,9 +18,9 @@ from ctapipe.io.hdf5tableio import HDF5TableReader
 # ctapipe modules
 from ctapipe.visualization import CameraDisplay
 from iminuit import Minuit
-from jacobi import propagate
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from scipy.optimize._numdiff import approx_derivative
 
 from nectarchain.data.container import GainContainer
 
@@ -367,6 +367,22 @@ def model(params):
     )
 
 
+def propagate_scipy_compatible(model, params, cov):
+    """
+    Computes output covariance via numerical Jacobian propagation.
+    """
+    params = np.asarray(params)
+    cov = np.asarray(cov)
+
+    y = model(params)
+    J = approx_derivative(model, params, method="2-point")
+
+    # Covariance propagation
+    ycov = J @ cov @ J.T
+
+    return y, ycov
+
+
 def error_propagation_compute(data, minuit_resulting, plot=True, rebin=True):
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
 
@@ -388,10 +404,10 @@ def error_propagation_compute(data, minuit_resulting, plot=True, rebin=True):
         )
 
     # --- Propagate errors through the model
-    y, ycov = propagate(
+    y, ycov = propagate_scipy_compatible(
         lambda p: model(p), minuit_resulting.values, minuit_resulting.covariance
-    )  # changed
-    yerr_prop = np.sqrt(np.diag(ycov))  # per-pixel uncertainty
+    )
+    yerr_prop = np.sqrt(np.diag(ycov))
 
     # --- Optionally rebin by θ
     if rebin:
