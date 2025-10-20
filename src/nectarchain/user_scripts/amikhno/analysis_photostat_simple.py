@@ -24,6 +24,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from nectarchain.data.container import GainContainer
 
+plt.style.use("/home/amikhno/Downloads/plot_style.mpltstyle")
+
 parser = argparse.ArgumentParser(description="Run NectarCAM photostatistics analysis")
 
 parser.add_argument("-r", "--run-number", required=True, help="Run number")
@@ -58,8 +60,9 @@ run_spe_number = args.spe_run_number
 run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
 filename_ps = (
     args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
-    f"_GlobalPeakWindowSum_window_width_8_Pedrun{run_number}_FullWaveformSum.h5"
+    f"_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
 )
+
 
 # --- Example usage ---
 if not os.path.exists(filename_ps):
@@ -80,10 +83,12 @@ if not os.path.exists(filename_ps):
         "--SPE_run_number",
         run_spe_number,
         "--method",
-        "GlobalPeakWindowSum",
+        "LocalPeakWindowSum",
         "--extractor_kwargs",
-        '{"window_width":8}',
+        '{"window_shift": 4, "window_width":16}',
         "--overwrite",
+        "--SPE_config",
+        "nominal",
         "-v",
         "INFO",
         "--reload_events",
