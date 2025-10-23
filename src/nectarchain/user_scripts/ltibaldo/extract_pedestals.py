@@ -27,12 +27,14 @@ run_list = np.concatenate(
         # np.arange(7077, 7086),
         # np.arange(7153, 7181),
         # np.arange(7182, 7190),
-        np.arange(6891, 6927),
-        np.arange(6681, 6717),
+        # np.arange(6891, 6927),
+        # np.arange(6681, 6717),
+        # np.arange(6552, 6588),
+        # np.arange(6963, 6999),
+        # np.arange(7086, 7122),
+        # np.arange(7029, 7065),
         np.arange(6552, 6588),
-        np.arange(6963, 6999),
-        np.arange(7086, 7122),
-        np.arange(7029, 7065),
+        np.arange(7086, 7110),
     )
 )
 
