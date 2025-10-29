@@ -5,9 +5,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tables
+
+# Imports from ctapipe
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
+from ctapipe_io_nectarcam.constants import N_PIXELS
 from scipy import stats
 
 sns.set(style="whitegrid")
@@ -27,15 +30,15 @@ data = [
 pixel_display = [100, 144, 663, 1058, 491, 631, 656, 701, 756, 757, 1612, 1629]
 
 fill_value = np.nan
-slopes_ped_hg = np.full(1855, fill_value=fill_value)
-slopes_rms_hg = np.full(1855, fill_value=fill_value)
-slopes_ped_lg = np.full(1855, fill_value=fill_value)
-slopes_rms_lg = np.full(1855, fill_value=fill_value)
+slopes_ped_hg = np.full(N_PIXELS, fill_value=fill_value)
+slopes_rms_hg = np.full(N_PIXELS, fill_value=fill_value)
+slopes_ped_lg = np.full(N_PIXELS, fill_value=fill_value)
+slopes_rms_lg = np.full(N_PIXELS, fill_value=fill_value)
 
 removed_pixels = 0
 flagged_pixels = 0
 
-for pixel_id in np.arange(1855):
+for pixel_id in np.arange(N_PIXELS):
     print("Working on pixel {}".format(pixel_id))
     # fill panda dataframe
     temperatures = []
