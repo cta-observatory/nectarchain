@@ -87,7 +87,7 @@ pedfiles = [  # OK
     },
 ]
 
-outfigroot = os.environ["FIGDIR"]
+outfigroot = os.environ["NECTARCHAIN_FIGURES"]
 pixel_display = [100, 144, 240, 723, 816, 1034, 1516]
 fill_value = np.nan
 
