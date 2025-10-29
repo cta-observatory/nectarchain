@@ -33,10 +33,11 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     @staticmethod
     def mean_std_multisample(nevents, means, stds):
         """
-        Method that calculates means and std of the combination of multiple subsamples
-            Works for both:
-        - pedestal data (means/stds shaped (n_pixels, n_samples))
-        - charge data (means/stds shaped (n_pixels,))
+        Method that calculates means and std of the combination of multiple subsamples.
+        Works for both:
+
+            - pedestal data (means/stds shaped (n_pixels, n_samples))
+            - charge data (means/stds shaped (n_pixels,))
 
         Parameters
         ----------
