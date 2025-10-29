@@ -5,9 +5,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tables
+
+# Imports from ctapipe
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
+from ctapipe_io_nectarcam.constants import N_PIXELS
 from scipy import stats
 
 sns.set(style="whitegrid")
@@ -91,11 +94,11 @@ outfigroot = os.environ["NECTARCHAIN_FIGURES"]
 pixel_display = [100, 144, 240, 723, 816, 1034, 1516]
 fill_value = np.nan
 
-pixel_process = np.arange(1855)
+pixel_process = np.arange(N_PIXELS)
 # pixel_process = pixel_display
 
-slopes_width_hg = np.full([len(pedfiles), 1855], fill_value=fill_value)
-slopes_width_lg = np.full([len(pedfiles), 1855], fill_value=fill_value)
+slopes_width_hg = np.full([len(pedfiles), N_PIXELS], fill_value=fill_value)
+slopes_width_lg = np.full([len(pedfiles), N_PIXELS], fill_value=fill_value)
 
 for itemp, uberset in enumerate(pedfiles):
     temp = uberset["T"]
@@ -106,10 +109,10 @@ for itemp, uberset in enumerate(pedfiles):
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    slopes_ped_hg = np.full(1855, fill_value=fill_value)
-    slopes_rms_hg = np.full(1855, fill_value=fill_value)
-    slopes_ped_lg = np.full(1855, fill_value=fill_value)
-    slopes_rms_lg = np.full(1855, fill_value=fill_value)
+    slopes_ped_hg = np.full(N_PIXELS, fill_value=fill_value)
+    slopes_rms_hg = np.full(N_PIXELS, fill_value=fill_value)
+    slopes_ped_lg = np.full(N_PIXELS, fill_value=fill_value)
+    slopes_rms_lg = np.full(N_PIXELS, fill_value=fill_value)
 
     removed_pixels = 0
     flagged_pixels = 0
@@ -297,8 +300,8 @@ outdir = os.path.join(outfigroot, "NSB_temperature")
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-slopes_hg = np.full(1855, fill_value=fill_value)
-slopes_lg = np.full(1855, fill_value=fill_value)
+slopes_hg = np.full(N_PIXELS, fill_value=fill_value)
+slopes_lg = np.full(N_PIXELS, fill_value=fill_value)
 x = [data["T"] for data in pedfiles]
 
 print("Working on temperature variations")
