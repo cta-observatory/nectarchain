@@ -102,10 +102,10 @@ slopes_width_lg = np.full([len(pedfiles), N_PIXELS], fill_value=fill_value)
 
 for itemp, uberset in enumerate(pedfiles):
     temp = uberset["T"]
-    print("Analyzing data for temperature {}".format(temp))
+    print(f"Analyzing data for temperature {temp}")
 
     # create output directory if needed
-    outdir = os.path.join(outfigroot, "NSB_T{}deg".format(temp))
+    outdir = os.path.join(outfigroot, f"NSB_T{temp}deg")
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
@@ -118,7 +118,7 @@ for itemp, uberset in enumerate(pedfiles):
     flagged_pixels = 0
 
     for pixel_id in pixel_process:
-        print("Working on pixel {}".format(pixel_id))
+        print(f"Working on pixel {pixel_id}")
         # fill panda dataframe
         nsbs = []
         channels = []
@@ -128,16 +128,17 @@ for itemp, uberset in enumerate(pedfiles):
         for dataset in uberset["data"]:
             for run_number in dataset["runs"]:
                 run_number = int(run_number)
-                filename = os.environ[
-                    "NECTARCAMDATA"
-                ] + "/runs/pedestal_cfilt3s_{}.h5".format(run_number)
+                filename = (
+                    os.environ["NECTARCAMDATA"]
+                    + f"/runs/pedestal_cfilt3s_{run_number}.h5"
+                )
                 h5file = tables.open_file(filename)
                 table = h5file.root["data_combined"]["NectarCAMPedestalContainer_0"][0]
                 for channel in ["hg", "lg"]:
-                    pedestal = table["pedestal_mean_{}".format(channel)][
+                    pedestal = table[f"pedestal_mean_{channel}"][
                         table["pixels_id"] == pixel_id
                     ][0]
-                    rms = table["pedestal_charge_std_{}".format(channel)][
+                    rms = table[f"pedestal_charge_std_{channel}"][
                         table["pixels_id"] == pixel_id
                     ][0]
                     avgped = np.average(pedestal)
@@ -212,27 +213,24 @@ for itemp, uberset in enumerate(pedfiles):
                         slopes_rms_lg[pixel_id] = slope
                     if pixel_id in pixel_display:
                         ax.annotate(
-                            "y = {:.4f} I + {:.4f}".format(slope, intercept),
+                            f"y = {slope:.4f} I + {intercept:.4f}",
                             (0.05, 0.85 - s * 0.05),
                             color=colors[s],
                             xycoords="axes fraction",
                         )
 
                 if pixel_id in pixel_display:
-                    ax.set_title("Pixel {}, T {} deg".format(pixel_id, temp))
-                    fig.savefig("{}/pixel_{}_{}.png".format(outdir, pixel_id, k))
+                    ax.set_title(f"Pixel {pixel_id}, T {temp} deg")
+                    fig.savefig(f"{outdir}/pixel_{pixel_id}_{k}.png")
                     del fig
                     plt.close()
 
     print(
-        "{} pixels were flagged as bad by the pedestal estimation tool".format(
-            flagged_pixels
-        )
+        f"{flagged_pixels} pixels were flagged as bad by the pedestal estimation tool"
     )
     print(
-        "{} pixels were removed because they had a pedestal RMS exceeding {}".format(
-            removed_pixels, rms_threshold
-        )
+        f"{removed_pixels} pixels were removed because they had a pedestal RMS "
+        f"exceeding {rms_threshold}"
     )
 
     slopes_width_hg[itemp] = slopes_rms_hg
@@ -259,17 +257,13 @@ for itemp, uberset in enumerate(pedfiles):
             if k == 1:
                 ax.set_yscale("log")
             if k == 0 and s == 0:
-                ax.set_title("Pedestal slope (ADC/mA), hg, T {} deg".format(temp))
+                ax.set_title(f"Pedestal slope (ADC/mA), hg, T {temp} deg")
             elif k == 0 and s == 1:
-                ax.set_title("Pedestal slope (ADC/mA), lg, T {} deg".format(temp))
+                ax.set_title(f"Pedestal slope (ADC/mA), lg, T {temp} deg")
             elif k == 1 and s == 0:
-                ax.set_title(
-                    "Pedestal width slope (ADC^2/mA), hg, T {} deg".format(temp)
-                )
+                ax.set_title(f"Pedestal width slope (ADC^2/mA), hg, T {temp} deg")
             elif k == 1 and s == 1:
-                ax.set_title(
-                    "Pedestal width slope (ADC^2/mA), lg, T {} deg".format(temp)
-                )
+                ax.set_title(f"Pedestal width slope (ADC^2/mA), lg, T {temp} deg")
             plt.axvline(np.nanmean(slopes), linestyle=":")
             plt.axvline(np.nanmean(slopes) - np.nanstd(slopes), linestyle=":")
             plt.axvline(np.nanmean(slopes) + np.nanstd(slopes), linestyle=":")
@@ -292,7 +286,7 @@ for itemp, uberset in enumerate(pedfiles):
             disp.add_colorbar()
             disp.update()
             ax.set_title("")
-        fig.savefig("{}/camera_{}.png".format(outdir, k))
+        fig.savefig(f"{outdir}/camera_{k}.png")
 
 # Ped width^2-I slope as a function of temp
 # create output directory if needed
@@ -308,7 +302,7 @@ print("Working on temperature variations")
 bad_pixels_hg = 0
 bad_pixels_lg = 0
 for pixel_id in pixel_process:
-    print("Working on pixel {}".format(pixel_id))
+    print(f"Working on pixel {pixel_id}")
 
     for s in range(2):  # channels
         isgood = True
@@ -353,16 +347,16 @@ for pixel_id in pixel_process:
                 fig.subplots_adjust(top=0.9)
 
                 ax.annotate(
-                    "y = {:.4f} T + {:.4f}".format(slope, intercept),
+                    f"y = {slope:.4f} T + {intercept:.4f}",
                     (0.05, 0.85 - s * 0.05),
                     xycoords="axes fraction",
                 )
-                ax.set_title("Pixel {}, ".format(pixel_id, label))
-                fig.savefig("{}/pixel_{}_{}.png".format(outdir, pixel_id, label))
+                ax.set_title(f"Pixel {pixel_id}, {label}")
+                fig.savefig(f"{outdir}/pixel_{pixel_id}_{label}.png")
                 del fig
                 plt.close()
 
-print("Bad pixels: HG {}, LG {}".format(bad_pixels_hg, bad_pixels_lg))
+print(f"Bad pixels: HG {bad_pixels_hg}, LG {bad_pixels_lg}")
 
 camera = CameraGeometry.from_name("NectarCam-003")
 camera = camera.transform_to(EngineeringCameraFrame())
@@ -402,4 +396,4 @@ for s in range(2):  # HG and LG channels
     disp.add_colorbar()
     disp.update()
     ax.set_title("")
-fig.savefig("{}/camera.png".format(outdir))
+fig.savefig(f"{outdir}/camera.png")
