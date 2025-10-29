@@ -39,7 +39,7 @@ removed_pixels = 0
 flagged_pixels = 0
 
 for pixel_id in np.arange(N_PIXELS):
-    print("Working on pixel {}".format(pixel_id))
+    print(f"Working on pixel {pixel_id}")
     # fill panda dataframe
     temperatures = []
     channels = []
@@ -49,16 +49,16 @@ for pixel_id in np.arange(N_PIXELS):
     for dataset in data:
         for run_number in dataset["runs"]:
             run_number = int(run_number)
-            filename = os.environ[
-                "NECTARCAMDATA"
-            ] + "/runs/pedestal_cfilt3s_{}.h5".format(run_number)
+            filename = (
+                os.environ["NECTARCAMDATA"] + f"/runs/pedestal_cfilt3s_{run_number}.h5"
+            )
             h5file = tables.open_file(filename)
             table = h5file.root["data_combined"]["NectarCAMPedestalContainer_0"][0]
             for channel in ["hg", "lg"]:
-                pedestal = table["pedestal_mean_{}".format(channel)][
+                pedestal = table[f"pedestal_mean_{channel}"][
                     table["pixels_id"] == pixel_id
                 ][0]
-                rms = table["pedestal_charge_std_{}".format(channel)][
+                rms = table[f"pedestal_charge_std_{channel}"][
                     table["pixels_id"] == pixel_id
                 ][0]
                 avgped = np.average(pedestal)
@@ -131,29 +131,24 @@ for pixel_id in np.arange(N_PIXELS):
                     slopes_rms_lg[pixel_id] = slope
                 if pixel_id in pixel_display:
                     ax.annotate(
-                        "y = {:.4f} T + {:.4f}".format(slope, intercept),
+                        f"y = {slope:.4f} T + {intercept:.4f}",
                         (0.05, 0.85 - s * 0.05),
                         color=colors[s],
                         xycoords="axes fraction",
                     )
 
             if pixel_id in pixel_display:
-                ax.set_title("Pixel {}, NSB OFF".format(pixel_id))
+                ax.set_title(f"Pixel {pixel_id}, NSB OFF")
                 fig.savefig(
-                    "{}/pixel{}_{}.png".format(os.environ["FIGDIR"], pixel_id, k)
+                    f"{os.environ['NECTARCHAIN_FIGURES']}/pixel{pixel_id}_{k}.png"
                 )
                 del fig
                 plt.close()
 
+print(f"{flagged_pixels} pixels were flagged as bad by the pedestal estimation tool")
 print(
-    "{} pixels were flagged as bad by the pedestal estimation tool".format(
-        flagged_pixels
-    )
-)
-print(
-    "{} pixels were removed because they had a pedestal RMS exceeding {}".format(
-        removed_pixels, rms_threshold
-    )
+    f"{removed_pixels} pixels were removed because they had a pedestal RMS "
+    f"exceeding {rms_threshold}"
 )
 
 camera = CameraGeometry.from_name("NectarCam-003")
@@ -204,4 +199,4 @@ for k in range(2):  # quantity to treat
         disp.add_colorbar()
         disp.update()
         ax.set_title("")
-    fig.savefig("{}/camera_{}.png".format(os.environ["FIGDIR"], k))
+    fig.savefig(f"{os.environ['NECTARCHAIN_FIGURES']}/camera_{k}.png")
