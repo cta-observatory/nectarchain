@@ -27,6 +27,7 @@ class TestPixelParticipation:
         )
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
+        tel_id = reader1.subarray.tel_ids[0]
 
         Pix, Samp = PixelParticipationHighLowGain(HIGH_GAIN, r0=True).define_for_run(
             reader1
@@ -34,7 +35,7 @@ class TestPixelParticipation:
 
         evt = None
         for evt in tqdm(reader1, total=1):
-            self.pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels
+            self.pixelBAD = evt.mon.tel[tel_id].pixel_status.hardware_failing_pixels
 
         assert Pix + Samp == 1915
-        assert np.sum(evt.nectarcam.tel[0].svc.pixel_ids) == 1719375
+        assert np.sum(evt.nectarcam.tel[tel_id].svc.pixel_ids) == 1719375

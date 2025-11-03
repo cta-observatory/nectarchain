@@ -527,6 +527,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
                 self._chargesContainers = ChargesComponent.create_from_waveforms(
                     waveformsContainer=self._waveformsContainers,
                     subarray=self.subarray,
+                    tel_id=self.tel_id,
                     config=self.config,
                     parent=self.parent,
                     *args,

@@ -10,6 +10,7 @@ import numpy as np
 from ctapipe_io_nectarcam import constants
 
 from nectarchain.makers.calibration import FlatfieldNectarCAMCalibrationTool
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -21,19 +22,21 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
+)
+parser.add_argument(
     "-r",
     "--run",
     default=None,
     help="Flatfield run number",
     type=int,
 )
-parser.add_argument(
-    "-p",
-    "--path",
-    default=".",
-    help="path to runs folder (NECTARCAMDATA)",
-    type=str,
-)
+parser.add_argument("--log", default="info", help="output verbosity", type=str)
 
 args = parser.parse_args()
 
@@ -41,7 +44,7 @@ if args.run is None:
     log.error(f"At least one run number should be provided (use -r).")
     sys.exit(1)
 
-os.environ["NECTARCAMDATA"] = args.path
+log.setLevel(args.log.upper())
 
 
 def get_gain(output_from_FlatFieldComponent):
@@ -156,7 +159,7 @@ def get_bad_pixels(output_from_FlatFieldComponent):
     return all_bad_pix
 
 
-print("\n *** First pass with default gain and hi/lo values *** \n")
+log.info("\n *** First pass with default gain and hi/lo values *** \n")
 
 # default gain array
 gain_default = 58.0
@@ -171,14 +174,15 @@ run_number = args.run
 max_events = 10000
 window_width = 12
 window_shift = 5
-outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldOutput/1FF_{}.h5".format(run_number)
+outfile = Path(os.environ.get("NECTARCAMDATA"), f"FlatFieldOutput/1FF_{run_number}.h5")
 
 # Initial call
 tool = FlatfieldNectarCAMCalibrationTool(
     progress_bar=True,
+    camera=args.camera,
     run_number=run_number,
     max_events=max_events,
-    log_level=20,
+    log_level=args.log.upper(),
     charge_extraction_method=None,  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
     charge_integration_correction=False,
     window_width=window_width,
@@ -199,21 +203,22 @@ if len(FlatFieldOutput.event_id) == 0:
     log.error(f"There are no flatfield events")
     sys.exit(1)
 
-print("\n\tIntermediate output file %s" % outfile)
+log.debug("\n\tIntermediate output file %s" % outfile)
 
-print(
+log.info(
     "\n *** Second pass with updates gain and hi/lo values and \
 taking into account bad pixels *** \n"
 )
 
-outfile = os.environ["NECTARCAMDATA"] + "/FlatFieldOutput/2FF_{}.h5".format(run_number)
+outfile = Path(os.environ.get("NECTARCAMDATA"), f"FlatFieldOutput/2FF_{run_number}.h5")
 
 # Second call with updated gain aray and bad pixels
 tool = FlatfieldNectarCAMCalibrationTool(
     progress_bar=True,
+    camera=args.camera,
     run_number=run_number,
     max_events=max_events,
-    log_level=20,
+    log_level=args.log.upper(),
     charge_extraction_method=None,  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
     charge_integration_correction=False,
     window_width=window_width,
@@ -230,7 +235,7 @@ tool.setup()
 tool.start()
 FlatFieldOutput = tool.finish(return_output_component=True)[0]
 
-print("\n\tFinal output file %s \n" % outfile)
+log.info("\n\tFinal output file %s \n" % outfile)
 
 # Another option would be to use only one tool and make the gain calculation and
 # identification of bad pixels in the finish fonction of the component (to be tested)

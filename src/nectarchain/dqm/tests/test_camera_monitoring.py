@@ -25,12 +25,13 @@ class TestCameraMonitoring:
         )
 
         reader1 = EventSource(input_url=path, config=config, max_events=1)
+        tel_id = reader1.subarray.tel_ids[0]
 
         Pix, Samp = CameraMonitoring(HIGH_GAIN, r0=True).define_for_run(reader1)
 
         sql_file_date = None
         for evt in tqdm(reader1, total=1):
-            run_start1 = evt.nectarcam.tel[0].svc.date
+            run_start1 = evt.nectarcam.tel[tel_id].svc.date
             sql_file_date = astropytime.Time(run_start1, format="unix").iso.split(" ")[
                 0
             ]

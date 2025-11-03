@@ -14,6 +14,7 @@ from nectarchain.makers.calibration import (
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
 )
 from nectarchain.makers.extractor.utils import CtapipeExtractor
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
@@ -22,6 +23,16 @@ parser = argparse.ArgumentParser(
 # run numbers
 parser.add_argument(
     "-r", "--run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # max events to be loaded
@@ -137,6 +148,7 @@ def main(
     **kwargs,
 ):
     run_number = kwargs.pop("run_number")
+    camera = kwargs.pop("camera")
     max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
     display = kwargs.pop("display")
     if max_events is None:
@@ -161,6 +173,7 @@ def main(
         try:
             tool = _class(
                 progress_bar=True,
+                camera=camera,
                 run_number=_run_number,
                 max_events=_max_events,
                 display_toggle=display,

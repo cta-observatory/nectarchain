@@ -119,6 +119,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                             ChargesComponent._create_from_waveforms_looping_eventType(
                                 waveformsContainers=next(waveformsContainers),
                                 subarray=self.event_source.subarray,
+                                tel_id=self.tel_id,
                                 method=self.method,
                                 **self.extractor_kwargs,
                             )
@@ -136,6 +137,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                             chargesContainers = ChargesComponent._create_from_waveforms_looping_eventType(  # noqa
                                 waveformsContainers=_waveformsContainers,
                                 subarray=self.event_source.subarray,
+                                tel_id=self.tel_id,
                                 method=self.method,
                                 **self.extractor_kwargs,
                             )
@@ -149,6 +151,7 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
                     chargesContainers = ChargesComponent.create_from_waveforms(
                         waveformsContainer=waveformsContainers,
                         subarray=self.event_source.subarray,
+                        tel_id=self.tel_id,
                         method=self.method,
                         **self.extractor_kwargs,
                     )

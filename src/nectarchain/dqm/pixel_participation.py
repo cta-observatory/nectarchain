@@ -15,6 +15,7 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.k = gaink
         self.Pix = None
         self.Samp = None
+        self.tel_id = None
         self.counter_evt = 0
         self.counter_ped = 0
         self.BadPixels_ped = None
@@ -34,13 +35,14 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.counter_ped = 0
         self.BadPixels_ped = np.zeros(self.Pix)
         self.BadPixels = np.zeros(self.Pix)
-        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+        self.tel_id = Reader1.subarray.tel_ids[0]
+        self.camera = Reader1.subarray.tel[self.tel_id].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
 
     def process_event(self, evt, noped):
-        pixelBAD = evt.mon.tel[0].pixel_status.hardware_failing_pixels[self.k]
-        pixels = evt.nectarcam.tel[0].svc.pixel_ids
+        pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels[self.k]
+        pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
         # Ensure 'pixels' is fixed length
         if len(pixels) < self.Pix:

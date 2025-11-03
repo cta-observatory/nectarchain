@@ -9,6 +9,7 @@ from typing import List, Tuple
 import numpy as np
 
 from ..utils import KeepLoggingUnchanged
+from ..utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -30,7 +31,11 @@ except Exception as e:
 
 class DataManagement:
     @staticmethod
-    def findrun(run_number: int, search_on_GRID=True) -> Tuple[Path, List[Path]]:
+    def findrun(
+        run_number: int,
+        search_on_GRID=True,
+        camera=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    ) -> Tuple[Path, List[Path]]:
         """Method to find in NECTARCAMDATA the list of ``*.fits.fz`` files
         associated to run_number.
 
@@ -38,6 +43,11 @@ class DataManagement:
         ----------
         run_number: int
             the run number
+        search_on_GRID: bool
+            If enabled, search for data on the EGI grid via DIRAC, and fetch
+            them automatically
+        camera: str
+            The NectarCAM camera for which data are search for. (Default: NectarCAMQM)
 
         Returns
         -------
@@ -46,7 +56,7 @@ class DataManagement:
         """
         basepath = f"{os.environ['NECTARCAMDATA']}/runs/"
         list = glob.glob(
-            basepath + "**/*" + str(run_number) + "*.fits.fz", recursive=True
+            basepath + "**/*" + str(run_number).zfill(4) + "*.fits.fz", recursive=True
         )
         list_path = [Path(chemin) for chemin in list]
         if len(list_path) == 0:
@@ -55,13 +65,15 @@ class DataManagement:
                 log.warning(e, exc_info=True)
                 log.info("will search files on GRID and fetch them")
                 lfns = DataManagement.get_GRID_location(
-                    run_number, basepath="/vo.cta.in2p3.fr/nectarcam"
+                    run_number, basepath=f"/ctao/nectarcam/{camera}"
                 )
-                lfns.extend(
-                    DataManagement.get_GRID_location(
-                        run_number, basepath="/ctao/nectarcam"
+                if camera.endswith("QM"):
+                    lfns.extend(
+                        DataManagement.get_GRID_location(
+                            run_number, basepath="/vo.cta.in2p3.fr/nectarcam"
+                        )
                     )
-                )
+
                 if not lfns:
                     not_found = FileNotFoundError(
                         f"Could not find run {run_number} on DIRAC (neither under "
@@ -179,7 +191,7 @@ class DataManagement:
             catalog = DCatalog()
             with redirect_stdout(sys.stdout):
                 fccli = FileCatalogClientCLI(catalog.catalog)
-                sys.stdout = StdoutRecord(keyword=f"Run{run_number}")
+                sys.stdout = StdoutRecord(keyword=f"Run{str(run_number).zfill(4)}")
                 fccli.do_find("-q " + basepath)
                 lfns = sys.stdout.output
                 sys.stdout = sys.__stdout__

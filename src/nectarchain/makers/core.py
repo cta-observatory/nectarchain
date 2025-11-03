@@ -13,6 +13,8 @@ from ctapipe.core.traits import (
     ComponentNameList,
     Integer,
     Path,
+    TraitError,
+    Unicode,
     classes_with_traits,
     flag,
 )
@@ -27,6 +29,7 @@ from traitlets import default
 from ..data import DataManagement
 from ..data.container.core import NectarCAMContainer, TriggerMapContainer
 from ..utils import ComponentUtils
+from ..utils.constants import ALLOWED_CAMERAS
 from .component import NectarCAMComponent, get_valid_component
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -70,7 +73,10 @@ class BaseNectarCAMCalibrationTool(Tool):
 
     @staticmethod
     def load_run(
-        run_number: int, max_events: int = None, run_file: str = None
+        run_number: int,
+        max_events: int = None,
+        run_file: str = None,
+        camera: int = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
     ) -> LightNectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
@@ -83,6 +89,8 @@ class BaseNectarCAMCalibrationTool(Tool):
             max of events to be loaded. Defaults to -1, to load everything.
         run_file : optional
             if provided, will load this run file
+        camera : str
+            camera for which data are processed. (Default: NectarCAMQM)
 
         Returns
         -------
@@ -91,7 +99,7 @@ class BaseNectarCAMCalibrationTool(Tool):
         """
         # Load the data from the run file.
         if run_file is None:
-            generic_filename, _ = DataManagement.findrun(run_number)
+            generic_filename, _ = DataManagement.findrun(run_number, camera=camera)
             log.info(f"{str(generic_filename)} will be loaded")
             eventsource = LightNectarCAMEventSource(
                 input_url=generic_filename, max_events=max_events
@@ -110,6 +118,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     Args:
         run_number (int): The ID of the run to be processed.
+        camera (str): The NectarCAM camera for which data should be processed.
         max_events (int, optional): The maximum number of events to be loaded.
         Defaults to None.
         run_file (optional): The specific run file to be loaded.
@@ -131,6 +140,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     aliases = {
         ("i", "input"): "EventsLoopNectarCAMCalibrationTool.run_file",
         ("r", "run-number"): "EventsLoopNectarCAMCalibrationTool.run_number",
+        "camera": "EventsLoopNectarCAMCalibrationTool.camera",
         ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
         ("o", "output"): "EventsLoopNectarCAMCalibrationTool.output_path",
         "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice",
@@ -160,6 +170,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     run_number = Integer(help="run number to be treated", default_value=-1).tag(
         config=True
     )
+
+    camera = Unicode(
+        help="camera for which the data will be processed",
+        default_value=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        allow_none=False,
+    ).tag(config=True)
 
     output_path = Path(
         help="output filename",
@@ -218,6 +234,10 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if self.camera not in ALLOWED_CAMERAS and self.run_file is None:
+            raise TraitError(f"The camera field should be one of {ALLOWED_CAMERAS}.")
+
         if not ("output_path" in kwargs.keys()):
             self._init_output_path()
 
@@ -230,7 +250,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     def _load_eventsource(self, *args, **kwargs):
         self.log.debug("loading event source")
         self.event_source = self.enter_context(
-            self.load_run(self.run_number, self.max_events, run_file=self.run_file)
+            self.load_run(
+                self.run_number,
+                self.max_events,
+                run_file=self.run_file,
+                camera=self.camera,
+            )
         )
 
     def _get_provided_component_kwargs(self, componentName: str):
@@ -348,8 +373,6 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
 
     def _setup_eventsource(self, *args, **kwargs):
         self._load_eventsource(*args, **kwargs)
-        self.__npixels = self._event_source.nectarcam_service.num_pixels
-        self.__pixels_id = self._event_source.nectarcam_service.pixel_ids
 
     def _setup_components(self, *args, **kwargs):
         self.log.info("setup of components")
@@ -503,6 +526,17 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             raise e
 
     @property
+    def tel_id(self):
+        """
+        Getter method for the tel_id attribute.
+        """
+        if len(self._event_source.subarray.tel_ids) != 1:
+            msg = "Subaray with more than one telescope is not supported"
+            self.log.error(msg)
+            raise ValueError(msg)
+        return self._event_source.subarray.tel_ids[0]
+
+    @property
     def event_source(self):
         """
         Getter method for the _event_source attribute.
@@ -527,28 +561,28 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         """
         Getter method for the _npixels attribute.
         """
-        return self.__npixels
+        return self._event_source.nectarcam_service.num_pixels
 
     @property
     def _pixels_id(self):
         """
         Getter method for the _pixels_id attribute.
         """
-        return self.__pixels_id
+        return self._event_source.nectarcam_service.pixel_ids
 
     @property
     def npixels(self):
         """
         Getter method for the npixels attribute.
         """
-        return copy.deepcopy(self.__npixels)
+        return copy.deepcopy(self._npixels)
 
     @property
     def pixels_id(self):
         """
         Getter method for the pixels_id attribute.
         """
-        return copy.deepcopy(self.__pixels_id)
+        return copy.deepcopy(self._pixels_id)
 
 
 class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):

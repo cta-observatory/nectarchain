@@ -45,7 +45,9 @@ class TestWaveformsComponent(BaseTestArrayDataComponent):
 
     def test_init(self, instance):
         assert isinstance(instance, WaveformsComponent)
-        assert instance._geometry == instance.subarray.tel[instance.TEL_ID].camera
+        assert (
+            instance.geometry == instance.subarray.tel[instance.tel_id].camera.geometry
+        )
         assert isinstance(instance._wfs_lg, dict)
         assert isinstance(instance._wfs_hg, dict)
 
