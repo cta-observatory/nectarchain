@@ -50,7 +50,14 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
         pedestal_std_hg (np.ndarray): An array of standard deviations of high gain
         pedestals.
         pedestal_std_lg (np.ndarray): An array of standard deviations of low gain
-        pedestals.
+        pedestal_charge_mean_hg (np.ndarray): An array of high gain
+        mean pedestal charges.
+        pedestal_charge_mean_lg (np.ndarray): An array of low gain
+        mean pedestal charges.
+        pedestal_charge_std_hg (np.ndarray): An array of standard deviations
+        of high gain pedestal charges.
+        pedestal_charge_std_lg (np.ndarray): An array of standard deviations
+        of low gain pedestal charges.
     """
 
     nsamples = Field(
@@ -99,6 +106,33 @@ class NectarCAMPedestalContainer(NectarCAMContainer):
         dtype=np.float64,
         ndim=2,
         description="low gain pedestals standard deviations",
+    )
+
+    pedestal_charge_mean_hg = Field(
+        type=np.ndarray,
+        dtype=np.float64,
+        ndim=1,
+        description="high gain mean pedestal charges",
+    )
+
+    pedestal_charge_mean_lg = Field(
+        type=np.ndarray,
+        dtype=np.float64,
+        ndim=1,
+        description="low gain mean pedestal charges",
+    )
+
+    pedestal_charge_std_hg = Field(
+        type=np.ndarray,
+        dtype=np.float64,
+        ndim=1,
+        description="high gain pedestal charges standard deviations",
+    )
+    pedestal_charge_std_lg = Field(
+        type=np.ndarray,
+        dtype=np.float64,
+        ndim=1,
+        description="low gain pedestal charges standard deviations",
     )
 
     pixel_mask = Field(

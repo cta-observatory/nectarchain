@@ -15,7 +15,6 @@ logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-
 __all__ = ["PedestalNectarCAMCalibrationTool"]
 
 
@@ -30,6 +29,63 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def mean_std_multisample(nevents, means, stds):
+        """
+        Method that calculates means and std of the combination of multiple subsamples.
+        Works for both:
+
+            - pedestal data (means/stds shaped (n_pixels, n_samples))
+            - charge data (means/stds shaped (n_pixels,))
+
+        Parameters
+        ----------
+        nevents : list of `~numpy.ndarray`
+            Number of events for each sample (per pixel)
+        means : list of `~numpy.ndarray`
+            Mean values
+        stds : list of `~numpy.ndarray`
+            Std values
+
+        Returns
+        -------
+        mean : `~numpy.ndarray`
+            Mean values of combined sample
+        std : `~numpy.ndarray`
+            Std values of combined sample
+        nevent : `~numpy.ndarray`
+            Number of events of combined sample (per pixel)
+        """
+
+        # convert lists to numpy arrays
+        # axis 0 corresponds to the subsamples
+        nevents = np.array(nevents)
+        means = np.array(means)
+        stds = np.array(stds)
+
+        total_nevents = np.sum(nevents, axis=0)
+
+        # Handle both 1D and 2D cases cleanly
+        if means.ndim == 3:
+            # (n_subsamples, n_pixels, n_samples)
+            nevents_expanded = nevents[:, :, np.newaxis]
+            total_nevents_expanded = total_nevents[:, np.newaxis]
+        elif means.ndim == 2:
+            # (n_subsamples, n_pixels)
+            nevents_expanded = nevents
+            total_nevents_expanded = total_nevents
+        else:
+            log.error("Unexpected shape for means array")
+
+        mean = np.sum(nevents_expanded * means, axis=0) / total_nevents_expanded
+        num = np.sum(
+            (nevents_expanded - 1) * stds**2 + nevents_expanded * (means - mean) ** 2,
+            axis=0,
+        )
+        std = np.sqrt(num / (total_nevents_expanded - 1))
+
+        return mean, std, total_nevents
 
     def _init_output_path(self):
         """
@@ -76,96 +132,93 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Loop over sliced results to fill the combined results
         self.log.info("Combine sliced results")
-        for i, _pedestalContainer in enumerate(pedestalContainers):
+        nevents_list = []
+        mean_lists = {"ped_hg": [], "ped_lg": [], "charge_hg": [], "charge_lg": []}
+        std_lists = {"ped_hg": [], "ped_lg": [], "charge_hg": [], "charge_lg": []}
+        first = True
+        for _pedestalContainer in pedestalContainers:
             pedestalContainer = list(_pedestalContainer.containers.values())[0]
-            if i == 0:
-                # initialize fields for the combined results based on first slice
+
+            # usable pixel mask
+            usable_pixels = pedestalContainer.pixel_mask == 0
+            usable_pixels = np.logical_and(usable_pixels[0], usable_pixels[1])
+
+            nevents_list.append(pedestalContainer.nevents * usable_pixels)
+            mean_lists["ped_hg"].append(pedestalContainer.pedestal_mean_hg)
+            mean_lists["ped_lg"].append(pedestalContainer.pedestal_mean_lg)
+            std_lists["ped_hg"].append(pedestalContainer.pedestal_std_hg)
+            std_lists["ped_lg"].append(pedestalContainer.pedestal_std_lg)
+            mean_lists["charge_hg"].append(pedestalContainer.pedestal_charge_mean_hg)
+            mean_lists["charge_lg"].append(pedestalContainer.pedestal_charge_mean_lg)
+            std_lists["charge_hg"].append(pedestalContainer.pedestal_charge_std_hg)
+            std_lists["charge_lg"].append(pedestalContainer.pedestal_charge_std_lg)
+
+            if first:
                 nsamples = pedestalContainer.nsamples
-                nevents = np.zeros(len(pedestalContainer.nevents))
                 pixels_id = pedestalContainer.pixels_id
                 ucts_timestamp_min = pedestalContainer.ucts_timestamp_min
                 ucts_timestamp_max = pedestalContainer.ucts_timestamp_max
-                pedestal_mean_hg = np.zeros(
-                    np.shape(pedestalContainer.pedestal_mean_hg)
-                )
-                pedestal_mean_lg = np.zeros(
-                    np.shape(pedestalContainer.pedestal_mean_lg)
-                )
-                pedestal_std_hg = np.zeros(np.shape(pedestalContainer.pedestal_std_hg))
-                pedestal_std_lg = np.zeros(np.shape(pedestalContainer.pedestal_std_lg))
-            else:
-                # otherwise consider the overall time interval
-                ucts_timestamp_min = np.minimum(
-                    ucts_timestamp_min, pedestalContainer.ucts_timestamp_min
-                )
-                ucts_timestamp_max = np.maximum(
-                    ucts_timestamp_max, pedestalContainer.ucts_timestamp_max
-                )
-            # for all slices
-            # derive from pixel mask a mask that sets usable pixels
-            # accept only pixels for which no flags were raised
-            usable_pixels = pedestalContainer.pixel_mask == 0
-            # use a pixel only if it has no flag on either channel
-            usable_pixels = np.logical_and(usable_pixels[0], usable_pixels[1])
-            # cumulated number of events
-            nevents += pedestalContainer.nevents * usable_pixels
-            # add mean, std sum elements
-            pedestal_mean_hg += (
-                pedestalContainer.pedestal_mean_hg
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+                first = False
+
+            # update timestamps
+            ucts_timestamp_min = np.minimum(
+                ucts_timestamp_min, pedestalContainer.ucts_timestamp_min
             )
-            pedestal_mean_lg += (
-                pedestalContainer.pedestal_mean_lg
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+            ucts_timestamp_max = np.maximum(
+                ucts_timestamp_max, pedestalContainer.ucts_timestamp_max
             )
-            pedestal_std_hg += (
-                pedestalContainer.pedestal_std_hg**2
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
+
+        # Compute combined stats for both gains
+        results = {}
+        for q in ["ped_hg", "ped_lg", "charge_hg", "charge_lg"]:
+            mean, std, nevents = self.mean_std_multisample(
+                nevents_list, mean_lists[q], std_lists[q]
             )
-            pedestal_std_lg += (
-                pedestalContainer.pedestal_std_lg**2
-                * pedestalContainer.nevents[:, np.newaxis]
-                * usable_pixels[:, np.newaxis]
-            )
-        # calculate final values of mean and std
-        pedestal_mean_hg /= nevents[:, np.newaxis]
-        pedestal_mean_lg /= nevents[:, np.newaxis]
-        pedestal_std_hg /= nevents[:, np.newaxis]
-        pedestal_std_hg = np.sqrt(pedestal_std_hg)
-        pedestal_std_lg /= nevents[:, np.newaxis]
-        pedestal_std_lg = np.sqrt(pedestal_std_lg)
+            results[q] = {"mean": mean, "std": std}
+
+        mean_hg, std_hg = results["ped_hg"]["mean"], results["ped_hg"]["std"]
+        mean_lg, std_lg = results["ped_lg"]["mean"], results["ped_lg"]["std"]
+        charge_mean_hg, charge_std_hg = (
+            results["charge_hg"]["mean"],
+            results["charge_hg"]["std"],
+        )
+        charge_mean_lg, charge_std_lg = (
+            results["charge_lg"]["mean"],
+            results["charge_lg"]["std"],
+        )
+
         # flag bad pixels in overall results based on same criteria as for individual
-        # slides
-        # reconstitute dictionary with cumulated results consistently with
-        # PedestalComponent
         ped_stats = {}
-        array_shape = np.append([N_GAINS], np.shape(pedestal_mean_hg))
+        array_shape = np.append([N_GAINS], np.shape(mean_hg))
         for statistic in ["mean", "std"]:
             ped_stat = np.zeros(array_shape)
             if statistic == "mean":
-                ped_stat[HIGH_GAIN] = pedestal_mean_hg
-                ped_stat[LOW_GAIN] = pedestal_mean_lg
+                ped_stat[HIGH_GAIN] = mean_hg
+                ped_stat[LOW_GAIN] = mean_lg
             elif statistic == "std":
-                ped_stat[HIGH_GAIN] = pedestal_std_hg
-                ped_stat[LOW_GAIN] = pedestal_std_lg
+                ped_stat[HIGH_GAIN] = std_hg
+                ped_stat[LOW_GAIN] = std_lg
             # Store the result in the dictionary
             ped_stats[statistic] = ped_stat
         # use flagging method from PedestalComponent
         pixel_mask = self.components[0].flag_bad_pixels(ped_stats, nevents)
 
+        # reconstitute dictionary with cumulated results consistently with
+        # PedestalComponent
         output = NectarCAMPedestalContainer(
             nsamples=nsamples,
             nevents=nevents,
             pixels_id=pixels_id,
             ucts_timestamp_min=ucts_timestamp_min,
             ucts_timestamp_max=ucts_timestamp_max,
-            pedestal_mean_hg=pedestal_mean_hg,
-            pedestal_mean_lg=pedestal_mean_lg,
-            pedestal_std_hg=pedestal_std_hg,
-            pedestal_std_lg=pedestal_std_lg,
+            pedestal_mean_hg=mean_hg,
+            pedestal_mean_lg=mean_lg,
+            pedestal_std_hg=std_hg,
+            pedestal_std_lg=std_lg,
+            pedestal_charge_mean_hg=charge_mean_hg,
+            pedestal_charge_mean_lg=charge_mean_lg,
+            pedestal_charge_std_hg=charge_std_hg,
+            pedestal_charge_std_lg=charge_std_lg,
             pixel_mask=pixel_mask,
         )
 

@@ -22,7 +22,7 @@ tmax = np.array([])
 # fill results for plotting
 i = 0
 for result in h5file.root.__members__:
-    table = h5file.root[result]["NectarCAMPedestalContainer"][0]
+    table = h5file.root[result]["NectarCAMPedestalContainer_0"][0]
     wf = table["pedestal_mean_hg"][table["pixels_id"] == pixel_id][0]
     std = table["pedestal_std_hg"][table["pixels_id"] == pixel_id][0]
     if result == "data_combined":
