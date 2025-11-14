@@ -11,7 +11,6 @@ try:
     from scipy import interpolate
     from tqdm import tqdm
 
-
 except ImportError as e:
     print(e)
     raise SystemExit
@@ -139,10 +138,9 @@ class DBColumnInfos(DictInfos):
         self.df = df
 
 
-class ModuleArray(np.ndarray):
-    """
-    Helper class that is a numpy array but for NectarCAM Module infos
-    """
+class CameraArray(np.ndarray):
+    _info_axis = None
+    _nElements = -1
 
     def __new__(cls, a):
         obj = np.asarray(a).view(cls)
@@ -155,65 +153,182 @@ class ModuleArray(np.ndarray):
         - a : An input numpy array that contains information on the module level
         - mod_axis : Axis position (int or list of int) of the module info. If None, it will take all axis that has a 265 size.
         """
-        self.modules_axis = list()
+        if self._info_axis is None:
+            self._info_axis = list()
+
         if mod_axis is None:
-            for axis, s in enumerate(a.shape):
-                if s == 265:
-                    self.modules_axis.append(axis)
-            if not self.modules_axis:
-                raise ValueError(
-                    "Received Array does not have any module like axis (An axis with 265 is expected)"
-                )
+            self._guess_axis()
         else:
             try:
                 for ax in mod_axis:
-                    self.modules_axis.append(ax)
+                    self.infos_axis.append(ax)
             except Exception as err:
                 ## must be a single value
-                self.modules_axis.append(mod_axis)
+                self.infos_axis.append(mod_axis)
+
+    @property
+    def nElements(self):
+        return self._nElements
+
+    @property
+    def info_axis(self):
+        self._guess_axis()
+        return self._info_axis
+
+    def _guess_axis(self):
+        if self._info_axis is None:
+            self._info_axis = list()
+        if not self._info_axis:
+            for axis, s in enumerate(self.shape):
+                if s == self.nElements:
+                    self._info_axis.append(axis)
+                if not self._info_axis:
+                    raise ValueError(
+                        f"Received Array does not have any module like axis (An axis with {self.nElements} is expected)"
+                    )
+
+
+class ModuleArray(CameraArray):
+    # _info_axis = list()
+    _nElements = 265
+
+    def __init__(self, a, mod_axis=None):
+        """
+        init function
+        Parameters:
+        - a : An input numpy array that contains information on the module level
+        - mod_axis : Axis position (int or list of int) of the module info. If None, it will take all axis that has a 265 size.
+        """
+        super().__init__(a=a, mod_axis=mod_axis)
 
     def to_pixel(self):
         """
         This will create a new instanciation at each call
         """
         c = None
-        for a in self.modules_axis:
+        for a in self.info_axis:
             c = np.repeat(self if c is None else c, 7, axis=a)
+
         return PixelArray(c)
 
 
-class PixelArray(np.ndarray):
-    """
-    Helper class that is a numpy array but for NectarCAM pixel infos
-    """
+class PixelArray(CameraArray):
+    # _info_axis = list()
+    _nElements = 1855
 
-    def __new__(cls, a):
-        obj = np.asarray(a).view(cls)
-        return obj
-
-    def __init__(self, a, pix_axis=None):
+    def __init__(self, a, mod_axis=None):
         """
         init function
         Parameters:
-        - a : An input numpy array that contains information on the pixel level
-        - pix_axis : Axis position (int or list of int) of the pixel info. If None, it will take all axis that has a 1855 size.
+        - a : An input numpy array that contains information on the module level
+        - mod_axis : Axis position (int or list of int) of the module info. If None, it will take all axis that has a 265 size.
         """
-        self.modules_axis = list()
-        if pix_axis is None:
-            for axis, s in enumerate(a.shape):
-                if s == 1855:
-                    self.modules_axis.append(axis)
-            if not self.modules_axis:
-                raise ValueError(
-                    "Received Array does not have any pixel like axis (An axis with 1855 is expected)"
-                )
-        else:
-            try:
-                for ax in pix_axis:
-                    self.modules_axis.append(ax)
-            except Exception as err:
-                ## must be a single value
-                self.modules_axis.append(pix_axis)
+        super().__init__(a=a, mod_axis=mod_axis)
+
+        # if self._info_axis is None:
+        #     self.info_axis = list()
+
+        # if mod_axis is None:
+        #     self._guess_axis()
+        # else:
+        #     try:
+        #         for ax in mod_axis:
+        #             self.infos_axis.append(ax)
+        #     except Exception as err:
+        #         ## must be a single value
+        #         self.infos_axis.append(mod_axis)
+
+
+# class ModuleArray(np.ndarray):
+#     """
+#     Helper class that is a numpy array but for NectarCAM Module infos
+#     """
+#     _modules_axis = list()
+
+#     def __new__(cls, a):
+#         obj = np.asarray(a).view(cls)
+#         return obj
+
+#     def _guess_axis(self):
+#         if not self._modules_axis:
+#             for axis, s in enumerate(self.shape):
+#                 if s == 265:
+#                     self._modules_axis.append(axis)
+#                 if not self._modules_axis:
+#                     raise ValueError("Received Array does not have any module like axis (An axis with 265 is expected)")
+
+
+#     def __init__(self, a, mod_axis=None):
+#         """
+#         init function
+#         Parameters:
+#         - a : An input numpy array that contains information on the module level
+#         - mod_axis : Axis position (int or list of int) of the module info. If None, it will take all axis that has a 265 size.
+#         """
+#         #print("module array init")
+#         #self._modules_axis = None
+
+#         if mod_axis is None:
+#             self._guess_axis()
+#         else:
+#             try:
+#                 for ax in mod_axis:
+#                     self._modules_axis.append(ax)
+#             except Exception as err:
+#                 ## must be a single value
+#                 self._modules_axis.append(mod_axis)
+
+#     @property
+#     def modules_axis(self):
+#         self._guess_axis()
+#         return self._modules_axis
+
+
+#     def to_pixel(self):
+#         """
+#         This will create a new instanciation at each call
+#         """
+#         c = None
+#         for a in self.modules_axis:
+#             print(f"{self.modules_axis = }")
+#             print(f"{a = }")
+#             c = np.repeat(self if c is None else c,7,axis=a)
+
+#         return PixelArray(c)
+
+# class PixelArray(np.ndarray):
+#     """
+#     Helper class that is a numpy array but for NectarCAM pixel infos
+#     """
+#     _modules_axis = list()
+
+#     def __new__(cls, a):
+#         obj = np.asarray(a).view(cls)
+#         return obj
+
+#     def __init__(self, a, pix_axis=None):
+#         """
+#         init function
+#         Parameters:
+#         - a : An input numpy array that contains information on the pixel level
+#         - pix_axis : Axis position (int or list of int) of the pixel info. If None, it will take all axis that has a 1855 size.
+#         """
+#         self.modules_axis = list()
+#         print("HERE",type(a))
+#         print("THERE",a)
+#         if pix_axis is None:
+#             for axis, s in enumerate(a.shape):
+#                 if s == 1855:
+#                     self.modules_axis.append(axis)
+#             if not self.modules_axis:
+#                 raise ValueError("Received Array does not have any pixel like axis (An axis with 1855 is expected)")
+#         else:
+#             try:
+#                 for ax in pix_axis:
+#                     self.modules_axis.append(ax)
+#             except Exception as err:
+#                 ## must be a single value
+#                 self.modules_axis.append(pix_axis)
 
 
 class DBCameraElementInfos:
@@ -645,6 +760,7 @@ class DBInfos(DictInfos):
         t = GetDAQTimeFromTime(begin_time)
         db_files = list()
         while t <= GetDAQTimeFromTime(end_time):
+            # print(f"GetDBNameFromTime(t): {GetDBNameFromTime(t)}")
             db_file = FindFile(GetDBNameFromTime(t), dbpath)
             if db_file:
                 db_files.append(db_file)
