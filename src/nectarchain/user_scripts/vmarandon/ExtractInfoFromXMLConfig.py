@@ -2,10 +2,8 @@ try:
     import argparse
     import sys
     import xml.etree.ElementTree as ET
-    from datetime import datetime, timedelta
 
     import pandas as pd
-    from IPython.display import HTML, display
     from Utils import CustomFormatter, FindFile, GetDefaultDataPath
 
 except ImportError as e:
@@ -89,7 +87,7 @@ def ExtractInfoFromXMLConfig(arglist):
     d = {"pixel": pixels, "target_hv": voltages, "current_trips": currentTrips}
     df = pd.DataFrame(data=d)
 
-    display(df)
+    # display(df)
 
     if args.run is not None:
         outname = f"run_{args.run}_config_infos.csv"
