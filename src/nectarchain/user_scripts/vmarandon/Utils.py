@@ -238,11 +238,17 @@ def SignalIntegration(
             camera = GetCamera()
         if len(wvf.shape) == 3:
             charge, time = NeighborPeakIntegration2Gain(
-                wvf, camera.neighbor_matrix, left_bound=5, right_bound=7
+                wvf,
+                camera.neighbor_matrix,
+                left_bound=left_bound,
+                right_bound=right_bound,
             )
         else:
             charge, time = NeighborPeakIntegrationGainSelected(
-                wvf, camera.neighbor_matrix, left_bound=5, right_bound=7
+                wvf,
+                camera.neighbor_matrix,
+                left_bound=left_bound,
+                right_bound=right_bound,
             )
     elif method == IntegrationMethod.USERPEAK:
         # print("HERE")
@@ -421,6 +427,65 @@ def getPixelRiseTime(waveform):
     return itmax
 
 
+def GetMirrorModules(camera=None):
+    mod_pos = list()
+
+    cam = GetCamera() if camera is None else camera
+
+    pix_x = cam.pix_x.to_value("m")
+    pix_y = cam.pix_y.to_value("m")
+
+    for m in range(265):
+        pos_xs = pix_x[7 * m : 7 * (m + 1)]
+        pos_ys = pix_y[7 * m : 7 * (m + 1)]
+        mean_xs = np.mean(pos_xs)
+        mean_ys = np.mean(pos_ys)
+        mod_pos.append([mean_xs, mean_ys])
+
+    mod_pos = np.array(mod_pos)
+
+    m = 0
+
+    mod_2_mirror = 265 * [0]
+    mirror_2_mod = 265 * [0]
+
+    # for m in tqdm(range(265)):
+    for m in tqdm(range(265)):
+        mean_xs = mod_pos[m, 0]
+        mean_ys = mod_pos[m, 1]
+
+        mirror_xs = -mean_xs
+        mirror_ys = mean_ys
+
+        dists = np.empty(265)
+        for mm in range(265):
+            mm_xs = mod_pos[mm, 0]
+            mm_ys = mod_pos[mm, 1]
+
+            dist = (mm_xs - mirror_xs) ** 2.0 + (mm_ys - mirror_ys) ** 2.0
+            dists[mm] = dist
+        mirror_module = np.argmin(dists)
+        mod_2_mirror[m] = mirror_module
+        mirror_2_mod[mirror_module] = m
+
+    return np.array(mod_2_mirror)
+
+    # pix_2_mirror = list()
+    # mirror_2_pix = list()
+    # for m in range(265):
+    #     mm = mod_2_mirror[m]
+    #     for p in range(7):
+    #         pix = 7*mm+p
+    #         pix_2_mirror.append(pix)
+    # for mm in range(265):
+    #     m = mod_2_mirror[mm]
+    #     for p in range(7):
+    #         pix = 7*m+p
+    #         mirror_2_pix.append(pix)
+    # print(pix_2_mirror)
+    # print(mirror_2_pix)
+
+
 # def GetPixelMaxRiseTime(waveform):
 #     nsamples = len(waveform)
 #     times = np.arange(0,nsamples)
@@ -559,6 +624,7 @@ class TriggerInfos:
         ucts_stereo_pattern=None,
         ucts_trigger_type=None,
         missing_module_info=None,
+        ucts_timestamp=None,
     ):
         self.trigs = trigs
         self.event_id = event_id
@@ -576,6 +642,7 @@ class TriggerInfos:
         self.ucts_stereo_pattern = ucts_stereo_pattern
         self.ucts_trigger_type = ucts_trigger_type
         self.missing_module_info = missing_module_info
+        self.ucts_timestamp = ucts_timestamp
 
     def get_event_deltat(self, unit="µs"):
         dt = np.array(
@@ -628,6 +695,21 @@ class LightEvent:
         def __init__(self):
             self.tel = dict()
 
+    class Stat:
+        def __init__(self):
+            self.tel = dict()
+
+    class WaveformStat:
+        def __init__(self, wvf):
+            self.min = wvf.min(axis=-1)
+            self.max = wvf.max(axis=-1)
+            self.mean = wvf.mean(axis=-1).astype(np.float16)
+            self.std = wvf.std(axis=-1, ddof=1).astype(np.float16)
+
+        @property
+        def ptp(self):
+            return self.max - self.min
+
     def __init__(self, r0=None, trigger=None, nectarcam=None, mon=None):
         self.r0 = r0
         self.trigger = trigger
@@ -638,3 +720,4 @@ class LightEvent:
         self.pedestal = LightEvent.Pedestal()
         self.saturated = LightEvent.Saturated()
         self.fwhm = LightEvent.FWHM()
+        self.stat = LightEvent.Stat()
