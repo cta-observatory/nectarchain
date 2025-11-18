@@ -158,7 +158,7 @@ logger.info(f"Found runs {runlist} in {dfcDir}")
 
 if len(sqlfilelist) == 0:
     logger.critical(
-        "Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
+        f"Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
     )
     sys.exit(1)
 logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
