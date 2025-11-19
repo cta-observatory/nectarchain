@@ -56,8 +56,8 @@ jobs:
             ctapipe-version: "v0.24.0"
             install-method: "pip"
             extra-args: ["codecov"]
-          # macos 13 image is x86-based
-          - os: "macos-13"
+          # macos 15 image, x86-based
+          - os: "macos-15-intel"
             python-version: "3.11"
             ctapipe-version: "v0.24.0"
             install-method: "mamba"
