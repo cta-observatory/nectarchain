@@ -1,0 +1,15 @@
+For ChargeResolution.py:
+
+1. Update the run_list.json with runs, ff_voltage and NSB level.
+2. Pixels and modules to be rejected are specified in bad_pix_module.json
+3. Running the code : python ChargeResolution.py -t 14 -e 1000 -o output
+4. While calling ChargeResolutionTestTool, ff_coeff options: 1. Independent method of computation, 2. The 2-D gaussian model way, 
+	If nothing is specified or integers other than 1 or 2 are passed, then ff_coeff=1.
+
+
+For linearity.py
+
+1. FF coefficients same as ChargeResolution.py
+
+
+
