@@ -2,7 +2,6 @@
 
 import argparse
 import os
-import pickle
 import sys
 import time
 
@@ -21,13 +20,7 @@ from lmfit.models import Model
 from tools_components import ChargeResolutionTestTool
 from utils import get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
-from nectarchain.trr_test_suite.utils import (
-    err_ratio,
-    err_sum,
-    linear_fit_function,
-    plot_parameters,
-    trasmission_390ns,
-)
+from nectarchain.trr_test_suite.utils import err_ratio, err_sum, plot_parameters
 
 plt.style.use("../plot_style.mpltstyle")
 
@@ -88,10 +81,6 @@ def get_args():
         "1- Independent, 2- 2D Gaussian model by Anastasiia, else ff_coefficients=1",
         required=False,
         default=None,
-    )
-
-    parser.add_argument(
-        "--temp_output", help="Temporary output directory for GUI", default=None
     )
 
     return parser
@@ -289,8 +278,6 @@ def main():
     5. Saves the generated plots to the specified output directory.
     6. Generates an additional plot to visualize the charge resolution, including the\
         statistical limit.
-    7. Saves the charge resolution plot to the specified output directory, and\
-        optionally saves a temporary plot file for a GUI.
     """
     parser = get_args()
     args = parser.parse_args()
@@ -547,9 +534,6 @@ def main():
 
     print("Std HG, LG", len(charge_hg), len(charge_lg), len(std_hg), len(std_lg))
 
-    if temp_output:
-        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
-            pickle.dump(fig, f)
     plt.close("all")
 
 
