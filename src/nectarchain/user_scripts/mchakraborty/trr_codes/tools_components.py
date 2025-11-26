@@ -1030,7 +1030,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         else:
             charge = charge_all
             tom_no_fit = tom_no_fit_all
-        mean_charge_pe = np.mean(np.mean(charge, axis=0)) / 58.0
+        mean_charge_pe = np.mean(np.mean(charge, axis=0)) / adc_to_pe
         # tom_mu = np.array(tom_mu_all[good_evts]).reshape(len(good_evts),
         # output[0].npixels)
 
