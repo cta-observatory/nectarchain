@@ -38,7 +38,8 @@ def get_args():
             you have to set a NECTARCAMDATA environment variable\
                 in the folder where you have the data from your runs\
                     or where you want them to be downloaded.\n"
-        + "You have to give a list of runs in run_list.json, a\
+        + "You have to give a list of runs in <run_file>.json,\
+                            eg:run_list.json and pass it to the args\
             corresponding value of voltage and the NSB value of the sets\
             and an output directory to save the \
                 final plot.\n"
@@ -48,6 +49,15 @@ def get_args():
         + "You can optionally specify the number of events to be processed\
             (default 500) and the number of pixels used (default 1000).\n"
     )
+    parser.add_argument(
+        "-r",
+        "--run_file",
+        type=str,
+        help="Run file path and name",
+        required=False,
+        default="run_file.json",
+    )
+
     parser.add_argument(
         "-e",
         "--evts",
@@ -86,180 +96,6 @@ def get_args():
     return parser
 
 
-def read_file(run, temperature):
-    mean_charge = [0, 0]  # per channel
-    std_charge = [0, 0]
-    std_err = [0, 0]
-
-    mean_resolution = [0, 0]
-
-    print(np.nanmean(adc_to_pe))
-
-    charge_hg = []
-    charge_lg = []
-    tom_mean = []
-
-    filename = "FinalCuts/LinearityTestTool_run{}_maxevents1000.h5".format(run)
-    # adc_to_pe = 58
-
-    output_file = h5py.File(filename)
-
-    for thing in output_file:
-        group = output_file[thing]
-        dataset = group["ChargeContainer_0"]
-        data = dataset[:]
-        # print("data",data)
-        for tup in data:
-            try:
-                npixels = tup[1]
-                pixel_id = tup[2]
-                charge_hg.extend(tup[6])
-                charge_lg.extend(tup[7])
-                tom_mean.append(tup[8])
-
-            except Exception:
-                break
-
-    output_file.close()
-    # bad_pix = np.array([50,310,1841,1842, 737, 1702, 827, 385, 1556, 296, 104, 430])
-
-    adc_to_pe = get_adc_to_pe(temperature)
-    bad_pix = get_bad_pixels_list()
-    ff_coeff = get_ff_coeff()
-
-    charge_hg = np.array(charge_hg)
-    charge_lg = np.array(charge_lg)
-    # charge_lg[:,bad_pix] = np.nan
-    # charge_hg[:,bad_pix] = np.nan
-
-    # print("bad pix list ", bad_pix)
-
-    charge_lg = np.array(charge_lg)
-    charge_hg = np.array(charge_hg)
-
-    # npixels = len(np.where(charge_hg[0]>-900)[0])
-    # print(npixels)
-
-    # charge_hg = np.ma.masked_invalid(charge_hg)
-    # charge_lg = np.ma.masked_invalid(charge_lg)
-
-    print("ff_coeff ", ff_coeff)
-
-    charge_pe_hg = charge_hg / (adc_to_pe)
-    charge_pe_lg = charge_lg / (adc_to_pe)
-
-    # print(pixel_id[bad_pix],charge_pe_lg,len(charge_pe_lg),len(charge_pe_hg))
-    print(
-        "min ",
-        np.min(np.concatenate(charge_pe_lg)),
-        np.min(np.concatenate(charge_pe_hg)),
-    )
-    fig, axs = plt.subplots(1, 2)
-    axs[0].set_yscale("log")
-    axs[0].set_xlabel("Charge LG (pe)")
-    axs[0].hist(charge_pe_lg.flatten(), bins=1000, range=[-10.0, 100])
-    axs[1].set_yscale("log")
-    axs[1].set_xlabel("Charge HG (pe)")
-    axs[1].set_ylim(0.01, pow(10, 5))
-    axs[1].hist(charge_pe_hg.flatten(), bins=1000, range=[-10.0, 700])
-
-    plt.title("Run {}".format(run))
-    plt.tight_layout()
-    plt.savefig("FinalCuts/Charge_distribution_cuts_{}.png".format(run))
-
-    ratio_hglg = np.mean(np.mean(charge_pe_hg, axis=0) / np.mean(charge_pe_lg, axis=0))
-    print("ratio ", ratio_hglg)
-
-    for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
-        print(channel, charge)
-        pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
-        print(pix_mean_charge)
-        plt.clf()
-        camera = CameraGeometry.from_name("NectarCam-003").transform_to(
-            EngineeringCameraFrame()
-        )
-        # print(tom_mean, tom_mean[0], len(tom_mean[0]))
-        disp = CameraDisplay(
-            geometry=camera,
-            image=pix_mean_charge,
-            cmap="gnuplot2",
-            title="Run {}, Ch {}".format(run, channel),
-        )
-        disp.add_colorbar()
-
-        # disp.set_limits_minmax(zmin=18,zmax=30)
-        plt.savefig("FinalCuts/Pix_ch_mean_final_cuts_{}_{}.png".format(run, channel))
-
-        pix_std_charge = np.nanstd(charge, axis=0)
-
-        # charge = np.ma.array(charge,mask=[charge<pix_mean_charge- 2.*pix_std_charge])
-
-        # pix_mean_charge = np.mean(charge,axis=0)
-        # pix_std_charge  = np.std(charge,axis=0)
-
-        pix_resolution = pix_std_charge / pix_mean_charge
-
-        # pix_resolution = np.ma.array(pix_resolution,mask=[pix_mean_charge<1e-10])
-        plt.clf()
-        camera = CameraGeometry.from_name("NectarCam-003").transform_to(
-            EngineeringCameraFrame()
-        )
-        # print(tom_mean, tom_mean[0], len(tom_mean[0]))
-        disp = CameraDisplay(
-            geometry=camera,
-            image=pix_resolution,
-            cmap="gnuplot2",
-            title="Run {} {}".format(run, channel),
-        )
-        disp.add_colorbar()
-
-        disp.set_limits_minmax(zmin=0.055, zmax=0.062)
-        plt.savefig(
-            "FinalCuts/Pix_resolution_final_cuts_{}_{}.png".format(run, channel)
-        )
-
-        if run == 6959:
-            df = pd.DataFrame([[pix_resolution]], columns=["pix_resolution"])
-            df.to_json("Pix_resolution.json", orient="columns")
-
-        # print(pix_mean_charge, pix_mean_charge[737],pix_mean_charge[440])
-        # pix_mean_charge = np.ma.array(pix_mean_charge,mask=mask)
-        # pix_resolution = np.ma.array(pix_resolution, mask=(mask))
-
-        # print("pix ",len(pix_resolution),npixels,channel,pix_resolution,min(pix_resolution),max(pix_resolution),min(pix_mean_charge),max(pix_std_charge))
-
-        # average of all pixels
-        mean_charge[channel] = np.nanmean(pix_mean_charge)
-
-        mean_resolution[channel] = np.nanmean(pix_resolution)
-
-        print(
-            "pix ",
-            npixels,
-            channel,
-            pix_resolution,
-            min(pix_resolution),
-            max(pix_resolution),
-            np.where(pix_mean_charge < 0),
-            max(pix_std_charge),
-        )
-
-        # mean_res_std[channel]    = np.std(pix_resolution[pix_resolution>-500])
-        std_charge[channel] = np.nanmean(pix_std_charge)
-        # for the charge resolution
-        std_err[channel] = np.std(pix_std_charge)
-
-    return (
-        mean_charge,
-        std_charge,
-        std_err,
-        npixels,
-        mean_resolution,
-        tom_mean,
-        ratio_hglg,
-    )
-
-
 def main():
     """
     The `main()` function is the entry point of the linearity test script. It parses \
@@ -282,7 +118,10 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
-    df = pd.read_json("run_list.json")
+    if not os.path.isfile(args.run_file):
+        raise FileNotFoundError(f"Run file not found: {args.run_file}")
+
+    df = pd.read_json(args.run_file)
 
     NSB = df["NSB"].values
     runs_list = df["runs"].tolist()
@@ -307,10 +146,8 @@ def main():
         ff_model = args.ff_model
 
         output_dir = os.path.abspath(args.output)
-        temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
         print(f"Output directory: {output_dir}")  # Debug print
-        print(f"Temporary output file: {temp_output}")  # Debug print
 
         sys.argv = sys.argv[:1]
 
