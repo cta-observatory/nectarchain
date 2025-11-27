@@ -353,7 +353,6 @@ class DBCameraElementInfos:
         if self.times is not None:
             current_index = self.index
             try:
-                # print("samere")
                 # print(type(self.times.iloc[self.index]),type(time))
                 # print(type(self.times[self.index]),type(time))
                 # print("time:", time)

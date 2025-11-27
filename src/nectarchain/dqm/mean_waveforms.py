@@ -13,6 +13,7 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.k = gaink
         self.Pix = None
         self.Samp = None
+        self.tel_id = None
         self.Mwf = None
         self.Mwf_ped = None
         self.counter_evt = None
@@ -49,6 +50,8 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.Pix = Pix
         self.Samp = Samp
 
+        self.tel_id = Reader1.subarray.tel_ids[0]
+
         self.Mwf = np.zeros((Pix, Samp))
         self.Mwf_ped = np.zeros((Pix, Samp))
 
@@ -68,12 +71,12 @@ class MeanWaveFormsHighLowGain(DQMSummary):
 
         for ipix in range(self.Pix):
             if self.r0:
-                waveform = evt.r0.tel[0].waveform[self.k][ipix]
+                waveform = evt.r0.tel[self.tel_id].waveform[self.k][ipix]
             else:
                 # This should accommodate cases were the shape of waveforms is 2D
                 # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
                 # (1, 1855, 60) for single-gain channel
-                waveform = evt.r1.tel[0].waveform[..., ipix, :]
+                waveform = evt.r1.tel[self.tel_id].waveform[..., ipix, :]
             if evt.trigger.event_type.value == 32:  # only peds now
                 self.Mwf_ped[ipix, :] += waveform
             else:

@@ -14,5 +14,5 @@
 
 #FF and Ped : 3943
 
-python load_wfs_compute_charge.py -r 3942 --max_events 100  --method GlobalPeakWindowSum --extractor_kwargs '{"window_width":16,"window_shift":4}' --overwrite -v DEBUG
+python load_wfs_compute_charge.py --camera="NectarCAMQM" -r 3942 --max_events 100  --method GlobalPeakWindowSum --extractor_kwargs '{"window_width":16,"window_shift":4}' --overwrite -v DEBUG
 

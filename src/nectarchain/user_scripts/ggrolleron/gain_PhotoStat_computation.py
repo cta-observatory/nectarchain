@@ -10,6 +10,7 @@ from pathlib import Path
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
 from nectarchain.makers.extractor.utils import CtapipeExtractor
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_computation.py",
@@ -22,6 +23,16 @@ parser.add_argument(
 )
 parser.add_argument(
     "--Ped_run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # max events to be loaded
@@ -120,6 +131,7 @@ def main(
 ):
     FF_run_number = kwargs.pop("FF_run_number")
     Ped_run_number = kwargs.pop("Ped_run_number")
+    camera = kwargs.pop("camera")
 
     if len(FF_run_number) != len(Ped_run_number):
         raise Exception("The number of FF and Ped runs must be the same")
@@ -170,6 +182,7 @@ def main(
                 progress_bar=True,
                 run_number=_FF_run_number,
                 max_events=_max_events,
+                camera=camera,
                 Ped_run_number=_Ped_run_number,
                 SPE_result=path[0],
                 **kwargs,

@@ -13,6 +13,7 @@ from nectarchain.makers.calibration import (
     FlatFieldSPECombinedStdNectarCAMCalibrationTool,
 )
 from nectarchain.makers.extractor.utils import CtapipeExtractor
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 parser = argparse.ArgumentParser(
     prog="gain_SPEfit_combined_computation.py",
@@ -21,6 +22,16 @@ parser = argparse.ArgumentParser(
 # run numbers
 parser.add_argument(
     "-r", "--run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # max events to be loaded
@@ -137,7 +148,9 @@ def main(
     **kwargs,
 ):
     run_number = kwargs.pop("run_number")
+    camera = kwargs.pop("camera")
     max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
+    display = kwargs.pop("display")
     if max_events is None:
         max_events = [None for i in range(len(run_number))]
 
@@ -171,8 +184,10 @@ def main(
             tool = FlatFieldSPECombinedStdNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=_run_number,
+                camera=camera,
                 max_events=_max_events,
                 SPE_result=path[0],
+                display_toggle=display,
                 **kwargs,
             )
             tool.setup()
@@ -181,7 +196,7 @@ def main(
                 _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_maxevents{_max_events}_{tool.method}_{str_extractor_kwargs}"
             else:
                 _figpath = f"{figpath}/{tool.name}_run{tool.run_number}_{tool.method}_{str_extractor_kwargs}"
-            tool.finish(figpath=_figpath, display=args.display)
+            tool.finish(figpath=_figpath)
         except Exception as e:
             log.warning(e, exc_info=True)
 
@@ -220,7 +235,6 @@ if __name__ == "__main__":
 
     kwargs.pop("verbosity")
     kwargs.pop("figpath")
-    kwargs.pop("display")
     kwargs.pop("HHV_run_number")
     # args.HHV_run_number = 3942
     # kwargs['run_number'] = [3936]

@@ -217,9 +217,11 @@ class FlatFieldComponent(NectarCAMComponent):
             # print("event :", (self.__event_id, self.__event_type))
             self.__event_id.append(np.uint32(event.index.event_id))
             self.__event_type.append(event.trigger.event_type.value)
-            self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
+            self.__ucts_timestamp.append(
+                event.nectarcam.tel[self.tel_id].evt.ucts_timestamp
+            )
 
-            wfs = event.r0.tel[0].waveform
+            wfs = event.r0.tel[self.tel_id].waveform
 
             # subtract pedestal container if filled
             # otherwise use the mean of the 20 first samples

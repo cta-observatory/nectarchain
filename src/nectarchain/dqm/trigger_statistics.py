@@ -15,6 +15,7 @@ class TriggerStatistics(DQMSummary):
         self.k = gaink
         self.Pix = None
         self.Samp = None
+        self.tel_id = None
         self.event_type = []
         self.event_times = []
         self.event_id = []
@@ -38,12 +39,13 @@ class TriggerStatistics(DQMSummary):
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
+        self.tel_id = Reader1.subarray.tel_ids[0]
 
     def process_event(self, evt, noped):
         trigger_type = evt.trigger.event_type.value
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
-        trigger_run_time = evt.nectarcam.tel[0].svc.date
+        trigger_run_time = evt.nectarcam.tel[self.tel_id].svc.date
 
         self.event_type.append(trigger_type)
         self.event_times.append(trigger_time)

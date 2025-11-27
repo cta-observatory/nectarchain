@@ -19,6 +19,10 @@ def generate_mock_pedestal_container():
     pedestal_mean_lg = np.float64(np.random.uniform(240, 260, size=(npixels, nsamples)))
     pedestal_std_hg = np.float64(np.random.normal(size=(npixels, nsamples)))
     pedestal_std_lg = np.float64(np.random.normal(size=(npixels, nsamples)))
+    pedestal_charge_mean_hg = np.float64(np.random.uniform(1.0e4, 1.5e4, size=npixels))
+    pedestal_charge_mean_lg = np.float64(np.random.uniform(1.0e4, 1.5e4, size=npixels))
+    pedestal_charge_std_hg = 30 * np.float64(np.random.normal(size=npixels))
+    pedestal_charge_std_lg = 30 * np.float64(np.random.normal(size=npixels))
     pixel_mask = np.int8(np.random.randint(0, 2, size=(nchannels, npixels)))
 
     # create pedestal container
@@ -32,6 +36,10 @@ def generate_mock_pedestal_container():
         pedestal_mean_lg=pedestal_mean_lg,
         pedestal_std_hg=pedestal_std_hg,
         pedestal_std_lg=pedestal_std_lg,
+        pedestal_charge_mean_hg=pedestal_charge_mean_hg,
+        pedestal_charge_mean_lg=pedestal_charge_mean_lg,
+        pedestal_charge_std_hg=pedestal_charge_std_hg,
+        pedestal_charge_std_lg=pedestal_charge_std_lg,
         pixel_mask=pixel_mask,
     )
     pedestal_container.validate()
@@ -47,6 +55,10 @@ def generate_mock_pedestal_container():
         "pedestal_mean_lg": pedestal_mean_lg,
         "pedestal_std_hg": pedestal_std_hg,
         "pedestal_std_lg": pedestal_std_lg,
+        "pedestal_charge_mean_hg": pedestal_charge_mean_hg,
+        "pedestal_charge_mean_lg": pedestal_charge_mean_lg,
+        "pedestal_charge_std_hg": pedestal_charge_std_hg,
+        "pedestal_charge_std_lg": pedestal_charge_std_lg,
         "pixel_mask": pixel_mask,
     }
 
@@ -72,6 +84,18 @@ class TestNectarCAMPedestalContainer:
         )
         assert np.allclose(pedestal_container.pedestal_std_hg, dict["pedestal_std_hg"])
         assert np.allclose(pedestal_container.pedestal_std_lg, dict["pedestal_std_lg"])
+        assert np.allclose(
+            pedestal_container.pedestal_charge_mean_hg, dict["pedestal_charge_mean_hg"]
+        )
+        assert np.allclose(
+            pedestal_container.pedestal_charge_mean_lg, dict["pedestal_charge_mean_lg"]
+        )
+        assert np.allclose(
+            pedestal_container.pedestal_charge_std_hg, dict["pedestal_charge_std_hg"]
+        )
+        assert np.allclose(
+            pedestal_container.pedestal_charge_std_lg, dict["pedestal_charge_std_lg"]
+        )
         assert np.allclose(pedestal_container.pixel_mask, dict["pixel_mask"])
 
     # FIXME

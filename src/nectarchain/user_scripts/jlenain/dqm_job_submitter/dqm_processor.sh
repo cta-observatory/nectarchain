@@ -5,7 +5,7 @@
 
 function usage ()
 {
-    echo "Usage: $(basename "$0") -r <run number>"
+    echo "Usage: $(basename "$0") -r <run number> -c <camera>"
 }
 
 function help ()
@@ -18,17 +18,20 @@ This script launches a data quality monitoring processing of a given NectarCAM r
 OPTIONS:
      -h                       This help message.
      -r <RUN NUMBER>          NectarCAM run number to be processed.
+     -c <CAMERA>              NectarCAM camera
 EOF
 }
 
 # Get options
-while getopts ":hr:" option; do
+while getopts ":hr:c:" option; do
    case $option in
       h) # display help
           help
 	  exit;;
       r) # Enter a run number
          runnb=$OPTARG;;
+      c) # camera
+         camera=$OPTARG;;
      \?) # Invalid option
          usage
 	 exit 1;;
@@ -36,7 +39,7 @@ while getopts ":hr:" option; do
 done
 shift $((OPTIND-1))
 
-if [ -z "$runnb" ]; then
+if [ -z "$runnb" ] || [ -z "$camera" ]; then
     usage
     exit 1
 fi
@@ -49,8 +52,10 @@ CONTAINER="oras://ghcr.io/cta-observatory/nectarchain:latest"
 # of from CVMFS:
 # CONTAINER="/cvmfs/sw.cta-observatory.org/software/containers/nectarchain-latest"
 # CONTAINER="/cvmfs/sw.hess-experiment.eu/software/containers/nectarchain_w_2025_03"
-OUTDIR=NectarCAM_DQM_Run${runnb}
-DIRAC_OUTDIR=/ctao/user/j/jlenain/nectarcam/dqm
+# or using a local container image:
+# CONTAINER="$HOME/nectarchain.sif"
+OUTDIR=${camera}_DQM_Run${runnb}
+DIRAC_OUTDIR=/ctao/user/j/jlenain/nectarcam/dqm/${camera}
 
 function exit_script() {
     return_code=$1
@@ -111,7 +116,7 @@ echo
 echo "Running" 
 # Instantiate the nectarchain Singularity image, run our DQM example run within it:
 # cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 $NECTARCAMDATA $NECTARDIR -i $LISTRUNS"
-cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --runnb $runnb $NECTARCAMDATA $NECTARDIR"
+cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --runnb $runnb --camera $camera $NECTARCAMDATA $NECTARDIR"
 echo \$cmd
 eval \$cmd
 EOF

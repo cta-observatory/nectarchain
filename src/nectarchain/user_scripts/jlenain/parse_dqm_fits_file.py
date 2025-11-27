@@ -18,9 +18,11 @@ from astropy.io import fits
 from DIRAC.Interfaces.API.Dirac import Dirac
 
 from nectarchain.dqm.db_utils import DQMDB
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
 
 # Option and argument parser
 parser = argparse.ArgumentParser(
@@ -48,6 +50,14 @@ parser.add_argument(
     default=None,
     help="process a specific run or a list of runs.",
 )
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="Process data for a specific NectarCAM camera. Default: Qualification Model.",
+    type=str,
+)
 args = parser.parse_args()
 
 if args.runs is None:
@@ -59,13 +69,13 @@ db_read_keys = list(db_read.root.keys())
 db_read.abort_and_close()
 
 for run in args.runs:
-    if not args.force and f"NectarCAM_Run{run}" in db_read_keys:
+    if not args.force and f"{args.camera}_Run{run}" in db_read_keys:
         logger.warning(
-            f'The run {run} is already present in the DB, will not parse this DQM run, or consider forcing it with the "--force" option.'
+            f'The run {run} is already present in the DB for the camera {args.camera}, will not parse this DQM run, or consider forcing it with the "--force" option.'
         )
         continue
 
-    lfn = f"{args.path}/NectarCAM_DQM_Run{run}.tar.gz"
+    lfn = f"{args.path}/{args.camera}/{args.camera}_DQM_Run{run}.tar.gz"
 
     if not os.path.exists(os.path.basename(lfn)):
         DIRAC.initialize()
@@ -83,12 +93,12 @@ for run in args.runs:
             tar.extractall(".")
     except FileNotFoundError as e:
         logger.warning(
-            f"Could not fetch DQM results from DIRAC for run {run}, received error {e}, skipping this run..."
+            f"Could not fetch DQM results from DIRAC for run {args.camera} {run}, received error {e}, skipping this run..."
         )
         continue
 
     fits_file = (
-        f"./NectarCAM_DQM_Run{run}/output/NectarCAM_Run{run}/"
+        f"./{args.camera}_DQM_Run{run}/output/NectarCAM_Run{run}/"
         f"NectarCAM_Run{run}_calib/NectarCAM_Run{run}_Results.fits"
     )
 
@@ -108,19 +118,19 @@ for run in args.runs:
 
     try:
         db = DQMDB(read_only=False)
-        db.insert(f"NectarCAM_Run{run}", outdict)
+        db.insert(f"{args.camera}_Run{run}", outdict)
         db.commit_and_close()
     except ZEO.Exceptions.ClientDisconnected as e:
         logger.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
 
     # Remove DQM archive file and directory
     try:
-        os.remove(f"NectarCAM_DQM_Run{run}.tar.gz")
+        os.remove(f"{args.camera}_DQM_Run{run}.tar.gz")
     except OSError:
         logger.warning(
-            f"Could not remove NectarCAM_DQM_Run{run}.tar.gz or it does not exist"
+            f"Could not remove {args.camera}_DQM_Run{run}.tar.gz or it does not exist"
         )
 
-    dirpath = Path(f"./NectarCAM_DQM_Run{run}")
+    dirpath = Path(f"./{args.camera}_DQM_Run{run}")
     if dirpath.exists() and dirpath.is_dir():
         shutil.rmtree(dirpath)

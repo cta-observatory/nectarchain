@@ -3,19 +3,58 @@
 #
 # Author: Jean-Philippe Lenain <jlenain@in2p3.fr>
 #
-# Script as a cronjob to dynamically launch NectarCAM DQM runs on DIRAC after data transfer, to be run once a day on sedipccaa23 in CEA/Irfu.
+# Script as a cronjob to dynamically launch NectarCAM DQM runs on DIRAC after data transfer, to be run once a day on sedipcaa23 in CEA/Irfu.
 
 # Log everything to $LOGFILE
-LOGFILE=${0%".sh"}_$(date +%F).log
+LOGFILE=${0%".sh"}_$(date +%F)_$$.log
 LOGFILE=$HOME/log/$(basename $LOGFILE)
 exec 1>"$LOGFILE" 2>&1
 
 source /opt/cta/mambaforge/etc/profile.d/conda.sh
-conda activate ctadirac
+conda activate nectar-dev
 
-localParentDir="/data/nvme/NectarCAMQM/ZFITS"
-remoteParentDir="/vo.cta.in2p3.fr/nectarcam"
-remoteParentDir="/ctao/nectarcam"
+function usage ()
+{
+    echo "Usage: $(basename "$0") -c <camera>"
+}
+
+function help ()
+{
+    usage
+    cat <<EOF
+
+This script dynamically launch NectarCAM DQM runs on DIRAC after data transfer.
+
+OPTIONS:
+     -h                       This help message.
+     -c <CAMERA>              NectarCAM camera
+EOF
+}
+
+# Get options
+while getopts ":hc:" option; do
+   case $option in
+      h) # display help
+          help
+	  exit;;
+      c) # camera
+         camera=$OPTARG;;
+     \?) # Invalid option
+         usage
+	 exit 1;;
+   esac
+done
+shift $((OPTIND-1))
+
+if [ -z "$camera" ]; then
+    usage
+    exit 1
+fi
+
+
+localParentDir="/data/nvme/${camera}/ZFITS"
+# remoteParentDir="/vo.cta.in2p3.fr/nectarcam"
+remoteParentDir="/ctao/nectarcam/${camera}"
 nectarchainScriptDir="$HOME/local/src/python/cta-observatory/nectarchain/src/nectarchain/user_scripts/jlenain/dqm_job_submitter"
 
 cd $nectarchainScriptDir || (echo "Failed to cd into ${nectarchainScriptDir}, exiting..."; exit 1)
@@ -35,7 +74,7 @@ for run in $(find ${localParentDir} -type f -name "NectarCAM*.fits.fz" | awk -F.
             yyyy=${yyyymmdd:0:4}
             mm=${yyyymmdd:4:2}
             dd=${yyyymmdd:6:2}
-            cmd="python submit_dqm_processor.py -d "${yyyy}-${mm}-${dd}" -r $run"
+            cmd="python submit_dqm_processor.py -d "${yyyy}-${mm}-${dd}" -r $run -c $camera"
             echo "Running: $cmd"
             eval $cmd
         else

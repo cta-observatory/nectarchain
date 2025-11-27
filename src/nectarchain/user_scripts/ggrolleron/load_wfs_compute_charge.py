@@ -15,6 +15,7 @@ from nectarchain.makers import (
     ChargesNectarCAMCalibrationTool,
     WaveformsNectarCAMCalibrationTool,
 )
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 parser = argparse.ArgumentParser(
     prog="load_wfs_compute_charge",
@@ -24,6 +25,16 @@ parser = argparse.ArgumentParser(
 # run numbers
 parser.add_argument(
     "-r", "--run_number", nargs="+", default=[], help="run(s) list", type=int
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # max events to be loaded
@@ -104,6 +115,7 @@ def main(
 ):
     # print(kwargs)
     run_number = kwargs.pop("run_number")
+    camera = kwargs.pop("camera")
     max_events = kwargs.pop("max_events", [None for i in range(len(run_number))])
     if max_events is None:
         max_events = [None for i in range(len(run_number))]
@@ -132,6 +144,7 @@ def main(
                 tool = WaveformsNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=_run_number,
+                    camera=camera,
                     max_events=_max_events,
                     **waveforms_kwargs,
                 )
@@ -143,6 +156,7 @@ def main(
                     tool = ChargesNectarCAMCalibrationTool(
                         progress_bar=True,
                         run_number=_run_number,
+                        camera=camera,
                         max_events=_max_events,
                         from_computed_waveforms=True,
                         **charges_kwargs,
@@ -155,6 +169,7 @@ def main(
                 tool = ChargesNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=_run_number,
+                    camera=camera,
                     max_events=_max_events,
                     from_computed_waveforms=True,
                     **charges_kwargs,
@@ -185,7 +200,7 @@ if __name__ == "__main__":
     if any("pydevd" in mod for mod in sys.modules):
         kwargs["max_events"] = [1000]
         kwargs["reload_wfs"] = False
-        kwargs["run_number"] = [3942]
+        kwargs["run_number"] = [6511]
         kwargs["overwrite"] = True
         kwargs["method"] = "LocalPeakWindowSum"
         kwargs["extractor_kwargs"] = {"window_width": 10, "peak_search_window": 4}

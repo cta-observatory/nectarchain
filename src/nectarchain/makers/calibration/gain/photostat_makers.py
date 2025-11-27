@@ -82,12 +82,12 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         if FF_run:
             self.log.debug("loading FF event source")
             self.event_source = self.enter_context(
-                self.load_run(self.run_number, self.max_events)
+                self.load_run(self.run_number, self.max_events, camera=self.camera)
             )
         else:
             self.log.debug("loading Ped event source")
             self.event_source = self.enter_context(
-                self.load_run(self.Ped_run_number, self.max_events)
+                self.load_run(self.Ped_run_number, self.max_events, camera=self.camera)
             )
 
     def start(

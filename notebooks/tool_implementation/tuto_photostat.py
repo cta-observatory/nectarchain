@@ -74,6 +74,7 @@ tool = PhotoStatisticNectarCAMCalibrationTool(
     progress_bar=True,
     run_number=FF_run_number,
     Ped_run_number=Ped_run_number,
+    camera="NectarCAMQM",
     SPE_result=path[0],
     method="LocalPeakWindowSum",
     extractor_kwargs={"window_width": 12, "window_shift": 4},

@@ -1,17 +1,19 @@
-import re
-
-import numpy as np
-from app_hooks import TEST_PATTERN, get_rundata, make_camera_displays
+from app_hooks import (
+    get_rundata,
+    make_camera_displays,
+    make_timelines,
+    update_camera_displays,
+    update_timelines,
+)
 
 # bokeh imports
-from bokeh.layouts import layout, row
-from bokeh.models import Select  # , NumericInput
+from bokeh.layouts import column, gridplot, row
+from bokeh.models import Select, TabPanel, Tabs
 from bokeh.plotting import curdoc
 
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
-from ctapipe_io_nectarcam import constants
 
 from nectarchain.dqm.db_utils import DQMDB
 
@@ -19,41 +21,20 @@ geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 
-def update_camera_displays(attr, old, new):
+def update(attr, old, new):
     runid = run_select.value
-    new_rundata = get_rundata(db, runid)
+    source = get_rundata(db, runid)
 
-    # Reset each display
-    for k in displays.keys():
-        for kk in displays[k].keys():
-            displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
+    tab_camera_displays = update_camera_displays(source, displays, runid)
+    tab_timelines = update_timelines(source, timelines, runid)
 
-    for parentkey in db[runid].keys():
-        if not re.match(TEST_PATTERN, parentkey):
-            for childkey in db[runid][parentkey].keys():
-                print(f"Run id {runid} Updating plot for {parentkey}, {childkey}")
+    # Combine panels into tabs
+    tabs = Tabs(
+        tabs=[tab_camera_displays, tab_timelines],
+        sizing_mode="scale_width",
+    )
 
-                image = new_rundata[parentkey][childkey]
-                image = np.nan_to_num(image, nan=0.0)
-                try:
-                    displays[parentkey][childkey].image = image
-                except ValueError as e:
-                    print(
-                        f"Caught {type(e).__name__} for {childkey}, filling display"
-                        f"with zeros. Details: {e}"
-                    )
-                    image = np.zeros(shape=displays[parentkey][childkey].image.shape)
-                    displays[parentkey][childkey].image = image
-                except KeyError as e:
-                    print(
-                        f"Caught {type(e).__name__} for {childkey}, filling display"
-                        f"with zeros. Details: {e}"
-                    )
-                    image = np.zeros(shape=constants.N_PIXELS)
-                    displays[parentkey][childkey].image = image
-                # TODO: TRY TO USE `stream` INSTEAD, ON UPDATES:
-                # display.datasource.stream(new_data)
-                # displays[parentkey][childkey].datasource.stream(image)
+    page_layout.children[1] = tabs
 
 
 print("Opening connection to ZODB")
@@ -66,18 +47,18 @@ runids = sorted(list(db.keys()), reverse=True)
 # VM (gets OoM killed)
 # run_dict_lengths = [len(db[r]) for r in runids]
 # runid = runids[np.argmax(run_dict_lengths)]
-runid = "NectarCAM_Run0008"
+runid = "NectarCAM_Run6310"
 print(f"We will start with run {runid}")
 
 print("Defining Select")
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
+# run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 
 print(f"Getting data for run {run_select.value}")
 source = get_rundata(db, run_select.value)
-displays = make_camera_displays(db, source, runid)
-
-run_select.on_change("value", update_camera_displays)
+displays = make_camera_displays(source, runid)
+timelines = make_timelines(source, runid)
 
 controls = row(run_select)
 
@@ -88,15 +69,40 @@ controls = row(run_select)
 # update_camera_displays(attr, old, new)
 
 ncols = 3
-plots = [
+camera_displays = [
     displays[parentkey][childkey].figure
     for parentkey in displays.keys()
     for childkey in displays[parentkey].keys()
 ]
-curdoc().add_root(
-    layout(
-        [[controls], [[plots[x : x + ncols] for x in range(0, len(plots), ncols)]]],
-        sizing_mode="scale_width",
-    )
+list_timelines = [
+    timelines[parentkey][childkey]
+    for parentkey in timelines.keys()
+    for childkey in timelines[parentkey].keys()
+]
+
+layout_camera_displays = gridplot(
+    camera_displays,
+    ncols=ncols,
 )
+
+layout_timelines = gridplot(
+    list_timelines,
+    ncols=2,
+)
+
+# Create different tabs
+tab_camera_displays = TabPanel(child=layout_camera_displays, title="Camera displays")
+tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
+
+# Combine panels into tabs
+tabs = Tabs(
+    tabs=[tab_camera_displays, tab_timelines],
+)
+
+page_layout = column([controls, tabs], sizing_mode="scale_width")
+
+run_select.on_change("value", update)
+
+# Add to the Bokeh document
+curdoc().add_root(page_layout)
 curdoc().title = "NectarCAM Data Quality Monitoring web app"

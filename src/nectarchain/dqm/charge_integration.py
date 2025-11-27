@@ -32,6 +32,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.Samp = None
         self.counter_evt = None
         self.counter_ped = None
+        self.tel_id = None
 
         self.image_all = []
         self.peakpos_all = []
@@ -60,7 +61,9 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.camera = Reader1.subarray.tel[0].camera.geometry.transform_to(
+        self.tel_id = Reader1.subarray.tel_ids[0]
+
+        self.camera = Reader1.subarray.tel[self.tel_id].camera.geometry.transform_to(
             EngineeringCameraFrame()
         )
 
@@ -69,7 +72,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.subarray = Reader1.subarray
         subarray = Reader1.subarray
         subarray.tel[
-            0
+            self.tel_id
         ].camera.readout = ctapipe.instrument.camera.readout.CameraReadout.from_name(
             "NectarCam"
         )
@@ -91,8 +94,10 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.integrator = GlobalPeakWindowSum(subarray, config=config)
 
     def process_event(self, evt, noped):
-        self.pixels = evt.nectarcam.tel[0].svc.pixel_ids
-        self.pixelBADplot = evt.mon.tel[0].pixel_status.hardware_failing_pixels
+        self.pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
+        self.pixelBADplot = evt.mon.tel[
+            self.tel_id
+        ].pixel_status.hardware_failing_pixels
 
         (
             broken_pixels_hg,
@@ -107,12 +112,12 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             channel = constants.LOW_GAIN
 
         if self.r0:
-            waveform = evt.r0.tel[0].waveform[self.k]
+            waveform = evt.r0.tel[self.tel_id].waveform[self.k]
         else:
             # This should accommodate cases were the shape of waveforms is 2D
             # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
             # (1, 1855, 60) for single-gain channel
-            waveform = evt.r1.tel[0].waveform
+            waveform = evt.r1.tel[self.tel_id].waveform
         waveform = waveform[self.pixels]
 
         ped = np.mean(waveform[:, 20])
@@ -123,7 +128,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             output = CtapipeExtractor.get_image_peak_time(
                 self.integrator(
                     waveforms=waveform,
-                    tel_id=0,
+                    tel_id=self.tel_id,
                     selected_gain_channel=channel,
                     broken_pixels=self.pixelBAD,
                 )
@@ -133,7 +138,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             output = CtapipeExtractor.get_image_peak_time(
                 self.integrator(
                     waveforms=waveform,
-                    tel_id=0,
+                    tel_id=self.tel_id,
                     selected_gain_channel=channel,
                     broken_pixels=self.pixelBAD,
                 )

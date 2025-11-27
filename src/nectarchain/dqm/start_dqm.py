@@ -21,6 +21,7 @@ from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ def main():
     """
     Main DQM script
     """
+
     # Create an ArgumentParser object
     parser = argparse.ArgumentParser(
         description="NectarCAM Data Quality Monitoring tool"
@@ -76,6 +78,15 @@ def main():
         type=int,
     )
     parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="""Process data for a specific NectarCAM camera.
+ Default: NectarCAMQM (Qualification Model).""",
+        type=str,
+    )
+    parser.add_argument(
         "--r0",
         action="store_true",
         default=False,
@@ -106,11 +117,11 @@ def main():
     log.info(f"Output path: {output_path}")
 
     if args.runnb is not None:
-        # Grab runs automatically from DIRAC is the -r option is provided
+        # Grab runs automatically from DIRAC if the -r option is provided
         from nectarchain.data.management import DataManagement
 
         dm = DataManagement()
-        _, filelist = dm.findrun(args.runnb)
+        _, filelist = dm.findrun(args.runnb, camera=args.camera)
         args.input_files = [s.name for s in filelist]
     elif args.input_files is None:
         log.error("Input files should be provided, exiting...")

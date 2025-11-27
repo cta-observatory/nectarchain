@@ -21,6 +21,8 @@ from DIRAC.Interfaces.API.Dirac import Dirac
 from DIRAC.Interfaces.API.Job import Job
 from DIRAC.Resources.Catalog.FileCatalogClient import FileCatalogClient
 
+from nectarchain.utils.constants import ALLOWED_CAMERAS
+
 logging.basicConfig(format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,14 @@ parser.add_argument(
     "--run",
     default=None,
     help="only process a specific run (optional). When omitted, all the runs acquired on DATE are processed (1 job per run).",
+    type=str,
+)
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="Process data for a specific NectarCAM camera. Default: Qualification Model.",
     type=str,
 )
 parser.add_argument(
@@ -74,14 +84,14 @@ executable_wrapper = os.path.join(os.path.dirname(__file__), "dqm_processor.sh")
 ## or from DIRAC FileCatalog directory listing:
 processDate = time.Time(args.date)
 dfcDir = (
-    f"/ctao/nectarcam/NectarCAMQM/{processDate.ymdhms[0]}"
+    f"/ctao/nectarcam/{args.camera}/{processDate.ymdhms[0]}"
     f"/{processDate.ymdhms[0]}{str(processDate.ymdhms[1]).zfill(2)}{str(processDate.ymdhms[2]).zfill(2)}"
 )
 
 # The relevant DB file may be stored in the directory corresponding to the day after:
 processDateTomorrow = processDate + 1.0 * u.day
 dfcDirTomorrow = (
-    f"/ctao/nectarcam/NectarCAMQM/{processDateTomorrow.ymdhms[0]}"
+    f"/ctao/nectarcam/{args.camera}/{processDateTomorrow.ymdhms[0]}"
     f"/{processDateTomorrow.ymdhms[0]}{str(processDateTomorrow.ymdhms[1]).zfill(2)}{str(processDateTomorrow.ymdhms[2]).zfill(2)}"
 )
 
@@ -135,10 +145,12 @@ if metaTomorrow:
         if f.endswith(".sqlite"):
             sqlfilelist.append(f)
 if args.run is not None:
+    args.run = str(args.run).zfill(4)
     if args.run not in runlist:
         logger.critical(
             f"Your specified run {args.run} was not found in {dfcDir}, aborting..."
         )
+        logger.debug(f"runlist={runlist}")
         sys.exit(1)
     runlist = [args.run]
 
@@ -146,13 +158,13 @@ logger.info(f"Found runs {runlist} in {dfcDir}")
 
 if len(sqlfilelist) == 0:
     logger.critical(
-        "Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
+        f"Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
     )
     sys.exit(1)
 logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
 
 # Check already existing DQM outputs
-dfcOutDir = "/ctao/user/j/jlenain/nectarcam/dqm"
+dfcOutDir = f"/ctao/user/j/jlenain/nectarcam/dqm/{args.camera}"
 infos = dfc.listDirectory(dfcOutDir)
 if not infos["OK"] or not infos["Value"]["Successful"]:
     logger.critical(
@@ -176,15 +188,21 @@ for run in runlist:
 
     j = Job()
     # j.setExecutable(f'{executable_wrapper}', '<SOME POSSIBLE ARGUMENTS such as run number>')
-    j.setExecutable(f"{executable_wrapper}", f"-r {run}")
+    j.setExecutable(f"{executable_wrapper}", f"-r {run} -c {args.camera}")
     # Force job to be run from a given Computing Element:
     # j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
-    j.setDestination(["LCG.GRIF.fr"])
+    # j.setDestination(["LCG.GRIF.fr"])
     # j.setTag(["16GBMemory"])
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")
     j.setBannedSites(
-        ["LCG.DESY-ZEUTHEN.de", "LCG.PIC.es", "LCG.FRASCATI.it", "ARC.CSCS.ch"]
+        [
+            "LCG.DESY-ZEUTHEN.de",
+            "LCG.PIC.es",
+            "LCG.FRASCATI.it",
+            "ARC.CSCS.ch",
+            "ARC.CEA.fr",
+        ]
     )
     sandboxlist = [f"{executable_wrapper}"]
     for f in meta["Files"]:
