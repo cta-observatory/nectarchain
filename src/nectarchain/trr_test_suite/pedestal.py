@@ -130,7 +130,7 @@ def main():
         with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
-    # The next block of code produces a plot to very requirement B-TEL-1370
+    # The next block of code produces a plot to verify requirement B-TEL-1370
     # During Observations the Camera must measure the Pedestal in each pixel
     # and the event-to-event rms of this quantity with an uncertainty
     # no greater than 20% of the event-to-event rms or 1.2 photons (if greater).
