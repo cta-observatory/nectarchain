@@ -1,0 +1,214 @@
+import logging
+import os
+import pathlib
+
+from ctapipe.core import run_tool
+from ctapipe.core.traits import CaselessStrEnum, Integer, Path
+from traitlets.config import Config
+
+from . import flatfield_makers, gain, pedestal_makers
+from .core import NectarCAMCalibrationTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
+
+__all__ = ["PipelineNectarCAMCalibrationTool"]
+
+PEDESTAL_CALIBRATION_TOOLS = {
+    name: getattr(pedestal_makers, name) for name in pedestal_makers.__all__
+}
+GAIN_CALIBRATION_TOOLS = {name: getattr(gain, name) for name in gain.__all__}
+FLATFIELD_CALIBRATION_TOOLS = {
+    name: getattr(flatfield_makers, name) for name in flatfield_makers.__all__
+}
+
+
+class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
+    name = "PipelineNectarCAMCalibrationTool"
+    description = "Run pedestal -> gain -> flatfield calibrations in sequence"
+
+    ped_run_number = Integer(
+        help="Run number for pedestal calibration", default_value=-1
+    ).tag(config=True)
+    FF_run_number = Integer(
+        help="Run number for flat-field calibration", default_value=-1
+    ).tag(config=True)
+    FF_SPE_run_number = Integer(
+        help="Run number for gain calibration at nominal voltage using SPE-fit method",
+        default_value=-1,
+    ).tag(config=True)
+    FF_SPE_HHV_run_number = Integer(
+        help=(
+            "Run number for gain calibration at very-high voltage "
+            "using SPE-fit method"
+        ),
+        default_value=-1,
+    ).tag(config=True)
+    SPE_HHV_result_path = Path(
+        help="Path to SPE-fit result at very-high voltage",
+        default_value=None,
+        allow_none=True,
+    ).tag(config=True)
+
+    pedestal_tool_name = CaselessStrEnum(
+        list(PEDESTAL_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the pedestal calibration",
+        default_value="PedestalNectarCAMCalibrationTool",
+    ).tag(config=True)
+    flatfield_tool_name = CaselessStrEnum(
+        list(FLATFIELD_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the flatfield calibration",
+        default_value="FlatfieldNectarCAMCalibrationTool",
+    ).tag(config=True)
+    gain_tool_name = CaselessStrEnum(
+        list(GAIN_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the gain calibration",
+        default_value="FlatFieldSPENominalNectarCAMCalibrationTool",
+    ).tag(config=True)
+
+    classes = [
+        *PEDESTAL_CALIBRATION_TOOLS.values(),
+        *GAIN_CALIBRATION_TOOLS.values(),
+        *FLATFIELD_CALIBRATION_TOOLS.values(),
+    ]
+
+    def setup(self, *args, **kwargs):
+        # Default run_number = -1 will raise Exception
+        self.run_number = 0
+        log.warning(f"Set run_number = {self.run_number} to avoid exception")
+
+        super().setup(*args, **kwargs)
+
+        # Setup the configuration of all subtools
+        config = self._setup_config()
+
+        # This is to ensure that default output paths get correct conf values
+        if not ("output_path" in kwargs.keys()):
+            self._init_output_path()
+
+        # Setup a temporary directory to store the results of each step in the
+        # calibration pipeline
+        self.subtool_res_dir = os.path.join(os.path.dirname(self.output_path), "tmp")
+        self.ped_output_path = pathlib.Path(
+            f"{self.subtool_res_dir}/output_{self.pedestal_tool_name}.h5"
+        )
+        self.gain_output_path = pathlib.Path(
+            f"{self.subtool_res_dir}/output_{self.gain_tool_name}.h5"
+        )
+        self.FF_output_path = pathlib.Path(
+            f"{self.subtool_res_dir}/output_{self.flatfield_tool_name}.h5"
+        )
+
+        # Setup pedestal tool
+        pedestal_cls = PEDESTAL_CALIBRATION_TOOLS[self.pedestal_tool_name]
+        self.pedestal_tool = pedestal_cls(
+            parent=self,
+            config=config,
+            run_number=self.ped_run_number,
+            output_path=self.ped_output_path,
+        )
+        # Setup gain tool
+        gain_cls = GAIN_CALIBRATION_TOOLS[self.gain_tool_name]
+        if "SPENominal" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_run_number,
+                output_path=self.gain_output_path,
+            )
+        elif "SPEHHV" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_HHV_run_number,
+                output_path=self.gain_output_path,
+            )
+        elif "SPECombined" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_SPE_run_number,
+                SPE_result=self.SPE_HHV_result_path,
+                output_path=self.gain_output_path,
+            )
+        elif "PhotoStatistic" in self.gain_tool_name:
+            self.gain_tool = gain_cls(
+                parent=self,
+                config=config,
+                run_number=self.FF_run_number,
+                Ped_run_number=self.ped_run_number,
+                SPE_result=self.SPE_HHV_result_path,
+                output_path=self.gain_output_path,
+            )
+        # Setup flatfield tool
+        flatfield_cls = FLATFIELD_CALIBRATION_TOOLS[self.flatfield_tool_name]
+        self.flatfield_tool = flatfield_cls(
+            parent=self,
+            config=config,
+            run_number=self.FF_run_number,
+            pedestal_file=self.ped_output_path,
+            gain_file=self.gain_output_path,
+            output_path=self.FF_output_path,
+        )
+
+    def _init_output_path(self):
+        # TODO: update calib_filename with right output file (=calibration file)
+        # Could be either fits or h5
+        calib_filename = f"{self.name}_run{self.run_number}.h5"
+        self.output_path = pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/"
+            f"{os.getpid()}/{calib_filename}"
+        )
+
+    def _setup_config(self):
+        """
+        Build a merged Config for subtools:
+        - Use explicit subtool config if present (highest priority).
+        - Else inherit matching values from the parent tool config/traits.
+        - Else fall back to subtool defaults.
+
+        Returns:
+            config: Merged Config for all subtools
+        """
+        config = Config()
+
+        for subtool_cls in self.classes:
+            subtool_name = subtool_cls.__name__
+
+            # Skip if it's the parent tool
+            if subtool_name == self.__class__.__name__:
+                continue
+
+            # Start with explicit subtool config if it exists
+            subconfig = Config(self.config.get(subtool_name, {}))
+
+            # Check each configurable trait of the subtool
+            for name in subtool_cls.class_traits(config=True):
+                # Already provided explicitly: keep it
+                if name in subconfig:
+                    continue
+                # Do not overwrite components because they are fixed per tool!
+                if name == "componentsList":
+                    continue
+                # If common trait propagate from parent
+                if name in self.traits(config=True):
+                    subconfig[name] = getattr(self, name)
+                    self.log.debug(
+                        f"Propagating {name}={getattr(self, name)!r} "
+                        f"from {self.__class__.__name__} -> {subtool_name}"
+                    )
+
+            config[subtool_name] = subconfig
+
+        return config
+
+    def start(self):
+        run_tool(self.pedestal_tool)
+        run_tool(self.gain_tool)
+        run_tool(self.flatfield_tool)
+
+    def finish(self):
+        # TODO: write calibration file
+        pass

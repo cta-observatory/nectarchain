@@ -6,3 +6,6 @@ def get_allowed_cameras():
 
 
 ALLOWED_CAMERAS = get_allowed_cameras()
+
+GAIN_DEFAULT = 58.0
+HILO_DEFAULT = 13.0
