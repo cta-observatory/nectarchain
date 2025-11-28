@@ -56,6 +56,8 @@ class PhotoStatisticAlgorithm(Component):
             high_gain=np.zeros((self.npixels, 3)),
             low_gain=np.zeros((self.npixels, 3)),
             pixels_id=self._pixels_id,
+            charge=np.zeros((self.npixels, 1)),
+            charge_std=np.zeros((self.npixels, 1)),
         )
 
     @classmethod
@@ -141,6 +143,9 @@ class PhotoStatisticAlgorithm(Component):
             (self.gainLG * mask, gainLG_err, gainLG_err)
         ).T
         self._results.is_valid = mask
+        log.info("Trying to write charges")
+        self._results.charge = self.meanChargeHG
+        self._results.charge_std = self.sigmaChargeHG
 
         figpath = kwargs.get("figpath", False)
         if figpath:
