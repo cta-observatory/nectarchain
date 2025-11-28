@@ -72,11 +72,10 @@ def main():
     arguments, processes the specified runs, and generates two plots:
 
     1. The mean baseline value for all pixels.
-    2. A plot that compares the pedestal uncertainty
-    to the limits set by the CTAO requirements.
+    2. A plot that compares the uncertainty to the limits set by the CTAO requirements.
 
-    The function also saves the generated plots to the specified output directory,\
-        and optionally saves the first plot to a temporary output file.
+    The function also saves the generated plots to the specified output directory\
+    and optionally saves the first plot to a temporary output file.
     """
 
     parser = get_args()
