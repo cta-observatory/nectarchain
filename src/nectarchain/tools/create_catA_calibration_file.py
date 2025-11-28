@@ -56,6 +56,12 @@ from nectarchain.utils.metadata import (
     get_local_metadata,
 )
 
+from ..utils.constants import (
+    FLATFIELD_DEFAULT,
+    GAIN_DEFAULT,
+    HILO_DEFAULT,
+    PEDESTAL_DEFAULT,
+)
 from ..utils.utils import ContainerUtils
 
 # Outputs allowed for Cat-A calibration file as done in `lstcam_calib`
@@ -148,6 +154,12 @@ class CalibrationWriterNectarCAM(Tool):
             "flatfield": "data",
         }
 
+        self.default_values = {
+            "pedestal": PEDESTAL_DEFAULT,
+            "gain": GAIN_DEFAULT,
+            "flatfield": FLATFIELD_DEFAULT,
+        }
+
     def setup(self):
         """Open input files and set up containers."""
 
@@ -207,14 +219,10 @@ class CalibrationWriterNectarCAM(Tool):
 
     def _add_missing_pixels(self):
         """
-        Zero-pads NectarCAM containers with missing pixels due to hardware failing
-        pixels (e.g. an incomplete camera). For boolean arrays related to pixel status,
-        one-padding is applied.
+        Identifies NectarCAM containers with missing pixels due to hardware failure
+        (e.g. an incomplete camera). The missing pixels are then padded with default
+        values.
         """
-
-        log.info("Checking for missing pixels in input data...")
-
-        hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
 
         log.info("Checking for missing pixels in input data...")
 
@@ -228,7 +236,9 @@ class CalibrationWriterNectarCAM(Tool):
                     np.isin(PIXEL_INDEX, container.pixels_id),
                 )
             # Then add missing pixels_to_container
-            ContainerUtils.add_missing_pixels_to_container(container)
+            ContainerUtils.add_missing_pixels_to_container(
+                container, pad_value=self.default_values[key]
+            )
 
         # Set the hardware failing pixels status in the pixel status container
         self.output_containers[
@@ -341,9 +351,8 @@ class CalibrationWriterNectarCAM(Tool):
         )
 
         # NOTE: for now there is no HiLo correction applied and the gain is only
-        # computed for the high gain channel. For now we make the assumption that the
-        # HiLo correction factor is 13.1
-        gain_per_pixel[LOW_GAIN] = gain_per_pixel[HIGH_GAIN] / 13.1
+        # computed for the high gain channel. For now we just use a default value
+        gain_per_pixel[LOW_GAIN] = gain_per_pixel[HIGH_GAIN] / HILO_DEFAULT
 
         # Fill WaveformCalibrationContainer with gains
         self.output_containers["calibration"].n_pe = np.divide(
