@@ -56,6 +56,8 @@ from nectarchain.utils.metadata import (
     get_local_metadata,
 )
 
+from ..utils.utils import ContainerUtils
+
 # Outputs allowed for Cat-A calibration file as done in `lstcam_calib`
 OUTPUT_FORMATS = ["fits.gz", "fits", "h5"]
 
@@ -214,54 +216,25 @@ class CalibrationWriterNectarCAM(Tool):
 
         hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
 
-        for container in self.input_containers.values():
-            pixels_id = container.pixels_id
+        log.info("Checking for missing pixels in input data...")
 
-            for name, field in zip(container.keys(), container.values()):
-                if isinstance(field, np.ndarray):
-                    # Find pixel axis if there is one
-                    pixel_axis = None
-                    for i, dim in enumerate(field.shape):
-                        if dim == len(pixels_id):
-                            pixel_axis = i
-                            break
-                    if pixel_axis is None:
-                        continue
+        hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
 
-                    # Reshape fields to fully pixelated camera with zero-padding
-                    # Or one-padding for boolean arrays of failing/missing pixels
-                    # NOTE: NectarCAMPedestalContainer stores bad pixels as np.int8
-                    shape_new_field = list(field.shape)
-                    shape_new_field[pixel_axis] = N_PIXELS
-                    if field.dtype == bool or field.dtype == np.int8:
-                        new_field = np.ones(shape_new_field, dtype=field.dtype)
-                    else:
-                        new_field = np.zeros(shape_new_field, dtype=field.dtype)
-
-                    # Copy data in slices so that the correct axis is zero/one-padded
-                    # Also sorts the arrays in terms of `PIXEL_INDEX`
-                    pixel_pos = np.searchsorted(PIXEL_INDEX, pixels_id)
-                    slc = [slice(None)] * field.ndim
-                    slc[pixel_axis] = pixel_pos
-                    new_field[tuple(slc)] = field
-
-                    # Update the container
-                    setattr(container, name, new_field)
-
-            # Update the pixels_id with the full camera
-            setattr(container, "pixels_id", PIXEL_INDEX)
-
-            # If pixels are missing it's due to hardware, so update the pixel status
+        for key, container in self.input_containers.items():
+            # First identify missing pixels
             for ch in range(N_GAINS):
                 hardware_working_pixels[ch] = np.logical_and(
                     hardware_working_pixels[ch],
-                    np.isin(PIXEL_INDEX, pixels_id),
+                    np.isin(PIXEL_INDEX, container.pixels_id),
                 )
+            # Then add missing pixels_to_container
+            ContainerUtils.add_missing_pixels_to_container(container)
 
         # Set the hardware failing pixels status in the pixel status container
         self.output_containers[
             "pixel_status"
         ].hardware_failing_pixels = ~hardware_working_pixels
+
         return
 
     def _fill_output_containers(self):
