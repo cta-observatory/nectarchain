@@ -1,4 +1,3 @@
-import os
 import pathlib
 from itertools import combinations
 
@@ -12,11 +11,12 @@ from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
+from utils import get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import adc_to_pe, argmedian
+from nectarchain.trr_test_suite.utils import argmedian
 
 
 # overriding so we can have maxevents in the path
@@ -32,14 +32,11 @@ def _init_output_path(self):
         (or `/tmp` if not set) with the `tests` subdirectory and the generated\
             file name.
     """
-
     if self.max_events is None:
         filename = f"{self.name}_run{self.run_number}.h5"
     else:
         filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
-    self.output_path = pathlib.Path(
-        f"{os.environ.get('NECTARCAMDATA','/tmp')}/tests/{filename}"
-    )
+    self.output_path = pathlib.Path(f"{filename}")
 
 
 EventsLoopNectarCAMCalibrationTool._init_output_path = _init_output_path
@@ -57,8 +54,10 @@ class ChargeContainer(NectarCAMContainer):
     - `event_id`: An array of event IDs.
     - `charge_hg`: A 2D array of high gain charge values.
     - `charge_lg`: A 2D array of low gain charge values.
+    - `ToM_mean` : A 1D array containing average ToM values for every pixel
     """
 
+    print("=========Charge Container==================")
     run_number = Field(
         type=np.uint16,
         description="run number associated to the waveforms",
@@ -82,6 +81,9 @@ class ChargeContainer(NectarCAMContainer):
     charge_lg = Field(
         type=np.ndarray, dtype=np.float64, ndim=2, description="The low gain charge"
     )
+    tom_mean = Field(
+        type=np.ndarray, dtype=np.float64, ndim=1, description="Avg ToM per pixel"
+    )
 
 
 class ChargeComp(NectarCAMComponent):
@@ -103,13 +105,14 @@ class ChargeComp(NectarCAMComponent):
             event types, event IDs, and the high and low gain charge values.
     """
 
+    print("ChargeComp================")
     window_shift = Integer(
-        default_value=6,
+        default_value=4,
         help="the time in ns before the peak to extract charge",
     ).tag(config=True)
 
     window_width = Integer(
-        default_value=12,
+        default_value=16,
         help="the duration of the extraction window in ns",
     ).tag(config=True)
 
@@ -130,11 +133,57 @@ class ChargeComp(NectarCAMComponent):
         self.__charge_hg = []
         self.__charge_lg = []
 
-    # This method need to be defined !
+        # This method need to be defined !
+
+        self.ToMtool = TimingResolutionTestTool(
+            progress_bar=True,
+            run_number=self._run_number,
+            max_events=100,
+            events_per_slice=999,
+            log_level=20,
+            window_width=16,
+            overwrite=True,
+        )
+        self.ToMtool.initialize()
+        self.ToMtool.setup()
+        self.ToMtool.start()
+        output = self.ToMtool.finish()
+
+        tom = output[0]
+        self.__mean_pe = output[3]
+        self.__tom_mean = np.mean(tom, axis=0)
+
+        print("tom ", self.__tom_mean, self.__mean_pe)
+
+        # Evaluate pedestals
+        self.Pedtool = PedestalTool(
+            progress_bar=True,
+            run_number=self._run_number,
+            max_events=100,
+            events_per_slice=999,
+            log_level=20,
+            peak_height=10,
+            window_width=16,
+            overwrite=True,
+        )
+        self.Pedtool.initialize()
+        print("OUTPUT_PATH", self.Pedtool.output_path)
+        self.Pedtool.setup()
+        self.Pedtool.start()
+        output = self.Pedtool.finish()
+        # print(output)
+
+        pedestal_hg = output[constants.HIGH_GAIN]
+        pedestal_lg = output[constants.LOW_GAIN]
+        self.__pedestal_hg = np.mean(pedestal_hg, axis=0)
+        self.__pedestal_lg = np.mean(pedestal_lg, axis=0)
+        # print("pedestal ",self.__pedestal_hg, len(self.__pedestal_hg))
+        # print("ToM",tom,np.shape(tom),np.shape(tom[6]))
+
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         self.__event_id.append(np.uint32(event.index.event_id))
 
-        # print(event.index.event_id)
+        # print("evt id ",event.index.event_id)
 
         self.__event_type.append(event.trigger.event_type.value)
         self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
@@ -143,39 +192,65 @@ class ChargeComp(NectarCAMComponent):
         wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
         wfs.append(event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id])
 
+        pedestal_hg = []
+        pedestal_lg = []
         # ###THE JOB IS HERE####
         for i, (pedestal, charge) in enumerate(
             zip(
-                [self.__pedestal_hg, self.__pedestal_lg],
+                [pedestal_hg, pedestal_lg],
                 [self.__charge_hg, self.__charge_lg],
             )
         ):
+            # print("i",i)
             wf = np.array(wfs[i], dtype=np.float16)
 
             index_peak = np.argmax(wf, axis=1)
-            index_peak[index_peak < 20] = 20
-            index_peak[index_peak > 40] = 40
 
-            signal_start = index_peak - self.window_shift
-            signal_stop = index_peak + self.window_width - self.window_shift
+            mean_max = np.mean(np.max(wf, axis=1))
 
-            if event.trigger.event_type == EventType.FLATFIELD:
+            # index_peak[index_peak < 10] = 20
+            # index_peak[index_peak > 40] = 40
+            # print("index peak ",index_peak)
+            signal_start = (index_peak - self.window_shift).astype(int)
+            signal_stop = (index_peak + self.window_width - self.window_shift).astype(
+                int
+            )
+            # Outer ring
+            # signal_start[pix] = int(self.__tom_mean[pix]+2)
+            # signal_stop[pix] = int(self.__tom_mean[pix]-2)
+            # print("=========================",signal_start,signal_stop)
+            if (
+                event.trigger.event_type == EventType.FLATFIELD
+                or event.trigger.event_type == EventType.SUBARRAY
+            ):
                 integral = np.zeros(len(self.pixels_id))
 
                 for pix in range(len(self.pixels_id)):
                     # search for saturated events or events with no signal
-                    ped = np.round(np.mean(wf[pix, 0 : signal_start[pix]]))
+                    # signal_start[pix] = int(self.__tom_mean[pix]-6.)
+                    # signal_stop[pix]  = int(self.__tom_mean[pix]+10.)
+                    # print("range ",signal_start[pix],signal_stop[pix])
+
+                    # Remove outer ring
+                    # ped = np.round(np.mean(wf[pix, 1 : 10]))
+
+                    if i == 0:
+                        ped = self.__pedestal_hg[pix]
+                    else:
+                        ped = self.__pedestal_lg[pix]
+                    # print("pedestal values ",ped,pix)
 
                     peaks_sat = find_peaks(
-                        wf[pix, 20:45], height=1000, plateau_size=self.window_width
+                        wf[pix, 10:45], height=1000, plateau_size=self.window_width
                     )
+                    # print("peaks ",peaks_sat[0], pix)
                     if len(peaks_sat[0]) == 1:
                         # saturated
 
                         # print("saturated")
 
                         signal_start[pix] = (
-                            argmedian(wf[pix, 20:45]) + 20 - self.window_shift
+                            argmedian(wf[pix, 10:45]) + 20.0 - self.window_shift
                         )
                         signal_stop[pix] = signal_start[pix] + self.window_width
                         integral[pix] = np.sum(
@@ -184,7 +259,7 @@ class ChargeComp(NectarCAMComponent):
 
                     else:
                         peaks_signal = find_peaks(wf[pix], prominence=10)
-                        if len(peaks_signal[0]) >= 12:
+                        if len(peaks_signal[0]) >= 12 and mean_max > 300.0:
                             # print("noisy event")
                             integral[pix] = 0
 
@@ -203,12 +278,46 @@ class ChargeComp(NectarCAMComponent):
                                 wf[pix, signal_start[pix] : signal_stop[pix]]
                             ) - ped * (signal_stop[pix] - signal_start[pix])
 
+                    if index_peak[pix] < 10 or index_peak[pix] > 50:
+                        integral[pix] = np.nan
+
+                        # print(event.count, " out  ",index_peak[pix]," ipix", pix)
+
+                    if (
+                        np.abs(self.__tom_mean[pix] - index_peak[pix]) > 6
+                        and self.__mean_pe > 10
+                    ):
+                        integral[pix] = np.nan
+
+                    # if(integral[pix]<-70):
+                    # print(i,integral[pix],event.count,event.index.event_id,ped,
+                    # " pix ",pix,signal_start[pix],signal_stop[pix],
+                    # event.trigger.event_type," ToM ", index_peak[pix])
+                    # integral[pix]=0
+
+                    # if(event.index.event_id==1832):
+                    # print(" 1832 ",mean_max,self.__mean_pe,
+                    # self.__tom_mean[pix], index_peak[pix],
+                    # integral[pix], pix, event.index.event_id)
                 chg = integral
+                # print(np.mean(mean_max) , np.max(mean_max),mean_max)
+                # print("integral ",mean_max,  np.nanmean(integral),
+                # len(integral), event.index.event_id, np.isnan(integral).sum())
+                if np.isnan(integral).sum() > 600.0:
+                    # Almost all pixels in event with shifted ToM
+                    # print(integral, event.index.event_id,np.nanmean(integral) )
+                    continue
+
+                if np.max(chg) > 10.0 * np.mean(chg) and mean_max > 350:
+                    # For muons
+                    # print("here",np.max(chg),np.mean(chg))
+                    continue
 
                 charge.append(chg)
 
     # This method need to be defined !
     def finish(self):
+        print("ChargeContainer0========finish")
         output = ChargeContainer(
             run_number=ChargeContainer.fields["run_number"].type(self._run_number),
             npixels=ChargeContainer.fields["npixels"].type(self._npixels),
@@ -225,6 +334,9 @@ class ChargeComp(NectarCAMComponent):
             ),
             charge_lg=ChargeContainer.fields["charge_lg"].dtype.type(
                 np.array(self.__charge_lg)
+            ),
+            tom_mean=ChargeContainer.fields["tom_mean"].dtype.type(
+                np.array(self.__tom_mean)
             ),
         )
 
@@ -252,8 +364,8 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def finish(self, *args, **kwargs):
-        super().finish(return_output_component=True, *args, **kwargs)
+    def finish(self, *args, temperature, ff_model):
+        super().finish(return_output_component=True, *args)
 
         mean_charge = [0, 0]  # per channel
         std_charge = [0, 0]
@@ -261,6 +373,7 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
 
         charge_hg = []
         charge_lg = []
+        tom_mean = []
 
         output_file = h5py.File(self.output_path)
 
@@ -274,14 +387,26 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
                     npixels = tup[1]
                     charge_hg.extend(tup[6])
                     charge_lg.extend(tup[7])
-
+                    tom_mean.append(tup[8])
                 except Exception:
                     break
 
         output_file.close()
+        adc_to_pe = get_adc_to_pe(self.temperature)
+        bad_pix = get_bad_pixels_list()
 
-        charge_pe_hg = np.array(charge_hg) / adc_to_pe
-        charge_pe_lg = np.array(charge_lg) / adc_to_pe
+        if self.ff_model not in (1, 2):
+            ff_coeff = 1
+        else:
+            ff_coeff = get_ff_coeff(self.temperature, self.ff_model)
+
+        charge_hg = np.array(charge_hg)
+        charge_lg = np.array(charge_lg)
+        charge_lg[:, bad_pix] = np.nan
+        charge_hg[:, bad_pix] = np.nan
+
+        charge_pe_hg = charge_hg / (adc_to_pe * ff_coeff)
+        charge_pe_lg = charge_lg / (adc_to_pe * ff_coeff)
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
             pix_mean_charge = np.mean(charge, axis=0)  # in pe
@@ -295,7 +420,154 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
             # for the charge resolution
             std_err[channel] = np.std(pix_std_charge)
 
-        return mean_charge, std_charge, std_err, npixels
+            print(npixels)
+
+        return mean_charge, std_charge, std_err, npixels, tom_mean
+
+
+class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
+    """This class, `ChargeResolutionTestTool`, is a subclass of
+    `EventsLoopNectarCAMCalibrationTool`. It is responsible for performing a linearity
+    test on NectarCAM data. The class has a `componentsList` attribute that specifies
+    the list of NectarCAM components to be applied.
+
+    The `finish` method is the main functionality of this class. It reads the charge\
+        data from the output file, calculates the mean charge, standard deviation,\
+            and standard error for both the high gain and low gain channels, and\
+                returns these values. This information can be used to assess\
+                    the linearity of the NectarCAM system.
+    """
+
+    name = "ChargeResolutionTestTool"
+
+    temperature = Field(
+        default=14, dtype=np.float64, allow_none=True, description="temperature of run"
+    )
+
+    ff_model = Field(
+        default=None,
+        dtype=np.int32,
+        description="Model for FF coefficients: "
+        "1-Independent, 2- 2-D Gaussian model (Anastasiia's method),"
+        "Default:None, ff_coefficients =1",
+    )
+
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value=["ChargeComp"],
+        help="List of Component names to be apply, the order will be respected",
+    ).tag(config=True)
+
+    def set_thermal_params(self, temp, ff_model):
+        self.temperature = temp
+        self.ff_model = ff_model
+
+    def finish(self, *args, **kwargs):
+        print("args \n ", args)
+        super().finish(return_output_component=True, *args, **kwargs)
+
+        mean_charge = [0, 0]  # per channel
+        std_charge = [0, 0]
+        std_err = [0, 0]
+
+        charge_hg = []
+        charge_lg = []
+        tom_mean = []
+
+        output_file = h5py.File(self.output_path)
+
+        for thing in output_file:
+            group = output_file[thing]
+            dataset = group["ChargeContainer_0"]
+            data = dataset[:]
+            # print("data",data)
+            for tup in data:
+                try:
+                    npixels = tup[1]
+                    charge_hg.extend(tup[6])
+                    charge_lg.extend(tup[7])
+                    tom_mean.append(tup[8])
+                except Exception:
+                    break
+
+        output_file.close()
+        print("temperature ", self.temperature)
+        adc_to_pe = get_adc_to_pe(self.temperature)
+        bad_pix = get_bad_pixels_list()
+
+        if self.ff_model not in (1, 2):
+            ff_coeff = 1
+        else:
+            ff_coeff = get_ff_coeff(self.temperature, self.ff_model)
+
+        charge_hg = np.array(charge_hg)
+        charge_lg = np.array(charge_lg)
+        charge_lg[:, bad_pix] = np.nan
+        charge_hg[:, bad_pix] = np.nan
+
+        # print("bad pix list ", bad_pix)
+
+        charge_lg = np.array(charge_lg)
+        charge_hg = np.array(charge_hg)
+
+        mean_charge = [0, 0]  # per channel
+        std_charge = [0, 0]
+        std_err = [0, 0]
+
+        mean_resolution = [0, 0]
+
+        charge_pe_hg = charge_hg / (ff_coeff * adc_to_pe)
+        charge_pe_lg = charge_lg / (ff_coeff * adc_to_pe)
+
+        n_events = len(charge_pe_hg)
+        print("n_events", n_events)
+
+        print(
+            charge_pe_lg,
+            len(charge_pe_lg),
+            len(charge_pe_hg),
+            np.nanmean(charge_pe_hg, axis=0),
+            np.nanmean(charge_pe_lg, axis=0),
+        )
+        # print("min ", np.min(np.concatenate(charge_pe_lg)),
+        # np.min(np.concatenate(charge_pe_hg)))
+
+        ratio_hglg = np.nanmean(
+            np.nanmean(charge_pe_hg, axis=0) / np.nanmean(charge_pe_lg, axis=0)
+        )
+        print("ratio ", ratio_hglg)
+
+        for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
+            # print(channel,charge)
+            pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
+            # print(pix_mean_charge)
+
+            pix_std_charge = np.nanstd(charge, axis=0) / np.sqrt(n_events)
+
+            pix_resolution = pix_std_charge / pix_mean_charge
+
+            # average of all pixels
+            mean_charge[channel] = np.nanmean(pix_mean_charge)
+
+            mean_resolution[channel] = np.nanmean(pix_resolution)
+
+            # print("pix ",npixels,channel,pix_resolution,min(pix_resolution),
+            # max(pix_resolution),np.where(pix_mean_charge<0),max(pix_std_charge))
+
+            # mean_res_std[channel]    = np.std(pix_resolution[pix_resolution>-500])
+            std_charge[channel] = np.nanmean(pix_std_charge)
+            # for the charge resolution
+            std_err[channel] = np.std(pix_std_charge)
+
+        return (
+            mean_charge,
+            std_charge,
+            std_err,
+            npixels,
+            mean_resolution,
+            tom_mean,
+            ratio_hglg,
+        )
 
 
 class ToMContainer(NectarCAMContainer):
@@ -337,15 +609,6 @@ class ToMContainer(NectarCAMContainer):
         description="The mean high gain charge per event",
     )
 
-    # tom_mu = Field(
-    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of maximum of
-    # signal fitted with gaussian"
-    # )
-
-    # tom_sigma = Field(
-    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of fitted
-    # maximum sigma"
-    # )
     tom_no_fit = Field(
         type=np.ndarray,
         dtype=np.float64,
@@ -382,6 +645,7 @@ class ToMComp(NectarCAMComponent):
                 charge, ToM without fitting, and IDs of good (non-cosmic ray) events.
     """
 
+    print("ToMComp==============")
     window_shift = Integer(
         default_value=6,
         help="the time in ns before the peak to extract charge",
@@ -423,6 +687,9 @@ class ToMComp(NectarCAMComponent):
 
     # This method need to be defined !
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        if event.trigger.event_type == EventType.SKY_PEDESTAL:
+            return
+
         self.__event_id.append(np.uint32(event.index.event_id))
 
         self.__event_type.append(event.trigger.event_type.value)
@@ -441,8 +708,8 @@ class ToMComp(NectarCAMComponent):
             wf = np.array(wfs[i])  # waveform per gain
             index_peak = np.argmax(wf, axis=1)  # tom per event/pixel
             # use it to first find pedestal and then will filter out no signal events
-            index_peak[index_peak < 20] = 20
-            index_peak[index_peak > 40] = 40
+            index_peak[index_peak < 10] = 10
+            index_peak[index_peak > 50] = 50
             signal_start = index_peak - self.window_shift
             signal_stop = index_peak + self.window_width - self.window_shift
 
@@ -469,10 +736,10 @@ class ToMComp(NectarCAMComponent):
                 yi = ius(xi)
                 peaks, _ = find_peaks(
                     yi,
-                    height=self.peak_height,
+                    height=self.peak_height - 5.0,
                 )
                 # print(peaks)
-                peaks = peaks[xi[peaks] > 20]
+                peaks = peaks[xi[peaks] > 10]
                 peaks = peaks[xi[peaks] < 32]
                 # print(peaks)
 
@@ -576,7 +843,7 @@ class ToMComp(NectarCAMComponent):
                 else:
                     # If no maximum is found, the integration is done between 20 and 36
                     # ns.
-                    signal_start[pix] = 20
+                    signal_start[pix] = 15
 
                     # index_x_window_min = list(xi).index(closest_value(xi,
                     # signal_start[pix]))
@@ -591,6 +858,9 @@ class ToMComp(NectarCAMComponent):
 
                 # tom_mu_evt[pix] = result_mu
                 # tom_sigma_evt[pix] = result_sigma
+
+                if max_position_x_prefit == -1:
+                    max_position_x_prefit = np.argmax(wf[pix])
                 tom_no_fit_evt[pix] = max_position_x_prefit
                 chg[pix] = charge_sum
 
@@ -683,22 +953,29 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
         tom_no_fit_all = np.array(tom_no_fit_all)
         charge_all = np.array(charge_all)
-        # print(tom_no_fit_all)
+        print(tom_no_fit_all, len(tom_no_fit_all))
         # print(charge_all)
 
         # clean cr events
         good_evts = np.array(good_evts)
-        # print(good_evts)
-        charge = charge_all[good_evts]
+        print("good events ", good_evts)
+
+        if len(good_evts) > 0:
+            charge = charge_all[good_evts]
+
+            tom_no_fit = np.array(tom_no_fit_all[good_evts]).reshape(
+                len(good_evts), npixels
+            )
+        else:
+            charge = charge_all
+            tom_no_fit = tom_no_fit_all
         mean_charge_pe = np.mean(np.mean(charge, axis=0)) / 58.0
         # tom_mu = np.array(tom_mu_all[good_evts]).reshape(len(good_evts),
         # output[0].npixels)
 
         # tom_sigma = np.array(tom_sigma_all[good_evts]).reshape(len(good_evts),
         # output[0].npixels)
-        tom_no_fit = np.array(tom_no_fit_all[good_evts]).reshape(
-            len(good_evts), npixels
-        )
+
         # print(tom_no_fit)
         # print(tom_no_fit)
 
@@ -714,7 +991,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             for tom, rms, err in zip(
                 [tom_no_fit[:, pix]], [rms_no_fit], [rms_no_fit_err]
             ):
-                tom_pos = tom[tom > 20]
+                tom_pos = tom[tom > 10]
                 boot_rms = []
 
                 sample = tom_pos[tom_pos < 32]
@@ -774,7 +1051,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                         rms[pix] = np.nan
                         err[pix] = np.nan
 
-        return rms_no_fit, rms_no_fit_err, mean_charge_pe
+        return tom_no_fit_all, rms_no_fit, rms_no_fit_err, mean_charge_pe
 
 
 class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
@@ -1014,6 +1291,9 @@ class PedestalComp(NectarCAMComponent):
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         self.__event_id.append(np.uint32(event.index.event_id))
 
+        if event.trigger.event_type != EventType.SKY_PEDESTAL:
+            return
+
         # print(event.trigger.event_type)
 
         self.__event_type.append(event.trigger.event_type.value)
@@ -1035,11 +1315,13 @@ class PedestalComp(NectarCAMComponent):
 
             ped = np.array([np.mean(wf[pix]) for pix in range(len(self.pixels_id))])
             rms_ped = np.array([np.std(wf[pix]) for pix in range(len(self.pixels_id))])
-
+            # print(ped)
             ped[ped > 1000] = np.nan
             rms_ped[ped > 1000] = np.nan
             pedestal.append(ped)
             rms_pedestal.append(rms_ped)
+
+        # print("pedestal ===================",self.__pedestal_hg)
 
     # This method need to be defined !
     def finish(self):
@@ -1096,15 +1378,15 @@ class PedestalTool(EventsLoopNectarCAMCalibrationTool):
             filename = f"{self.name}_run{self.run_number}.h5"
         else:
             filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
-        self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/tests/{filename}"
-        )
+        self.output_path = pathlib.Path(f"{filename}")
 
     def finish(self, *args, **kwargs):
         super().finish(return_output_component=False, *args, **kwargs)
         # print(self.output_path)
         output_file = h5py.File(self.output_path)
 
+        pedestal_hg = []
+        pedestal_lg = []
         rms_ped_hg = []
 
         for thing in output_file:
@@ -1114,13 +1396,15 @@ class PedestalTool(EventsLoopNectarCAMCalibrationTool):
             # print("data",data)
             for tup in data:
                 try:
+                    pedestal_hg.extend(tup[6])
+                    pedestal_lg.extend(tup[7])
                     rms_ped_hg.extend(tup[8])
                 except Exception:
                     break
 
         output_file.close()
 
-        return rms_ped_hg
+        return pedestal_hg, pedestal_lg, rms_ped_hg
 
 
 class UCTSContainer(NectarCAMContainer):
@@ -1221,13 +1505,13 @@ class UCTSComp(NectarCAMComponent):
             index_peak = np.argmax(wf, axis=1)  # tom per event/pixel
             # print(wf[100])
             # print(index_peak[100])
-            index_peak[index_peak < 20] = 20
-            index_peak[index_peak > 40] = 40
+            # index_peak[index_peak < 20] = 20
+            # index_peak[index_peak > 40] = 40
             signal_start = index_peak - self.window_shift
-            # signal_stop = index_peak + self.window_width - self.window_shift
+            signal_stop = index_peak + self.window_width - self.window_shift
             # print(index_peak)
-            # print(signal_start)
-            # print(signal_stop)
+            print(signal_start)
+            print(signal_stop)
             chg = np.zeros(len(self.pixels_id))
 
             ped = np.array(
@@ -1252,7 +1536,7 @@ class UCTSComp(NectarCAMComponent):
 
             # is it a good event?
             if np.max(chg) > 10 * np.mean(chg):
-                # print("is not good evt")
+                print("is not good evt")
                 take_event = False
             mean_charge = np.mean(chg) / 58.0
 
@@ -1260,6 +1544,7 @@ class UCTSComp(NectarCAMComponent):
             self.__event_id.append(np.uint32(event.index.event_id))
             self.__event_type.append(event.trigger.event_type.value)
             self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
+
             self.__ucts_busy_counter.append(
                 event.nectarcam.tel[0].evt.ucts_busy_counter
             )
@@ -1339,11 +1624,11 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
         # tom_mu_all= output[0].tom_mu
         # tom_sigma_all= output[0].tom_sigma
         # ucts_timestamps= np.array(output_file["ucts_timestamp"])
-        ucts_timestamps = np.array(ucts_timestamps).flatten()
-        # print(ucts_timestamps)
+        # ucts_timestamps = np.array(ucts_timestamps).flatten()
+        # print("ucts t s ",ucts_timestamps)
         event_counter = np.array(event_counter).flatten()
         busy_counter = np.array(busy_counter).flatten()
-        # print(ucts_timestamps)
+        # print("ts ",ucts_timestamps)
         delta_t = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
