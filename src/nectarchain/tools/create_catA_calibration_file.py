@@ -299,10 +299,17 @@ class CalibrationWriterNectarCAM(Tool):
             pedestal_std_per_pixel_per_sample,
         )
 
+        # Set default pedestal values for bad pixels
+        pedestal_mean_per_pixel_with_default = np.where(
+            self.input_containers["pedestal"].pixel_mask,
+            PEDESTAL_DEFAULT,
+            pedestal_mean_per_pixel,
+        )
+
         # Fill WaveformCalibrationContainer with pedestals
         self.output_containers[
             "calibration"
-        ].pedestal_per_sample = pedestal_mean_per_pixel
+        ].pedestal_per_sample = pedestal_mean_per_pixel_with_default
 
         # Fill PedestalContainer
         # NOTE: normally in `ctapipe`, n_events is a float, here it's an array of shape
@@ -349,6 +356,13 @@ class CalibrationWriterNectarCAM(Tool):
             self.input_containers["gain"].high_gain[..., 0],
             self.input_containers["gain"].low_gain[..., 0],
         )
+        is_valid = self._combine_hg_and_lg(
+            self.input_containers["gain"].is_valid,
+            self.input_containers["gain"].is_valid,
+        )
+
+        # Set default gain values for bad pixels
+        gain_per_pixel = np.where(is_valid, gain_per_pixel, GAIN_DEFAULT)
 
         # NOTE: for now there is no HiLo correction applied and the gain is only
         # computed for the high gain channel. For now we just use a default value
@@ -410,9 +424,22 @@ class CalibrationWriterNectarCAM(Tool):
         # Expand dimensions of FF failing pixels to cover both high gain and low gain
         FF_failing_pixels = self._combine_hg_and_lg(FF_pixel_mask, FF_pixel_mask)
 
+        # Set default FF values for bad pixels
+        FF_coeff_per_pixel_mean_with_default = np.where(
+            FF_failing_pixels, FLATFIELD_DEFAULT, FF_coeff_per_pixel_mean
+        )
+        # BUG: bad FF pixels are not correctly tagged for now.
+        # Values with mean FF = 0 are temporarily masked here.
+        FF_coeff_per_pixel_mean_with_default = np.where(
+            FF_coeff_per_pixel_mean_with_default == 0,
+            FLATFIELD_DEFAULT,
+            FF_coeff_per_pixel_mean_with_default,
+        )
+
         # Fill WaveformCalibrationContainer with FF corrections
         self.output_containers["calibration"].dc_to_pe = (
-            FF_coeff_per_pixel_mean * self.output_containers["calibration"].n_pe
+            FF_coeff_per_pixel_mean_with_default
+            * self.output_containers["calibration"].n_pe
         )
 
         # Fill FlatFieldContainer
