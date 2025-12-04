@@ -22,7 +22,7 @@ from utils import get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
 from nectarchain.trr_test_suite.utils import err_ratio, err_sum, plot_parameters
 
-plt.style.use("../plot_style.mpltstyle")
+plt.style.use("../../../utils/plot_style.mpltstyle")
 
 
 def get_args():
