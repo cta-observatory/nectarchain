@@ -7,5 +7,7 @@ def get_allowed_cameras():
 
 ALLOWED_CAMERAS = get_allowed_cameras()
 
+PEDESTAL_DEFAULT = 250.0
 GAIN_DEFAULT = 58.0
 HILO_DEFAULT = 13.0
+FLATFIELD_DEFAULT = 1.0

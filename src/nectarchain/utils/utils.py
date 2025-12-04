@@ -75,11 +75,14 @@ class ComponentUtils:
 
 class ContainerUtils:
     @staticmethod
-    def add_missing_pixels_to_container(container: NectarCAMContainer):
+    def add_missing_pixels_to_container(
+        container: NectarCAMContainer, pad_value=np.nan
+    ):
         """
-        Zero-pads fields of `~nectarchain.data.container.core.NectarCAMContainer` with
-        missing pixels (due to e.g. an incomplete camera). For boolean arrays related to
-        pixel status, zero/one-padding is applied appriopriately.
+        Pads fields of `~nectarchain.data.container.core.NectarCAMContainer` with
+        missing pixels (due to e.g. an incomplete camera) with chosen value.
+        For boolean arrays related to pixel status, zero/one-padding is applied
+        appriopriately.
         """
 
         # Make sure the container has `pixels_id` values
@@ -124,13 +127,14 @@ class ContainerUtils:
                 shape_new_field = list(field.shape)
                 shape_new_field[pixel_axis] = constants.N_PIXELS
                 # Pixel status in NectarCAMPedestalContainer, FlatFieldContainer
+                # NOTE: `bad_pixels` does not have a `pixel_axis` so nothing happens
                 if name in ["pixel_mask", "bad_pixels"]:
                     new_field = np.ones(shape_new_field, dtype=field.dtype)
                 # Pixel status in GainContainer
                 elif name in ["is_valid"]:
                     new_field = np.zeros(shape_new_field, dtype=field.dtype)
                 else:
-                    new_field = np.full(shape_new_field, np.nan, dtype=field.dtype)
+                    new_field = np.full(shape_new_field, pad_value, dtype=field.dtype)
 
                 # Copy data in slices so that the correct axis is zero/one-padded
                 # Also sorts the arrays in terms of `PIXEL_INDEX`
