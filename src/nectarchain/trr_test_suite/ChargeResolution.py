@@ -16,7 +16,7 @@ from nectarchain.trr_test_suite.utils import err_ratio, plot_parameters
 # from utils import get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
 
-plt.style.use("resources/plot_style.mpltstyle")
+plt.style.use("../utils/plot_style.mpltstyle")
 
 
 def get_args():
