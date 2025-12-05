@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from nectarchain.trr_test_suite.tools_components import PedestalTool
-from nectarchain.trr_test_suite.utils import adc_to_pe, pe2photons
+from nectarchain.trr_test_suite.utils import pe2photons
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 
 def get_args():
@@ -113,7 +114,7 @@ def main():
         tool.start()
         output.append(tool.finish())
 
-    rms_ped = pe2photons(np.array(output[0]) / adc_to_pe)  # in photons
+    rms_ped = pe2photons(np.array(output[0]) / GAIN_DEFAULT)  # in photons
     plt.figure()
     plt.title("Pedestal rms for all events and pixels")
     plt.pcolormesh(rms_ped.T, clim=(0.8, 1.5))
