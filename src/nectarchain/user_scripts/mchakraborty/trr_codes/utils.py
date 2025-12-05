@@ -16,6 +16,8 @@ import pandas as pd
 from ctapipe.io import read_table
 from lmfit.models import Model
 
+from nectarchain.utils.constants import GAIN_DEFAULT
+
 try:
     import astropy.units as u
     import matplotlib.pyplot as plt
@@ -85,7 +87,7 @@ def get_adc_to_pe(temperature):
             # print(data["high_gain_lw"])
             adc_to_pe = data["high_gain_lw"]
     else:
-        adc_to_pe = 58.0
+        adc_to_pe = GAIN_DEFAULT
 
     return adc_to_pe
 
