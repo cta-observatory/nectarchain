@@ -117,8 +117,9 @@ def main():
     fig, ax = plt.subplots()
     for result in output:
         # mean value of pedestal per pixel
+        pixels_id = result[0]["pixels_id"]
         baseline = result[0]["pedestal_charge_mean_hg"] / N_SAMPLES
-        ax.plot(baseline, marker="o", linewidth=0, alpha=0.3)
+        ax.plot(pixels_id, baseline, marker="o", linewidth=0, alpha=0.3)
 
     ax.set_title("Pedestal")
     ax.set_xlabel("Pixel")
@@ -139,17 +140,20 @@ def main():
     fig, ax = plt.subplots()
     for result in output:
         # RMS
+        pixels_id = result[0]["pixels_id"]
         ped_rms = result[0]["pedestal_charge_std_hg"]
 
         # uncertainty in pedestal from RMS and number of events used
         ped_unc = ped_rms / np.sqrt(result[0]["nevents"])
-        ax.plot(ped_unc, marker="x", color="C0", linewidth=0, alpha=0.3)
+        ax.plot(pixels_id, ped_unc, marker="x", color="C0", linewidth=0, alpha=0.3)
 
         # 20% of RMS
+        # sort pixel id to make plot more readable if there are missing pixels
+        idx = np.unravel_index(np.argsort(pixels_id, axis=None), pixels_id.shape)
         ax.fill_between(
-            np.arange(N_PIXELS),
+            pixels_id[idx],
             0,
-            0.2 * ped_rms,
+            0.2 * ped_rms[idx],
             color="0.5",
             alpha=0.1,
         )
