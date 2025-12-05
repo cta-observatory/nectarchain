@@ -11,7 +11,7 @@ from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
 from traitlets.config import Config
 
-from ..utils.constants import GAIN_DEFAULT
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 config = Config(
     dict(

@@ -13,10 +13,10 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
 from utils import argmedian, get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
-from ..data.container import NectarCAMContainer
-from ..makers import EventsLoopNectarCAMCalibrationTool
-from ..makers.component import NectarCAMComponent
-from ..utils.constants import GAIN_DEFAULT
+from nectarchain.data.container import NectarCAMContainer
+from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
+from nectarchain.makers.component import NectarCAMComponent
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 
 # overriding so we can have maxevents in the path
