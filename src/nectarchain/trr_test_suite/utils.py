@@ -421,6 +421,23 @@ def photons2pe(x):
     return x / 4
 
 
+def photons2ADC(n):
+    """
+    converts a number of photons into ADC counts
+
+        Args:
+        n (float): The input value in photon number.
+
+    Returns:
+        float: The input value converted to a charge in ADC counts.
+    """
+
+    pe = photons2pe(n)
+    charge = pe * adc_to_pe
+
+    return charge
+
+
 # from federica's notebook
 class ExponentialFitter:
     """Represents an exponential fitter class that computes the expected distribution

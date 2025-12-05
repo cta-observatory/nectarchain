@@ -7,9 +7,10 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe_io_nectarcam import N_PIXELS, N_SAMPLES
 
-from nectarchain.trr_test_suite.tools_components import PedestalTool
-from nectarchain.trr_test_suite.utils import adc_to_pe, pe2photons
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
+from nectarchain.trr_test_suite.utils import photons2ADC
 
 
 def get_args():
@@ -46,10 +47,10 @@ def get_args():
         "-e",
         "--evts",
         type=int,
-        help="Number of events to process from each run. Default is 1200. 4000 or more\
+        help="Number of events to process from each run. Default is 200. 4000 or more\
             gives best results but takes some time",
         required=False,
-        default=10,
+        default=200,
     )
     parser.add_argument(
         "-o",
@@ -70,12 +71,11 @@ def main():
     """The main function that runs the pedestal subtraction test. It parses command-line
     arguments, processes the specified runs, and generates two plots:
 
-    1. A 2D heatmap of the pedestal RMS for all events and pixels.
-    2. A line plot of the mean pedestal RMS for each pixel, with the CTA requirement\
-        range highlighted.
+    1. The mean baseline value for all pixels.
+    2. A plot that compares the uncertainty to the limits set by the CTAO requirements.
 
-    The function also saves the generated plots to the specified output directory,\
-        and optionally saves the first plot to a temporary output file.
+    The function also saves the generated plots to the specified output directory\
+    and optionally saves the first plot to a temporary output file.
     """
 
     parser = get_args()
@@ -97,111 +97,102 @@ def main():
 
     for run in runlist:
         print("PROCESSING RUN {}".format(run))
-        tool = PedestalTool(
+        tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
             max_events=nevents,
             events_per_slice=999,
             log_level=20,
-            peak_height=10,
-            window_width=16,
+            output_path=output_dir + f"pedestal_{run}.h5",
             overwrite=True,
+            filter_method=None,
+            method="FullWaveformSum",  # charges over entire window
         )
         tool.initialize()
-        print("OUTPUT_PATH", tool.output_path)
         tool.setup()
         tool.start()
-        output.append(tool.finish())
+        output.append(tool.finish(return_output_component=True))
 
-    rms_ped = pe2photons(np.array(output[0]) / adc_to_pe)  # in photons
-    plt.figure()
-    plt.title("Pedestal rms for all events and pixels")
-    plt.pcolormesh(rms_ped.T, clim=(0.8, 1.5))
-    plt.colorbar()
-    plt.savefig(os.path.join(output_dir, "pedestal_rms_2d_graph.png"))
-
-    mean_rms_per_pix = np.mean(rms_ped, axis=0)
-    mean_value = np.mean(mean_rms_per_pix)
-
+    # Show baseline value
     fig, ax = plt.subplots()
-    ax.set_title("Mean pedestal rms for each pixel")
+    for result in output:
+        # mean value of pedestal per pixel
+        pixels_id = result[0]["pixels_id"]
+        baseline = result[0]["pedestal_charge_mean_hg"] / N_SAMPLES
+        ax.plot(pixels_id, baseline, marker="o", linewidth=0, alpha=0.3)
+
+    ax.set_title("Pedestal")
     ax.set_xlabel("Pixel")
-    ax.set_ylabel("p.e.")
-    ax.plot(mean_rms_per_pix, marker="x", linestyle="")
-    ax.axhline(1.2, color="black", alpha=0.8)
-    ax.axhline(mean_value, color="red", linestyle="--", alpha=0.5)
+    ax.set_ylabel("Mean baseline (ADC)")
 
-    # Fill the region between 0.8 * mean_value and 1.2 * mean_value
-    ax.fill_between(
-        range(len(mean_rms_per_pix)),
-        0.8 * mean_value,
-        1.2 * mean_value,
-        color="red",
-        alpha=0.3,
-    )
+    plt.savefig(os.path.join(output_dir, "pedestal_baseline.png"))
+    if temp_output:
+        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
-    right_x_position = (
-        len(mean_rms_per_pix) * 0.95
-    )  # Slightly left of the right edge of the plot
-    ax.arrow(
-        right_x_position,
-        1.2 * mean_value,
-        0,
-        -0.4 * mean_value,
-        color="grey",
-        width=5,
-        head_width=50,
-        head_length=0.05,
-        length_includes_head=True,
-        zorder=3,
-    )
-    ax.arrow(
-        right_x_position,
-        0.8 * mean_value,
-        0,
-        0.4 * mean_value,
-        color="grey",
-        width=5,
-        head_width=50,
-        head_length=0.05,
-        length_includes_head=True,
-        zorder=3,
-    )
-    ax.text(
-        right_x_position + 100,
-        mean_value,
-        "±20%",
-        color="grey",
-        fontsize=12,
-        verticalalignment="center",
-    )
-    ax.text(10, 1.2, "CTA requirement", color="black", fontsize=12)
-    ax.arrow(
-        300,
-        1.2,
-        0,
-        -0.1,
-        color="black",
-        width=5,
-        head_width=50,
-        head_length=0.05,
-        length_includes_head=True,
-        zorder=5,
-    )
-    ax.arrow(
-        1500,
-        1.2,
-        0,
-        -0.1,
-        color="black",
-        width=5,
-        head_width=50,
-        head_length=0.05,
-        length_includes_head=True,
-        zorder=5,
+    # The next block of code produces a plot to verify requirement B-TEL-1370
+    # During Observations the Camera must measure the Pedestal in each pixel
+    # and the event-to-event rms of this quantity with an uncertainty
+    # no greater than 20% of the event-to-event rms or 1.2 photons (if greater).
+    # NB: we only test this for the HG channel because the uncertainty/RMS
+    # requirement is automatically met if one uses more then 25 events for
+    # pedestal estimation and the 1.2 photons limit makes no sense for LG
+    fig, ax = plt.subplots()
+    for result in output:
+        # RMS
+        pixels_id = result[0]["pixels_id"]
+        ped_rms = result[0]["pedestal_charge_std_hg"]
+
+        # uncertainty in pedestal from RMS and number of events used
+        ped_unc = ped_rms / np.sqrt(result[0]["nevents"])
+        ax.plot(pixels_id, ped_unc, marker="x", color="C0", linewidth=0, alpha=0.3)
+
+        # 20% of RMS
+        # sort pixel id to make plot more readable if there are missing pixels
+        idx = np.unravel_index(np.argsort(pixels_id, axis=None), pixels_id.shape)
+        ax.fill_between(
+            pixels_id[idx],
+            0,
+            0.2 * ped_rms[idx],
+            color="0.5",
+            alpha=0.1,
+        )
+
+    # 1.2 photons
+    ax.plot(
+        np.arange(N_PIXELS),
+        photons2ADC(1.2) * np.ones(N_PIXELS),
+        linestyle="--",
+        color="r",
     )
 
-    plt.savefig(os.path.join(output_dir, "mean_pedestal_rms.png"))
+    # add annotations to explain
+    ax.annotate(
+        "Pedestal mean uncertainty (Full waveform sum)",
+        (0.05, 0.85),
+        xycoords="axes fraction",
+        color="C0",
+    )
+
+    ax.annotate(
+        "20% of pedestal width RMS (Full waveform sum)",
+        (0.05, 0.8),
+        xycoords="axes fraction",
+        color="0.5",
+    )
+
+    ax.annotate(
+        "1.2 photons",
+        (0.05, 0.75),
+        xycoords="axes fraction",
+        color="r",
+    )
+
+    ax.set_title("Pedestal uncertainty")
+    ax.set_xlabel("Pixel")
+    ax.set_ylabel("(ADC)")
+
+    plt.savefig(os.path.join(output_dir, "pedestal_uncertainty.png"))
     if temp_output:
         with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
             pickle.dump(fig, f)
