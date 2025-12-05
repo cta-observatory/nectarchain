@@ -232,21 +232,23 @@ def get_adc_to_pe(temperature):
             f.visititems(print_hdf5_structure)
 
             try:
-                toto = read_table(gain_file_name, path="/data/SPEfitContainer_0")
+                gain_data = read_table(gain_file_name, path="/data/SPEfitContainer_0")
 
             except KeyError:
-                toto = read_table(gain_file_name, path="/data/PhotosatatfitContainer_0")
+                gain_data = read_table(
+                    gain_file_name, path="/data/PhotosatatfitContainer_0"
+                )
 
             data = {
-                "is_valid": toto["is_valid"][0],
-                "high_gain_lw": [x[0] for x in toto["high_gain"][0]],
-                "high_gain": [x[1] for x in toto["high_gain"][0]],
-                "high_gain_up": [x[-1] for x in toto["high_gain"][0]],
-                "pedestal_lw": [x[0] for x in toto["pedestal"][0]],
-                "pedestal": [x[1] for x in toto["pedestal"][0]],
-                "pedestal_up": [x[-1] for x in toto["pedestal"][0]],
-                "pixels_id": toto["pixels_id"][0],
-                # 'luminosity': toto['luminosity']
+                "is_valid": gain_data["is_valid"][0],
+                "high_gain_lw": [x[0] for x in gain_data["high_gain"][0]],
+                "high_gain": [x[1] for x in gain_data["high_gain"][0]],
+                "high_gain_up": [x[-1] for x in gain_data["high_gain"][0]],
+                "pedestal_lw": [x[0] for x in gain_data["pedestal"][0]],
+                "pedestal": [x[1] for x in gain_data["pedestal"][0]],
+                "pedestal_up": [x[-1] for x in gain_data["pedestal"][0]],
+                "pixels_id": gain_data["pixels_id"][0],
+                # 'luminosity': gain_data['luminosity']
             }
             # print(data["high_gain_lw"])
             adc_to_pe = data["high_gain_lw"]
