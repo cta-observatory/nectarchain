@@ -11,6 +11,8 @@ from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
 from traitlets.config import Config
 
+from ..utils.constants import GAIN_DEFAULT
+
 config = Config(
     dict(
         NectarCAMEventSource=dict(
@@ -191,8 +193,6 @@ optical_density_390ns = np.array(
     ]
 )
 
-adc_to_pe = 58.0
-
 
 def get_bad_pixels_list():
     # List of modules and pixels to be rejected
@@ -253,7 +253,7 @@ def get_adc_to_pe(temperature):
             # print(data["high_gain_lw"])
             adc_to_pe = data["high_gain_lw"]
     else:
-        adc_to_pe = 58.0
+        adc_to_pe = GAIN_DEFAULT
 
     return adc_to_pe
 

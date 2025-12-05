@@ -11,12 +11,12 @@ from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
-from utils import get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
+from utils import argmedian, get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
-from nectarchain.data.container import NectarCAMContainer
-from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
-from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import argmedian
+from ..data.container import NectarCAMContainer
+from ..makers import EventsLoopNectarCAMCalibrationTool
+from ..makers.component import NectarCAMComponent
+from ..utils.constants import GAIN_DEFAULT
 
 
 # overriding so we can have maxevents in the path
@@ -969,7 +969,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         else:
             charge = charge_all
             tom_no_fit = tom_no_fit_all
-        mean_charge_pe = np.mean(np.mean(charge, axis=0)) / 58.0
+        mean_charge_pe = np.mean(np.mean(charge, axis=0)) / GAIN_DEFAULT
         # tom_mu = np.array(tom_mu_all[good_evts]).reshape(len(good_evts),
         # output[0].npixels)
 
