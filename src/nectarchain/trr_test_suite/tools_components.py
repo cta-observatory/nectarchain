@@ -15,6 +15,7 @@ from utils import argmedian, get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.utils.constants import GAIN_DEFAULT
 
@@ -156,14 +157,14 @@ class ChargeComp(NectarCAMComponent):
         print("tom ", self.__tom_mean, self.__mean_pe)
 
         # Evaluate pedestals
-        self.Pedtool = PedestalTool(
+        self.Pedtool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=self._run_number,
             max_events=100,
             events_per_slice=999,
             log_level=20,
-            peak_height=10,
-            window_width=16,
+            filter_method="WaveformsStdFilter",
+            wfs_std_threshold=4.0,
             overwrite=True,
         )
         self.Pedtool.initialize()

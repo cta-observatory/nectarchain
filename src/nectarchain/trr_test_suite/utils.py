@@ -521,7 +521,7 @@ def photons2ADC(n):
     """
 
     pe = photons2pe(n)
-    charge = pe * adc_to_pe
+    charge = pe * GAIN_DEFAULT
 
     return charge
 
