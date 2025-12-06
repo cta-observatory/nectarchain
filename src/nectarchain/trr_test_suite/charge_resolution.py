@@ -8,13 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# from IPython import display
-from tools_components import ChargeResolutionTestTool
-
+from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
 from nectarchain.trr_test_suite.utils import err_ratio, plot_parameters
-
-# from utils import get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
-
 
 plt.style.use("../utils/plot_style.mpltstyle")
 
