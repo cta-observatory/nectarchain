@@ -11,12 +11,17 @@ from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
-from utils import argmedian, get_adc_to_pe, get_bad_pixels_list, get_ff_coeff
 
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
+from nectarchain.trr_test_suite.utils import (
+    argmedian,
+    get_adc_to_pe,
+    get_bad_pixels_list,
+    get_ff_coeff,
+)
 from nectarchain.utils.constants import GAIN_DEFAULT
 
 
