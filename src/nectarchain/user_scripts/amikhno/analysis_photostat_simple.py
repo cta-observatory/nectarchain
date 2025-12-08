@@ -1,9 +1,13 @@
 import argparse
+import json
+import logging
 import os
 import subprocess
 import sys
 
 import astropy.units as u
+import ctapipe_io_nectarcam
+import h5py
 import numpy as np
 import numpy.ma as ma
 import tabulate as tab
@@ -17,19 +21,33 @@ from ctapipe.io.hdf5tableio import HDF5TableReader
 
 # ctapipe modules
 from ctapipe.visualization import CameraDisplay
+from ctapipe_io_nectarcam.constants import N_PIXELS
 from iminuit import Minuit
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize._numdiff import approx_derivative
 
 from nectarchain.data.container import GainContainer
+from nectarchain.user_scripts.ggrolleron.gain_PhotoStat_computation import (
+    main as GainComputation,
+)
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+if not log.handlers:
+    log.addHandler(handler)
+
 
 plt.style.use("/home/amikhno/Downloads/plot_style.mpltstyle")
 
 parser = argparse.ArgumentParser(description="Run NectarCAM photostatistics analysis")
 
-parser.add_argument("-r", "--run-number", required=True, help="Run number")
-parser.add_argument("-s", "--spe-run-number", required=True, help="SPE run number")
+parser.add_argument("--FF_run_number", required=True, help="Run number", type=int)
+parser.add_argument("--SPE_run_number", required=True, help="SPE run number", type=int)
 parser.add_argument(
     "-p",
     "--run-path",
@@ -45,84 +63,83 @@ parser.add_argument(
 
 # Accept True/False as string
 parser.add_argument(
-    "-v",
+    "-w",
     "--add-variance",
     type=bool,
+    action="store_true",
     default=False,
     help="Enable or disable variance (True/False)",
+)
+parser.add_argument(
+    "--SPE_config",
+    choices=[
+        "HHVfree",
+        "HHVfixed",
+        "nominal",
+    ],
+    default="nominal",
+    help="SPE configuration to use, either HHVfree, HHVfixed or nominal.\
+        From ICRC2025 proceedings, we recommend to use resoltion at nominal for the SPE fit.",
+)
+parser.add_argument(
+    "--method",
+    choices=[
+        "FullWaveformSum",
+        "FixedWindowSum",
+        "GlobalPeakWindowSum",
+        "LocalPeakWindowSum",
+        "SlidingWindowMaxSum",
+        "TwoPassWindowSum",
+    ],
+    default="GlobalPeakWindowSum",
+    help="charge extractor method",
+    type=str,
+)
+parser.add_argument(
+    "--extractor_kwargs",
+    default={"window_width": 8, "window_shift": 4},
+    help="charge extractor kwargs",
+    type=json.loads,
 )
 
 args = parser.parse_args()
 
 # --- Assign other variables ---
-run_number = args.run_number
-run_spe_number = args.spe_run_number
+run_number = args.FF_run_number
+run_spe_number = args.SPE_run_number
 run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
 filename_ps = (
     args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
     f"_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
 )
+spe_config = args.SPE_config
+method = args.method
+extractor_kwargs = args.extractor_kwargs
 
 
-# --- Example usage ---
-if not os.path.exists(filename_ps):
-    print(f"[INFO] {filename_ps} not found, running gain_PhotoStat_computation.py...")
-
-    gain_script = os.path.expanduser(
-        "~/local/src/nectarchain/src/nectarchain/"
-        "user_scripts/ggrolleron/gain_PhotoStat_computation.py"
-    )
-
-    cmd = [
-        sys.executable,
-        gain_script,
-        "--FF_run_number",
-        run_number,
-        "--Ped_run_number",
-        run_number,
-        "--SPE_run_number",
-        run_spe_number,
-        "--method",
-        "LocalPeakWindowSum",
-        "--extractor_kwargs",
-        '{"window_shift": 4, "window_width":16}',
-        "--overwrite",
-        "--SPE_config",
-        "nominal",
-        "-v",
-        "INFO",
-        "--reload_events",
-    ]
-
-    print("[DEBUG] Running command:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
-else:
-    print(f"[INFO] File {run_path} already exists, skipping computation.")
-
-print(f"[INFO] Starting analysis on {filename_ps}")
-print(f"[DEBUG] ADD_VARIANCE = {args.add_variance}")
+log.info(f"ADD_VARIANCE = {args.add_variance}")
 
 if args.add_variance:
-    print("[INFO] Running analysis with  variance ...")
+    log.info("Running analysis with  variance ...")
 
 else:
-    print("[INFO] Running without variance...")
+    log.info("Running without variance...")
 
 
 def pre_process_fits(filename):
     with HDF5TableReader(filename) as h5_table:
         assert h5_table._h5file.isopen == True
         for container in h5_table.read("/data/GainContainer_0", GainContainer):
-            print(container.as_dict())
+            log.info(container.as_dict())
             break
     h5_table.close()
 
-    total_pixels = 1855
+    total_pixels = ctapipe_io_nectarcam.constants.N_PIXELS
 
     # Generate the full expected pixel ID list
     expected_pixels = np.arange(total_pixels)
     container_dict = container.as_dict()
-    print(f"number of valid pixels : {len(container_dict['is_valid'])}")
+    log.info(f"number of valid pixels : {len(container_dict['is_valid'])}")
 
     # Find missing pixel IDs
     existing_pixels = container_dict["pixels_id"]
@@ -232,7 +249,6 @@ def pre_process_fits(filename):
         f'Missing pixels, number = {dict_missing_pix["Missing pixels"]}',
         f'high gain = 0, number = {dict_missing_pix["high_gain = 0"]}',
     ]
-    print(labels)
 
     return (
         n_pe,
@@ -259,41 +275,33 @@ def Gaussian_model(array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
 
 # least-squares score function = sum of data residuals squared
 def LSQ(a0, a1, a2, a3):
-    a4 = a3  # changed
+    a4 = a3  # This equality comees from assumption that the 2D-Gaussian is symmetric.
     return np.sum(
         (n_pe - Gaussian_model([a0, a1, a2, a3, a4])) ** 2 / (sigma_masked**2)
     )
 
 
+def define_delete_out(sigma, data):
+    mean = np.mean(data)
+    std = np.std(data)
+    outliers = [np.abs(data - mean) > 3 * std]
+    sigma = ma.masked_array(sigma, mask=outliers)
+    data = ma.masked_array(data, mask=outliers)
+    return data, sigma, outliers
+
+
 def optimize_with_outlier_rejection(sigma, data):
-    def define_delete_out(sigma, data):
-        mean = np.mean(data)
-        std = np.std(data)
-        outliers = [np.abs(data - mean) > 3 * std]
-        # print(f'Number of outliers to be masked: {outliers.sum()}')
-
-        sigma = ma.masked_array(sigma, mask=outliers)
-        data = ma.masked_array(data, mask=outliers)
-        return data, sigma, outliers
-
     # Apply outlier mask based on data
     n_pe, sigma_masked, mask_upd = define_delete_out(sigma, data)
 
-    # Define the least-squares function
-    def LSQ_wrap(a0, a1, a2, a3):
-        a4 = a3  # changed
-        return np.sum(
-            (n_pe - Gaussian_model([a0, a1, a2, a3, a4])) ** 2 / (sigma_masked**2)
-        )
-
     # Fit with Minuit using previous best parameters
-    minuit = Minuit(LSQ_wrap, a0=1000.0, a1=0.0, a2=0.0, a3=1.5)
+    minuit = Minuit(LSQ, a0=1000.0, a1=0.0, a2=0.0, a3=1.5)
     minuit.migrad()
 
     if not minuit.fmin.is_valid:
-        print("Warning: Fit did not converge! Stopping iteration.")
-    print(f"covariance table: {tab.tabulate(*minuit.covariance.to_table())}")
-    print(
+        log.info("Warning: Fit did not converge! Stopping iteration.")
+    log.info(f"covariance table: {tab.tabulate(*minuit.covariance.to_table())}")
+    log.info(
         f"Fit new parameters: amplitude = {minuit.values['a0']}, "
         f"x = {minuit.values['a1']}, y = {minuit.values['a2']}, "
         f"length = {minuit.values['a3']}"
@@ -310,10 +318,10 @@ def optimize_with_outlier_rejection(sigma, data):
     )
     residuals = (n_pe - model) / model
     max_residual = np.max(np.abs(residuals))
-    print(f"Max residual: {max_residual*100:.2f}%")
+    log.info(f"Max residual: {max_residual*100:.2f}%")
 
     # Visualization
-    print(f" number of masked elements for outliers{sigma_masked.count()}")
+    log.info(f" number of masked elements for outliers{sigma_masked.count()}")
     fig2 = plt.figure(figsize=(12, 9))
 
     # --- Subplot 1 ---
@@ -390,15 +398,15 @@ def error_propagation_compute(data, minuit_resulting, plot=True, rebin=True):
     values = [minuit_resulting.values[i] for i in range(4)]
     errors = [minuit_resulting.errors[i] for i in range(4)]
 
-    print("Fit results:")
-    print(f"A = {values[0]:.2f} ± {errors[0]:.2f}")
-    print(f"μ_x = {values[1]:.2f} ± {errors[1]:.2f}")
-    print(f"μ_y = {values[2]:.2f} ± {errors[2]:.2f}")
-    print(f"σ_x = {values[3]:.2f} ± {errors[3]:.2f}")
-    print(f"σ_y = {values[3]:.2f} ± {errors[3]:.2f}")
+    log.info("Fit results:")
+    log.info(f"A = {values[0]:.2f} ± {errors[0]:.2f}")
+    log.info(f"μ_x = {values[1]:.2f} ± {errors[1]:.2f}")
+    log.info(f"μ_y = {values[2]:.2f} ± {errors[2]:.2f}")
+    log.info(f"σ_x = {values[3]:.2f} ± {errors[3]:.2f}")
+    log.info(f"σ_y = {values[3]:.2f} ± {errors[3]:.2f}")
 
     if len(minuit_resulting.values) == 6:
-        print(
+        log.info(
             f"V_int = {minuit_resulting.values[5]:.2f} "
             f"± {minuit_resulting.errors[5]:.2f}"
         )
@@ -472,18 +480,12 @@ def characterize_peak(minuit, fit):
     closest_y = camera.pix_y.value[closest_pixel_id]
     distance = np.sqrt(closest_x**2 + closest_y**2)
 
-    print(f"Closest pixel ID: {closest_pixel_id}")
-    print(f"Coordinates: ({closest_x}, {closest_y})")
-    print(
+    log.info(f"Closest pixel ID: {closest_pixel_id}")
+    log.info(f"Coordinates: ({closest_x}, {closest_y})")
+    log.info(
         f"The distance between the centre of the camera "
         f"and the peak of the fitted 2D gaussian: {distance:.3f} meters"
     )
-
-    # disp = CameraDisplay(geometry=camera)
-    # disp.image = fit
-    # disp.add_colorbar()
-    # disp.highlight_pixels(closest_pixel_id, color="red")
-
     return distance
 
 
@@ -505,7 +507,6 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
         mean = np.mean(data)
         std = np.std(data)
         outliers = [np.abs(data - mean) > 3 * std]
-        # print(f'Number of outliers to be masked: {outliers.sum()}')
 
         sigma = ma.masked_array(sigma, mask=outliers)
         data = ma.masked_array(data, mask=outliers)
@@ -531,8 +532,8 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
     minuit_new.limits["x4"] = (0, None)  # V_int > 0
     minuit_new.migrad()
 
-    print(f"covariance table: {tab.tabulate(*minuit_new.covariance.to_table())}")
-    print(
+    log.info(f"covariance table: {tab.tabulate(*minuit_new.covariance.to_table())}")
+    log.info(
         f"Fit new parameters: amplitude = {minuit_new.values['x0']},"
         f" x = {minuit_new.values['x1']}, y = {minuit_new.values['x2']},"
         f" length = {minuit_new.values['x3']}, "
@@ -550,10 +551,10 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
     )
     residuals = (n_pe - model) / model
     max_residual = np.max(np.abs(residuals))
-    print(f"Max residual: {max_residual*100:.2f}%")
+    log.info(f"Max residual: {max_residual*100:.2f}%")
 
     dict_missing_pix["rejected_outliers"] = (
-        1855
+        ctapipe_io_nectarcam.constants.N_PIXELS
         - sigma_masked.count()
         - dict_missing_pix["Missing pixels"]
         - dict_missing_pix["high_gain = 0"]
@@ -606,7 +607,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
 
 
 def compute_ff_coefs(charges, gains):
-    print(f"SHAPEE {gains.shape}")
+    log.info(f"SHAPE {gains.shape}")
     masked_charges = np.ma.masked_where(np.ma.getmask(charges), charges)
     masked_gains = np.ma.masked_where(np.ma.getmask(charges), gains)
 
@@ -693,19 +694,36 @@ def compute_ff_coefs_model(data, data_std, model, model_std):
     return FF_coefs, std_FF
 
 
-# main
 if __name__ == "__main__":
-    camera = CameraGeometry.from_name("NectarCam-003").transform_to(
-        EngineeringCameraFrame()
-    )
+    if not os.path.exists(filename_ps):
+        log.info(
+            f"[INFO] {filename_ps} not found, running gain_PhotoStat_computation.py..."
+        )
+        GainComputation(
+            log=log,
+            FF_run_number=[run_number],
+            Ped_run_number=[run_number],
+            SPE_run_number=run_spe_number,
+            SPE_config=spe_config,
+            extractor_kwargs=extractor_kwargs,
+            method=method,
+            log_level="INFO",
+        )
 
+    else:
+        log.info(f"[INFO] File {run_path} already exists, skipping computation.")
+
+    log.info("SPE fit was found, begin the analysis")
     # Create PdfPages object
     pdf = PdfPages(f"Plots_analysis_run{run_number}.pdf")
 
     source = EventSource.from_url(input_url=run_path, max_events=100)
-    len(source)
+    camera = source.subarray.tel[0].camera.geometry.transform_to(
+        EngineeringCameraFrame()
+    )
+
     for event in source:
-        print(event.index.event_id, event.trigger.event_type, event.trigger.time)
+        log.info(event.index.event_id, event.trigger.event_type, event.trigger.time)
 
     # Looking for broken pixels
     fig00 = plt.figure(13, figsize=(5, 5))
@@ -739,13 +757,13 @@ if __name__ == "__main__":
         dict_errors["params"],
         dict_errors["param_errors"],
     )
-    print(f"Resulting error for the model is {np.mean(yerr_prop_1/y_1)*100:.2f}%")
+    log.info(f"Resulting error for the model is {np.mean(yerr_prop_1/y_1)*100:.2f}%")
     characterize_peak(minuit_vals_1, fit_1)
-    print(minuit_1.values)
+    log.info(minuit_1.values)
 
     # Visualize how many pixels were masked
     dict_missing_pix["rejected_outliers"] = (
-        1855
+        ctapipe_io_nectarcam.constants.N_PIXELS
         - sigma_masked.count()
         - dict_missing_pix["Missing pixels"]
         - dict_missing_pix["high_gain = 0"]
@@ -801,15 +819,15 @@ if __name__ == "__main__":
             dict_error_var["param_errors"],
         )
 
-        print(
+        log.info(
             f"Resulting error for the model is "
             f"{np.mean(yerr_prop_variance / y_variance) * 100:.2f}%"
         )
-        print(np.min(camera.pix_x.value))
-        print(np.min(camera.pix_y.value))
-        print(np.mean(camera.pix_x.value))
-        print(minuit_values_variance[1])
-        print(minuit_values_variance[2])
+        log.info(np.min(camera.pix_x.value))
+        log.info(np.min(camera.pix_y.value))
+        log.info(np.mean(camera.pix_x.value))
+        log.info(minuit_values_variance[1])
+        log.info(minuit_values_variance[2])
 
         characterize_peak(minuit_values_variance, fit_variance)
 
