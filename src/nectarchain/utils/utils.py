@@ -101,7 +101,7 @@ class ContainerUtils:
         log.info(
             f"Input container contains data for "
             f"{len(pixels_id_input)}/{constants.N_PIXELS} pixels, "
-            "will add missing pixels and fill missing-pixel data with NaN values"
+            f"will add missing pixels and fill missing-pixel data with {pad_value}"
         )
 
         log.debug(f"Original container: {container}")
