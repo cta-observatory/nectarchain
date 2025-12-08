@@ -218,8 +218,8 @@ class ChargesComponent(ArrayDataComponent):
         # Subtract pedestals from waveforms
         if self.__pedestal_hg is not None and self.__pedestal_lg is not None:
             log.debug("Subtracting pedestals from waveforms")
-            wfs_hg_tmp -= self.__pedestal_hg
-            wfs_lg_tmp -= self.__pedestal_lg
+            wfs_hg_tmp -= self.__pedestal_hg.astype(wfs_hg_tmp.dtype)
+            wfs_lg_tmp -= self.__pedestal_lg.astype(wfs_lg_tmp.dtype)
 
         imageExtractor = __class__._get_imageExtractor(
             self.method, self.subarray, **self.extractor_kwargs
