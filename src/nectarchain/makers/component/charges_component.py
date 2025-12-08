@@ -292,13 +292,6 @@ class ChargesComponent(ArrayDataComponent):
         imageExtractor = eval(method)(subarray, **extractor_kwargs)
         return imageExtractor
 
-    def _subtract_pedestal_from_wf(self, wf_hg, wf_lg):
-        # Make sure pixels
-        wf_hg -= self.__pedestal_hg
-        wf_lg -= self.__pedestal_lg
-
-        return
-
     def finish(self, *args, **kwargs):
         """Create an output container for the specified trigger type and method.
 
