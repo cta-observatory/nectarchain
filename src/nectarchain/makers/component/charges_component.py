@@ -139,14 +139,14 @@ class ChargesComponent(ArrayDataComponent):
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
 
-        self._init_pedestal_container()
+        self._init_pedestal_arrays()
 
         self.__charges_hg = {}
         self.__charges_lg = {}
         self.__peak_hg = {}
         self.__peak_lg = {}
 
-    def _init_pedestal_container(self):
+    def _init_pedestal_arrays(self):
         self.__pedestal_hg = None
         self.__pedestal_lg = None
 
