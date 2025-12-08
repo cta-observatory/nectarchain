@@ -42,7 +42,7 @@ number of pixels used (default 1000).
         type=str,
         help="Run file path and name",
         required=False,
-        default="run_file.json",
+        default="resources/run_list.json",
     )
 
     parser.add_argument(
