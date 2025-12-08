@@ -42,7 +42,7 @@ if not log.handlers:
     log.addHandler(handler)
 
 
-plt.style.use("/home/amikhno/Downloads/plot_style.mpltstyle")
+plt.style.use("../../utils/plot_style.mpltstyle")
 
 parser = argparse.ArgumentParser(description="Run NectarCAM photostatistics analysis")
 
