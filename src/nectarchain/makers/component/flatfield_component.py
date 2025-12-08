@@ -17,7 +17,12 @@ from ...data.container import (
 )
 from ...makers.component import NectarCAMComponent
 from ...utils import ContainerUtils
-from ...utils.constants import GAIN_DEFAULT, GROUP_NAMES_PEDESTAL, HILO_DEFAULT
+from ...utils.constants import (
+    GAIN_DEFAULT,
+    GROUP_NAMES_PEDESTAL,
+    HILO_DEFAULT,
+    PEDESTAL_DEFAULT,
+)
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -138,7 +143,8 @@ class FlatFieldComponent(NectarCAMComponent):
                 )
                 log.info(f"Loaded pedestals from {self.pedestal_file}")
                 ContainerUtils.add_missing_pixels_to_container(
-                    self.__pedestal_container
+                    self.__pedestal_container,
+                    pad_value=PEDESTAL_DEFAULT,
                 )
             except Exception as e:
                 log.warning(e)
@@ -158,7 +164,9 @@ class FlatFieldComponent(NectarCAMComponent):
                     GAIN_CONTAINER_CLASSES,
                 )
                 log.info(f"Loaded gain coefficients from {self.gain_file}")
-                ContainerUtils.add_missing_pixels_to_container(self.__gain_container)
+                ContainerUtils.add_missing_pixels_to_container(
+                    self.__gain_container, pad_value=GAIN_DEFAULT
+                )
             except Exception as e:
                 log.warning(e)
 
