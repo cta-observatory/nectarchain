@@ -215,6 +215,7 @@ class ContainerUtils:
         for _cls in container_classes:
             for group_name in group_names:
                 try:
+                    log.info(f"Loaded {_cls.__name__} from {path}")
                     return next(_cls.from_hdf5(path, group_name=group_name))
                 except Exception as e:
                     log.debug(
