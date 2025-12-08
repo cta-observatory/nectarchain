@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+from pathlib import Path
 
 import astropy.units as u
 import numpy as np
@@ -26,16 +27,6 @@ from nectarchain.data.container import GainContainer
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
 from nectarchain.makers.extractor.utils import CtapipeExtractor
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
-
-
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-if not log.handlers:
-    log.addHandler(handler)
-
 
 plt.style.use("../../utils/plot_style.mpltstyle")
 
@@ -94,8 +85,39 @@ parser.add_argument(
     help="charge extractor kwargs",
     type=json.loads,
 )
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    help="set the verbosity level of logger",
+    default="INFO",
+    choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+    type=str,
+)
 
 args = parser.parse_args()
+
+os.makedirs(
+    f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
+    exist_ok=True,
+)
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    force=True,
+    level=args.verbosity,
+    filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
+)
+
+log = logging.getLogger(__name__)
+log.setLevel(args.verbosity)
+
+handler = logging.StreamHandler()
+handler.setLevel(args.verbosity)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+if not log.handlers:
+    log.addHandler(handler)
+
 
 # --- Assign other variables ---
 run_number = args.FF_run_number
@@ -110,7 +132,7 @@ filename_ps = (
 log.info(f"ADD_VARIANCE = {args.add_variance}")
 
 if args.add_variance:
-    log.info("Running analysis with  variance ...")
+    log.info("Running analysis with variance ...")
 
 else:
     log.info("Running without variance...")
