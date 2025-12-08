@@ -96,47 +96,6 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-os.makedirs(
-    f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
-    exist_ok=True,
-)
-
-logging.basicConfig(
-    format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    force=True,
-    level=args.verbosity,
-    filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
-)
-
-log = logging.getLogger(__name__)
-log.setLevel(args.verbosity)
-
-handler = logging.StreamHandler()
-handler.setLevel(args.verbosity)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-if not log.handlers:
-    log.addHandler(handler)
-
-
-# --- Assign other variables ---
-run_number = args.FF_run_number
-run_spe_number = args.SPE_run_number
-run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
-filename_ps = (
-    args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
-    f"_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
-)
-
-
-log.info(f"ADD_VARIANCE = {args.add_variance}")
-
-if args.add_variance:
-    log.info("Running analysis with variance ...")
-
-else:
-    log.info("Running without variance...")
-
 
 def pre_process_fits(filename):
     with HDF5TableReader(filename) as h5_table:
@@ -706,7 +665,44 @@ def compute_ff_coefs_model(data, data_std, model, model_std):
     return FF_coefs, std_FF
 
 
-if __name__ == "__main__":
+def main():
+    os.makedirs(
+        f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
+        exist_ok=True,
+    )
+
+    logging.basicConfig(
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+        force=True,
+        level=args.verbosity,
+        filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
+    )
+
+    log = logging.getLogger(__name__)
+    log.setLevel(args.verbosity)
+
+    handler = logging.StreamHandler()
+    handler.setLevel(args.verbosity)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+    if not log.handlers:
+        log.addHandler(handler)
+
+    # Assign other variables
+    run_number = args.FF_run_number
+    run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
+    filename_ps = (
+        args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
+        f"_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
+    )
+
+    if args.add_variance:
+        log.info("Running analysis with variance correction...")
+    else:
+        log.info("Running analysis without variance correction...")
+
     if not os.path.exists(filename_ps):
         log.info(
             f"[INFO] {filename_ps} not found, running gain_PhotoStat_computation.py..."
@@ -942,3 +938,7 @@ if __name__ == "__main__":
     ascii.write(data, f"FF_calibration_run{run_number}.dat", overwrite=True)
 
     pdf.close()
+
+
+if __name__ == "__main__":
+    main()
