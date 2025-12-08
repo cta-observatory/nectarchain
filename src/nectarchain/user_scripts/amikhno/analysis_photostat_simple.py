@@ -2,12 +2,8 @@ import argparse
 import json
 import logging
 import os
-import subprocess
-import sys
 
 import astropy.units as u
-import ctapipe_io_nectarcam
-import h5py
 import numpy as np
 import numpy.ma as ma
 import tabulate as tab
@@ -15,7 +11,6 @@ from astropy.io import ascii
 from astropy.table import Table
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image.toymodel import Gaussian
-from ctapipe.instrument import CameraGeometry
 from ctapipe.io import EventSource
 from ctapipe.io.hdf5tableio import HDF5TableReader
 
@@ -28,9 +23,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize._numdiff import approx_derivative
 
 from nectarchain.data.container import GainContainer
-from nectarchain.user_scripts.ggrolleron.gain_PhotoStat_computation import (
-    main as GainComputation,
-)
+from nectarchain.data.management import DataManagement
+from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
+from nectarchain.makers.extractor.utils import CtapipeExtractor
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -65,10 +60,8 @@ parser.add_argument(
 parser.add_argument(
     "-w",
     "--add-variance",
-    type=bool,
     action="store_true",
-    default=False,
-    help="Enable or disable variance (True/False)",
+    help="Enable variance correction (False by default)",
 )
 parser.add_argument(
     "--SPE_config",
@@ -112,9 +105,6 @@ filename_ps = (
     args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
     f"_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
 )
-spe_config = args.SPE_config
-method = args.method
-extractor_kwargs = args.extractor_kwargs
 
 
 log.info(f"ADD_VARIANCE = {args.add_variance}")
@@ -134,7 +124,7 @@ def pre_process_fits(filename):
             break
     h5_table.close()
 
-    total_pixels = ctapipe_io_nectarcam.constants.N_PIXELS
+    total_pixels = N_PIXELS
 
     # Generate the full expected pixel ID list
     expected_pixels = np.arange(total_pixels)
@@ -554,7 +544,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
     dict_missing_pix["rejected_outliers"] = (
-        ctapipe_io_nectarcam.constants.N_PIXELS
+        N_PIXELS
         - sigma_masked.count()
         - dict_missing_pix["Missing pixels"]
         - dict_missing_pix["high_gain = 0"]
@@ -699,16 +689,50 @@ if __name__ == "__main__":
         log.info(
             f"[INFO] {filename_ps} not found, running gain_PhotoStat_computation.py..."
         )
-        GainComputation(
-            log=log,
-            FF_run_number=[run_number],
-            Ped_run_number=[run_number],
-            SPE_run_number=run_spe_number,
-            SPE_config=spe_config,
-            extractor_kwargs=extractor_kwargs,
-            method=method,
-            log_level="INFO",
+
+        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+            method=args.method, extractor_kwargs=args.extractor_kwargs
         )
+
+        if args.SPE_config is None:
+            raise ValueError(
+                "You must specify the SPE_config to use, either HHVfree, HHVfixed or nominal"
+            )
+        if args.SPE_config == "HHVfree":
+            path = DataManagement.find_SPE_HHV(
+                run_number=args.SPE_run_number,
+                method=args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                free_pp_n=True,
+            )
+        elif args.SPE_config == "HHVfixed":
+            path = DataManagement.find_SPE_HHV(
+                run_number=args.SPE_run_number,
+                method=args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                free_pp_n=False,
+            )
+        elif args.SPE_config == "nominal":
+            path = DataManagement.find_SPE_nominal(
+                run_number=args.SPE_run_number,
+                method=args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                free_pp_n=False,
+            )
+
+        try:
+            tool = PhotoStatisticNectarCAMCalibrationTool(
+                progress_bar=True,
+                run_number=[run_number],
+                max_events=None,
+                Ped_run_number=[run_number],
+                SPE_result=path[0],
+            )
+            tool.setup()
+            tool.start()
+            tool.finish()
+        except Exception as e:
+            log.warning(e, exc_info=True)
 
     else:
         log.info(f"[INFO] File {run_path} already exists, skipping computation.")
@@ -763,7 +787,7 @@ if __name__ == "__main__":
 
     # Visualize how many pixels were masked
     dict_missing_pix["rejected_outliers"] = (
-        ctapipe_io_nectarcam.constants.N_PIXELS
+        N_PIXELS
         - sigma_masked.count()
         - dict_missing_pix["Missing pixels"]
         - dict_missing_pix["high_gain = 0"]
