@@ -118,11 +118,11 @@ class TestChargesComponent(BaseTestArrayDataComponent):
 
         assert np.all(
             instance.charges_hg(event.trigger.event_type)
-            == instance._charges_hg[f"{name}"]
+            == np.uint16(instance._charges_hg[f"{name}"])
         )
         assert np.all(
             instance.charges_lg(event.trigger.event_type)
-            == instance._charges_lg[f"{name}"]
+            == np.uint16(instance._charges_lg[f"{name}"])
         )
         assert np.all(
             instance.peak_hg(event.trigger.event_type)
