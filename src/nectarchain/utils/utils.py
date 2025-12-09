@@ -1,9 +1,11 @@
 import importlib
 import logging
 import math
+from typing import Sequence, Type, Union
 
 import numpy as np
 from ctapipe.core.component import Component
+from ctapipe.core.traits import Path
 from ctapipe_io_nectarcam import constants
 from iminuit import Minuit
 from scipy import interpolate, signal
@@ -99,7 +101,7 @@ class ContainerUtils:
         log.info(
             f"Input container contains data for "
             f"{len(pixels_id_input)}/{constants.N_PIXELS} pixels, "
-            "will add missing pixels and fill missing-pixel data with NaN values"
+            f"will add missing pixels and fill missing-pixel data with {pad_value}"
         )
 
         log.debug(f"Original container: {container}")
@@ -149,6 +151,84 @@ class ContainerUtils:
         log.debug(f"Updated container: {container}")
 
         return
+
+    @staticmethod
+    def get_container_from_hdf5(
+        path: Path,
+        container_classes: Union[
+            Type[NectarCAMContainer], Sequence[Type[NectarCAMContainer]]
+        ],
+        group_names: Union[str, Sequence[str]] = "data",
+    ) -> NectarCAMContainer:
+        """Wrapper function for `NectarCAMContainer.from_hdf5`.
+
+        Loads a container for a given `path`, allowing to scan for:
+            - different NectarCAMContainer subclasses;
+            - different group names.
+
+        For example, you may want to load the output of a gain calibration tool, but
+        you don't know whether it is a `SPEFitContainer` or `GainContainer`.
+
+        Or you may want to load a `NectarCAMPedestalContainer`, which can either have
+        the group name "data" or "data_combined" depending on the slicing applied.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the HDF5 file.
+        container_classes : Type[NectarCAMContainer] or sequence of such types
+            One or more container subclasses to attempt loading.
+        group_names : str or sequence of str, optional
+            Group names to try inside the HDF5 structure. Default is "data".
+
+        Returns
+        -------
+        NectarCAMContainer
+            The successfully loaded container.
+
+        Raises
+        ------
+        TypeError
+            If `container_classes` contains items that are not NectarCAMContainer
+            subclasses.
+        ValueError
+            If no container can be loaded from the file using any class/group
+            combination.
+        """
+
+        # Normalize inputs lists
+        if isinstance(container_classes, type):
+            container_classes = [container_classes]
+        if isinstance(group_names, (str, bytes)):
+            group_names = [group_names]
+
+        # Validate input classes
+        for _cls in container_classes:
+            if not issubclass(_cls, NectarCAMContainer):
+                raise TypeError(
+                    f"{_cls.__name__} is not a subclass of "
+                    f"{NectarCAMContainer.__name__}"
+                )
+
+        exceptions = []
+
+        for _cls in container_classes:
+            for group_name in group_names:
+                try:
+                    log.info(f"Loaded {_cls.__name__} from {path}")
+                    return next(_cls.from_hdf5(path, group_name=group_name))
+                except Exception as e:
+                    log.debug(
+                        f"Failed to load {_cls.__name__} with `group_name` = "
+                        f"'{group_name}': {e}"
+                    )
+                    log.debug("Adding exception to `exceptions` list")
+                    exceptions.append((_cls.__name__, group_name, str(e)))
+
+        # Raise an error if no container could be loaded
+        raise ValueError(
+            f"Failed to load any container from {path}. Tried: {exceptions}"
+        )
 
 
 class multiprocessing:

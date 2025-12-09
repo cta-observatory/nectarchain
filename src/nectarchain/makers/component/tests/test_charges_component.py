@@ -1,9 +1,12 @@
 import copy
+import tempfile
 from argparse import ArgumentError
+from pathlib import Path
 
 import numpy as np
 import pytest
 from ctapipe.containers import EventType
+from ctapipe.core import run_tool
 from ctapipe.image import GlobalPeakWindowSum
 from ctapipe_io_nectarcam import constants
 
@@ -13,6 +16,7 @@ from nectarchain.data.container import (
     WaveformsContainer,
     WaveformsContainers,
 )
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.makers.component import ChargesComponent
 from nectarchain.makers.component.tests.test_core_component import (
     BaseTestArrayDataComponent,
@@ -23,6 +27,9 @@ from nectarchain.makers.core import BaseNectarCAMCalibrationTool
 class TestChargesComponent(BaseTestArrayDataComponent):
     METHOD = "GlobalPeakWindowSum"
     EXTRACTOR_KWARGS = {"window_width": 3, "window_shift": 1}
+
+    tmpdir = tempfile.TemporaryDirectory().name
+    PEDESTAL_FILE = Path(tmpdir) / "pedestal.h5"
 
     @pytest.fixture
     def instance(self, eventsource):
@@ -35,6 +42,7 @@ class TestChargesComponent(BaseTestArrayDataComponent):
             parent=parent,
             extractor_kwargs=self.EXTRACTOR_KWARGS,
             method=self.METHOD,
+            pedestal_file=self.PEDESTAL_FILE,
         )
 
     @pytest.fixture
@@ -91,14 +99,37 @@ class TestChargesComponent(BaseTestArrayDataComponent):
         wfs.containers[EventType.SKY_PEDESTAL] = copy.deepcopy(waveforms_container_1)
         return wfs
 
+    @pytest.fixture
+    def run_pedestal_tool(self):
+        pedestal_tool = PedestalNectarCAMCalibrationTool(
+            run_number=self.RUN_NUMBER,
+            run_file=self.RUN_FILE,
+            output_path=self.PEDESTAL_FILE,
+        )
+        run_tool(pedestal_tool)
+
     def test_init(self, instance):
         assert isinstance(instance, ChargesComponent)
         assert instance.method == self.METHOD
         assert instance.extractor_kwargs == self.EXTRACTOR_KWARGS
+        assert instance.pedestal_file == self.PEDESTAL_FILE
         assert isinstance(instance._charges_hg, dict)
         assert isinstance(instance._charges_lg, dict)
         assert isinstance(instance._peak_hg, dict)
         assert isinstance(instance._peak_lg, dict)
+
+    def test_init_pedestal_arrays(self, instance, run_pedestal_tool):
+        instance._init_pedestal_arrays()
+        assert isinstance(instance._ChargesComponent__pedestal_hg, np.ndarray)
+        assert isinstance(instance._ChargesComponent__pedestal_lg, np.ndarray)
+        assert instance._ChargesComponent__pedestal_hg.shape == (
+            self.NPIXELS,
+            self.NSAMPLES,
+        )
+        assert instance._ChargesComponent__pedestal_lg.shape == (
+            self.NPIXELS,
+            self.NSAMPLES,
+        )
 
     def test_init_trigger_type(self, instance):
         instance._init_trigger_type(self.TRIGGER)
@@ -118,11 +149,11 @@ class TestChargesComponent(BaseTestArrayDataComponent):
 
         assert np.all(
             instance.charges_hg(event.trigger.event_type)
-            == instance._charges_hg[f"{name}"]
+            == np.uint16(instance._charges_hg[f"{name}"])
         )
         assert np.all(
             instance.charges_lg(event.trigger.event_type)
-            == instance._charges_lg[f"{name}"]
+            == np.uint16(instance._charges_lg[f"{name}"])
         )
         assert np.all(
             instance.peak_hg(event.trigger.event_type)

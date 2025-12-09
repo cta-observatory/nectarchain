@@ -17,7 +17,12 @@ from ...data.container import (
 )
 from ...makers.component import NectarCAMComponent
 from ...utils import ContainerUtils
-from ...utils.constants import GAIN_DEFAULT, HILO_DEFAULT
+from ...utils.constants import (
+    GAIN_DEFAULT,
+    GROUP_NAMES_PEDESTAL,
+    HILO_DEFAULT,
+    PEDESTAL_DEFAULT,
+)
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -130,33 +135,18 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__pedestal_container = None
 
         if self.pedestal_file is not None:
-            group_names = ["data_combined", "data"]
-            exceptions = []
-            for group_name in group_names:
-                try:
-                    self.__pedestal_container = next(
-                        NectarCAMPedestalContainer.from_hdf5(
-                            self.pedestal_file, group_name=group_name
-                        )
-                    )
-                    if (
-                        self.__pedestal_container["pedestal_mean_hg"] is None
-                        or self.__pedestal_container["pedestal_mean_lg"] is None
-                    ):
-                        raise ValueError("Pedestal container is not filled")
-                    log.info(f"Loaded pedestals from {self.pedestal_file}")
-                    ContainerUtils.add_missing_pixels_to_container(
-                        self.__pedestal_container
-                    )
-                    break
-                except Exception as e:
-                    log.debug(f"Failed to load with group_name ``{group_name}``: {e}")
-                    log.debug("Adding exception to ``exceptions`` list")
-                    exceptions.append(e)
-            if self.__pedestal_container is None:
-                log.warning(
-                    f"Failed to load pedestal file {self.pedestal_file}: {exceptions}"
+            try:
+                self.__pedestal_container = ContainerUtils.get_container_from_hdf5(
+                    self.pedestal_file,
+                    NectarCAMPedestalContainer,
+                    group_names=GROUP_NAMES_PEDESTAL,
                 )
+                ContainerUtils.add_missing_pixels_to_container(
+                    self.__pedestal_container,
+                    pad_value=PEDESTAL_DEFAULT,
+                )
+            except Exception as e:
+                log.warning(e)
 
         if self.__pedestal_container is None:
             log.warning(
@@ -167,25 +157,16 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__gain_container = None
 
         if self.gain_file is not None:
-            exceptions = []
-            for _cls in GAIN_CONTAINER_CLASSES:
-                try:
-                    self.__gain_container = next(_cls.from_hdf5(self.gain_file))
-                    if (
-                        self.__gain_container["high_gain"] is None
-                        or self.__gain_container["low_gain"] is None
-                    ):
-                        raise ValueError("Gain container is not filled")
-                    log.info(f"Loaded gain coefficients from {self.gain_file}")
-                    ContainerUtils.add_missing_pixels_to_container(
-                        self.__gain_container
-                    )
-                except Exception as e:
-                    log.debug(f"Failed to load with gain_container ``{_cls}``: {e}")
-                    log.debug("Adding exception to ``exceptions`` list")
-                    exceptions.append(e)
-            if self.__gain_container is None:
-                log.warning(f"Failed to load gain file {self.gain_file}: {exceptions}")
+            try:
+                self.__gain_container = ContainerUtils.get_container_from_hdf5(
+                    self.gain_file,
+                    GAIN_CONTAINER_CLASSES,
+                )
+                ContainerUtils.add_missing_pixels_to_container(
+                    self.__gain_container, pad_value=GAIN_DEFAULT
+                )
+            except Exception as e:
+                log.warning(e)
 
     def _init_gain(self):
         self._init_gain_container()

@@ -254,7 +254,7 @@ class ArrayDataComponent(NectarCAMComponent):
 
     @staticmethod
     def select_container_array_field(
-        container: ArrayDataContainer, pixel_id: np.ndarray, field: str
+        container: ArrayDataContainer, pixel_id: np.ndarray, field: str, pixel_id_axis=1
     ) -> np.ndarray:
         """Selects specific fields from an ArrayDataContainer object based on a given
         list of pixel IDs.
@@ -265,6 +265,8 @@ class ArrayDataComponent(NectarCAMComponent):
             pixel_id (ndarray): An array of pixel IDs for which the data needs to be
             selected.
             field (str): The name of the field to be selected from the container.
+            pixel_id_axis (int): The axis of the field associated to pixel IDs.
+            Optional, default is 1.
             WARNING: This field have to be associated
             to an array indexed by pixels
 
@@ -284,7 +286,7 @@ class ArrayDataComponent(NectarCAMComponent):
                 np.take(
                     container[field],
                     np.where(container.pixels_id == pixel)[0][0],
-                    axis=1,
+                    axis=pixel_id_axis,
                 )
                 for pixel in pixel_id[mask_contain_pixels_id]
             ]

@@ -6,7 +6,7 @@ from argparse import ArgumentError
 import numpy as np
 import numpy.ma as ma
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Dict, Unicode
+from ctapipe.core.traits import Dict, Path, Unicode
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
 from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
 from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
@@ -25,9 +25,12 @@ from numba import bool_, float64, guvectorize, int64
 from ...data.container import (
     ChargesContainer,
     ChargesContainers,
+    NectarCAMPedestalContainer,
     WaveformsContainer,
     WaveformsContainers,
 )
+from ...utils import ContainerUtils
+from ...utils.constants import GROUP_NAMES_PEDESTAL, PEDESTAL_DEFAULT
 from ..extractor.utils import CtapipeExtractor
 from .core import ArrayDataComponent
 
@@ -122,6 +125,12 @@ class ChargesComponent(ArrayDataComponent):
         help="The kwargs to be pass to the charge extractor method",
     ).tag(config=True)
 
+    pedestal_file = Path(
+        default_value=None,
+        help="Path to h5 file with pedestal calibration coefficients",
+        allow_none=True,
+    ).tag(config=True)
+
     SubComponents = copy.deepcopy(ArrayDataComponent.SubComponents)
     SubComponents.read_only = True
 
@@ -130,10 +139,46 @@ class ChargesComponent(ArrayDataComponent):
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
 
+        self._init_pedestal_arrays()
+
         self.__charges_hg = {}
         self.__charges_lg = {}
         self.__peak_hg = {}
         self.__peak_lg = {}
+
+    def _init_pedestal_arrays(self):
+        self.__pedestal_hg = None
+        self.__pedestal_lg = None
+
+        if self.pedestal_file is not None:
+            try:
+                # Load the pedestal container
+                pedestal_container = ContainerUtils.get_container_from_hdf5(
+                    self.pedestal_file,
+                    NectarCAMPedestalContainer,
+                    group_names=GROUP_NAMES_PEDESTAL,
+                )
+                # Fill in missing pixels of the pedestal container with default values
+                ContainerUtils.add_missing_pixels_to_container(
+                    pedestal_container,
+                    pad_value=PEDESTAL_DEFAULT,
+                )
+                # Get the high-gain pedestal values for the required pixel IDs
+                self.__pedestal_hg = self.select_container_array_field(
+                    pedestal_container,
+                    self.pixels_id,
+                    "pedestal_mean_hg",
+                    pixel_id_axis=0,
+                )
+                # Get the low-gain pedestal values for the required pixel IDs
+                self.__pedestal_lg = self.select_container_array_field(
+                    pedestal_container,
+                    self.pixels_id,
+                    "pedestal_mean_lg",
+                    pixel_id_axis=0,
+                )
+            except Exception as e:
+                log.warning(e)
 
     def _init_trigger_type(self, trigger_type: EventType, **kwargs):
         """Initializes the ChargesMaker based on the trigger type.
@@ -169,6 +214,12 @@ class ChargesComponent(ArrayDataComponent):
         broken_pixels_hg, broken_pixels_lg = __class__._compute_broken_pixels_event(
             event, self._pixels_id
         )
+
+        # Subtract pedestals from waveforms
+        if self.__pedestal_hg is not None and self.__pedestal_lg is not None:
+            log.debug("Subtracting pedestals from waveforms")
+            wfs_hg_tmp -= self.__pedestal_hg.astype(wfs_hg_tmp.dtype)
+            wfs_lg_tmp -= self.__pedestal_lg.astype(wfs_lg_tmp.dtype)
 
         imageExtractor = __class__._get_imageExtractor(
             self.method, self.subarray, **self.extractor_kwargs
