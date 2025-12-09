@@ -21,7 +21,24 @@ geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 
+# TODO: test what attr, old and new actually are and update docstring
 def update(attr, old, new):
+    """Update page_layout
+
+    Reset timeline and camera display plots with
+    `update_camera_displays()` and `update_timelines()`
+    and new data from `get_rundata()`, and update the page_layout
+
+    Parameters
+    ----------
+    attr : _type_
+        _description_
+    old : _type_
+        _description_
+    new : _type_
+        _description_
+    """
+
     runid = run_select.value
     source = get_rundata(db, runid)
 

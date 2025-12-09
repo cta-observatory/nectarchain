@@ -29,14 +29,49 @@ geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 
+# TODO: check actual output type and content
 def get_rundata(src, runid):
+    """Get run data to populate plots on the Bokeh displays
+
+    Parameters
+    ----------
+    src : DQMDB
+        Object-oriented database defined in nectarchain.dqm.db_utils
+        from ZODB and ZEO ClientStorage
+    runid : int
+        NectarCAM run number
+
+    Returns
+    -------
+    dict
+        Dictionary containing quantities extracted
+        with nectarchain.dqm.start_dqm and stored into the database
+    """
+
     run_data = src[runid]
     return run_data
 
 
+# TODO: check actual timelines shape
 def make_timelines(source, runid=None):
+    """Make timeline plots for pixel quantities evolving with time
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata()`
+    runid : int, optional
+        NectarCAM run number, by default None
+
+    Returns
+    -------
+    dict
+        Nested dictionary containing line plots for the timelines
+    """
+
     timelines = collections.defaultdict(dict)
     for parentkey in source.keys():
+        # Prepare timeline line plots only for pixel quantities evolving with time
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in source[parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
@@ -50,12 +85,31 @@ def make_timelines(source, runid=None):
     return dict(timelines)
 
 
+# TODO: check consistency of the gridplot
 def update_timelines(data, timelines, runid=None):
-    # Reset each timeline
+    """Reset each timeline previously created by `make_timelines()`
+
+    Parameters
+    ----------
+    data : dict
+        Dictionary returned by `get_rundata()`
+    timelines : dict
+        Nested dictionary containing line plots created by `make_timelines()`
+    runid : int, optional
+        NectarCAM run number, by default None
+
+    Returns
+    -------
+    bokeh.models.TabPanel
+        Updated TabPanel containing the bokeh layout for the timeline plots
+    """
+
+    # Reset timeline line plots
     for k in timelines.keys():
         for kk in timelines[k].keys():
             timelines[k][kk].line(x=0, y=0)
 
+    # Make new timeline plots
     timelines = make_timelines(data, runid)
 
     list_timelines = [
@@ -69,12 +123,28 @@ def update_timelines(data, timelines, runid=None):
         ncols=2,
     )
 
+    # Recreate TabPanel layout
     tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
     return tab_timelines
 
 
 def make_camera_displays(source, runid):
+    """Make camera display plots using `make_camera_display()`
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata()`
+    runid : int
+        NectarCAM run number
+
+    Returns
+    -------
+    dict
+        Nested dictionary containing camera display plots
+    """
+
     displays = collections.defaultdict(dict)
     for parentkey in source.keys():
         if not re.match(TEST_PATTERN, parentkey):
@@ -87,9 +157,25 @@ def make_camera_displays(source, runid):
 
 
 def update_camera_displays(data, displays, runid=None):
+    """Reset each display previously created by `make_camera_displays()`
+
+    Parameters
+    ----------
+    data : dict
+        Dictionary returned by `get_rundata()`
+    displays : dict
+        Nested dictionary containing display plots created by `make_camera_displays()`
+    runid : int, optional
+        NectarCAM run number, by default None
+
+    Returns
+    -------
+    bokeh.models.TabPanel
+        Updated TabPanel containing the bokeh layout for the display plots
+    """
+
     ncols = 3
 
-    # Reset each display
     for k in displays.keys():
         for kk in displays[k].keys():
             displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
@@ -115,8 +201,27 @@ def update_camera_displays(data, displays, runid=None):
     return tab_camera_displays
 
 
+# TODO: understand how to write docs for parent_ and child_ keys
 def make_camera_display(source, parent_key, child_key):
-    # Example camera display
+    """Make camera display plot to fill the nested dict
+       created by `make_camera_displays()`
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata()`
+    parent_key : str
+        Parent key to extract quantity from the dict
+    child_key : str
+        Child key to extract quantity from the dict
+
+    Returns
+    -------
+    ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay filled with values for the selected quantity,
+        and displayed with the geometry from ctapipe.instrument.CameraGeometry
+    """
+
     image = source[parent_key][child_key]
     image = np.nan_to_num(image, nan=0.0)
     display = CameraDisplay(geometry=geom)
