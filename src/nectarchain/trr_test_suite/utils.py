@@ -438,7 +438,7 @@ def photons2ADC(n):
     return charge
 
 
-# from federica's notebook
+# from Federica's notebook
 class ExponentialFitter:
     """Represents an exponential fitter class that computes the expected distribution
     and the minus 2 log likelihood for a given dataset and exponential parameters.
@@ -483,7 +483,6 @@ class ExponentialFitter:
         minus2loglike0 = -2.0 * np.sum(
             poisson.logpmf(self.datas[chi2_mask], mu=self.datas[chi2_mask])
         )
-        #         print(f'{minus2loglike0 = }')
         return minus2loglike - minus2loglike0
 
 
