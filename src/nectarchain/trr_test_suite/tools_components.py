@@ -921,15 +921,15 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
                 except Exception:
                     break
 
-        # tom_mu_all= output[0].tom_mu
-        # tom_sigma_all= output[0].tom_sigma
+        # tom_mu_all = output[0].tom_mu
+        # tom_sigma_all = output[0].tom_sigma
 
         ucts_timestamps = np.array(ucts_timestamps).flatten()
 
         event_counter = np.array(event_counter).flatten()
         busy_counter = np.array(busy_counter).flatten()
 
-        delta_t = [
+        ucts_deltat = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
         ]
@@ -942,7 +942,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
         return (
             ucts_timestamps,
-            delta_t,
+            ucts_deltat,
             event_counter,
             busy_counter,
             collected_trigger_rate,

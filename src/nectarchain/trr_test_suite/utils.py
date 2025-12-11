@@ -230,9 +230,9 @@ source_ids_deadtime = (
 )
 
 deadtime_labels = {
-    0: {"source": "random generator", "color": "blue"},
-    1: {"source": "nsb source", "color": "green"},
-    2: {"source": "laser", "color": "red"},
+    0: {"source": "FFCLS + random generator", "color": "red"},
+    1: {"source": "NSB source", "color": "blue"},
+    2: {"source": "Laser + random generator", "color": "purple"},
 }
 
 
