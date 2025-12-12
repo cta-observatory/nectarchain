@@ -215,11 +215,11 @@ class ChargesComponent(ArrayDataComponent):
             event, self._pixels_id
         )
 
-        # Subtract pedestals from waveforms and clip at 0 for correct uin16 conversion
+        # Subtract pedestals from waveforms
         if self.__pedestal_hg is not None and self.__pedestal_lg is not None:
             log.debug("Subtracting pedestals from waveforms")
-            wfs_hg_tmp = np.clip(wfs_hg_tmp - self.__pedestal_hg, a_min=0, a_max=None)
-            wfs_lg_tmp = np.clip(wfs_lg_tmp - self.__pedestal_lg, a_min=0, a_max=None)
+            wfs_hg_tmp = wfs_hg_tmp - self.__pedestal_hg
+            wfs_lg_tmp = wfs_lg_tmp - self.__pedestal_lg
 
         imageExtractor = __class__._get_imageExtractor(
             self.method, self.subarray, **self.extractor_kwargs
