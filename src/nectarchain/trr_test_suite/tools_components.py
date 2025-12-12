@@ -248,37 +248,22 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["ChargeComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=True, *args, **kwargs)
+        output = super().finish(return_output_component=True, *args, **kwargs)
+
+        charge_container = output[0].containers[EventType.FLATFIELD]
 
         mean_charge = [0, 0]  # per channel
         std_charge = [0, 0]
         std_err = [0, 0]
 
-        charge_hg = []
-        charge_lg = []
-
-        output_file = h5py.File(self.output_path)
-
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["ChargeContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    npixels = tup[1]
-                    charge_hg.extend(tup[6])
-                    charge_lg.extend(tup[7])
-
-                except Exception:
-                    break
-
-        output_file.close()
+        charge_hg = charge_container["charges_hg"]
+        charge_lg = charge_container["charges_lg"]
+        npixels = charge_container["npixels"]
 
         charge_pe_hg = np.array(charge_hg) / adc_to_pe
         charge_pe_lg = np.array(charge_lg) / adc_to_pe
