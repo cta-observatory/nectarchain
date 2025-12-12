@@ -218,8 +218,8 @@ class ChargesComponent(ArrayDataComponent):
         # Subtract pedestals from waveforms
         if self.__pedestal_hg is not None and self.__pedestal_lg is not None:
             log.debug("Subtracting pedestals from waveforms")
-            wfs_hg_tmp -= self.__pedestal_hg.astype(wfs_hg_tmp.dtype)
-            wfs_lg_tmp -= self.__pedestal_lg.astype(wfs_lg_tmp.dtype)
+            wfs_hg_tmp = wfs_hg_tmp - self.__pedestal_hg
+            wfs_lg_tmp = wfs_lg_tmp - self.__pedestal_lg
 
         imageExtractor = __class__._get_imageExtractor(
             self.method, self.subarray, **self.extractor_kwargs
@@ -435,8 +435,8 @@ class ChargesComponent(ArrayDataComponent):
         return res
 
     def charges_hg(self, trigger: EventType):
-        """Returns the charges for a specific trigger type as a NumPy array of unsigned
-        16-bit integers.
+        """Returns the charges for a specific trigger type as a NumPy array of
+        32-bit integers.
 
         Parameters
         ----------
@@ -454,8 +454,8 @@ class ChargesComponent(ArrayDataComponent):
         )
 
     def charges_lg(self, trigger: EventType):
-        """Returns the charges for a specific trigger type as a NumPy array of unsigned
-        16-bit integers.
+        """Returns the charges for a specific trigger type as a NumPy array of
+        32-bit integers.
 
         Parameters
         ----------
