@@ -435,8 +435,8 @@ class ChargesComponent(ArrayDataComponent):
         return res
 
     def charges_hg(self, trigger: EventType):
-        """Returns the charges for a specific trigger type as a NumPy array of unsigned
-        16-bit integers.
+        """Returns the charges for a specific trigger type as a NumPy array of
+        32-bit integers.
 
         Parameters
         ----------
@@ -454,8 +454,8 @@ class ChargesComponent(ArrayDataComponent):
         )
 
     def charges_lg(self, trigger: EventType):
-        """Returns the charges for a specific trigger type as a NumPy array of unsigned
-        16-bit integers.
+        """Returns the charges for a specific trigger type as a NumPy array of
+        32-bit integers.
 
         Parameters
         ----------
