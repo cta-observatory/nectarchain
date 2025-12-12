@@ -7,8 +7,10 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.core import run_tool
 from lmfit.models import Model
 
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import LinearityTestTool
 from nectarchain.trr_test_suite.utils import (
     err_ratio,
@@ -134,13 +136,27 @@ def main():
     index = 0
     for run in runlist:
         print("PROCESSING RUN {}".format(run))
+        pedestal_tool = PedestalNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=run,
+            max_events=12000,
+            events_per_slice=5000,
+            log_level=20,
+            output_path=output_dir + f"pedestal_{run}.h5",
+            overwrite=True,
+            filter_method=None,
+            method="FullWaveformSum",  # charges over entire window
+        )
+        run_tool(pedestal_tool)
         tool = LinearityTestTool(
             progress_bar=True,
             run_number=run,
             events_per_slice=999,
             max_events=nevents,
             log_level=20,
-            window_width=14,
+            method="LocalPeakWindowSum",
+            extractor_kwargs={"window_width": 14, "window_shift": 6},
+            pedestal_file=output_dir + f"pedestal_{run}.h5",
             overwrite=True,
         )
         tool.initialize()
