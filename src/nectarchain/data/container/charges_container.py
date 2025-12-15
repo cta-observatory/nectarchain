@@ -25,10 +25,10 @@ class ChargesContainer(ArrayDataContainer):
     """
 
     charges_hg = Field(
-        type=np.ndarray, dtype=np.uint16, ndim=2, description="The high gain charges"
+        type=np.ndarray, dtype=np.int32, ndim=2, description="The high gain charges"
     )
     charges_lg = Field(
-        type=np.ndarray, dtype=np.uint16, ndim=2, description="The low gain charges"
+        type=np.ndarray, dtype=np.int32, ndim=2, description="The low gain charges"
     )
     peak_hg = Field(
         type=np.ndarray, dtype=np.uint16, ndim=2, description="The high gain peak time"
