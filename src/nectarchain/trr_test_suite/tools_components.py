@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import adc_to_pe
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 
 # overriding so we can have maxevents in the path
@@ -79,8 +79,8 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_lg = charge_container["charges_lg"]
         npixels = charge_container["npixels"]
 
-        charge_pe_hg = np.array(charge_hg) / adc_to_pe
-        charge_pe_lg = np.array(charge_lg) / adc_to_pe
+        charge_pe_hg = np.array(charge_hg) / GAIN_DEFAULT
+        charge_pe_lg = np.array(charge_lg) / GAIN_DEFAULT
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
             pix_mean_charge = np.mean(charge, axis=0)  # in pe
