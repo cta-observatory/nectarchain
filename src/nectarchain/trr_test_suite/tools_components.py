@@ -168,8 +168,8 @@ class ChargeComp(NectarCAMComponent):
             max_events=100,
             events_per_slice=999,
             log_level=20,
-            filter_method="WaveformsStdFilter",
-            wfs_std_threshold=4.0,
+            filter_method=None,
+            method="FullWaveformSum",
             overwrite=True,
         )
         self.Pedtool.initialize()
