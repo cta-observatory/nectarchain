@@ -1,6 +1,6 @@
-================================================
-nectarchain |pypi| |conda| |CI| |docs| |codecov|
-================================================
+=========================================================
+nectarchain |zenodo| |pypi| |conda| |CI| |docs| |codecov|
+=========================================================
 
 
 Repository for the high level analysis of the NectarCAM data, a camera
@@ -71,6 +71,8 @@ report issues or `GitHub
 Discussions <https://github.com/cta-observatory/nectarchain/discussions>`__
 for questions and discussions.
 
+.. |zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.17962063.svg
+   :target: https://doi.org/10.5281/zenodo.17962063
 .. |pypi| image:: https://badge.fury.io/py/nectarchain.svg
    :target: https://pypi.org/project/nectarchain
 .. |conda| image:: https://anaconda.org/conda-forge/nectarchain/badges/version.svg
