@@ -41,6 +41,10 @@ class GainContainer(NectarCAMContainer):
     )
     low_gain = Field(type=np.ndarray, dtype=np.float64, ndim=2, description="low gain")
     pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
+    charge = Field(type=np.ndarray, dtype=np.float64, ndim=1, description="charge")
+    charge_std = Field(
+        type=np.ndarray, dtype=np.float64, ndim=1, description="charge_std"
+    )
 
     @classmethod
     def from_hdf5(cls, path, group_name="data"):
