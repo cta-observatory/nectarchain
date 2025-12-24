@@ -14,7 +14,7 @@ __all__ = ["FlatFieldContainer"]
 
 class FlatFieldContainer(NectarCAMContainer):
     """
-    Container that holds flat field coefficients and other useful information
+    Container that holds the inverse of flat field coefficients ("efficiency") and other useful information
 
     Fields:
         run_number (np.uint16): Number of the run
@@ -26,9 +26,7 @@ class FlatFieldContainer(NectarCAMContainer):
         event_id (np.ndarray): Array of the IDs of each event
         amp_int_per_pix_per_event (np.ndarray): Array of integrated amplitude of each
         pulse
-        t_peak_per_pix_per_event (np.ndarray): Array of samples containing the pulse
-        maximum
-        FF_coef (np.ndarray): Array of flat field coefficients
+        eff_coef (np.ndarray): Array of efficiency (1/FF) coefficients
         bad_pixels (List): List of pixel identified as outliers
     """
 
@@ -68,13 +66,20 @@ class FlatFieldContainer(NectarCAMContainer):
     #    description="sample containing the pulse maximum, per pixel and per event",
     # )
 
-    FF_coef = Field(
+    #FF_coef = Field(
+    #    type=np.ndarray,
+    #    dtype=np.float32,
+    #    ndim=3,
+    #    description="the flat field coefficients, per event",
+    #)
+    
+    eff_coef = Field(
         type=np.ndarray,
         dtype=np.float32,
         ndim=3,
-        description="the flat field coefficients, per event",
+        description="the efficiency coefficients (inverse of flat field), per event",
     )
-
+    
     bad_pixels = Field(
         type=np.ndarray,
         dtype=np.uint16,
