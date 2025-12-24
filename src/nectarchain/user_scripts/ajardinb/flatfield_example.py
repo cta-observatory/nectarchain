@@ -36,6 +36,13 @@ parser.add_argument(
     help="Flatfield run number",
     type=int,
 )
+parser.add_argument(
+    "-p",
+    "--path",
+    default=".",
+    help="path to runs folder (NECTARCAMDATA)",
+    type=str,
+)
 parser.add_argument("--log", default="info", help="output verbosity", type=str)
 
 args = parser.parse_args()
@@ -46,6 +53,7 @@ if args.run is None:
 
 log.setLevel(args.log.upper())
 
+os.environ["NECTARCAMDATA"] = args.path
 
 def get_gain(output_from_FlatFieldComponent):
     """
@@ -112,6 +120,8 @@ def get_bad_pixels(output_from_FlatFieldComponent):
     std_amp = np.std(mean_amp_int_per_pix, axis=1)
 
     for p in range(0, constants.N_PIXELS):
+    #for p in pixels_id:
+        #print(pixels_id)
         # pixel with hi/lo ratio to small or to high (+/- 5 times the mean hi/lo ratio)
         if (hi_lo[p] < np.mean(hi_lo) - (5 * np.std(hi_lo))) or (
             hi_lo[p] > np.mean(hi_lo) + (5 * np.std(hi_lo))
