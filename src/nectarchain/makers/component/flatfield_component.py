@@ -118,7 +118,8 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__event_type = []
         self.__event_id = []
         self.__amp_int_per_pix_per_event = []
-        self.__FF_coef = []
+        #self.__FF_coef = []
+        self.__eff_coef = []
         self.__bad_pixels = []
 
         self._init_pedestal_container()
@@ -270,8 +271,8 @@ class FlatFieldComponent(NectarCAMComponent):
             )
 
             # flat-field coefficients
-            FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
-            self.__FF_coef.append(FF_coef)
+            #FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
+            self.__eff_coef.append(eff)
 
     def subtract_pedestal_from_container(self, wfs):
         """
@@ -378,7 +379,8 @@ class FlatFieldComponent(NectarCAMComponent):
             amp_int_per_pix_per_event=FlatFieldContainer.fields[
                 "amp_int_per_pix_per_event"
             ].dtype.type(self.__amp_int_per_pix_per_event),
-            FF_coef=FlatFieldContainer.fields["FF_coef"].dtype.type(self.__FF_coef),
+            #FF_coef=FlatFieldContainer.fields["FF_coef"].dtype.type(self.__FF_coef),
+            eff_coef=FlatFieldContainer.fields["FF_coef"].dtype.type(self.__eff_coef),
             bad_pixels=FlatFieldContainer.fields["bad_pixels"].dtype.type(
                 self.__bad_pixels
             ),
