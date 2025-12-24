@@ -1,13 +1,18 @@
 import importlib
 import logging
 import math
+from typing import Sequence, Type, Union
 
 import numpy as np
 from ctapipe.core.component import Component
+from ctapipe.core.traits import Path
+from ctapipe_io_nectarcam import constants
 from iminuit import Minuit
 from scipy import interpolate, signal
 from scipy.special import gammainc
 from scipy.stats import chi2, norm
+
+from ..data.container.core import NectarCAMContainer
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -67,6 +72,163 @@ class ComponentUtils:
         raise ValueError(
             "componentName is not a valid component, this component is not known as a "
             "child of NectarCAMComponent"
+        )
+
+
+class ContainerUtils:
+    @staticmethod
+    def add_missing_pixels_to_container(
+        container: NectarCAMContainer, pad_value=np.nan
+    ):
+        """
+        Pads fields of `~nectarchain.data.container.core.NectarCAMContainer` with
+        missing pixels (due to e.g. an incomplete camera) with chosen value.
+        For boolean arrays related to pixel status, zero/one-padding is applied
+        appriopriately.
+        """
+
+        # Make sure the container has `pixels_id` values
+        try:
+            pixels_id_input = container.pixels_id
+        except Exception as e:
+            raise ValueError(f"{container} has no field named `pixels_id`: {e}")
+
+        # Do nothing if there are no missing pixels
+        if len(pixels_id_input) == constants.N_PIXELS:
+            log.info("Input container already contains data for all pixels!")
+            return
+
+        log.info(
+            f"Input container contains data for "
+            f"{len(pixels_id_input)}/{constants.N_PIXELS} pixels, "
+            f"will add missing pixels and fill missing-pixel data with {pad_value}"
+        )
+
+        log.debug(f"Original container: {container}")
+
+        for name, field in zip(container.keys(), container.values()):
+            # Update the pixels_id with the full camera
+            if name == "pixels_id":
+                setattr(
+                    container,
+                    "pixels_id",
+                    constants.PIXEL_INDEX.astype(pixels_id_input.dtype),
+                )
+            elif isinstance(field, np.ndarray):
+                # Find pixel axis if there is one
+                pixel_axis = None
+                for i, dim in enumerate(field.shape):
+                    if dim == len(pixels_id_input):
+                        pixel_axis = i
+                        break
+                if pixel_axis is None:
+                    continue
+
+                # Reshape fields to full camera with NaN values for missing pixels
+                # For fields related to pixel status, apply zero/one-padding
+                shape_new_field = list(field.shape)
+                shape_new_field[pixel_axis] = constants.N_PIXELS
+                # Pixel status in NectarCAMPedestalContainer, FlatFieldContainer
+                # NOTE: `bad_pixels` does not have a `pixel_axis` so nothing happens
+                if name in ["pixel_mask", "bad_pixels"]:
+                    new_field = np.ones(shape_new_field, dtype=field.dtype)
+                # Pixel status in GainContainer
+                elif name in ["is_valid"]:
+                    new_field = np.zeros(shape_new_field, dtype=field.dtype)
+                else:
+                    new_field = np.full(shape_new_field, pad_value, dtype=field.dtype)
+
+                # Copy data in slices so that the correct axis is zero/one-padded
+                # Also sorts the arrays in terms of `PIXEL_INDEX`
+                pixel_pos = np.searchsorted(constants.PIXEL_INDEX, pixels_id_input)
+                slc = [slice(None)] * field.ndim
+                slc[pixel_axis] = pixel_pos
+                new_field[tuple(slc)] = field
+
+                # Update the container
+                setattr(container, name, new_field)
+
+        log.debug(f"Updated container: {container}")
+
+        return
+
+    @staticmethod
+    def get_container_from_hdf5(
+        path: Path,
+        container_classes: Union[
+            Type[NectarCAMContainer], Sequence[Type[NectarCAMContainer]]
+        ],
+        group_names: Union[str, Sequence[str]] = "data",
+    ) -> NectarCAMContainer:
+        """Wrapper function for `NectarCAMContainer.from_hdf5`.
+
+        Loads a container for a given `path`, allowing to scan for:
+            - different NectarCAMContainer subclasses;
+            - different group names.
+
+        For example, you may want to load the output of a gain calibration tool, but
+        you don't know whether it is a `SPEFitContainer` or `GainContainer`.
+
+        Or you may want to load a `NectarCAMPedestalContainer`, which can either have
+        the group name "data" or "data_combined" depending on the slicing applied.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the HDF5 file.
+        container_classes : Type[NectarCAMContainer] or sequence of such types
+            One or more container subclasses to attempt loading.
+        group_names : str or sequence of str, optional
+            Group names to try inside the HDF5 structure. Default is "data".
+
+        Returns
+        -------
+        NectarCAMContainer
+            The successfully loaded container.
+
+        Raises
+        ------
+        TypeError
+            If `container_classes` contains items that are not NectarCAMContainer
+            subclasses.
+        ValueError
+            If no container can be loaded from the file using any class/group
+            combination.
+        """
+
+        # Normalize inputs lists
+        if isinstance(container_classes, type):
+            container_classes = [container_classes]
+        if isinstance(group_names, (str, bytes)):
+            group_names = [group_names]
+
+        # Validate input classes
+        for _cls in container_classes:
+            if not issubclass(_cls, NectarCAMContainer):
+                raise TypeError(
+                    f"{_cls.__name__} is not a subclass of "
+                    f"{NectarCAMContainer.__name__}"
+                )
+
+        exceptions = []
+
+        for _cls in container_classes:
+            for group_name in group_names:
+                try:
+                    container = next(_cls.from_hdf5(path, group_name=group_name))
+                    log.info(f"Loaded {_cls.__name__} from {path}")
+                    return container
+                except Exception as e:
+                    log.debug(
+                        f"Failed to load {_cls.__name__} with `group_name` = "
+                        f"'{group_name}': {e}"
+                    )
+                    log.debug("Adding exception to `exceptions` list")
+                    exceptions.append((_cls.__name__, group_name, str(e)))
+
+        # Raise an error if no container could be loaded
+        raise ValueError(
+            f"Failed to load any container from {path}. Tried: {exceptions}"
         )
 
 

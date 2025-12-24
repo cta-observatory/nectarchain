@@ -5,6 +5,7 @@ try:
     from DataUtils import CountEventTypes, DataReader
     from Utils import CustomFormatter
 
+
 except ImportError as e:
     print(e)
     raise SystemExit
@@ -25,6 +26,7 @@ def ShowDataContent(arglist):
         default=None,
         help="Path to the rawdata directory. The program will recursively search in all directory for matching rawdata",
     )
+    # p.add_argument("--nevents",dest="nEvents",type=int,default=-1,help="Number of event to be analysed")
 
     args = p.parse_args(arglist)
 

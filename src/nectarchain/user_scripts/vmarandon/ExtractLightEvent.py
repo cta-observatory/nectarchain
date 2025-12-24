@@ -217,7 +217,7 @@ def ExtractLightEvent(arglist):
     return ExtractLightEventForRun(
         run=run,
         path=path,
-        nEvents=args.nEvents,
+        nUserEvents=args.nEvents,
         ffNPixThreshold=args.ffNPixThreshold,
         ffNoInternal=args.ffNoInternal,
         internalFF=args.internalFF,
@@ -231,7 +231,7 @@ def ExtractLightEvent(arglist):
 def ExtractLightEventForRun(
     run,
     path,
-    nEvents=-1,
+    nUserEvents=-1,
     ffNPixThreshold=1800,
     ffNoInternal=False,
     internalFF=False,
@@ -246,7 +246,7 @@ def ExtractLightEventForRun(
     camera = GetCamera()
 
     nEvents = len(data)
-    nMax = np.minimum(nEvents, nEvents) if nEvents > 0 else nEvents
+    nMax = np.minimum(nUserEvents, nEvents) if nUserEvents > 0 else nEvents
     default_mask = None
 
     ped_mask = None
@@ -294,14 +294,16 @@ def ExtractLightEventForRun(
 
             # embed()
 
-            if evt.trigger.event_type == EventType.SUBARRAY and not ffcandidate:
-                if npix > 40 and npix <= 1855:
-                    r0 = copy.deepcopy(evt.r1 if R1Data else evt.r0)
-                    mon = copy.deepcopy(evt.mon)
-            if evt.trigger.event_type == EventType.FLATFIELD or ffcandidate:
-                if npix < ffNPixThreshold and not ffNoInternal:
-                    r0 = copy.deepcopy(evt.r0)
-                    mon = copy.deepcopy(evt.mon)
+            mon = copy.deepcopy(evt.mon)
+
+            # if evt.trigger.event_type == EventType.SUBARRAY and not ffcandidate:
+            #     if npix>40 and npix<=1855:
+            #         r0 = copy.deepcopy( evt.r1 if R1Data else evt.r0 )
+            #         mon = copy.deepcopy( evt.mon )
+            # if evt.trigger.event_type == EventType.FLATFIELD or ffcandidate:
+            #     if  npix < ffNPixThreshold and not ffNoInternal:
+            #         r0 = copy.deepcopy( evt.r0 )
+            #         mon = copy.deepcopy( evt.mon )
 
             if saveR0:
                 r0 = copy.deepcopy(evt.r0)
@@ -317,6 +319,9 @@ def ExtractLightEventForRun(
                 waveform > 4000, axis=-1
             )  # In principle 4095 but I put a safety margin
 
+            ## Fill waveform statistic information
+            le.stat.tel[telId] = LightEvent.WaveformStat(waveform)
+
             integration_method = None
             if evt.trigger.event_type == EventType.SKY_PEDESTAL:
                 integration_method = None
@@ -326,7 +331,7 @@ def ExtractLightEventForRun(
                 integration_method = IntegrationMethod.PEAKSEARCH
                 # integration_method = IntegrationMethod.NNSEARCH
             else:
-                integration_method = IntegrationMethod.NNSEARCH
+                integration_method = IntegrationMethod.PEAKSEARCH
 
             if integration_method is not None:
                 hdw_fail_wvf = default_mask | np.expand_dims(bad_hdw, axis=-1)
@@ -348,10 +353,10 @@ def ExtractLightEventForRun(
                 excess_wvf[hdw_fail_wvf] = 0.0
                 fwhm = get_fwhms_fast(excess_wvf)
 
-                le.charge.tel[telId] = evt_charge
+                le.charge.tel[telId] = evt_charge.astype(np.float16)
                 le.charge.method = integration_method
-                le.timing.tel[telId] = evt_timing
-                le.fwhm.tel[telId] = fwhm
+                le.timing.tel[telId] = evt_timing.astype(np.int16)
+                le.fwhm.tel[telId] = fwhm.astype(np.float16)
 
             # embed()
 

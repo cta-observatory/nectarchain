@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import adc_to_pe, argmedian
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 
 # overriding so we can have maxevents in the path
@@ -45,192 +45,6 @@ def _init_output_path(self):
 EventsLoopNectarCAMCalibrationTool._init_output_path = _init_output_path
 
 
-class ChargeContainer(NectarCAMContainer):
-    """This class contains fields that store various properties and data related to
-    NectarCAM events, including:
-
-    - `run_number`: The run number associated with the waveforms.
-    - `npixels`: The number of effective pixels.
-    - `pixels_id`: An array of pixel IDs.
-    - `ucts_timestamp`: An array of UCTS timestamps for the events.
-    - `event_type`: An array of trigger event types.
-    - `event_id`: An array of event IDs.
-    - `charge_hg`: A 2D array of high gain charge values.
-    - `charge_lg`: A 2D array of low gain charge values.
-    """
-
-    run_number = Field(
-        type=np.uint16,
-        description="run number associated to the waveforms",
-    )
-    npixels = Field(
-        type=np.uint16,
-        description="number of effective pixels",
-    )
-    pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
-    ucts_timestamp = Field(
-        type=np.ndarray, dtype=np.uint64, ndim=1, description="events ucts timestamp"
-    )
-    event_type = Field(
-        type=np.ndarray, dtype=np.uint8, ndim=1, description="trigger event type"
-    )
-    event_id = Field(type=np.ndarray, dtype=np.uint32, ndim=1, description="event ids")
-
-    charge_hg = Field(
-        type=np.ndarray, dtype=np.float64, ndim=2, description="The high gain charge"
-    )
-    charge_lg = Field(
-        type=np.ndarray, dtype=np.float64, ndim=2, description="The low gain charge"
-    )
-
-
-class ChargeComp(NectarCAMComponent):
-    """This class `ChargeComp` is a NectarCAMComponent that processes NectarCAM event
-    data. It extracts the charge information from the waveforms of each event, handling
-    cases of saturated or noisy events. The class has the following configurable
-    parameters:
-
-    - `window_shift`: The time in ns before the peak to extract the charge.
-    - `window_width`: The duration of the charge extraction window in ns.
-
-    The `__init__` method initializes important members of the component, such as\
-        timestamps, event type, event ids, pedestal and charge for both gain channels.
-    The `__call__` method is the main processing logic, which is called for each event.\
-        It extracts the charge information for both high gain and low gain channels,\
-            handling various cases such as saturated events and events with no signal.
-    The `finish` method collects all the processed data and returns a `ChargeContainer`\
-        object containing the run number, number of pixels, pixel IDs, UCTS timestamps,\
-            event types, event IDs, and the high and low gain charge values.
-    """
-
-    window_shift = Integer(
-        default_value=6,
-        help="the time in ns before the peak to extract charge",
-    ).tag(config=True)
-
-    window_width = Integer(
-        default_value=12,
-        help="the duration of the extraction window in ns",
-    ).tag(config=True)
-
-    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
-        super().__init__(
-            subarray=subarray, config=config, parent=parent, *args, **kwargs
-        )
-        # If you want you can add here members of MyComp, they will contain
-        # interesting quantity during the event loop process
-
-        self.__ucts_timestamp = []
-        self.__event_type = []
-        self.__event_id = []
-
-        self.__pedestal_hg = []
-        self.__pedestal_lg = []
-
-        self.__charge_hg = []
-        self.__charge_lg = []
-
-    # This method need to be defined !
-    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        self.__event_id.append(np.uint32(event.index.event_id))
-
-        # print(event.index.event_id)
-
-        self.__event_type.append(event.trigger.event_type.value)
-        self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
-
-        wfs = []
-        wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
-        wfs.append(event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id])
-
-        # ###THE JOB IS HERE####
-        for i, (pedestal, charge) in enumerate(
-            zip(
-                [self.__pedestal_hg, self.__pedestal_lg],
-                [self.__charge_hg, self.__charge_lg],
-            )
-        ):
-            wf = np.array(wfs[i], dtype=np.float16)
-
-            index_peak = np.argmax(wf, axis=1)
-            index_peak[index_peak < 20] = 20
-            index_peak[index_peak > 40] = 40
-
-            signal_start = index_peak - self.window_shift
-            signal_stop = index_peak + self.window_width - self.window_shift
-
-            if event.trigger.event_type == EventType.FLATFIELD:
-                integral = np.zeros(len(self.pixels_id))
-
-                for pix in range(len(self.pixels_id)):
-                    # search for saturated events or events with no signal
-                    ped = np.round(np.mean(wf[pix, 0 : signal_start[pix]]))
-
-                    peaks_sat = find_peaks(
-                        wf[pix, 20:45], height=1000, plateau_size=self.window_width
-                    )
-                    if len(peaks_sat[0]) == 1:
-                        # saturated
-
-                        # print("saturated")
-
-                        signal_start[pix] = (
-                            argmedian(wf[pix, 20:45]) + 20 - self.window_shift
-                        )
-                        signal_stop[pix] = signal_start[pix] + self.window_width
-                        integral[pix] = np.sum(
-                            wf[pix, signal_start[pix] : signal_stop[pix]]
-                        ) - ped * (signal_stop[pix] - signal_start[pix])
-
-                    else:
-                        peaks_signal = find_peaks(wf[pix], prominence=10)
-                        if len(peaks_signal[0]) >= 12:
-                            # print("noisy event")
-                            integral[pix] = 0
-
-                        elif len(peaks_signal[0]) < 1:
-                            # flat
-                            integral[pix] = 0
-
-                        else:
-                            # x = np.linspace(0,signal_stop[pix]-signal_start[pix],
-                            # signal_stop[pix]-signal_start[pix])
-                            # spl = UnivariateSpline(x,y)
-                            # integral[pix] = spl.integral(0,signal_stop[pix]-
-                            # signal_start[pix])
-
-                            integral[pix] = np.sum(
-                                wf[pix, signal_start[pix] : signal_stop[pix]]
-                            ) - ped * (signal_stop[pix] - signal_start[pix])
-
-                chg = integral
-
-                charge.append(chg)
-
-    # This method need to be defined !
-    def finish(self):
-        output = ChargeContainer(
-            run_number=ChargeContainer.fields["run_number"].type(self._run_number),
-            npixels=ChargeContainer.fields["npixels"].type(self._npixels),
-            pixels_id=ChargeContainer.fields["pixels_id"].dtype.type(self._pixels_id),
-            ucts_timestamp=ChargeContainer.fields["ucts_timestamp"].dtype.type(
-                self.__ucts_timestamp
-            ),
-            event_type=ChargeContainer.fields["event_type"].dtype.type(
-                self.__event_type
-            ),
-            event_id=ChargeContainer.fields["event_id"].dtype.type(self.__event_id),
-            charge_hg=ChargeContainer.fields["charge_hg"].dtype.type(
-                np.array(self.__charge_hg)
-            ),
-            charge_lg=ChargeContainer.fields["charge_lg"].dtype.type(
-                np.array(self.__charge_lg)
-            ),
-        )
-
-        return output
-
-
 class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
     """This class, `LinearityTestTool`, is a subclass of
     `EventsLoopNectarCAMCalibrationTool`. It is responsible for performing a linearity
@@ -248,40 +62,25 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["ChargeComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=True, *args, **kwargs)
+        output = super().finish(return_output_component=True, *args, **kwargs)
+
+        charge_container = output[0].containers[EventType.FLATFIELD]
 
         mean_charge = [0, 0]  # per channel
         std_charge = [0, 0]
         std_err = [0, 0]
 
-        charge_hg = []
-        charge_lg = []
+        charge_hg = charge_container["charges_hg"]
+        charge_lg = charge_container["charges_lg"]
+        npixels = charge_container["npixels"]
 
-        output_file = h5py.File(self.output_path)
-
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["ChargeContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    npixels = tup[1]
-                    charge_hg.extend(tup[6])
-                    charge_lg.extend(tup[7])
-
-                except Exception:
-                    break
-
-        output_file.close()
-
-        charge_pe_hg = np.array(charge_hg) / adc_to_pe
-        charge_pe_lg = np.array(charge_lg) / adc_to_pe
+        charge_pe_hg = np.array(charge_hg) / GAIN_DEFAULT
+        charge_pe_lg = np.array(charge_lg) / GAIN_DEFAULT
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
             pix_mean_charge = np.mean(charge, axis=0)  # in pe
@@ -908,219 +707,6 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
             dt_corrected,
             pixel_pairs,
         )
-
-
-class PedestalContainer(NectarCAMContainer):
-    """Attributes of the PedestalContainer class that store various data related to the
-    pedestal of a NectarCAM event.
-
-    Attributes:
-        run_number (np.uint16): The run number associated with the waveforms.
-        npixels (np.uint16): The number of effective pixels.
-        pixels_id (np.ndarray[np.uint16]): The IDs of the pixels.
-        ucts_timestamp (np.ndarray[np.uint64]): The UCTS timestamp of the events.
-        event_type (np.ndarray[np.uint8]): The trigger event type.
-        event_id (np.ndarray[np.uint32]): The event IDs.
-        pedestal_hg (np.ndarray[np.float64]): The high gain pedestal per event.
-        pedestal_lg (np.ndarray[np.float64]): The low gain pedestal per event.
-        rms_ped_hg (np.ndarray[np.float64]): The high gain pedestal RMS per event.
-        rms_ped_lg (np.ndarray[np.float64]): The low gain pedestal RMS per event.
-    """
-
-    run_number = Field(
-        type=np.uint16,
-        description="run number associated to the waveforms",
-    )
-    npixels = Field(
-        type=np.uint16,
-        description="number of effective pixels",
-    )
-    pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
-    ucts_timestamp = Field(
-        type=np.ndarray, dtype=np.uint64, ndim=1, description="events ucts timestamp"
-    )
-    event_type = Field(
-        type=np.ndarray, dtype=np.uint8, ndim=1, description="trigger event type"
-    )
-    event_id = Field(type=np.ndarray, dtype=np.uint32, ndim=1, description="event ids")
-
-    pedestal_hg = Field(
-        type=np.ndarray,
-        dtype=np.float64,
-        ndim=2,
-        description="High gain pedestal per event",
-    )
-
-    pedestal_lg = Field(
-        type=np.ndarray,
-        dtype=np.float64,
-        ndim=2,
-        description="Low gain pedestal per event",
-    )
-
-    rms_ped_hg = Field(
-        type=np.ndarray,
-        dtype=np.float64,
-        ndim=2,
-        description="High gain pedestal rms per event",
-    )
-
-    rms_ped_lg = Field(
-        type=np.ndarray,
-        dtype=np.float64,
-        ndim=2,
-        description="Low gain pedestal rms per event",
-    )
-
-
-class PedestalComp(NectarCAMComponent):
-    """The `PedestalComp` class is a NectarCAMComponent that is responsible for
-    processing the pedestal and RMS of the high and low gain waveforms for each event.
-
-    The `__init__` method initializes the `PedestalComp` class. It sets up several\
-        member variables to store pedestal related data such as timestamps,\
-            event types,\
-            event IDs, pedestal and pedestal rms values for both gains.
-
-    The `__call__` method is called for each event, and it processes the waveforms to\
-        calculate the pedestal and RMS for the high and low gain channels. The results\
-            are stored in the class attributes `__pedestal_hg`, `__pedestal_lg`, \
-                `__rms_ped_hg`, and `__rms_ped_lg`.
-
-    The `finish` method is called at the end of processing, and it returns a\
-        `PedestalContainer` object containing the calculated pedestal and RMS values\
-            , as well as other event information.
-    """
-
-    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
-        super().__init__(
-            subarray=subarray, config=config, parent=parent, *args, **kwargs
-        )
-        # If you want you can add here members of MyComp, they will contain interesting
-        # quantity during the event loop process
-
-        self.__ucts_timestamp = []
-        self.__event_type = []
-        self.__event_id = []
-
-        self.__pedestal_hg = []
-
-        self.__pedestal_lg = []
-
-        self.__rms_ped_hg = []
-        self.__rms_ped_lg = []
-
-    # This method need to be defined !
-    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        self.__event_id.append(np.uint32(event.index.event_id))
-
-        # print(event.trigger.event_type)
-
-        self.__event_type.append(event.trigger.event_type.value)
-        self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
-
-        wfs = []
-        wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
-        wfs.append(event.r0.tel[0].waveform[constants.LOW_GAIN][self.pixels_id])
-
-        # #####THE JOB IS HERE######
-
-        for i, (pedestal, rms_pedestal) in enumerate(
-            zip(
-                [self.__pedestal_hg, self.__pedestal_lg],
-                [self.__rms_ped_hg, self.__rms_ped_lg],
-            )
-        ):
-            wf = np.array(wfs[i])  # waveform per gain
-
-            ped = np.array([np.mean(wf[pix]) for pix in range(len(self.pixels_id))])
-            rms_ped = np.array([np.std(wf[pix]) for pix in range(len(self.pixels_id))])
-
-            ped[ped > 1000] = np.nan
-            rms_ped[ped > 1000] = np.nan
-            pedestal.append(ped)
-            rms_pedestal.append(rms_ped)
-
-    # This method need to be defined !
-    def finish(self):
-        output = PedestalContainer(
-            run_number=PedestalContainer.fields["run_number"].type(self._run_number),
-            npixels=PedestalContainer.fields["npixels"].type(self._npixels),
-            pixels_id=PedestalContainer.fields["pixels_id"].dtype.type(self.pixels_id),
-            ucts_timestamp=PedestalContainer.fields["ucts_timestamp"].dtype.type(
-                self.__ucts_timestamp
-            ),
-            event_type=PedestalContainer.fields["event_type"].dtype.type(
-                self.__event_type
-            ),
-            event_id=PedestalContainer.fields["event_id"].dtype.type(self.__event_id),
-            pedestal_hg=PedestalContainer.fields["pedestal_hg"].dtype.type(
-                self.__pedestal_hg
-            ),
-            pedestal_lg=PedestalContainer.fields["pedestal_lg"].dtype.type(
-                self.__pedestal_lg
-            ),
-            rms_ped_hg=PedestalContainer.fields["rms_ped_hg"].dtype.type(
-                self.__rms_ped_hg
-            ),
-            rms_ped_lg=PedestalContainer.fields["rms_ped_lg"].dtype.type(
-                self.__rms_ped_lg
-            ),
-        )
-        return output
-
-
-class PedestalTool(EventsLoopNectarCAMCalibrationTool):
-    """This class is a part of the PedestalTool, which is an
-    EventsLoopNectarCAMCalibrationTool.
-
-    The finish() method opens the output file, which is an HDF5 file,\
-        and extracts the `rms_ped_hg` (root mean square of the high gain pedestal)\
-            values from the `PedestalContainer` dataset. Finally, it closes the output\
-                file and returns the list of `rms_ped_hg` values.
-
-    This method is used to post-process the output of the PedestalTool and extract\
-        specific information from the generated HDF5 file.
-    """
-
-    name = "PedestalTool"
-
-    componentsList = ComponentNameList(
-        NectarCAMComponent,
-        default_value=["PedestalComp"],
-        help="List of Component names to be apply, the order will be respected",
-    ).tag(config=True)
-
-    def _init_output_path(self):
-        if self.max_events is None:
-            filename = f"{self.name}_run{self.run_number}.h5"
-        else:
-            filename = f"{self.name}_run{self.run_number}_maxevents{self.max_events}.h5"
-        self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/tests/{filename}"
-        )
-
-    def finish(self, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
-        # print(self.output_path)
-        output_file = h5py.File(self.output_path)
-
-        rms_ped_hg = []
-
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["PedestalContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    rms_ped_hg.extend(tup[8])
-                except Exception:
-                    break
-
-        output_file.close()
-
-        return rms_ped_hg
 
 
 class UCTSContainer(NectarCAMContainer):

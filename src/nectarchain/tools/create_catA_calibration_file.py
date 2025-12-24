@@ -56,6 +56,14 @@ from nectarchain.utils.metadata import (
     get_local_metadata,
 )
 
+from ..utils.constants import (
+    FLATFIELD_DEFAULT,
+    GAIN_DEFAULT,
+    HILO_DEFAULT,
+    PEDESTAL_DEFAULT,
+)
+from ..utils.utils import ContainerUtils
+
 # Outputs allowed for Cat-A calibration file as done in `lstcam_calib`
 OUTPUT_FORMATS = ["fits.gz", "fits", "h5"]
 
@@ -146,6 +154,12 @@ class CalibrationWriterNectarCAM(Tool):
             "flatfield": "data",
         }
 
+        self.default_values = {
+            "pedestal": PEDESTAL_DEFAULT,
+            "gain": GAIN_DEFAULT,
+            "flatfield": FLATFIELD_DEFAULT,
+        }
+
     def setup(self):
         """Open input files and set up containers."""
 
@@ -205,63 +219,32 @@ class CalibrationWriterNectarCAM(Tool):
 
     def _add_missing_pixels(self):
         """
-        Zero-pads NectarCAM containers with missing pixels due to hardware failing
-        pixels (e.g. an incomplete camera). For boolean arrays related to pixel status,
-        one-padding is applied.
+        Identifies NectarCAM containers with missing pixels due to hardware failure
+        (e.g. an incomplete camera). The missing pixels are then padded with default
+        values.
         """
 
         log.info("Checking for missing pixels in input data...")
 
         hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
 
-        for container in self.input_containers.values():
-            pixels_id = container.pixels_id
-
-            for name, field in zip(container.keys(), container.values()):
-                if isinstance(field, np.ndarray):
-                    # Find pixel axis if there is one
-                    pixel_axis = None
-                    for i, dim in enumerate(field.shape):
-                        if dim == len(pixels_id):
-                            pixel_axis = i
-                            break
-                    if pixel_axis is None:
-                        continue
-
-                    # Reshape fields to fully pixelated camera with zero-padding
-                    # Or one-padding for boolean arrays of failing/missing pixels
-                    # NOTE: NectarCAMPedestalContainer stores bad pixels as np.int8
-                    shape_new_field = list(field.shape)
-                    shape_new_field[pixel_axis] = N_PIXELS
-                    if field.dtype == bool or field.dtype == np.int8:
-                        new_field = np.ones(shape_new_field, dtype=field.dtype)
-                    else:
-                        new_field = np.zeros(shape_new_field, dtype=field.dtype)
-
-                    # Copy data in slices so that the correct axis is zero/one-padded
-                    # Also sorts the arrays in terms of `PIXEL_INDEX`
-                    pixel_pos = np.searchsorted(PIXEL_INDEX, pixels_id)
-                    slc = [slice(None)] * field.ndim
-                    slc[pixel_axis] = pixel_pos
-                    new_field[tuple(slc)] = field
-
-                    # Update the container
-                    setattr(container, name, new_field)
-
-            # Update the pixels_id with the full camera
-            setattr(container, "pixels_id", PIXEL_INDEX)
-
-            # If pixels are missing it's due to hardware, so update the pixel status
+        for key, container in self.input_containers.items():
+            # First identify missing pixels
             for ch in range(N_GAINS):
                 hardware_working_pixels[ch] = np.logical_and(
                     hardware_working_pixels[ch],
-                    np.isin(PIXEL_INDEX, pixels_id),
+                    np.isin(PIXEL_INDEX, container.pixels_id),
                 )
+            # Then add missing pixels_to_container
+            ContainerUtils.add_missing_pixels_to_container(
+                container, pad_value=self.default_values[key]
+            )
 
         # Set the hardware failing pixels status in the pixel status container
         self.output_containers[
             "pixel_status"
         ].hardware_failing_pixels = ~hardware_working_pixels
+
         return
 
     def _fill_output_containers(self):
@@ -316,10 +299,17 @@ class CalibrationWriterNectarCAM(Tool):
             pedestal_std_per_pixel_per_sample,
         )
 
+        # Set default pedestal values for bad pixels
+        pedestal_mean_per_pixel_with_default = np.where(
+            self.input_containers["pedestal"].pixel_mask,
+            PEDESTAL_DEFAULT,
+            pedestal_mean_per_pixel,
+        )
+
         # Fill WaveformCalibrationContainer with pedestals
         self.output_containers[
             "calibration"
-        ].pedestal_per_sample = pedestal_mean_per_pixel
+        ].pedestal_per_sample = pedestal_mean_per_pixel_with_default
 
         # Fill PedestalContainer
         # NOTE: normally in `ctapipe`, n_events is a float, here it's an array of shape
@@ -366,11 +356,17 @@ class CalibrationWriterNectarCAM(Tool):
             self.input_containers["gain"].high_gain[..., 0],
             self.input_containers["gain"].low_gain[..., 0],
         )
+        is_valid = self._combine_hg_and_lg(
+            self.input_containers["gain"].is_valid,
+            self.input_containers["gain"].is_valid,
+        )
+
+        # Set default gain values for bad pixels
+        gain_per_pixel = np.where(is_valid, gain_per_pixel, GAIN_DEFAULT)
 
         # NOTE: for now there is no HiLo correction applied and the gain is only
-        # computed for the high gain channel. For now we make the assumption that the
-        # HiLo correction factor is 13.1
-        gain_per_pixel[LOW_GAIN] = gain_per_pixel[HIGH_GAIN] / 13.1
+        # computed for the high gain channel. For now we just use a default value
+        gain_per_pixel[LOW_GAIN] = gain_per_pixel[HIGH_GAIN] / HILO_DEFAULT
 
         # Fill WaveformCalibrationContainer with gains
         self.output_containers["calibration"].n_pe = np.divide(
@@ -428,9 +424,22 @@ class CalibrationWriterNectarCAM(Tool):
         # Expand dimensions of FF failing pixels to cover both high gain and low gain
         FF_failing_pixels = self._combine_hg_and_lg(FF_pixel_mask, FF_pixel_mask)
 
+        # Set default FF values for bad pixels
+        FF_coeff_per_pixel_mean_with_default = np.where(
+            FF_failing_pixels, FLATFIELD_DEFAULT, FF_coeff_per_pixel_mean
+        )
+        # BUG: bad FF pixels are not correctly tagged for now.
+        # Values with mean FF = 0 are temporarily masked here.
+        FF_coeff_per_pixel_mean_with_default = np.where(
+            FF_coeff_per_pixel_mean_with_default == 0,
+            FLATFIELD_DEFAULT,
+            FF_coeff_per_pixel_mean_with_default,
+        )
+
         # Fill WaveformCalibrationContainer with FF corrections
         self.output_containers["calibration"].dc_to_pe = (
-            FF_coeff_per_pixel_mean * self.output_containers["calibration"].n_pe
+            FF_coeff_per_pixel_mean_with_default
+            * self.output_containers["calibration"].n_pe
         )
 
         # Fill FlatFieldContainer

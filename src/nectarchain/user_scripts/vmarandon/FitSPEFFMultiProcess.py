@@ -205,6 +205,7 @@ def DoSPEFFFit(arglist):
     p.add_argument(
         "--njobs", dest="njobs", type=int, default=1, help="Number of CPU to use"
     )
+    p.add_argument("--telid", dest="telid", type=int, default=0, help="Telescope ID")
     p.add_argument(
         "--batch",
         dest="batch",
@@ -243,7 +244,7 @@ def DoSPEFFFit(arglist):
 
     # pixels_in_config = data.camera_config.pixel_id_map
     # embed()
-    # pixels_in_config =  data.nectarcam.tel[0].svc.pixel_ids
+    # pixels_in_config =  data.nectarcam.tel[args.telid].svc.pixel_ids
     # pixels_in_config = np.sort(pixels_in_config)
     # print(pixels_in_config)
     pixels_in_config = None
@@ -257,12 +258,23 @@ def DoSPEFFFit(arglist):
             for evt in tqdm(data, total=min(nEvents, nUsedEntries)):
                 if pixels_in_config is None:
                     pixels_in_config = np.sort(
-                        evt.nectarcam.tel[0].svc.pixel_ids.copy()
+                        evt.nectarcam.tel[args.telid].svc.pixel_ids.copy()
                     )
 
                 if evt.trigger.event_type == EventType.FLATFIELD:
-                    wvf = evt.r0.tel[0].waveform
-                    hdw_fail = evt.mon.tel[0].pixel_status.hardware_failing_pixels
+                    wvf = evt.r0.tel[args.telid].waveform
+                    if wvf is None:
+                        ## r1
+                        wvf = np.stack(
+                            (
+                                evt.r1.tel[args.telid].waveform,
+                                evt.r1.tel[args.telid].waveform,
+                            ),
+                            axis=0,
+                        )  # Create fake R0 data for simplicity
+                    hdw_fail = evt.mon.tel[
+                        args.telid
+                    ].pixel_status.hardware_failing_pixels
 
                     if default_mask is None:
                         default_mask = np.ones(wvf.shape, dtype=bool)
@@ -343,11 +355,23 @@ def DoSPEFFFit(arglist):
     try:
         for evt in tqdm(data, total=nEvents):
             if pixels_in_config is None:
-                pixels_in_config = np.sort(evt.nectarcam.tel[0].svc.pixel_ids.copy())
+                pixels_in_config = np.sort(
+                    evt.nectarcam.tel[args.telid].svc.pixel_ids.copy()
+                )
 
             if evt.trigger.event_type == EventType.FLATFIELD:
-                wvf = evt.r0.tel[0].waveform
-                hdw_fail = evt.mon.tel[0].pixel_status.hardware_failing_pixels
+                wvf = evt.r0.tel[args.telid].waveform
+                if wvf is None:
+                    ## r1
+                    wvf = np.stack(
+                        (
+                            evt.r1.tel[args.telid].waveform,
+                            evt.r1.tel[args.telid].waveform,
+                        ),
+                        axis=0,
+                    )  # Create fake R0 data for simplicity
+
+                hdw_fail = evt.mon.tel[args.telid].pixel_status.hardware_failing_pixels
                 hdw_good = ~hdw_fail
 
                 if default_mask is None:
@@ -365,7 +389,7 @@ def DoSPEFFFit(arglist):
                     camera=camera,
                 )
 
-                ped = np.sum(evt.r0.tel[0].waveform[:, :, :16], axis=2)
+                ped = np.sum(wvf[:, :, :16], axis=2)
                 ped_stats.add(ped, validmask=hdw_good)
 
                 hicharges.append(charges[0].copy())

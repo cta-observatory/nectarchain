@@ -14,10 +14,10 @@ def create_fake_chargeContainer():
         nevents=np.uint64(nevents),
         npixels=np.uint16(npixels),
         charges_hg=rng.integers(
-            low=0, high=1000, size=(nevents, npixels), dtype=np.uint16
+            low=0, high=1000, size=(nevents, npixels), dtype=np.int32
         ),
         charges_lg=rng.integers(
-            low=0, high=1000, size=(nevents, npixels), dtype=np.uint16
+            low=0, high=1000, size=(nevents, npixels), dtype=np.int32
         ),
         peak_hg=rng.integers(low=0, high=60, size=(nevents, npixels), dtype=np.uint16),
         peak_lg=rng.integers(low=0, high=60, size=(nevents, npixels), dtype=np.uint16),
@@ -69,8 +69,8 @@ class TestChargesContainer:
         nevents = np.uint64(TestChargesContainer.nevents)
         npixels = np.uint16(TestChargesContainer.npixels)
         run_number = np.uint16(TestChargesContainer.run_number)
-        charges_hg = np.uint16(np.random.randn(nevents, npixels))
-        charges_lg = np.uint16(np.random.randn(nevents, npixels))
+        charges_hg = np.int32(np.random.randn(nevents, npixels))
+        charges_lg = np.int32(np.random.randn(nevents, npixels))
         peak_hg = np.uint16(np.random.randn(nevents, npixels))
         peak_lg = np.uint16(np.random.randn(nevents, npixels))
         method = "FullWaveformSum"

@@ -158,7 +158,7 @@ logger.info(f"Found runs {runlist} in {dfcDir}")
 
 if len(sqlfilelist) == 0:
     logger.critical(
-        "Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
+        f"Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
     )
     sys.exit(1)
 logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
@@ -191,12 +191,18 @@ for run in runlist:
     j.setExecutable(f"{executable_wrapper}", f"-r {run} -c {args.camera}")
     # Force job to be run from a given Computing Element:
     # j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
-    j.setDestination(["LCG.GRIF.fr"])
+    # j.setDestination(["LCG.GRIF.fr"])
     # j.setTag(["16GBMemory"])
     j.setName(f"NectarCAM DQM run {run}")
     j.setJobGroup("NectarCAM DQM")
     j.setBannedSites(
-        ["LCG.DESY-ZEUTHEN.de", "LCG.PIC.es", "LCG.FRASCATI.it", "ARC.CSCS.ch"]
+        [
+            "LCG.DESY-ZEUTHEN.de",
+            "LCG.PIC.es",
+            "LCG.FRASCATI.it",
+            "ARC.CSCS.ch",
+            "ARC.CEA.fr",
+        ]
     )
     sandboxlist = [f"{executable_wrapper}"]
     for f in meta["Files"]:

@@ -6,12 +6,12 @@
 # Script as a cronjob to dynamically launch NectarCAM DQM runs on DIRAC after data transfer, to be run once a day on sedipcaa23 in CEA/Irfu.
 
 # Log everything to $LOGFILE
-LOGFILE=${0%".sh"}_$(date +%F).log
+LOGFILE=${0%".sh"}_$(date +%F)_$$.log
 LOGFILE=$HOME/log/$(basename $LOGFILE)
 exec 1>"$LOGFILE" 2>&1
 
 source /opt/cta/mambaforge/etc/profile.d/conda.sh
-conda activate ctadirac
+conda activate nectar-dev
 
 function usage ()
 {
