@@ -56,7 +56,7 @@ class FlatFieldContainer(NectarCAMContainer):
         type=np.ndarray,
         dtype=np.float32,
         ndim=3,
-        description="amplitude integrated over the window width, per pixel per event",
+        description="amplitude integrated over the window width, per pixel per event (adc)",
     )
 
     # t_peak_per_pix_per_event = Field(
@@ -77,12 +77,12 @@ class FlatFieldContainer(NectarCAMContainer):
         type=np.ndarray,
         dtype=np.float32,
         ndim=3,
-        description="the efficiency coefficients (inverse of flat field), per event",
+        description="the efficiency coefficients (inverse of flat field), per pixel per event",
     )
     
     bad_pixels = Field(
         type=np.ndarray,
         dtype=np.uint16,
         ndim=1,
-        description="pixels considered as bad in at least one gain channels",
+        description="ID of the pixels considered as bad in at least one gain channels",
     )
