@@ -115,6 +115,7 @@ class FlatFieldComponent(NectarCAMComponent):
         log.info(f"Gain : {self.gain}")
         log.info(f"{len(self.pixels_id)} active pixels : {self.pixels_id}")
         log.info(f"{len(self.bad_pix)} bad pixels : {self.bad_pix}")
+        log.info(f"window for pedestal estimation : {self.window_pedestal} ns")
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         if event.trigger.event_type.value == EventType.FLATFIELD.value:
@@ -127,63 +128,69 @@ class FlatFieldComponent(NectarCAMComponent):
             
             # get the waveform
             wfs = event.r0.tel[self.tel_id].waveform
-
-            # subtract pedestal using the mean of the n first samples
-            wfs_pedsub = self.subtract_pedestal(wfs, self.window_pedestal)
-
-            if self.charge_extraction_method is None:
-                # get the masked array for integration window
-                t_peak = np.argmax(wfs_pedsub, axis=-1)
-                masked_wfs = self.make_masked_array(
-                    t_peak, self.window_shift, self.window_width
-                )
-                # mask bad pixels
-                masked_wfs[:, self.__bad_pixels_number, :] = False
-                # get integrated amplitude for each pixel per event
-                amp_int_per_pix_per_event = np.sum(
-                    wfs_pedsub, axis=-1, where=masked_wfs
-                )
-                self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
-                amp_int_per_pix_per_event_pe = (
-                    amp_int_per_pix_per_event[:] / self.gain[:]
-                )
-
-            else:
-                config = Config(
-                    {
-                        self.charge_extraction_method: {
-                            "window_shift": self.window_shift,
-                            "window_width": self.window_width,
-                        }
-                    }
-                )
-                integrator = eval(self.charge_extraction_method)(
-                    self.subarray,
-                    config=config,
-                    apply_integration_correction=self.charge_integration_correction,
-                )
-                amp_int_per_pix_per_event = integrator(
-                    wfs_pedsub, 0, None, np.invert(self.__bad_pixels_mask)
-                )
-                amp_int_per_pix_per_event.image[:,self.__bad_pixels_number] = False
-                self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
-                amp_int_per_pix_per_event_pe = (
-                    amp_int_per_pix_per_event.image[:] / self.gain[:]
-                )
-
-            mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
-
-            # efficiency coefficients
-            eff = np.divide(
-                amp_int_per_pix_per_event_pe,
-                np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
-            )
-            eff_coef = np.ma.array(eff, mask=eff==0)
-            self.__eff_coef.append(eff)
             
-            # flat-field coefficients
-            #FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
-            #self.__FF_coef.append(FF_coef)
+            # check location of the peak
+            tom = np.argmax(wfs[0], axis=-1)
+            tom_mean = np.mean(tom)
+            
+            if (tom_mean - 2*self.window_shift > self.window_pedestal):
+                
+                # subtract pedestal using the mean of the n first samples
+                wfs_pedsub = self.subtract_pedestal(wfs, self.window_pedestal)
+
+                if self.charge_extraction_method is None:
+                    # get the masked array for integration window
+                    t_peak = np.argmax(wfs_pedsub, axis=-1)
+                    masked_wfs = self.make_masked_array(
+                        t_peak, self.window_shift, self.window_width
+                    )
+                    # mask bad pixels
+                    masked_wfs[:, self.__bad_pixels_number, :] = False
+                    # get integrated amplitude for each pixel per event
+                    amp_int_per_pix_per_event = np.sum(
+                        wfs_pedsub, axis=-1, where=masked_wfs
+                    )
+                    self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
+                    amp_int_per_pix_per_event_pe = (
+                        amp_int_per_pix_per_event[:] / self.gain[:]
+                    )
+
+                else:
+                    config = Config(
+                        {
+                            self.charge_extraction_method: {
+                                "window_shift": self.window_shift,
+                                "window_width": self.window_width,
+                            }
+                        }
+                    )
+                    integrator = eval(self.charge_extraction_method)(
+                        self.subarray,
+                        config=config,
+                        apply_integration_correction=self.charge_integration_correction,
+                    )
+                    amp_int_per_pix_per_event = integrator(
+                        wfs_pedsub, 0, None, np.invert(self.__bad_pixels_mask)
+                    )
+                    amp_int_per_pix_per_event.image[:,self.__bad_pixels_number] = False
+                    self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
+                    amp_int_per_pix_per_event_pe = (
+                        amp_int_per_pix_per_event.image[:] / self.gain[:]
+                    )
+
+                mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
+
+                # efficiency coefficients
+                eff = np.divide(
+                    amp_int_per_pix_per_event_pe,
+                    np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
+                )
+                eff_coef = np.ma.array(eff, mask=eff==0)
+                self.__eff_coef.append(eff)
+                
+                # flat-field coefficients
+                #FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
+                #self.__FF_coef.append(FF_coef)
 
     @staticmethod
     def subtract_pedestal(wfs, window=20):
