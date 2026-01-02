@@ -55,6 +55,7 @@ log.setLevel(args.log.upper())
 
 os.environ["NECTARCAMDATA"] = args.path
 
+
 def get_gain(output_from_FlatFieldComponent):
     """
     Calculate the gain using the ratio of the variance and the mean amplitude per pixel
@@ -138,20 +139,22 @@ def get_bad_pixels(output_from_FlatFieldComponent):
                 bad_pix.append(pix_id[p])
 
             # pixels with unstable flat-field coefficient
-            eff_coef = FlatFieldOutput.eff_coef[:,G,p]
+            eff_coef = FlatFieldOutput.eff_coef[:, G, p]
             FF_coef = np.ma.array(1.0 / eff_coef, mask=eff_coef == 0)
 
-            #FF_coef = output_from_FlatFieldComponent.FF_coef[:, G, p]
+            # FF_coef = output_from_FlatFieldComponent.FF_coef[:, G, p]
             mean_FF_per_pix = np.mean(FF_coef, axis=0)
             std_FF_per_pix = np.std(FF_coef, axis=0)
 
             for e in range(0, round(n_step)):
                 x_block = np.linspace(e * step, (e + 1) * step, step)
                 FF_coef_mean_per_block = np.mean(
-                    FF_coef[e*step:(e+1)*step], axis=0)
-                
+                    FF_coef[e * step : (e + 1) * step], axis=0
+                )
+
                 FF_coef_std_per_block = np.std(
-                    FF_coef[e*step:(e+1)*step], axis=0)
+                    FF_coef[e * step : (e + 1) * step], axis=0
+                )
 
                 if (
                     FF_coef_mean_per_block < mean_FF_per_pix - FF_coef_std_per_block
@@ -159,15 +162,23 @@ def get_bad_pixels(output_from_FlatFieldComponent):
                     bad_pix.append(pix_id[p])
 
             ## pixel with significant deviation to the "pull distribution"
-            charge_per_pix_per_event = output_from_FlatFieldComponent.amp_int_per_pix_per_event[:,G,p]/58
-            mean_charge_cam_per_event = np.mean(output_from_FlatFieldComponent.amp_int_per_pix_per_event[:,G,:], axis=-1)/58
+            charge_per_pix_per_event = (
+                output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, p] / 58
+            )
+            mean_charge_cam_per_event = (
+                np.mean(
+                    output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, :],
+                    axis=-1,
+                )
+                / 58
+            )
 
-            err_eff = np.sqrt(charge_per_pix_per_event)/mean_charge_cam_per_event
-            dev_from_mean_over_std = (FF_coef - mean_FF_per_pix)/err_eff
+            err_eff = np.sqrt(charge_per_pix_per_event) / mean_charge_cam_per_event
+            dev_from_mean_over_std = (FF_coef - mean_FF_per_pix) / err_eff
 
-            if np.std(dev_from_mean_over_std) > 3: 
+            if np.std(dev_from_mean_over_std) > 3:
                 bad_pix.append(pix_id[p])
-                
+
     all_bad_pix = list(set(bad_pix))
     all_bad_pix.sort()
 

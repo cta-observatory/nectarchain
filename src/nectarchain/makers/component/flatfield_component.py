@@ -101,12 +101,14 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__bad_pixels = []
         self.__bad_pixels_number = []
         self.__bad_pixels_mask = []
-        
+
         # mask bad pixels
         self.__bad_pixels = np.array(self.bad_pix)
         self.__bad_pixels_mask = self.make_badpix_mask(self.pixels_id, self.bad_pix)
-        self.__bad_pixels_number = np.argwhere(self.__bad_pixels_mask[0]==True).flatten()
-        #print(np.argwhere(np.invert(self.__bad_pixels_mask)[0]==False).flatten())    
+        self.__bad_pixels_number = np.argwhere(
+            self.__bad_pixels_mask[0] == True
+        ).flatten()
+        # print(np.argwhere(np.invert(self.__bad_pixels_mask)[0]==False).flatten())
 
         log.info(f"Charge extraction method : {self.charge_extraction_method}")
         log.info(
@@ -125,16 +127,15 @@ class FlatFieldComponent(NectarCAMComponent):
             self.__ucts_timestamp.append(
                 event.nectarcam.tel[self.tel_id].evt.ucts_timestamp
             )
-            
+
             # get the waveform
             wfs = event.r0.tel[self.tel_id].waveform
-            
+
             # check location of the peak
             tom = np.argmax(wfs[0], axis=-1)
             tom_mean = np.mean(tom)
-            
-            if (tom_mean - 2*self.window_shift > self.window_pedestal):
-                
+
+            if tom_mean - 2 * self.window_shift > self.window_pedestal:
                 # subtract pedestal using the mean of the n first samples
                 wfs_pedsub = self.subtract_pedestal(wfs, self.window_pedestal)
 
@@ -172,25 +173,29 @@ class FlatFieldComponent(NectarCAMComponent):
                     amp_int_per_pix_per_event = integrator(
                         wfs_pedsub, 0, None, np.invert(self.__bad_pixels_mask)
                     )
-                    amp_int_per_pix_per_event.image[:,self.__bad_pixels_number] = False
-                    self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
+                    amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = False
+                    self.__amp_int_per_pix_per_event.append(
+                        amp_int_per_pix_per_event.image
+                    )
                     amp_int_per_pix_per_event_pe = (
                         amp_int_per_pix_per_event.image[:] / self.gain[:]
                     )
 
-                mean_amp_cam_per_event_pe = np.mean(amp_int_per_pix_per_event_pe, axis=-1)
+                mean_amp_cam_per_event_pe = np.mean(
+                    amp_int_per_pix_per_event_pe, axis=-1
+                )
 
                 # efficiency coefficients
                 eff = np.divide(
                     amp_int_per_pix_per_event_pe,
                     np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
                 )
-                eff_coef = np.ma.array(eff, mask=eff==0)
-                self.__eff_coef.append(eff)
-                
+                eff_coef = np.ma.array(eff, mask=eff == 0)
+                self.__eff_coef.append(eff_coef)
+
                 # flat-field coefficients
-                #FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
-                #self.__FF_coef.append(FF_coef)
+                # FF_coef = np.ma.array(1.0 / eff, mask=eff == 0)
+                # self.__FF_coef.append(FF_coef)
 
     @staticmethod
     def subtract_pedestal(wfs, window=20):
@@ -256,9 +261,9 @@ class FlatFieldComponent(NectarCAMComponent):
             shape=(constants.N_GAINS, constants.N_PIXELS), dtype=bool
         )
 
-        for i in range(0,len(pixels_id)):
+        for i in range(0, len(pixels_id)):
             if pixels_id[i] in bad_pixel_list:
-                badpix_mask[:,i]=1
+                badpix_mask[:, i] = 1
 
         return badpix_mask
 
@@ -279,7 +284,7 @@ class FlatFieldComponent(NectarCAMComponent):
             amp_int_per_pix_per_event=FlatFieldContainer.fields[
                 "amp_int_per_pix_per_event"
             ].dtype.type(self.__amp_int_per_pix_per_event),
-            #FF_coef=FlatFieldContainer.fields["FF_coef"].dtype.type(self.__FF_coef),
+            # FF_coef=FlatFieldContainer.fields["FF_coef"].dtype.type(self.__FF_coef),
             eff_coef=FlatFieldContainer.fields["eff_coef"].dtype.type(self.__eff_coef),
             bad_pixels=FlatFieldContainer.fields["bad_pixels"].dtype.type(
                 self.__bad_pixels
