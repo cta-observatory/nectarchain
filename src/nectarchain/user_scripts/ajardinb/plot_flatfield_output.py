@@ -73,17 +73,20 @@ for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
     plt.hist(
         FF_pix,
         20,
-        label="pixel %s \n%s events \n$\mu$ = %0.3f, \nstd = %0.3f" % (pix, len(FF_pix), mean_FF_pix, std_FF_pix),
+        label="pixel %s \n%s events \n$\mu$ = %0.3f, \nstd = %0.3f"
+        % (pix, len(FF_pix), mean_FF_pix, std_FF_pix),
     )
     plt.axvline(mean_FF_pix, ls="--", color="white")
     plt.yscale("log")
-    plt.xlabel("FF coefficients for all events - pixel %s (%s)" % (pix, gain_channels[G]))
+    plt.xlabel(
+        "FF coefficients for all events - pixel %s (%s)" % (pix, gain_channels[G])
+    )
     plt.legend()
     plt.subplots_adjust(left=0.15, right=0.95, top=0.92, bottom=0.12)
     plt.savefig(
-        os.environ["NECTARCAMDATA"] + "/run{}_{}_FF_pix{}_hist.png".format(run_number, gain_channels[G], pix)
+        os.environ["NECTARCAMDATA"]
+        + "/run{}_{}_FF_pix{}_hist.png".format(run_number, gain_channels[G], pix)
     )
-
 
     # Histogramm of the mean FF coef for all pixels of the camera, per gain chanel
     eff_pix = eff[:, G, :]
@@ -93,24 +96,35 @@ for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
     std_FF_cam = np.std(mean_FF_pix, axis=0)
 
     fig = plt.figure(figsize=(5, 4))
-    plt.hist(mean_FF_pix, 20, label="%s valid pixels \n%s events \n$\mu$=%0.3f, \nstd=%0.3f"
-             % ((len(pixels_id)-len(bad_pix)), len(eff), mean_FF_cam, std_FF_cam))
+    plt.hist(
+        mean_FF_pix,
+        20,
+        label="%s valid pixels \n%s events \n$\mu$=%0.3f, \nstd=%0.3f"
+        % ((len(pixels_id) - len(bad_pix)), len(eff), mean_FF_cam, std_FF_cam),
+    )
     plt.axvline(mean_FF_cam, ls="--", color="white")
     plt.yscale("log")
     plt.xlabel("mean FF coefficients for all pixels (%s)" % gain_channels[G])
     plt.legend()
     plt.subplots_adjust(left=0.15, right=0.95, top=0.92, bottom=0.12)
-    plt.savefig(os.environ["NECTARCAMDATA"] + "/run{}_{}_FFcam_hist.png".format(run_number, gain_channels[G]))
-
+    plt.savefig(
+        os.environ["NECTARCAMDATA"]
+        + "/run{}_{}_FFcam_hist.png".format(run_number, gain_channels[G])
+    )
 
     # Camera visualisation
     fig = plt.figure(figsize=(5, 4))
     camgeom = CameraGeometry.from_name("NectarCam-003").transform_to(
         EngineeringCameraFrame()
     )
-    disp = CameraDisplay(camgeom, title="Mean FF coefficients (%s)" % gain_channels[G], show_frame=False)
+    disp = CameraDisplay(
+        camgeom, title="Mean FF coefficients (%s)" % gain_channels[G], show_frame=False
+    )
     disp.image = mean_FF_pix
     disp.set_limits_minmax(0.5, 1.5)
     disp.add_colorbar()
     plt.subplots_adjust(left=0.15, right=0.95, top=0.92, bottom=0.12)
-    plt.savefig(os.environ["NECTARCAMDATA"] + "/run{}_{}_FFcam.png".format(run_number, gain_channels[G]))
+    plt.savefig(
+        os.environ["NECTARCAMDATA"]
+        + "/run{}_{}_FFcam.png".format(run_number, gain_channels[G])
+    )
