@@ -36,13 +36,6 @@ parser.add_argument(
     help="Flatfield run number",
     type=int,
 )
-parser.add_argument(
-    "-p",
-    "--path",
-    default=".",
-    help="path to runs folder (NECTARCAMDATA)",
-    type=str,
-)
 parser.add_argument("--log", default="info", help="output verbosity", type=str)
 
 args = parser.parse_args()
@@ -52,8 +45,6 @@ if args.run is None:
     sys.exit(1)
 
 log.setLevel(args.log.upper())
-
-os.environ["NECTARCAMDATA"] = args.path
 
 
 def get_gain(output_from_FlatFieldComponent):
