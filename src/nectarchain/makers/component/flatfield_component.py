@@ -42,7 +42,7 @@ class FlatFieldComponent(NectarCAMComponent):
         or "GlobalPeakWindowSum" ; default value = None)
 
     charge_integration_correction: bool
-        application of a correction from the charge extractor (defaut value = False)
+        application of a correction from the charge extractor (default value = False)
 
     """
 
@@ -59,7 +59,7 @@ class FlatFieldComponent(NectarCAMComponent):
     window_pedestal = Integer(
         default_value=20,
         help="the duration of the pedestal estimation window \
-             since the begining of the waveform in ns",
+             since the beginning of the waveform in ns",
     ).tag(config=True)
 
     gain = List(
@@ -171,7 +171,7 @@ class FlatFieldComponent(NectarCAMComponent):
                         apply_integration_correction=self.charge_integration_correction,
                     )
                     amp_int_per_pix_per_event = integrator(
-                        wfs_pedsub, 0, None, np.invert(self.__bad_pixels_mask)
+                        wfs_pedsub, self.tel_id, None, np.invert(self.__bad_pixels_mask)
                     )
                     amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = False
                     self.__amp_int_per_pix_per_event.append(
@@ -248,13 +248,13 @@ class FlatFieldComponent(NectarCAMComponent):
     @staticmethod
     def make_badpix_mask(pixels_id, bad_pixel_list):
         """
-        Make a boulean mask with the list of bad pixels (used by GlobalPeakWindowSum)
+        Make a boolean mask with the list of bad pixels (used by GlobalPeakWindowSum)
 
         Args:
             bad_pixel_list: list of bad pixels
 
         Returns:
-            badpix_mask: boulean mask
+            badpix_mask: boolean mask
         """
 
         badpix_mask = np.zeros(
