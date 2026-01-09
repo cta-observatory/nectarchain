@@ -509,7 +509,7 @@ def pois(x, A, R):
 
 
 def plot_deadtime_and_expo_fit(
-    total_delta_t_for_busy_time, deadtime_us, run, output_plot=None
+    total_delta_t_for_busy_time, deadtime_us, run, verbose=False, output_plot=None
 ):
     """Computes the deadtime and exponential fit parameters for a given dataset.
 
@@ -521,6 +521,8 @@ def plot_deadtime_and_expo_fit(
         The deadtime of the dataset in microseconds.
     run : int
         The run number.
+    verbose : bool
+        Whether to print the fit results or not.
     output_plot : str, optional
         The path to save the output plot.
 
@@ -540,8 +542,14 @@ def plot_deadtime_and_expo_fit(
         - tot_nr_events_histo (int): The total number of events in the histogram.
     """
     # function by Federica
+    max_x_values_for_plot = np.array([500, 1000, 1500, 2000, 2500])
+    max_x_value_for_plot = max_x_values_for_plot[
+        np.argmin(np.abs(max(deadtime_us) - max_x_values_for_plot))
+    ]
 
-    entries, bin_edges = np.histogram(deadtime_us, bins=100, range=(0, 505))
+    entries, bin_edges = np.histogram(
+        deadtime_us, bins=100, range=(0, max_x_value_for_plot + 20)
+    )
 
     deadtime = min(deadtime_us[~np.isnan(deadtime_us)])
 
@@ -556,7 +564,7 @@ def plot_deadtime_and_expo_fit(
     )
 
     # the bins should be of integer width, because poisson is an integer distribution
-    x_steps_for_bins = np.arange(0, 520, step=5)
+    x_steps_for_bins = np.arange(0, max_x_value_for_plot + 20, step=5)
     x_steps_for_bins = x_steps_for_bins[1:] - 5
 
     entries, bin_edges = np.histogram(
@@ -571,9 +579,10 @@ def plot_deadtime_and_expo_fit(
     model = Model(pois)
     params = model.make_params(A=2e3, R=-0.001)
     result = model.fit(entries, params, x=bin_middles)
-    # print('**** FIT RESULTS RUN {} ****'.format(run))
-    # print(result.fit_report())
-    # print('chisqr = {}, redchi = {}'.format(result.chisqr, result.redchi))
+    if verbose:
+        print("**** FIT RESULTS RUN {} ****".format(run))
+        print(result.fit_report())
+        print("chisqr = {}, redchi = {}".format(result.chisqr, result.redchi))
 
     parameter_A_new = result.params["A"].value
     parameter_R_new = -1 * result.params["R"].value
@@ -581,14 +590,14 @@ def plot_deadtime_and_expo_fit(
     parameter_R_err_new = result.params["R"].stderr
 
     if output_plot:
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
+        _, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
         plt.hist(
             deadtime_us,
             bins=x_steps_for_bins,
-            alpha=0.8,
+            # alpha=0.8,
             histtype="step",
             density=0,
-            lw=2,
+            lw=3,
             label="Run {}".format(run),
         )
 
@@ -600,33 +609,42 @@ def plot_deadtime_and_expo_fit(
             linestyle="-",
             lw=3,
             color="C3",
-            alpha=0.85,
+            # alpha=0.85,
             label=r"Fit result: %2.3f $\exp^{-{x}/({%2.0f}~\mu\mathrm{s})}$"
             % (result.params["A"].value, abs(1 / result.params["R"].value)),
         )
+
+        observed_events = entries
+        expected_events = pois(
+            x_steps_for_bins, result.params["A"].value, result.params["R"].value
+        )[1:]
+        chi_sqr = np.sum((observed_events - expected_events) ** 2 / expected_events)
+        dof = result.summary()["nfree"]
 
         R = ((-1 * result.params["R"].value) * (1 / u.us)).to(u.kHz).value
 
         R_stderr = ((result.params["R"].stderr) * (1 / u.us)).to(u.kHz).value
 
         ax.text(
-            300,
-            entries[1] / 1,
-            r"$y = A \cdot \exp({-R \cdot x})$"
+            max_x_value_for_plot - 50,
+            np.max(entries) - 10,
+            f"Run {run}"
+            + "\n"
+            + r"$y = A \cdot \exp({-R \cdot x})$"
             + "\n"
             + r"$A=%2.2f \pm %2.2f$"
             % (result.params["A"].value, result.params["A"].stderr)
             + "\n"
             + r"$R=(%2.2f \pm %2.2f)$ kHz" % (R, R_stderr)
             + "\n"
-            + r"$\chi^2$/dof = %2.0f/%2.0f" % (result.chisqr, result.summary()["nfree"])
+            + r"$\chi^2$/dof = %2.0f/%2.0f" % (chi_sqr, dof)
             + "\n"
             + r"$\delta_{\mathrm{deadtime}} = %2.3f \, \mu$s" % (deadtime),
             backgroundcolor="white",
             bbox=dict(
                 facecolor="white", edgecolor="C3", lw=2, boxstyle="round,pad=0.3"
             ),
-            ha="left",
+            ha="right",
             va="top",
             fontsize=17,
             color="k",
@@ -637,7 +655,7 @@ def plot_deadtime_and_expo_fit(
         ax.tick_params(which="major", direction="in", length=7, width=2)
         ax.tick_params(which="minor", direction="in", length=4, width=1)
 
-        ax.set_xlim(-20, 500)
+        ax.set_xlim(-15, max_x_value_for_plot)
 
         plt.xlabel(r"$\Delta$T [$\mu$s]", fontsize=15)
         plt.ylabel("Entries", fontsize=15)
