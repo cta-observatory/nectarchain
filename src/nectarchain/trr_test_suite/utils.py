@@ -225,7 +225,7 @@ intensity_to_charge = np.array(
 
 source_ids_deadtime = (
     [0 for i in range(3332, 3342)]
-    + [1 for i in range(3342, 3350)]
+    + [1 for i in range(3342, 3351)]
     + [2 for i in range(3552, 3562)]
 )
 
@@ -585,9 +585,9 @@ def plot_deadtime_and_expo_fit(
         print("chisqr = {}, redchi = {}".format(result.chisqr, result.redchi))
 
     parameter_A_new = result.params["A"].value
-    parameter_R_new = -1 * result.params["R"].value
+    parameter_R_new = -1 * result.params["R"].value * (1 / u.us).to(u.kHz).value
     parameter_A_err_new = result.params["A"].stderr
-    parameter_R_err_new = result.params["R"].stderr
+    parameter_R_err_new = result.params["R"].stderr * (1 / u.us).to(u.kHz).value
 
     if output_plot:
         _, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
