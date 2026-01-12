@@ -22,6 +22,39 @@ geom = geom.transform_to(EngineeringCameraFrame())
 
 
 def update(attr, old, new):
+    """Callback that refreshes the dashboard whenever the selected run changes.
+
+    Reset plots with helper functions for update
+    and new data from `get_rundata`, and update the page_layout
+
+    Parameters
+    ----------
+    attr : str
+        Name of the Bokeh property that triggered the callback.
+        For this widget it is always ``"value"``.
+    old : int
+        The previous value of `run_select.value` before the user made a new
+        selection. Useful for diff-checking or logging.
+    new : int
+        The newly selected value (the run identifier).
+        This is the value needed to load fresh data.
+
+    Returns
+    -------
+    None
+        The function updates the global `page_layout` in place by replacing
+        its second child with a new `Tabs` container built from the refreshed
+        data sources.
+
+    Notes
+    -----
+    * `new` and `run_select.value` are equivalent inside the callback,
+      so you can use either.  Using `new` avoids an extra attribute lookup.
+    * The callback must accept exactly three positional arguments because
+      Bokeh always supplies `attr`, `old` and `new` when invoking
+      `on_change` handlers.
+    """
+
     runid = run_select.value
     source = get_rundata(db, runid)
 
