@@ -21,22 +21,38 @@ geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 
-# TODO: test what attr, old and new actually are and update docstring
 def update(attr, old, new):
-    """Update page_layout
+    """Callback that refreshes the dashboard whenever the selected run changes.
 
-    Reset timeline and camera display plots with
-    `update_camera_displays()` and `update_timelines()`
-    and new data from `get_rundata()`, and update the page_layout
+    Reset plots with helper functions for update
+    and new data from `get_rundata`, and update the page_layout
 
     Parameters
     ----------
-    attr : _type_
-        _description_
-    old : _type_
-        _description_
-    new : _type_
-        _description_
+    attr : str
+        Name of the Bokeh property that triggered the callback.
+        For this widget it is always ``"value"``.
+    old : int
+        The previous value of `run_select.value` before the user made a new
+        selection. Useful for diff-checking or logging.
+    new : int
+        The newly selected value (the run identifier).
+        This is the value needed to load fresh data.
+
+    Returns
+    -------
+    None
+        The function updates the global `page_layout` in place by replacing
+        its second child with a new `Tabs` container built from the refreshed
+        data sources.
+
+    Notes
+    -----
+    * `new` and `run_select.value` are equivalent inside the callback,
+      so you can use either.  Using `new` avoids an extra attribute lookup.
+    * The callback must accept exactly three positional arguments because
+      Bokeh always supplies `attr`, `old` and `new` when invoking
+      `on_change` handlers.
     """
 
     runid = run_select.value
