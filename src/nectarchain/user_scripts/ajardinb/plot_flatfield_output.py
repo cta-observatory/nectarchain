@@ -28,13 +28,6 @@ parser.add_argument(
     help="Flatfield run number",
     type=int,
 )
-parser.add_argument(
-    "-p",
-    "--path",
-    default="./FlatFieldOutput",
-    help="path to hd5 files",
-    type=str,
-)
 
 args = parser.parse_args()
 
@@ -44,9 +37,10 @@ if args.run is None:
 
 # Define the global environment variable NECTARCAMDATA (folder where are the hd5 files)
 run_number = args.run
-os.environ["NECTARCAMDATA"] = args.path
 
-outputfile = os.environ["NECTARCAMDATA"] + "/2FF_{}.h5".format(run_number)
+outputfile = os.environ["NECTARCAMDATA"] + "/FlatFieldOutput/2FF_{}.h5".format(
+    run_number
+)
 
 h5file = tables.open_file(outputfile)
 
