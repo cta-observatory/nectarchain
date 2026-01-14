@@ -107,7 +107,6 @@ EOF
 EOF
     ln -s /etc/grid-security/certificates ${CONDA_PREFIX}/etc/grid-security/.
 
-    mamba clean --quiet -y --all
     echo "## Activate nectarchain environment" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.singularity_bash
     echo "source /opt/conda/etc/profile.d/mamba.sh" >> /.singularity_bash
