@@ -226,13 +226,13 @@ intensity_to_charge = np.array(
 source_ids_deadtime = (
     [0 for i in range(3332, 3342)]
     + [1 for i in range(3342, 3351)]
-    + [2 for i in range(3552, 3562)]
+    + [2 for i in range(3552, 3563)]
 )
 
 deadtime_labels = {
-    0: {"source": "FFCLS + random generator", "color": "red"},
-    1: {"source": "NSB source", "color": "blue"},
-    2: {"source": "Laser + random generator", "color": "purple"},
+    0: {"source": "FFCLS", "color": "red"},
+    1: {"source": "NSB", "color": "blue"},
+    2: {"source": "Laser", "color": "purple"},
 }
 
 
@@ -508,10 +508,11 @@ def pois(x, A, R):
     return A * np.exp(x * R)
 
 
+# function by Federica
 def plot_deadtime_and_expo_fit(
     total_delta_t_for_busy_time, deadtime_us, run, verbose=False, output_plot=None
 ):
-    """Computes the deadtime and exponential fit parameters for a given dataset.
+    """Compute the deadtime and exponential fit parameters for a given dataset.
 
     Parameters
     ----------
@@ -541,7 +542,8 @@ def plot_deadtime_and_expo_fit(
         - first_bin_length (float): The length of the first bin.
         - tot_nr_events_histo (int): The total number of events in the histogram.
     """
-    # function by Federica
+    # Select max value for the x axis depending on what is the maximum
+    # measured deadtime, to not cut the distribution
     max_x_values_for_plot = np.array([500, 1000, 1500, 2000, 2500])
     max_x_value_for_plot = max_x_values_for_plot[
         np.argmin(np.abs(max(deadtime_us) - max_x_values_for_plot))
@@ -551,6 +553,8 @@ def plot_deadtime_and_expo_fit(
         deadtime_us, bins=100, range=(0, max_x_value_for_plot + 20)
     )
 
+    # Deadtime defined as the minimum value
+    # from the measured deltaT on the events timestamps
     deadtime = min(deadtime_us[~np.isnan(deadtime_us)])
 
     first_nonempty_bin = np.where(entries > 0)[0][0]
@@ -570,12 +574,15 @@ def plot_deadtime_and_expo_fit(
     entries, bin_edges = np.histogram(
         deadtime_us, bins=x_steps_for_bins, range=[0, total_delta_t_for_busy_time]
     )
-    bin_middles = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+    bin_middles = 0.5 * (bin_edges[1:] + bin_edges[:-1]) - deadtime
+    # bin_middles is used to fit the exponential function,
+    # from https://arxiv.org/abs/2311.11631,
+    # Eq. 2: f(deltaT, deadtime, R) = A x exp(-R(deltaT - deadtime))
 
     first_bin_length = bin_edges[1] - bin_edges[0]
     tot_nr_events_histo = np.sum(entries)
 
-    # second fit
+    # fit with the exponential function
     model = Model(pois)
     params = model.make_params(A=2e3, R=-0.001)
     result = model.fit(entries, params, x=bin_middles)
@@ -585,61 +592,56 @@ def plot_deadtime_and_expo_fit(
         print("chisqr = {}, redchi = {}".format(result.chisqr, result.redchi))
 
     parameter_A_new = result.params["A"].value
-    parameter_R_new = -1 * result.params["R"].value * (1 / u.us).to(u.kHz).value
+    parameter_R_new = result.params["R"].value
     parameter_A_err_new = result.params["A"].stderr
-    parameter_R_err_new = result.params["R"].stderr * (1 / u.us).to(u.kHz).value
+    parameter_R_err_new = result.params["R"].stderr
 
     if output_plot:
         _, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
+        # plot deltaT distribution
         plt.hist(
             deadtime_us,
             bins=x_steps_for_bins,
-            # alpha=0.8,
             histtype="step",
             density=0,
             lw=3,
-            label="Run {}".format(run),
         )
 
-        # plot poisson-deviation with fitted parameter
+        # plot exponential function with fitted parameter
         plt.plot(
             x_steps_for_bins,
-            pois(x_steps_for_bins, result.params["A"].value, result.params["R"].value),
+            pois(x_steps_for_bins, parameter_A_new, parameter_R_new),
             marker="",
             linestyle="-",
             lw=3,
             color="C3",
-            # alpha=0.85,
-            label=r"Fit result: %2.3f $\exp^{-{x}/({%2.0f}~\mu\mathrm{s})}$"
-            % (result.params["A"].value, abs(1 / result.params["R"].value)),
         )
 
+        # Chi2 computation
         observed_events = entries
-        expected_events = pois(
-            x_steps_for_bins, result.params["A"].value, result.params["R"].value
-        )[1:]
+        expected_events = pois(x_steps_for_bins, parameter_A_new, parameter_R_new)[1:]
         chi_sqr = np.sum((observed_events - expected_events) ** 2 / expected_events)
         dof = result.summary()["nfree"]
 
-        R = ((-1 * result.params["R"].value) * (1 / u.us)).to(u.kHz).value
-
-        R_stderr = ((result.params["R"].stderr) * (1 / u.us)).to(u.kHz).value
+        rate = ((-1 * parameter_R_new) * (1 / u.us)).to(u.kHz).value  # rate in kHz
+        rate_stderr = ((parameter_R_err_new) * (1 / u.us)).to(u.kHz).value
 
         ax.text(
             max_x_value_for_plot - 50,
             np.max(entries) - 10,
             f"Run {run}"
             + "\n"
-            + r"$y = A \cdot \exp({-R \cdot x})$"
+            + r"$f(\Delta t) = A \cdot$"
+            + r"$\exp({-R \cdot (\delta t - \Delta_{\mathrm{min}})})$"
             + "\n"
-            + r"$A=%2.2f \pm %2.2f$"
-            % (result.params["A"].value, result.params["A"].stderr)
+            + r"$A=%2.2f \pm %2.2f$" % (parameter_A_new, parameter_A_err_new)
             + "\n"
-            + r"$R=(%2.2f \pm %2.2f)$ kHz" % (R, R_stderr)
+            + r"$R=(%2.2f \pm %2.2f)$ kHz" % (rate, rate_stderr)
             + "\n"
             + r"$\chi^2$/dof = %2.0f/%2.0f" % (chi_sqr, dof)
             + "\n"
-            + r"$\delta_{\mathrm{deadtime}} = %2.3f \, \mu$s" % (deadtime),
+            + r"$\delta_{\mathrm{min}} = (%2.3f \pm %2.3f) \, \mu$s"
+            % (deadtime, np.abs(deadtime_err) * 1e-3),
             backgroundcolor="white",
             bbox=dict(
                 facecolor="white", edgecolor="C3", lw=2, boxstyle="round,pad=0.3"
