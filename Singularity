@@ -97,13 +97,13 @@ LocalInstallation
 }
 EOF
     mkdir -p ${CONDA_PREFIX}/etc/grid-security/vomses
-    cat <<EOF > ${CONDA_PREFIX}/etc/grid-security/vomses/vo.cta.in2p3.fr
-"vo.cta.in2p3.fr" "cclcgvomsli01.in2p3.fr" "15008" "/O=GRID-FR/C=FR/O=CNRS/OU=CC-IN2P3/CN=cclcgvomsli01.in2p3.fr" "vo.cta.in2p3.fr" "24"
+    cat <<EOF > ${CONDA_PREFIX}/etc/grid-security/vomses/ctao
+"ctao" "voms-ctao.cloud.cnaf.infn.it" "15007" "/DC=org/DC=terena/DC=tcs/C=IT/L=Roma/O=Istituto Nazionale di Fisica Nucleare/CN=voms-ctao.cloud.cnaf.infn.it" "ctao" "24"
 EOF
-    mkdir -p ${CONDA_PREFIX}/etc/grid-security/vomsdir/vo.cta.in2p3.fr
-    cat <<EOF > ${CONDA_PREFIX}/etc/grid-security/vomsdir/vo.cta.in2p3.fr/cclcgvomsli01.in2p3.fr.lsc
-/O=GRID-FR/C=FR/O=CNRS/OU=CC-IN2P3/CN=cclcgvomsli01.in2p3.fr
-/C=FR/O=MENESR/OU=GRID-FR/CN=AC GRID-FR Services
+    mkdir -p ${CONDA_PREFIX}/etc/grid-security/vomsdir/ctao
+    cat <<EOF > ${CONDA_PREFIX}/etc/grid-security/vomsdir/ctao/voms-ctao.cloud.cnaf.infn.it.lsc
+/DC=org/DC=terena/DC=tcs/C=IT/L=Roma/O=Istituto Nazionale di Fisica Nucleare/CN=voms-ctao.cloud.cnaf.infn.it
+/C=GR/O=Hellenic Academic and Research Institutions CA/CN=GEANT TLS RSA 1
 EOF
     ln -s /etc/grid-security/certificates ${CONDA_PREFIX}/etc/grid-security/.
 
