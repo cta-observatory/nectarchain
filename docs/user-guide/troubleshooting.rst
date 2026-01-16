@@ -22,13 +22,13 @@ installation process (see :ref:`optional-dirac-support`), instead of:
 
 .. code-block:: console
 
-   $ mamba install -c conda-forge dirac-grid
+   $ mamba install -c conda-forge "dirac-grid=8"
 
-one may try:
+one may try to downgrade the version of the ``voms`` package, e.g.:
 
 .. code-block:: console
 
-  $ mamba install -c conda-forge dirac-grid "voms=2.1.0rc2=h7a71a8a_7"
+  $ mamba install -c conda-forge "dirac-grid=8" "voms=2.1.0rc2=h7a71a8a_7"
 
 
 Using a container

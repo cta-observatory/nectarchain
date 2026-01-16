@@ -20,6 +20,7 @@ dependencies:
   - lmfit # needed into TRR
   - h5py # needed into TRR (should be removed to use I/O methods of containers)
   - pyqt
+  - pyqtgraph
   - protozfits
   - pip:
     - zeo
@@ -27,5 +28,4 @@ dependencies:
     - persistent<6.2
     - mechanize
     - browser-cookie3
-    - pyqtgraph
     - sphinx-qt-documentation

@@ -3,7 +3,7 @@
 Getting Started For Developers
 ==============================
 
-We strongly recommend using the `mambaforge conda distribution <https://github.com/conda-forge/miniforge#mambaforge>`_.
+We strongly recommend using the `miniforge conda distribution <https://github.com/conda-forge/miniforge>`_.
 
 .. warning::
 
@@ -46,7 +46,7 @@ To enable support for DIRAC within the same environment, do the following after 
 .. code-block:: console
 
    $ mamba activate nectarchain
-   $ mamba install -c conda-forge dirac-grid
+   $ mamba install -c conda-forge "dirac-grid=8"
    $ conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses DIRACSYSCONFIG=${CONDA_PREFIX}/etc/dirac.cfg
    $ # The following is needed for the environment variables, used for DIRAC configuration, to be available:
    $ mamba deactivate
