@@ -1,6 +1,6 @@
 # nectarchain.sif - A singularity image for nectarchain
 #
-# Built from mambaforge, with special conda environment containing nectarchain
+# Built from miniforge, with special conda environment containing nectarchain
 #
 # Typically, build this image with:
 # `sudo apptainer build nectarchain.sif Singularity`
@@ -9,7 +9,7 @@
 # `apptainer shell nectarchain.sif`
 
 Bootstrap: docker
-From: condaforge/mambaforge
+From: condaforge/miniforge3
 
 %setup
     mkdir -p ${SINGULARITY_ROOTFS}/opt/cta/nectarchain
@@ -60,6 +60,8 @@ From: condaforge/mambaforge
     mamba deactivate
     mamba activate nectarchain
     pip install "CTADIRAC<3"
+
+    mamba clean --quiet -y --all
 
     # Since there is no proxy available at build time, manually configure the CTADIRAC client
     cat <<EOF > ${CONDA_PREFIX}/etc/dirac.cfg
@@ -113,9 +115,9 @@ EOF
     echo "conda activate nectarchain" >> /.singularity_bash
 
 %runscript
-    echo "This is a mambaforge container with a nectarchain environment"
+    echo "This is a miniforge container with a nectarchain environment"
     exec /bin/bash --noprofile --init-file /.singularity_bash "$@"
 
 %startscript
-    echo "This is a mambaforge container with a nectarchain environment"
+    echo "This is a miniforge container with a nectarchain environment"
     exec /bin/bash --noprofile --init-file /.singularity_bash "$@"

@@ -97,7 +97,7 @@ write_files:
       RUN /app/bin/pip install zc.zrs ZODB==5.5 --no-cache-dir
     path: /opt/docker/plone-zeo/Dockerfile
 
-# Install Docker and Mambaforge, deploy mamba environment and launch Docker compose
+# Install Docker and Miniforge, deploy mamba environment and launch Docker compose
 runcmd:
   - install -m 0755 -d /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -105,9 +105,9 @@ runcmd:
   - echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | tee /etc/apt/sources.list.d/docker.list
   - apt-get update
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  - curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"
-  - sed -i '0,/\$HOME/{s/\$HOME/\/opt/}' Mambaforge-$(uname)-$(uname -m).sh
-  - bash Mambaforge-$(uname)-$(uname -m).sh -b -p /opt/conda
+  - curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+  - sed -i '0,/\${HOME/{s/\${HOME:-\/opt}/\/opt/}' Miniforge3-$(uname)-$(uname -m).sh
+  - bash Miniforge3-$(uname)-$(uname -m).sh -b -p /opt/conda
   - cd /opt/docker/plone-zeo
   - docker build -t plone-zeo --network host .
   - docker image rm plone/plone-zeo:latest

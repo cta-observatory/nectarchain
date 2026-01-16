@@ -3,7 +3,7 @@
 Getting Started For Developers
 ==============================
 
-We strongly recommend using the `mambaforge conda distribution <https://github.com/conda-forge/miniforge#mambaforge>`_.
+We strongly recommend using the `miniforge conda distribution <https://github.com/conda-forge/miniforge>`_.
 
 .. warning::
 
