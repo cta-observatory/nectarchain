@@ -121,7 +121,7 @@ runcmd:
   - mamba env create --name nectarchain --file environment.yml
   - mamba activate nectarchain
   - pip install -e .
-  - mamba install -c conda-forge dirac-grid
+  - mamba install -c conda-forge "dirac-grid=8"
   - pip install "CTADIRAC<3"
   - conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses DIRACSYSCONFIG=${CONDA_PREFIX}/etc/dirac.cfg
   - mamba deactivate

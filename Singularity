@@ -55,7 +55,7 @@ From: condaforge/miniforge3
     pip install -e .
 
     # Optionally install and configure DIRAC:
-    mamba install --quiet -y -c conda-forge dirac-grid
+    mamba install --quiet -y -c conda-forge "dirac-grid=8"
     conda env config vars set X509_CERT_DIR=${CONDA_PREFIX}/etc/grid-security/certificates X509_VOMS_DIR=${CONDA_PREFIX}/etc/grid-security/vomsdir X509_VOMSES=${CONDA_PREFIX}/etc/grid-security/vomses
     mamba deactivate
     mamba activate nectarchain
