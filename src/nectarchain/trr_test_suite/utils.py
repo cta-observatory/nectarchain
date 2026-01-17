@@ -529,18 +529,28 @@ def plot_deadtime_and_expo_fit(
 
     Returns
     -------
-    tuple: A tuple containing the following values:
-        - deadtime (float): The deadtime of the dataset.
-        - deadtime_bin (float): The bin edge corresponding to the deadtime.
-        - deadtime_err (float): The error on the deadtime.
-        - deadtime_bin_length (float): The length of the deadtime bin.
-        - total_delta_t_for_busy_time (float): The total time of the dataset.
-        - parameter_A_new (float): The amplitude parameter of the exponential fit.
-        - parameter_R_new (float): The rate parameter of the exponential fit.
-        - parameter_A_err_new (float): The error on the amplitude parameter.
-        - parameter_R_err_new (float): The error on the rate parameter.
-        - first_bin_length (float): The length of the first bin.
-        - tot_nr_events_histo (int): The total number of events in the histogram.
+    deadtime : float
+        The deadtime of the dataset.
+    deadtime_bin : float
+        The bin edge corresponding to the deadtime.
+    deadtime_err : float
+        The error on the deadtime.
+    deadtime_bin_length : float
+        The length of the deadtime bin.
+    total_delta_t_for_busy_time : float
+        The total time of the dataset.
+    parameter_A_new : float
+        The amplitude parameter of the exponential fit.
+    parameter_R_new : float
+        The rate parameter of the exponential fit.
+    parameter_A_err_new : float
+        The error on the amplitude parameter.
+    parameter_R_err_new : float
+        The error on the rate parameter.
+    first_bin_length : float
+        The length of the first bin.
+    tot_nr_events_histo : int
+        The total number of events in the histogram.
     """
     # Select max value for the x axis depending on what is the maximum
     # measured deadtime, to not cut the distribution
