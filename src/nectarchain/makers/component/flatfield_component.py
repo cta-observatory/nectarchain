@@ -295,8 +295,8 @@ class FlatFieldComponent(NectarCAMComponent):
                 amp_int_per_pix_per_event_pe,
                 np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
             )
-            # eff_coef = np.ma.array(eff, mask=eff == 0)
-            self.__eff_coef.append(eff)
+            eff_coef = np.ma.array(eff, mask=eff == 0)
+            self.__eff_coef.append(eff_coef)
 
     def subtract_pedestal_from_container(self, wfs):
         """
