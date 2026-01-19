@@ -46,7 +46,9 @@ if args.run is None:
 run_number = args.run
 os.environ["NECTARCAMDATA"] = args.path
 
-outputfile = os.environ["NECTARCAMDATA"] + "/2FF_{}.h5".format(run_number)
+outputfile = os.environ["NECTARCAMDATA"] + "/FlatFieldOutput/2FF_{}.h5".format(
+    run_number
+)
 
 h5file = tables.open_file(outputfile)
 
