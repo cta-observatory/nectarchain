@@ -150,6 +150,7 @@ class FlatFieldComponent(NectarCAMComponent):
         log.info(f"Gain : {self.gain}")
         log.info(f"{len(self.pixels_id)} active pixels : {self.pixels_id}")
         log.info(f"{len(self.bad_pix)} bad pixels : {self.bad_pix}")
+        log.info(f"window for pedestal estimation : {self.window_pedestal} ns")
 
     def _init_pedestal_container(self):
         self.__pedestal_container = None
@@ -230,9 +231,14 @@ class FlatFieldComponent(NectarCAMComponent):
             if self.__pedestal_container is not None:
                 wfs_pedsub = self.subtract_pedestal_from_container(wfs)
             else:
-                wfs_pedsub = self.subtract_pedestal_from_first_samples(
-                    wfs, window=self.window_pedestal
-                )
+                # check location of the peak
+                tom = np.argmax(wfs[0], axis=-1)
+                tom_mean = np.mean(tom)
+
+                if tom_mean - 2 * self.window_shift > self.window_pedestal:
+                    wfs_pedsub = self.subtract_pedestal_from_first_samples(
+                        wfs, window=self.window_pedestal
+                    )
 
             if self.charge_extraction_method is None:
                 # get the masked array for integration window
