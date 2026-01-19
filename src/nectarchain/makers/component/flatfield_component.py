@@ -277,15 +277,12 @@ class FlatFieldComponent(NectarCAMComponent):
                     apply_integration_correction=self.charge_integration_correction,
                 )
                 amp_int_per_pix_per_event = integrator(
-                    wfs_pedsub, self.tel_id, None, np.invert(self.__bad_pixels_mask)
+                    wfs_pedsub, self.tel_id, None, self.__bad_pixels_mask
                 )
                 amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = False
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
-                amp_int_per_pix_per_event_pe = np.divide(
-                    amp_int_per_pix_per_event.image,
-                    self.gain,
-                    out=np.full_like(amp_int_per_pix_per_event, np.nan),
-                    where=(np.array(self.gain) > 1e-10),  # rounding errors
+                amp_int_per_pix_per_event_pe = (
+                    amp_int_per_pix_per_event.image[:] / self.gain[:]
                 )
 
             mean_amp_cam_per_event_pe = np.nanmean(
@@ -293,11 +290,11 @@ class FlatFieldComponent(NectarCAMComponent):
             )
 
             # efficiency coefficients
-            eff = np.divide(
+            eff_coef = np.divide(
                 amp_int_per_pix_per_event_pe,
                 np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
             )
-            eff_coef = np.ma.array(eff, mask=eff == 0)
+            eff_coef = np.ma.array(eff_coef, mask=np.invert(self.__bad_pixels_mask))
             self.__eff_coef.append(eff_coef)
 
     def subtract_pedestal_from_container(self, wfs):
