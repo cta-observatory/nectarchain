@@ -239,6 +239,8 @@ class FlatFieldComponent(NectarCAMComponent):
                     wfs_pedsub = self.subtract_pedestal_from_first_samples(
                         wfs, window=self.window_pedestal
                     )
+                else:
+                    return
 
             if self.charge_extraction_method is None:
                 # get the masked array for integration window
