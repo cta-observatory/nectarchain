@@ -60,7 +60,7 @@ class FlatFieldComponent(NectarCAMComponent):
         or "GlobalPeakWindowSum" ; default value = None)
 
     charge_integration_correction: bool
-        application of a correction from the charge extractor (defaut value = False)
+        application of a correction from the charge extractor (default value = False)
 
     """
 
@@ -366,13 +366,13 @@ class FlatFieldComponent(NectarCAMComponent):
     @staticmethod
     def make_badpix_mask(pixels_id, bad_pixel_list):
         """
-        Make a boulean mask with the list of bad pixels (used by GlobalPeakWindowSum)
+        Make a boolean mask with the list of bad pixels (used by GlobalPeakWindowSum)
 
         Args:
             bad_pixel_list: list of bad pixels
 
         Returns:
-            badpix_mask: boulean mask
+            badpix_mask: boolean mask
         """
 
         badpix_mask = np.zeros(
