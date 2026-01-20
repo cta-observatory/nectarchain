@@ -232,10 +232,14 @@ class FlatFieldComponent(NectarCAMComponent):
                 wfs_pedsub = self.subtract_pedestal_from_container(wfs)
             else:
                 # check location of the peak
-                tom = np.argmax(wfs[0], axis=-1)
+                toms = np.argmax(wfs, axis=-1)
+                tom = toms[0]  # np.argmax(wvfs,axis=-1)
                 tom_mean = np.mean(tom)
+                tom_std = np.std(tom, ddof=1)
 
-                if tom_mean - 2 * self.window_shift > self.window_pedestal:
+                if (tom_mean - 2 * self.window_shift > self.window_pedestal) and (
+                    tom_std < 2
+                ):
                     wfs_pedsub = self.subtract_pedestal_from_first_samples(
                         wfs, window=self.window_pedestal
                     )
@@ -254,13 +258,13 @@ class FlatFieldComponent(NectarCAMComponent):
                 amp_int_per_pix_per_event = np.sum(
                     wfs_pedsub, axis=-1, where=masked_wfs
                 )
-                self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
-                amp_int_per_pix_per_event_pe = np.divide(
-                    amp_int_per_pix_per_event,
-                    self.gain,
-                    out=np.full_like(amp_int_per_pix_per_event, np.nan),
-                    where=(np.array(self.gain) > 1e-10),  # rounding errors
+                # Safety measure:
+                amp_int_per_pix_per_event[self.__bad_pixels_mask] = 0.0
+                amp_int_per_pix_per_event = np.ma.array(
+                    amp_int_per_pix_per_event, mask=self.__bad_pixels_mask
                 )
+                self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
+                amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event / self.gain
 
             else:
                 config = Config(
@@ -282,13 +286,13 @@ class FlatFieldComponent(NectarCAMComponent):
                 amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = False
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
                 amp_int_per_pix_per_event_pe = (
-                    amp_int_per_pix_per_event.image / self.gain
+                    amp_int_per_pix_per_event.image[:] / self.gain[:]
                 )
 
             amp_int_per_pix_per_event_pe = np.ma.masked_array(
                 amp_int_per_pix_per_event_pe,
                 mask=(self.__bad_pixels_mask)
-                & (~np.isfinite(amp_int_per_pix_per_event_pe)),
+                | (~np.isfinite(amp_int_per_pix_per_event_pe)),
             )
             mean_amp_cam_per_event_pe = np.ma.mean(
                 amp_int_per_pix_per_event_pe, axis=-1
