@@ -1,0 +1,571 @@
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from ctapipe.coordinates import EngineeringCameraFrame
+from ctapipe.instrument import CameraGeometry
+from ctapipe.io import read_table
+from ctapipe.visualization import CameraDisplay
+
+# from DBHandler2 import DBInfos, to_datetime
+from scipy.stats import linregress
+
+# from collections import defaultdict
+
+
+plt.style.use("plot_style.mpltstyle")
+
+# ================================
+# INPUTS
+# ================================
+Runs = [
+    7066,
+    7123,
+    7000,
+    7191,
+    6589,
+    6718,
+    6775,
+    7022,
+    7079,
+    6956,
+    7146,
+    6545,
+    6674,
+    6731,
+]
+
+temp_map = {
+    7066: 25,
+    7123: 20,
+    7000: 14,
+    7191: 10,
+    6589: 5,
+    6718: 0,
+    6775: -5,
+    7022: 25,
+    7079: 20,
+    6956: 14,
+    7146: 10,
+    6545: 5,
+    6674: 0,
+    6731: -5,
+}
+
+SPE_runs = [7066, 7123, 7000, 7191, 6589, 6718, 6775]
+Photostat_runs = [7022, 7079, 6956, 7146, 6545, 6674, 6731]
+
+
+dirname = "/Users/hashkar/Desktop/20221108/SPEfit"
+dirname2 = "/Users/hashkar/Desktop/20221108/PhotoStat"
+outdir = "./Gain_output"
+os.makedirs(outdir, exist_ok=True)
+
+path = "/Users/hashkar/Desktop/20221108/runs"
+db_data_path = "/Users/hashkar/Desktop/20221108/runs"
+
+camera_geom = CameraGeometry.from_name("NectarCam")
+
+
+# ================================
+# BAD MODULE FILTERING
+# ================================
+def get_bad_pixels_from_modules():
+    """Get pixel IDs from bad modules"""
+    # Get pixel to module mapping
+    try:
+        from nectarchain.makers.component.core import get_pixel_to_module_mapping
+
+        pixel_to_module = get_pixel_to_module_mapping()
+        module_id = np.array(
+            [pixel_to_module.get(pix, -1) for pix in camera_geom.pix_id]
+        )
+    except ImportError:
+        # Manual mapping: each module has 7 pixels
+        n_pixels = len(camera_geom.pix_id)
+        module_id = np.array([pix // 7 for pix in range(n_pixels)])
+
+    # Bad modules list
+    bad_module_ids = [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        18,
+        30,
+        43,
+        57,
+        72,
+        88,
+        105,
+        123,
+        158,
+        175,
+        191,
+        206,
+        220,
+        233,
+        245,
+        256,
+        264,
+        263,
+        262,
+        261,
+        260,
+        259,
+        258,
+        257,
+        246,
+        234,
+        221,
+        207,
+        192,
+        58,
+        44,
+        31,
+        19,
+        8,
+    ]
+
+    # Get all pixels belonging to bad modules
+    bad_pixels = set()
+    for mod in bad_module_ids:
+        pixel_mask = module_id == mod
+        pixel_ids = camera_geom.pix_id[pixel_mask]
+        bad_pixels.update(pixel_ids)
+
+    print(f"Total pixels from bad modules: {len(bad_pixels)}")
+    return bad_pixels
+
+
+def get_bad_hv_pixels_db(
+    run, path, db_data_path, hv_tolerance=4.0, telid=0, verbose=False
+):
+    """
+    Identify pixels for which |measured HV - target HV| > hv_tolerance.
+
+    Parameters
+    ----------
+    run : int
+        Run number.
+    path : str
+        Path to rawdata (needed by DBInfos.init_from_run).
+    db_data_path : str
+        Path to sqlite monitoring database.
+    hv_tolerance : float
+        Allowed HV deviation relative to target HV (default: 4 V).
+    telid : int
+        Telescope ID.
+    verbose : bool
+        Print detailed information.
+
+    Returns
+    -------
+    set
+        Pixel IDs failing the HV criterion.
+    """
+    """
+    # Load DBInfos
+    dbinfos = DBInfos.init_from_run(run, path=path, dbpath=db_data_path, verbose=False)
+    dbinfos.connect("monitoring_drawer_temperatures", "monitoring_channel_voltages")
+
+    try:
+        hv_measured = dbinfos.tel[telid].monitoring_channel_voltages.voltage.datas
+        hv_target = (
+            dbinfos.tel[telid]
+            .monitoring_channel_voltages
+            .target_voltage
+            .datas
+        )  # input here the target voltage
+
+    except Exception as e:
+        print(f"Error retrieving HV data for run {run}, telid {telid}: {e}")
+        return set()
+
+    # Mean values per pixel (ignore obviously wrong measurement frames)
+    hv_measured_mean = np.nanmean(hv_measured, where=hv_measured > 400, axis=-1)
+    hv_target_mean   = np.nanmean(hv_target,  where=hv_target > 400,   axis=-1)
+
+    # Apply Vincent's condition: |measured - target| > tolerance
+    deviation = np.abs(hv_measured_mean - hv_target_mean)
+    bad_pixels = set(np.where(deviation > hv_tolerance)[0])
+
+    if verbose:
+        print(
+            f"Run {run}: {len(bad_pixels)} bad pixels "
+            f"(|HV_meas - HV_target| > {hv_tolerance} V)"
+        )
+
+        print("Bad pixel IDs:", bad_pixels)
+    """
+    bad_pixels = {
+        50,
+        310,
+        353,
+        412,
+        638,
+        737,
+        742,
+        793,
+        827,
+        864,
+        866,
+        1354,
+        1530,
+        1702,
+        1841,
+        1842,
+    }
+    return bad_pixels
+
+
+# Get bad pixels from modules at the start
+BAD_MODULE_PIXELS = get_bad_pixels_from_modules()
+
+# ================================
+# HELPERS
+# ================================
+
+
+def load_run(run):
+    """Load per-pixel gain values from a run"""
+    spe_filename = os.path.join(
+        dirname,
+        (
+            f"FlatFieldSPENominalStdNectarCAM_run{run}_"
+            f"maxevents5000_LocalPeakWindowSum_"
+            f"window_shift_4_window_width_8.h5"
+        ),
+    )
+
+    photostat_filename = os.path.join(
+        dirname2,
+        (
+            f"PhotoStatisticNectarCAM_FFrun{run}_"
+            f"LocalPeakWindowSum_window_shift_4_window_width_8_"
+            f"Pedrun{run}_FullWaveformSum_maxevents5000.h5"
+        ),
+    )
+
+    if os.path.exists(spe_filename):
+        filename = spe_filename
+        h5path = "/data/SPEfitContainer_0"
+        label = "SPE"
+    elif os.path.exists(photostat_filename):
+        filename = photostat_filename
+        h5path = "/data/GainContainer_0"
+        label = "Photostat"
+    else:
+        print(f"⚠️ No file found for run {run}")
+        return None, None, None
+
+    data = read_table(filename, path=h5path)
+    high_gain_lw = [x[0] for x in data["high_gain"][0]]
+    pixels_id = data["pixels_id"][0]
+    print(f"Loaded run {run} ({label}): {len(pixels_id)} pixels")
+
+    return pixels_id, high_gain_lw, label
+
+
+def detect_bad_pixels_per_run(pixels_id, gains, nsigma=5):
+    """Return a set of bad pixel IDs for a single run based on sigma clipping"""
+    vals = np.array(gains, dtype=float)
+    mean_val = np.nanmean(vals)
+    std_val = np.nanstd(vals)
+    bad_mask = np.abs(vals - mean_val) > nsigma * std_val
+    return set(np.array(pixels_id)[bad_mask])
+
+
+def compute_slopes_and_stats(df_pixels, runs, temperatures):
+    """Compute per-pixel slopes, mean, std"""
+    pixel_gains = df_pixels.pivot_table(
+        index="Pixel", columns="Run", values="Gain"
+    ).reindex(columns=runs)
+    pivot_pixel_ids = pixel_gains.index.values
+    pixel_gains_array = pixel_gains.values
+
+    slopes = []
+    for i in range(pixel_gains_array.shape[0]):
+        gains = pixel_gains_array[i, :]
+        mask = ~np.isnan(gains)
+        if np.sum(mask) > 1:
+            slope, _, _, _, _ = linregress(np.array(temperatures)[mask], gains[mask])
+        else:
+            slope = np.nan
+        slopes.append(slope)
+
+    slopes = np.array(slopes)
+    mean_gain = np.nanmean(pixel_gains_array, axis=1)
+    std_gain = np.nanstd(pixel_gains_array, axis=1)
+
+    return pivot_pixel_ids, slopes, mean_gain, std_gain, pixel_gains_array
+
+
+def plot_camera(values, pixel_ids, camera_geom, name, fig_path):
+    """Plot camera with already cleaned pixels in engineering frame"""
+
+    vals = np.asarray(values, dtype=float)
+
+    # Slice geometry
+    active_geom = camera_geom[pixel_ids]
+
+    # 🔑 Force engineering frame
+    active_geom = active_geom.transform_to(EngineeringCameraFrame())
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    disp = CameraDisplay(geometry=active_geom, image=vals, cmap=plt.cm.coolwarm, ax=ax)
+
+    disp.add_colorbar(label=r"$\mathrm{ADC}\,\mathrm{p.e.}^{-1}/^\circ\mathrm{C}$")
+
+    ax.set_title("Gain variation")
+
+    plt.savefig(
+        os.path.join(fig_path, f"Camera_{name.replace(' ', '_')}.png"),
+        dpi=150,
+        bbox_inches="tight",
+    )
+    plt.close(fig)
+
+
+# ================================
+# MAIN PROCESSING
+# ================================
+for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
+    all_pixel_records = []
+    global_bad_pixels = set()  # pixels bad in any run
+
+    module_bad_pixels = set(BAD_MODULE_PIXELS)
+
+    for run in run_list:
+        # Load run
+        pixels_id, gains, label = load_run(run)
+        if pixels_id is None:
+            continue
+
+        # 1. HV bad pixels for this run
+        hv_bad_pixels = get_bad_hv_pixels_db(
+            run,
+            path=path,
+            db_data_path=db_data_path,
+            hv_tolerance=4.0,
+            telid=0,
+            verbose=True,
+        )
+
+        # 2. Combine fixed bad pixels (do NOT use them in statistical clipping)
+        fixed_bad_pixels = hv_bad_pixels.union(module_bad_pixels)
+
+        # 3. Remove fixed bad pixels before statistical clipping
+        filtered_pixel_ids = []
+        filtered_gains = []
+
+        for pid, g in zip(pixels_id, gains):
+            if pid not in fixed_bad_pixels:
+                filtered_pixel_ids.append(pid)
+                filtered_gains.append(g)
+
+        # 4. Statistical outliers computed ONLY on the clean subset
+        bad_rel = detect_bad_pixels_per_run(
+            filtered_pixel_ids, filtered_gains, nsigma=5
+        )
+
+        # Map relative statistical indices → actual pixel IDs
+        stat_bad_pixels = {filtered_pixel_ids[i] for i in bad_rel}
+
+        # 5. Global set = fixed bad + statistical bad
+        bad_ids_run = fixed_bad_pixels.union(stat_bad_pixels)
+        global_bad_pixels.update(bad_ids_run)
+
+        # 6. Record all pixels (for dataframe building)
+        temp = temp_map.get(run, np.nan)
+        for pid, g in zip(pixels_id, gains):
+            all_pixel_records.append(
+                {"Run": run, "Temperature": temp, "Pixel": pid, "Gain": g}
+            )
+        print("len of pixels_id", len(pixels_id))
+        print(
+            f"bad_module_pixels={len(BAD_MODULE_PIXELS)}, "
+            f"bad_hv_pixels={len(hv_bad_pixels)}, "
+            f"sigma_clipped={len(stat_bad_pixels)}, "
+            f"total_removed={len(bad_ids_run)}, "
+            f"global_removed={len(global_bad_pixels)}, "
+        )
+
+    # 7. Build full dataframe
+    df_pixels = pd.DataFrame(all_pixel_records)
+    print(f"Total pixels in dataframe: {len(df_pixels)}")
+
+    # 8. Final mask applied to dataframe
+    df_pixels_clean = df_pixels[~df_pixels["Pixel"].isin(global_bad_pixels)]
+
+    # 9. Temperatures vector
+    temperatures = [temp_map[r] for r in run_list]
+
+    # Compute slopes and stats on cleaned pixels
+    (
+        pivot_pixel_ids,
+        slopes,
+        mean_gain,
+        std_gain,
+        pixel_gains_array,
+    ) = compute_slopes_and_stats(df_pixels_clean, run_list, temperatures)
+
+    # Camera plots
+    plot_camera(slopes, pivot_pixel_ids, camera_geom, f"{run_type} Slopes", outdir)
+    plot_camera(
+        mean_gain, pivot_pixel_ids, camera_geom, f"{run_type} Mean Gain", outdir
+    )
+    plot_camera(std_gain, pivot_pixel_ids, camera_geom, f"{run_type} Std Gain", outdir)
+
+    # Save CSV
+    slopes_df = pd.DataFrame(
+        {"Pixel": pivot_pixel_ids, "Slope": slopes, "Mean": mean_gain, "Std": std_gain}
+    )
+    slopes_df.to_csv(os.path.join(outdir, f"{run_type}_Pixel_slopes.csv"), index=False)
+
+    # Mean ± Std vs Temperature
+    grouped = df_pixels_clean.groupby("Temperature")["Gain"]
+    mean_vs_temp = grouped.mean()
+    std_vs_temp = grouped.std()
+    count_vs_temp = grouped.count()
+
+    temps = mean_vs_temp.index.values
+    means = mean_vs_temp.values
+    stds = std_vs_temp.values
+    counts = count_vs_temp.values
+
+    yerr = stds / np.sqrt(counts)
+    yerr = np.nan_to_num(yerr, nan=0.0, posinf=0.0, neginf=0.0)
+
+    plt.figure(figsize=(8, 5))
+    plt.errorbar(temps, means, yerr=yerr, fmt="o", capsize=5)
+    plt.xlabel("Temperature (°C)")
+    plt.ylabel("Gain")
+    plt.grid(True)
+    plt.savefig(os.path.join(outdir, f"{run_type}_MeanStd_vs_Temperature.png"), dpi=150)
+    plt.close()
+
+    print(
+        f"Processed {run_type}: total pixels={len(df_pixels['Pixel'].unique())}, "
+        f"global_removed={len(global_bad_pixels)}, "
+        f"kept={len(pivot_pixel_ids)}"
+    )
+
+
+# ================================
+# Combined SPE vs Photostat
+# ================================
+plt.figure(figsize=(9, 6))
+for run_type, run_list, color in zip(
+    ["SPE", "Photostat"], [SPE_runs, Photostat_runs], ["tab:blue", "tab:red"]
+):
+    all_pixel_records = []
+    global_bad_pixels = set()
+
+    # Collect data and bad pixels per run
+    for run in run_list:
+        pixels_id, gains, label = load_run(run)
+        if pixels_id is None:
+            continue
+        bad_ids_run = detect_bad_pixels_per_run(pixels_id, gains, nsigma=5)
+        global_bad_pixels.update(bad_ids_run)
+
+        temp = temp_map.get(run, np.nan)
+        for pid, g in zip(pixels_id, gains):
+            all_pixel_records.append(
+                {"Run": run, "Temperature": temp, "Pixel": pid, "Gain": g}
+            )
+
+    df_pixels = pd.DataFrame(all_pixel_records)
+
+    # Remove bad module pixels AND bad pixels flagged by sigma clipping
+    all_bad_pixels = global_bad_pixels.union(BAD_MODULE_PIXELS)
+    df_pixels_clean = df_pixels[~df_pixels["Pixel"].isin(all_bad_pixels)]
+
+    grouped = df_pixels_clean.groupby("Temperature")["Gain"]
+    mean_vs_temp = grouped.mean()
+    std_vs_temp = grouped.std()
+    count_vs_temp = grouped.count()
+
+    temps = mean_vs_temp.index.values
+    means = mean_vs_temp.values
+    stds = std_vs_temp.values
+    counts = count_vs_temp.values
+
+    yerr = stds / np.sqrt(counts)
+    yerr = np.nan_to_num(yerr, nan=0.0, posinf=0.0, neginf=0.0)
+
+    plt.errorbar(
+        temps, means, yerr=yerr, fmt="o", capsize=5, color=color, label=f"{run_type}"
+    )
+
+plt.xlabel("Temperature (°C)")
+plt.ylabel("Gain")
+plt.legend()
+plt.grid(True)
+plt.savefig(
+    os.path.join(outdir, "SPE_vs_Photostat_MeanStd_vs_Temperature.png"), dpi=150
+)
+plt.close()
+
+print("Done. Combined plot saved.")
+
+
+# ================================
+# Average values for camera plots
+# ================================
+avg_values = {}
+
+for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
+    all_pixel_records = []
+    global_bad_pixels = set()
+
+    for run in run_list:
+        pixels_id, gains, label = load_run(run)
+        if pixels_id is None:
+            continue
+        bad_ids_run = detect_bad_pixels_per_run(pixels_id, gains, nsigma=5)
+        global_bad_pixels.update(bad_ids_run)
+
+        temp = temp_map.get(run, np.nan)
+        for pid, g in zip(pixels_id, gains):
+            all_pixel_records.append(
+                {"Run": run, "Temperature": temp, "Pixel": pid, "Gain": g}
+            )
+
+    df_pixels = pd.DataFrame(all_pixel_records)
+
+    # Remove bad module pixels AND bad pixels flagged by sigma clipping
+    all_bad_pixels = global_bad_pixels.union(BAD_MODULE_PIXELS)
+    df_pixels_clean = df_pixels[~df_pixels["Pixel"].isin(all_bad_pixels)]
+    temperatures = [temp_map[r] for r in run_list]
+
+    # Compute slopes and stats on cleaned pixels
+    (
+        pivot_pixel_ids,
+        slopes,
+        mean_gain,
+        std_gain,
+        pixel_gains_array,
+    ) = compute_slopes_and_stats(df_pixels_clean, run_list, temperatures)
+
+    # Store averages
+    avg_values[f"{run_type} Slopes"] = np.nanmean(slopes)
+    avg_values[f"{run_type} Mean Gain"] = np.nanmean(mean_gain)
+    avg_values[f"{run_type} Std Gain"] = np.nanmean(std_gain)
+
+# Print the averages
+print("\nAverage values for camera plots:")
+for name, value in avg_values.items():
+    print(f"{name}: {value:.4f}")
+
+
+pixel_numbers = [int(p) for p in all_bad_pixels]
+
+print(pixel_numbers)
