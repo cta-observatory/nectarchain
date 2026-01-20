@@ -287,9 +287,10 @@ class FlatFieldComponent(NectarCAMComponent):
 
             amp_int_per_pix_per_event_pe = np.ma.masked_array(
                 amp_int_per_pix_per_event_pe,
-                mask=self.__bad_pixels_mask,
+                mask=(self.__bad_pixels_mask)
+                & (~np.isfinite(amp_int_per_pix_per_event_pe)),
             )
-            mean_amp_cam_per_event_pe = np.nanmean(
+            mean_amp_cam_per_event_pe = np.ma.mean(
                 amp_int_per_pix_per_event_pe, axis=-1
             )
 
