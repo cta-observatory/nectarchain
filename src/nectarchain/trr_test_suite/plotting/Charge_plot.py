@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Charge normalization analysis script:
-- Reads pedestal maps depending on (temperature, FF voltage, NSB intensity)
-- Subtracts baseline dynamically for each run
-- Applies FF correction, SPE gain normalization, and generates per-pixel maps
-- Produces camera-average vs temperature plots
-(all configurations on the same figure)
-- Produces per-pixel slope maps per (Voltage, NSB)
-- Excludes bad modules from calculations and plots
-"""
-
+import logging
 import os
 from collections import defaultdict
 
@@ -20,6 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from Charge_config import (
+    BAD_MODULE_IDS,
+    BAD_PIXELS_GAIN,
+    BAD_PIXELS_HV,
     db_data_path,
     dirname,
     ff_dir,
@@ -36,9 +29,14 @@ from Charge_config import (
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
-
-# from DBHandler2 import DBInfos, to_datetime
 from scipy.stats import linregress
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 
 os.makedirs(outdir, exist_ok=True)
 
@@ -52,352 +50,20 @@ camera_geom = CameraGeometry.from_name("NectarCam").transform_to(
 )
 
 
+"""
+Charge normalization analysis script:
+- Reads pedestal maps depending on (temperature, FF voltage, NSB intensity)
+- Subtracts baseline dynamically for each run
+- Applies FF correction, SPE gain normalization, and generates per-pixel maps
+- Produces camera-average vs temperature plots
+(all configurations on the same figure)
+- Produces per-pixel slope maps per (Voltage, NSB)
+- Excludes bad modules from calculations and plots
+"""
+
 # ================================
 # BAD MODULES DEFINITION
 # ================================
-BAD_MODULE_IDS = [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    18,
-    30,
-    43,
-    57,
-    72,
-    88,
-    105,
-    123,
-    158,
-    175,
-    191,
-    206,
-    220,
-    233,
-    245,
-    256,
-    264,
-    263,
-    262,
-    261,
-    260,
-    259,
-    258,
-    257,
-    246,
-    234,
-    221,
-    207,
-    192,
-    58,
-    44,
-    31,
-    19,
-    8,
-]
-
-
-BAD_PIXELS_GAIN = [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22,
-    23,
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
-    34,
-    35,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42,
-    43,
-    44,
-    45,
-    46,
-    47,
-    48,
-    49,
-    50,
-    51,
-    52,
-    53,
-    54,
-    55,
-    56,
-    57,
-    58,
-    59,
-    60,
-    61,
-    62,
-    1106,
-    1107,
-    1108,
-    1109,
-    1110,
-    1111,
-    1112,
-    126,
-    127,
-    128,
-    129,
-    130,
-    131,
-    132,
-    133,
-    134,
-    135,
-    136,
-    137,
-    138,
-    139,
-    1225,
-    1226,
-    1227,
-    1228,
-    1229,
-    1230,
-    1231,
-    210,
-    211,
-    212,
-    213,
-    214,
-    215,
-    216,
-    217,
-    218,
-    219,
-    220,
-    221,
-    222,
-    223,
-    296,
-    301,
-    302,
-    303,
-    304,
-    305,
-    306,
-    307,
-    308,
-    309,
-    310,
-    311,
-    312,
-    313,
-    314,
-    1337,
-    1338,
-    1339,
-    1340,
-    1341,
-    1342,
-    1343,
-    1344,
-    1345,
-    1346,
-    1349,
-    1347,
-    1348,
-    1350,
-    399,
-    400,
-    401,
-    402,
-    403,
-    404,
-    405,
-    406,
-    407,
-    408,
-    409,
-    410,
-    411,
-    412,
-    1442,
-    1443,
-    1444,
-    1445,
-    1446,
-    1447,
-    1448,
-    1449,
-    1450,
-    1451,
-    1452,
-    1453,
-    1454,
-    1455,
-    504,
-    505,
-    506,
-    507,
-    508,
-    509,
-    510,
-    1540,
-    1541,
-    1542,
-    1543,
-    1544,
-    1545,
-    1546,
-    1547,
-    1548,
-    1549,
-    1550,
-    1551,
-    1552,
-    1553,
-    1631,
-    1632,
-    1633,
-    1634,
-    1635,
-    1636,
-    1637,
-    1638,
-    1639,
-    616,
-    617,
-    618,
-    619,
-    620,
-    621,
-    622,
-    1640,
-    1641,
-    1642,
-    1643,
-    1644,
-    1715,
-    1716,
-    1717,
-    1718,
-    1719,
-    1720,
-    1721,
-    1722,
-    1723,
-    1724,
-    1725,
-    1726,
-    1727,
-    1728,
-    735,
-    736,
-    737,
-    738,
-    739,
-    740,
-    741,
-    1792,
-    1793,
-    1794,
-    1795,
-    1796,
-    1797,
-    1798,
-    1799,
-    1800,
-    1801,
-    1802,
-    1803,
-    1804,
-    1805,
-    1806,
-    1807,
-    1808,
-    1809,
-    1810,
-    1811,
-    1812,
-    1813,
-    1814,
-    1815,
-    1816,
-    1817,
-    1818,
-    1819,
-    1820,
-    1821,
-    1822,
-    1823,
-    1824,
-    1825,
-    1826,
-    1827,
-    1828,
-    1829,
-    1830,
-    1831,
-    1832,
-    1833,
-    1834,
-    1835,
-    1836,
-    1837,
-    1838,
-    1839,
-    1840,
-    1841,
-    1842,
-    1843,
-    1844,
-    1845,
-    1846,
-    1847,
-    1848,
-    1849,
-    1850,
-    1851,
-    1852,
-    1853,
-    1854,
-    861,
-    862,
-    863,
-    864,
-    865,
-    866,
-    867,
-]
 
 
 def get_bad_pixels_from_modules(bad_module_ids):
@@ -415,7 +81,7 @@ def get_bad_pixels_from_modules(bad_module_ids):
 
 # Get all bad pixel IDs from bad modules
 BAD_PIXELS_FROM_MODULES = get_bad_pixels_from_modules(BAD_MODULE_IDS)
-print(f"Total bad pixels from bad modules: {len(BAD_PIXELS_FROM_MODULES)}")
+logger.info("Total bad pixels from bad modules: %d", len(BAD_PIXELS_FROM_MODULES))
 bad_ids = None
 
 
@@ -466,7 +132,10 @@ def get_bad_hv_pixels_db(
         )  # input here the target voltage
 
     except Exception as e:
-        print(f"Error retrieving HV data for run {run}, telid {telid}: {e}")
+        logger.error(
+        "Error retrieving HV data for run %s, telid %s: %s", run, telid, e
+        )
+
         return set()
 
     # Mean values per pixel (ignore obviously wrong measurement frames)
@@ -478,30 +147,16 @@ def get_bad_hv_pixels_db(
     bad_pixels = set(np.where(deviation > hv_tolerance)[0])
 
     if verbose:
-        print(
-            f"Run {run}: {len(bad_pixels)} bad pixels "
-            f"(|HV_meas - HV_target| > {hv_tolerance} V)"
+        logger.info(
+            "Run %s: %d bad pixels (|HV_meas - HV_target| > %.1f V)",
+            run,
+            len(bad_pixels),
+            hv_tolerance,
         )
-        print("Bad pixel IDs:", bad_pixels)
+        logger.debug("Bad pixel IDs: %s", sorted(bad_pixels))
+
     """
-    bad_pixels = {
-        50,
-        310,
-        353,
-        412,
-        638,
-        737,
-        742,
-        793,
-        827,
-        864,
-        866,
-        1354,
-        1530,
-        1702,
-        1841,
-        1842,
-    }
+    bad_pixels = BAD_PIXELS_HV
     return bad_pixels
 
 
@@ -510,7 +165,7 @@ def get_bad_hv_pixels_db(
 # ================================
 def load_charge_file(filename, dataset_name="FLATFIELD"):
     with h5py.File(filename, "r") as f:
-        print("filename:", filename)
+        logger.info("Filename: %s", filename)
         container = f.get("data/ChargesContainer_0")
         dataset = container.get(dataset_name)
         dataset0 = dataset[0]
@@ -747,8 +402,8 @@ for temp, runs in temp_map.items():
         else:
             charges_hg = charges_hg
 
-        print(temp, run)
-        print(np.mean(charges_hg))
+        logger.info("Temperature: %s, Run: %s", temp, run)
+        logger.info("Mean of charges_hg: %.6f", np.mean(charges_hg))
 
         # pedestal subtraction + FF + SPE normalization
         charges_pedcorr = np.array(
@@ -789,7 +444,9 @@ for temp, runs in temp_map.items():
             gain_bad_pixels
         )
 
-        print(f"Fixed bad pixels (HV + modules + gain): {len(non_statistical_bad)}")
+        logger.info(
+            "Fixed bad pixels (HV + modules + gain): %d", len(non_statistical_bad)
+        )
 
         # 3. Select ONLY the remaining good pixels
         remaining_pixel_ids = [p for p in pixels_id if p not in non_statistical_bad]
@@ -807,12 +464,14 @@ for temp, runs in temp_map.items():
         # Map the relative indices back to pixel IDs
         stat_bad_pixels = {remaining_pixel_ids[i] for i in stat_bad_relative}
 
-        print(f"Statistical bad pixels (after exclusions): {len(stat_bad_pixels)}")
+        logger.info(
+            "Statistical bad pixels (after exclusions): %d", len(stat_bad_pixels)
+        )
 
         # 5. Final union of ALL bad pixels
         bad_ids = non_statistical_bad.union(stat_bad_pixels)
 
-        print(f"Total bad pixels: {len(bad_ids)}")
+        logger.info("Total bad pixels: %d", len(bad_ids))
 
         # store per-pixel (excluding bad pixels)
         for pid, charge in zip(pixels_id, charges_normalized):
@@ -869,32 +528,43 @@ for (V, I), records in avg_charges_config.items():
         label=f"V={V} V, NSB={I} mA",
     )
 
+# Replace the problematic section around line 880 with this:
+logger.info(f"Total configurations processed: {len(avg_charges_config)}")
+for (V, I), records in avg_charges_config.items():
+    logger.info(f"Config V={V}, NSB={I}: {len(records)} temperature points")
+
 plt.xlabel("Temperature (°C)", fontsize=16)
 plt.ylabel("Camera Average Normalized Charge (p.e.)", fontsize=16)
 plt.tick_params(axis="both", which="major", labelsize=14)
 plt.tick_params(axis="both", which="minor", labelsize=12)
-
-# plt.title(f"Camera Average (excluding {len(BAD_MODULE_IDS)} bad modules)")
-handles, labels = plt.gca().get_legend_handles_labels()
-sorted_handles_labels = sorted(zip(labels, handles), key=lambda x: x[0])
-sorted_labels, sorted_handles = zip(*sorted_handles_labels)
 plt.grid(True)
-# Use multiple columns if there are many items
-plt.legend(
-    sorted_handles,
-    sorted_labels,
-    loc="center left",
-    bbox_to_anchor=(1, 0.5),
-    fontsize=16,  # smaller font
-    ncol=2,  # number of columns in the legend
-    frameon=True,  # optional: draw frame
-    borderaxespad=0.5,  # padding
-)
+
+# Get legend handles and labels
+handles, labels = plt.gca().get_legend_handles_labels()
+
+# Only sort and display legend if there are items to show
+if handles and labels:
+    sorted_handles_labels = sorted(zip(labels, handles), key=lambda x: x[0])
+    sorted_labels, sorted_handles = zip(*sorted_handles_labels)
+
+    plt.legend(
+        sorted_handles,
+        sorted_labels,
+        loc="center left",
+        bbox_to_anchor=(1, 0.5),
+        fontsize=16,
+        ncol=2,
+        frameon=True,
+        borderaxespad=0.5,
+    )
+else:
+    logger.warning("No data to plot - avg_charges_config is empty")
 
 plt.tight_layout()
 plt.savefig(os.path.join(outdir, "CameraAvgCharge_AllConfigs_SEM.png"), dpi=150)
 plt.show()
 plt.close()
+
 
 # ================================
 # PER-PIXEL SLOPE VS TEMP PER (V,NSB)

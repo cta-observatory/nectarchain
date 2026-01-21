@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -17,14 +18,16 @@ from Gain_config import (
     path,
     temp_map,
 )
-
-# from DBHandler2 import DBInfos, to_datetime
 from scipy.stats import linregress
 
-# from collections import defaultdict
-
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 plt.style.use("plot_style.mpltstyle")
+
 
 os.makedirs(outdir, exist_ok=True)
 
@@ -159,12 +162,14 @@ def get_bad_hv_pixels_db(
     bad_pixels = set(np.where(deviation > hv_tolerance)[0])
 
     if verbose:
-        print(
-            f"Run {run}: {len(bad_pixels)} bad pixels "
-            f"(|HV_meas - HV_target| > {hv_tolerance} V)"
+        logger.info(
+            "Run %s: %d bad pixels (|HV_meas - HV_target| > %.1f V)",
+            run,
+            len(bad_pixels),
+            hv_tolerance,
         )
 
-        print("Bad pixel IDs:", bad_pixels)
+        logger.debug("Bad pixel IDs: %s", sorted(bad_pixels))
     """
     bad_pixels = {
         50,
@@ -416,13 +421,16 @@ for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
             all_pixel_records.append(
                 {"Run": run, "Temperature": temp, "Pixel": pid, "Gain": g}
             )
-        print("len of pixels_id", len(pixels_id))
-        print(
-            f"bad_module_pixels={len(BAD_MODULE_PIXELS)}, "
-            f"bad_hv_pixels={len(hv_bad_pixels)}, "
-            f"sigma_clipped={len(stat_bad_pixels)}, "
-            f"total_removed={len(bad_ids_run)}, "
-            f"global_removed={len(global_bad_pixels)}, "
+        logger.info("Number of pixels in run %s: %d", run, len(pixels_id))
+
+        logger.info(
+            "bad_module_pixels=%d, bad_hv_pixels=%d, sigma_clipped=%d, "
+            "total_removed=%d, global_removed=%d",
+            len(BAD_MODULE_PIXELS),
+            len(hv_bad_pixels),
+            len(stat_bad_pixels),
+            len(bad_ids_run),
+            len(global_bad_pixels),
         )
 
     # 7. Build full dataframe

@@ -1,7 +1,5 @@
 # Gain_config.py
 
-import os
-
 # ================================
 # INPUTS
 # ================================
@@ -43,10 +41,8 @@ SPE_runs = [7066, 7123, 7000, 7191, 6589, 6718, 6775]
 Photostat_runs = [7022, 7079, 6956, 7146, 6545, 6674, 6731]
 
 
-B = os.environ["NECTARCAMDATA"]
-
-dirname = f"{B}/SPEfit"
-dirname2 = f"{B}/PhotoStat"
+dirname = "/Users/hashkar/Desktop/20221108/SPEfit"
+dirname2 = "/Users/hashkar/Desktop/20221108/PhotoStat"
 outdir = "./Gain_output"
-path = f"{B}/runs"
-db_data_path = path
+path = "/Users/hashkar/Desktop/20221108/runs"
+db_data_path = "/Users/hashkar/Desktop/20221108/runs"
