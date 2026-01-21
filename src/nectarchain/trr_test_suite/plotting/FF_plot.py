@@ -1,11 +1,16 @@
+import os
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import tables
+from FF_config import Runs, categorize_run1, categorize_run2, dirname, outdir
 
 # import all runs, NSB/temp lists, functions, and paths
-from config_runs import Runs, categorize_run1, categorize_run2, dirname
+sys.path.append(os.path.dirname(__file__))
+
 
 j = 0
 MEAN_FF_CAM = []
@@ -106,5 +111,5 @@ ax.set_ylabel("Mean FF coefficient")
 ax.set_title("Camera Flat Field vs Temperature")
 ax.legend(title="NSB")
 plt.tight_layout()
-plt.savefig("./FFplots/FFcam_vs_temp.png")
+plt.savefig(os.path.join(outdir, "FFcam_vs_temp.png"), dpi=30)
 plt.close()
