@@ -592,44 +592,80 @@ def plot_camera(values, pixel_ids, camera_geom, title, fig_path, cmap="viridis")
     plt.close(fig)
 
 
-def plot_pixel_histogram(values, pixel_ids, title, fig_path, bins=50, xlabel="Value"):
+def plot_pixel_histogram(
+    values,
+    pixel_ids,
+    title,
+    fig_path,
+    bins=50,
+    xlabel="Value",
+):
     """
-    Plot histogram of per-pixel values, excluding bad pixels.
-
-    Parameters
-    ----------
-    values : array-like
-        Per-pixel values (same order as pixel_ids)
-    pixel_ids : array-like
-        Pixel IDs corresponding to values
-    title : str
-        Plot title
-    fig_path : str
-        Output figure path
-    bins : int
-        Number of histogram bins
-    xlabel : str
-        X-axis label
+    Plot histogram of per-pixel values, excluding bad pixels,
+    with camera average and standard deviation.
     """
 
     # Exclude bad pixels
     good_mask = np.array([pid not in bad_ids for pid in pixel_ids])
     good_values = np.array(values, dtype=float)[good_mask]
 
-    # Remove NaNs
+    # Remove NaNs / infs
     good_values = good_values[np.isfinite(good_values)]
 
-    plt.figure(figsize=(7, 5))
-    plt.hist(good_values, bins=bins, histtype="stepfilled", alpha=0.7)
-    plt.xlabel(xlabel, fontsize=16)
-    plt.ylabel("Number of pixels", fontsize=16)
-    plt.tick_params(axis="both", which="major", labelsize=14)
-    plt.tick_params(axis="both", which="minor", labelsize=12)
-    # plt.title(title)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(fig_path, dpi=150)
-    plt.close()
+    mean_val = np.mean(good_values)
+    std_val = np.std(good_values)
+
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+
+    ax.hist(
+        good_values,
+        bins=bins,
+        histtype="stepfilled",
+        alpha=0.7,
+        label="Pixels",
+    )
+
+    # Mean and ±1σ
+    ax.axvline(
+        mean_val,
+        linestyle="--",
+        linewidth=2,
+        label=rf"Mean = {mean_val:.3e}",
+    )
+    ax.axvline(
+        mean_val + std_val,
+        linestyle=":",
+        linewidth=2,
+        label=rf"+1σ = {std_val:.3e}",
+    )
+    ax.axvline(
+        mean_val - std_val,
+        linestyle=":",
+        linewidth=2,
+        label=rf"-1σ = {std_val:.3e}",
+    )
+
+    ax.set_xlabel(xlabel, fontsize=16)
+    ax.set_ylabel("Number of pixels", fontsize=16)
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="minor", labelsize=12)
+    # ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+
+    # 🔑 Compact legend INSIDE
+    ax.legend(
+        loc="upper right",
+        fontsize=9,
+        frameon=True,
+        framealpha=0.85,
+        borderpad=0.3,
+        labelspacing=0.3,
+        handlelength=1.5,
+    )
+
+    fig.tight_layout()
+    fig.savefig(fig_path, dpi=150)
+    plt.close(fig)
 
 
 def load_ff_file(temp, ff_map, ff_dir):
