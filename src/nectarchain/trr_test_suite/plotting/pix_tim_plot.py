@@ -1,16 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
-# ==========================
-#      READ DATA
-# ==========================
 from pix_tim_config import df
-
-# import seaborn as sns
 from Utils import pe2photons, photons2pe
 
-print(df.head())
+plt.style.use("../../utils/plot_style.mpltstyle")
 
 
 # ==========================

@@ -104,7 +104,7 @@ def get_bad_pixels_from_modules():
         pixel_ids = camera_geom.pix_id[pixel_mask]
         bad_pixels.update(pixel_ids)
 
-    print(f"Total pixels from bad modules: {len(bad_pixels)}")
+    logging.info(f"Total pixels from bad modules: {len(bad_pixels)}")
     return bad_pixels
 
 
@@ -234,7 +234,7 @@ def load_run(run):
     data = read_table(filename, path=h5path)
     high_gain_lw = [x[0] for x in data["high_gain"][0]]
     pixels_id = data["pixels_id"][0]
-    print(f"Loaded run {run} ({label}): {len(pixels_id)} pixels")
+    logging.info(f"Loaded run {run} ({label}): {len(pixels_id)} pixels")
 
     return pixels_id, high_gain_lw, label
 
@@ -434,7 +434,7 @@ for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
 
     # 7. Build full dataframe
     df_pixels = pd.DataFrame(all_pixel_records)
-    print(f"Total pixels in dataframe: {len(df_pixels)}")
+    logging.info(f"Total pixels in dataframe: {len(df_pixels)}")
 
     # 8. Final mask applied to dataframe
     df_pixels_clean = df_pixels[~df_pixels["Pixel"].isin(global_bad_pixels)]
@@ -508,7 +508,7 @@ for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
     plt.savefig(os.path.join(outdir, f"{run_type}_MeanStd_vs_Temperature.png"), dpi=150)
     plt.close()
 
-    print(
+    logging.info(
         f"Processed {run_type}: total pixels={len(df_pixels['Pixel'].unique())}, "
         f"global_removed={len(global_bad_pixels)}, "
         f"kept={len(pivot_pixel_ids)}"
@@ -571,7 +571,7 @@ plt.savefig(
 )
 plt.close()
 
-print("Done. Combined plot saved.")
+logging.info("Done. Combined plot saved.")
 
 
 # ================================
@@ -618,11 +618,11 @@ for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
     avg_values[f"{run_type} Std Gain"] = np.nanmean(std_gain)
 
 # Print the averages
-print("\nAverage values for camera plots:")
-for name, value in avg_values.items():
-    print(f"{name}: {value:.4f}")
+logging.info("Average values for camera plots:")
 
+for name, value in avg_values.items():
+    logging.info(f"{name}: {value:.4f}")
 
 pixel_numbers = [int(p) for p in all_bad_pixels]
 
-print(pixel_numbers)
+logging.info(f"Pixel numbers: {pixel_numbers}")

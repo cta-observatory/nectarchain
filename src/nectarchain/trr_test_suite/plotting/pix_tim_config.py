@@ -10,7 +10,6 @@ file_path = (
 
 df = pd.read_csv(file_path, header=0, sep="\t")
 
-print(df.head())
 # ==========================
 #      DEFINE TEMPERATURES
 # ==========================

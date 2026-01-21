@@ -26,6 +26,8 @@ BAD_PIXELS_HV = metadata["bad_pixels_HV"]
 
 # Environment-based paths
 BASE = os.environ["NECTARCAMDATA"]  # will raise KeyError if not set
+BASEFIGURE = os.environ["NECTARCHAIN_FIGURES"]
+
 
 dirname = f"{BASE}/runs/charges"
 gain_path = f"{BASE}/SPEfit/thermal_gain"
@@ -34,4 +36,4 @@ ff_dir = f"{BASE}/FF"
 path = f"{BASE}/runs"
 db_data_path = path
 
-outdir = "./charge_comp_output"
+outdir = f"{BASEFIGURE}/charge_comp_output"

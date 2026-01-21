@@ -6,7 +6,7 @@ import os
 # ----------------------
 dirname = os.path.join(os.environ["NECTARCAMDATA"], "SPEfit")
 dirname2 = os.path.join(os.environ["NECTARCAMDATA"], "PhotoStat")
-outdir = "./Gain_output"
+outdir = os.path.join(os.environ["NECTARCHAIN_FIGURES"], "Gain_output")
 path = os.path.join(os.environ["NECTARCAMDATA"], "runs")
 db_data_path = os.path.join(os.environ["NECTARCAMDATA"], "runs")
 

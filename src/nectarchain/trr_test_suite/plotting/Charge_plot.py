@@ -37,6 +37,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+plt.style.use("../../utils/plot_style.mpltstyle")
 
 os.makedirs(outdir, exist_ok=True)
 
@@ -440,6 +441,9 @@ for temp, runs in temp_map.items():
         gain_bad_pixels = set(BAD_PIXELS_GAIN)
 
         # Combine all non-statistical bad pixels
+        hv_bad_pixels = set(hv_bad_pixels)
+        hv_bad_pixel = set(hv_bad_pixels)
+        gain_bad_pixels = set(gain_bad_pixels)
         non_statistical_bad = hv_bad_pixels.union(module_bad_pixels).union(
             gain_bad_pixels
         )
