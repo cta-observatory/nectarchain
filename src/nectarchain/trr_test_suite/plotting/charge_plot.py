@@ -9,7 +9,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from Charge_config import (
+from charge_config import (
     BAD_MODULE_IDS,
     BAD_PIXELS_GAIN,
     BAD_PIXELS_HV,

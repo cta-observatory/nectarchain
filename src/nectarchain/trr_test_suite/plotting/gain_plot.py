@@ -8,7 +8,9 @@ from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.io import read_table
 from ctapipe.visualization import CameraDisplay
-from Gain_config import (
+from gain_config import (
+    BAD_MODULE_IDS,
+    BAD_PIXELS_HV,
     Photostat_runs,
     SPE_runs,
     db_data_path,
@@ -52,51 +54,7 @@ def get_bad_pixels_from_modules():
         module_id = np.array([pix // 7 for pix in range(n_pixels)])
 
     # Bad modules list
-    bad_module_ids = [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        18,
-        30,
-        43,
-        57,
-        72,
-        88,
-        105,
-        123,
-        158,
-        175,
-        191,
-        206,
-        220,
-        233,
-        245,
-        256,
-        264,
-        263,
-        262,
-        261,
-        260,
-        259,
-        258,
-        257,
-        246,
-        234,
-        221,
-        207,
-        192,
-        58,
-        44,
-        31,
-        19,
-        8,
-    ]
-
+    bad_module_ids = BAD_MODULE_IDS
     # Get all pixels belonging to bad modules
     bad_pixels = set()
     for mod in bad_module_ids:
@@ -170,24 +128,7 @@ def get_bad_hv_pixels_db(
 
         logger.debug("Bad pixel IDs: %s", sorted(bad_pixels))
     """
-    bad_pixels = {
-        50,
-        310,
-        353,
-        412,
-        638,
-        737,
-        742,
-        793,
-        827,
-        864,
-        866,
-        1354,
-        1530,
-        1702,
-        1841,
-        1842,
-    }
+    bad_pixels = BAD_PIXELS_HV
     return bad_pixels
 
 

@@ -102,6 +102,5 @@ plt.tight_layout()
 
 output_path = os.path.join(output_dir, "mean_rms_vs_photons.png")
 plt.savefig(output_path, dpi=300, bbox_inches="tight")
-print(f"Figure saved to: {output_path}")
 
 plt.show()

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tables
-from FF_config import Runs, categorize_run1, categorize_run2, dirname, outdir
+from ff_config import Runs, categorize_run1, categorize_run2, dirname, outdir
 
 # import all runs, NSB/temp lists, functions, and paths
 sys.path.append(os.path.dirname(__file__))
