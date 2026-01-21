@@ -296,6 +296,71 @@ def plot_camera(values, pixel_ids, camera_geom, name, fig_path):
     plt.close(fig)
 
 
+def plot_histogram(values, name, outdir, xlabel, bins=50):
+    """
+    Plot and save a histogram of per-pixel quantities
+    with camera average and standard deviation.
+    Legend kept inside but compact.
+    """
+    vals = np.asarray(values, dtype=float)
+    vals = vals[~np.isnan(vals)]
+
+    mean_val = np.mean(vals)
+    std_val = np.std(vals)
+
+    fig, ax = plt.subplots(figsize=(7.5, 5))
+
+    ax.hist(
+        vals,
+        bins=bins,
+        histtype="stepfilled",
+        alpha=0.6,
+        label="Pixels",
+    )
+
+    ax.axvline(
+        mean_val,
+        linestyle="--",
+        linewidth=2,
+        label=rf"Mean = {mean_val:.3e}",
+    )
+    ax.axvline(
+        mean_val + std_val,
+        linestyle=":",
+        linewidth=2,
+        label=rf"+1σ = {std_val:.3e}",
+    )
+    ax.axvline(
+        mean_val - std_val,
+        linestyle=":",
+        linewidth=2,
+        label=rf"-1σ = {std_val:.3e}",
+    )
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Number of pixels")
+    ax.set_title(name)
+    ax.grid(True)
+
+    # 🔑 Compact legend INSIDE the plot
+    ax.legend(
+        loc="upper right",
+        fontsize=9,  # smaller font
+        frameon=True,
+        framealpha=0.85,  # slightly transparent
+        borderpad=0.3,
+        labelspacing=0.3,
+        handlelength=1.5,
+    )
+
+    fig.savefig(
+        os.path.join(outdir, f"Hist_{name.replace(' ', '_')}.png"),
+        dpi=150,
+        bbox_inches="tight",
+    )
+    plt.close(fig)
+
+
 # ================================
 # MAIN PROCESSING
 # ================================
@@ -385,6 +450,28 @@ for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
         mean_gain, pivot_pixel_ids, camera_geom, f"{run_type} Mean Gain", outdir
     )
     plot_camera(std_gain, pivot_pixel_ids, camera_geom, f"{run_type} Std Gain", outdir)
+
+    # Histograms
+    plot_histogram(
+        slopes,
+        f"{run_type} Gain variation over temperature",
+        outdir,
+        xlabel=r"Gain slope (ADC p.e.$^{-1}$ C°$^{-1}$)",
+    )
+
+    plot_histogram(
+        mean_gain,
+        f"{run_type} Mean Gain",
+        outdir,
+        xlabel=r"Mean gain (ADC p.e.$^{-1}$)",
+    )
+
+    plot_histogram(
+        std_gain,
+        f"{run_type} Std Gain",
+        outdir,
+        xlabel=r"Gain standard deviation (ADC p.e.$^{-1}$)",
+    )
 
     # Save CSV
     slopes_df = pd.DataFrame(
