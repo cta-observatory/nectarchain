@@ -5,7 +5,7 @@ BASE = os.environ["NECTARCAMDATA"]  # your base path
 BASEFIGURE = os.environ["NECTARCHAIN_FIGURES"]
 
 
-metadata_file = "ff_metadata.json"  # path to your JSON file
+metadata_file = "./metadata/ff_metadata.json"  # path to your JSON file
 
 outdir = f"{BASEFIGURE}/FFplots"
 dirname = f"{BASE}/FF"

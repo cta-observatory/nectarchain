@@ -3,7 +3,7 @@ import os
 
 
 # Load metadata from external JSON file
-def load_metadata(filepath="charge_metadata.json"):
+def load_metadata(filepath="./metadata/charge_metadata.json"):
     """Load configuration metadata from JSON file."""
     with open(filepath, "r") as f:
         return json.load(f)

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # ==========================
 #      LOAD METADATA
 # ==========================
-def load_metadata(filepath="pix_tim_metadata.json"):
+def load_metadata(filepath="./metadata/pix_tim_metadata.json"):
     """Load configuration metadata from JSON file."""
     with open(filepath, "r") as f:
         return json.load(f)
