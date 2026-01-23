@@ -2,14 +2,13 @@ import collections
 import json
 import os
 import re
-from datetime import datetime
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 
 # bokeh imports
-from bokeh.layouts import column, gridplot
-from bokeh.models import ColorBar, Div, TabPanel
+from bokeh.layouts import gridplot
+from bokeh.models import ColorBar, TabPanel
 from bokeh.plotting import figure
 
 # ctapipe imports
@@ -58,40 +57,6 @@ def get_rundata(src, runid):
 
     run_data = src[runid]
     return run_data
-
-
-def get_run_times(source):
-    """Extract important time stamps for the provided run data
-
-    Parameters
-    ----------
-    source : dict
-        Dictionary returned by `get_rundata`
-
-    Returns
-    -------
-    run_start_time_dt : datetime.datetime
-        Time of the start of the run in %Y-%m-%d %H:%M:%S format
-    first_event_time_dt : datetime.datetime
-        Time when the first event was recorded in %Y-%m-%d %H:%M:%S format
-    last_event_time_dt : datetime.datetime
-        Time when the last event was recorded in %Y-%m-%d %H:%M:%S format
-    """
-
-    run_start_time = int(source["START-TIMES"]["Run start time"].flatten()[0])
-    run_start_time_dt = datetime.utcfromtimestamp(run_start_time).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
-    first_event_time = int(source["START-TIMES"]["First event"].flatten()[0])
-    first_event_time_dt = datetime.utcfromtimestamp(first_event_time).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
-    last_event_time = int(source["START-TIMES"]["Last event"].flatten()[0])
-    last_event_time_dt = datetime.utcfromtimestamp(last_event_time).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
-
-    return run_start_time_dt, first_event_time_dt, last_event_time_dt
 
 
 def make_timelines(source, runid=None):
@@ -248,15 +213,28 @@ def update_camera_displays(data, displays, runid=None):
         Updated TabPanel containing the bokeh layout for the display plots
     """
 
+    ncols = 3
+
     for k in displays.keys():
         for kk in displays[k].keys():
             displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
 
     displays = make_camera_displays(data, runid)
 
-    layout_camera_displays = create_all_camera_display_layouts(displays)
+    camera_displays = [
+        displays[parentkey][childkey].figure
+        for parentkey in displays.keys()
+        for childkey in displays[parentkey].keys()
+    ]
+
+    layout_camera_displays = gridplot(
+        camera_displays,
+        sizing_mode="scale_width",
+        ncols=ncols,
+    )
+
     tab_camera_displays = TabPanel(
-        child=column(*layout_camera_displays), title="Camera displays"
+        child=layout_camera_displays, title="Camera displays"
     )
 
     return tab_camera_displays
@@ -328,47 +306,5 @@ def make_camera_display(source, parent_key, child_key):
         color_bar.title = ""
 
     display.figure.title = child_key
+
     return display
-
-
-def create_all_camera_display_layouts(displays):
-    """Creates all layouts for the Camera display plots,
-       containing the camera displays and a title for each layout
-
-    Parameters
-    ----------
-    displays : dict
-        Nested dictionary containing camera display plots,
-        created with `make_camera_display`
-
-    Returns
-    -------
-    list
-        List containing all the layouts, as a `column`
-        with the title and camera displays for each layout
-    """
-
-    ncols = 3
-    all_layouts = []
-
-    with open(labels_path, "r", encoding="utf-8") as file:
-        section_titles = json.load(file)["section_titles_camera_display"]
-
-    for key, title in section_titles.items():
-        camera_displays = [
-            displays[parentkey][childkey].figure
-            for parentkey in displays.keys()
-            for childkey in displays[parentkey].keys()
-            if key in parentkey
-        ]
-        title_displays = Div(text=f"<h2>{title}</h2>")
-        layout_camera_displays = column(
-            title_displays,
-            gridplot(
-                camera_displays,
-                ncols=ncols,
-            ),
-        )
-        all_layouts.append(layout_camera_displays)
-
-    return all_layouts
