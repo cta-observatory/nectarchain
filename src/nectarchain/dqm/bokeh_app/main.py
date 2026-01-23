@@ -1,4 +1,6 @@
 from app_hooks import (
+    create_all_camera_display_layouts,
+    get_run_times,
     get_rundata,
     make_camera_displays,
     make_timelines,
@@ -8,7 +10,7 @@ from app_hooks import (
 
 # bokeh imports
 from bokeh.layouts import column, gridplot, row
-from bokeh.models import Select, TabPanel, Tabs
+from bokeh.models import Div, Select, TabPanel, Tabs
 from bokeh.plotting import curdoc
 
 # ctapipe imports
@@ -19,6 +21,18 @@ from nectarchain.dqm.db_utils import DQMDB
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
+
+# FIXME: followed some instructions to possibly inject some CSS into the Bokeh app,
+# using the css_div... Does not seem to work, though...
+
+# Read the CSS file
+with open(
+    "/opt/cta/nectarchain/src/nectarchain/dqm/bokeh_app/static/styles.css", "r"
+) as file:
+    css_content = file.read()
+
+# Inject the CSS into the document
+css_div = Div(text=f"<style>{css_content}</style>", width=0, height=0)
 
 
 def update(attr, old, new):
@@ -55,19 +69,34 @@ def update(attr, old, new):
       `on_change` handlers.
     """
 
-    runid = run_select.value
+    runid = new
     source = get_rundata(db, runid)
 
     tab_camera_displays = update_camera_displays(source, displays, runid)
     tab_timelines = update_timelines(source, timelines, runid)
 
-    # Combine panels into tabs
-    tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines],
-        sizing_mode="scale_width",
+    run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
+    run_times_string = Div(
+        text=f"""
+        <div style="
+            background-color: #f0f8ff;
+            border-radius: 10px;
+            padding: 10px;
+            width: fit-content;
+            font-size: 14px;
+        ">
+            <p>Run start time: {run_start_time_dt}</p>
+            <p>First event recorded at: {first_event_time_dt}</p>
+            <p>Last event recorded at: {last_event_time_dt}</p>
+        </div>
+        """
     )
 
+    # Combine panels into tabs
+    tabs = Tabs(tabs=[tab_camera_displays, tab_timelines], sizing_mode="scale_width")
+
     page_layout.children[1] = tabs
+    page_layout.children[0].children[1] = run_times_string
 
 
 def update_timelines(attr, old, new):
@@ -108,14 +137,34 @@ print(f"We will start with run {runid}")
 print("Defining Select")
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 # run_select = Select(value=runid, title="NectarCAM run number", options=runids)
-run_select = Select(value=runid, title="NectarCAM run number", options=runids)
+run_select = Select(
+    value=runid, title="NectarCAM run number", options=runids, css_classes=["select"]
+)
 
 print(f"Getting data for run {run_select.value}")
 source = get_rundata(db, run_select.value)
 displays = make_camera_displays(source, runid)
 timelines = make_timelines(source, runid)
 
-controls = row(run_select)
+run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
+run_times_string = Div(
+    text=f"""
+    <div style="
+        background-color: #f0f8ff;
+        border-radius: 10px;
+        padding: 10px;
+        width: fit-content;
+        font-size: 14px;
+    ">
+        <p>Run start time: {run_start_time_dt}</p>
+        <p>First event recorded at: {first_event_time_dt}</p>
+        <p>Last event recorded at: {last_event_time_dt}</p>
+    </div>
+    """
+)
+
+# controls = row(run_select)
+controls = column(css_div, run_select)
 
 # # TEST:
 # attr = 'value'
@@ -123,22 +172,24 @@ controls = row(run_select)
 # new = runids[1]
 # update_camera_displays(attr, old, new)
 
-ncols = 3
-camera_displays = [
-    displays[parentkey][childkey].figure
-    for parentkey in displays.keys()
-    for childkey in displays[parentkey].keys()
-]
+# ncols = 3
+# camera_displays = [
+#     displays[parentkey][childkey].figure
+#     for parentkey in displays.keys()
+#     for childkey in displays[parentkey].keys()
+# ]
+
 list_timelines = [
     timelines[parentkey][childkey]
     for parentkey in timelines.keys()
     for childkey in timelines[parentkey].keys()
 ]
 
-layout_camera_displays = gridplot(
-    camera_displays,
-    ncols=ncols,
-)
+# layout_camera_displays = gridplot(
+#     camera_displays,
+#     ncols=ncols,
+# )
+layout_camera_displays = create_all_camera_display_layouts(displays)
 
 layout_timelines = gridplot(
     list_timelines,
@@ -146,7 +197,9 @@ layout_timelines = gridplot(
 )
 
 # Create different tabs
-tab_camera_displays = TabPanel(child=layout_camera_displays, title="Camera displays")
+tab_camera_displays = TabPanel(
+    child=column(*layout_camera_displays), title="Camera displays"
+)
 tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
 # Combine panels into tabs
@@ -154,7 +207,7 @@ tabs = Tabs(
     tabs=[tab_camera_displays, tab_timelines],
 )
 
-page_layout = column([controls, tabs], sizing_mode="scale_width")
+page_layout = column([row(controls, run_times_string), tabs], sizing_mode="scale_width")
 
 run_select.on_change("value", update)
 

@@ -1,11 +1,15 @@
 import collections
+import json
+import os
 import re
+from datetime import datetime
 
 import numpy as np
+from astropy.coordinates import SkyCoord
 
 # bokeh imports
-from bokeh.layouts import gridplot
-from bokeh.models import TabPanel
+from bokeh.layouts import column, gridplot
+from bokeh.models import ColorBar, Div, TabPanel
 from bokeh.plotting import figure
 
 # ctapipe imports
@@ -15,6 +19,10 @@ from ctapipe.instrument import CameraGeometry
 # ctapipe imports
 from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe_io_nectarcam import constants
+
+base_dir = os.path.abspath(os.path.dirname(__file__))
+labels_path = os.path.join(base_dir, "data", "labels.json")
+
 
 NOTINDISPLAY = [
     "TRIGGER-.*",
@@ -52,6 +60,40 @@ def get_rundata(src, runid):
     return run_data
 
 
+def get_run_times(source):
+    """Extract important time stamps for the provided run data
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata`
+
+    Returns
+    -------
+    run_start_time_dt : datetime.datetime
+        Time of the start of the run in %Y-%m-%d %H:%M:%S format
+    first_event_time_dt : datetime.datetime
+        Time when the first event was recorded in %Y-%m-%d %H:%M:%S format
+    last_event_time_dt : datetime.datetime
+        Time when the last event was recorded in %Y-%m-%d %H:%M:%S format
+    """
+
+    run_start_time = int(source["START-TIMES"]["Run start time"].flatten()[0])
+    run_start_time_dt = datetime.utcfromtimestamp(run_start_time).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    first_event_time = int(source["START-TIMES"]["First event"].flatten()[0])
+    first_event_time_dt = datetime.utcfromtimestamp(first_event_time).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    last_event_time = int(source["START-TIMES"]["Last event"].flatten()[0])
+    last_event_time_dt = datetime.utcfromtimestamp(last_event_time).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    return run_start_time_dt, first_event_time_dt, last_event_time_dt
+
+
 def make_timelines(source, runid=None):
     """Make timeline plots for pixel quantities evolving with time
 
@@ -70,19 +112,45 @@ def make_timelines(source, runid=None):
         Nested dictionary containing line plots for the timelines
     """
 
+    with open(labels_path, "r", encoding="utf-8") as file:
+        y_axis_labels = json.load(file)["y_axis_labels_timelines"]
+
     timelines = collections.defaultdict(dict)
     for parentkey in source.keys():
         # Prepare timeline line plots only for pixel quantities evolving with time
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in source[parentkey].keys():
                 print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
-                timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(source[parentkey][childkey]))
+                timelines[parentkey][childkey] = figure(
+                    title=childkey,
+                    x_range=(0, np.max(evts) + 100),
+                    y_range=(-1, np.max(source[parentkey][childkey]) + 5),
+                )
                 timelines[parentkey][childkey].line(
                     x=evts,
                     y=source[parentkey][childkey],
                     line_width=3,
                 )
+    for parentkey in timelines.keys():
+        for childkey in timelines[parentkey].keys():
+            timelines[parentkey][childkey].xaxis.axis_label = "Event number"
+            try:
+                timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[
+                    parentkey
+                ]
+            except ValueError:
+                timelines[parentkey][childkey].yaxis.axis_label = ""
+            except KeyError:
+                timelines[parentkey][childkey].yaxis.axis_label = ""
+
+            timelines[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
+            timelines[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
+            timelines[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
+            timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
+            timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
+            timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+
     return dict(timelines)
 
 
@@ -145,7 +213,7 @@ def make_camera_displays(source, runid):
     Returns
     -------
     dict
-        Nested dictionary containing camera display plots
+        Nested dictionary containing display plots created by `make_camera_display`
     """
 
     displays = collections.defaultdict(dict)
@@ -167,7 +235,8 @@ def update_camera_displays(data, displays, runid=None):
     data : dict
         Dictionary returned by `get_rundata`
     displays : dict
-        Nested dictionary containing display plots created by `make_camera_displays`
+        Nested dictionary containing display plots
+        created by `make_camera_displays`
     runid : str, optional
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
@@ -179,28 +248,15 @@ def update_camera_displays(data, displays, runid=None):
         Updated TabPanel containing the bokeh layout for the display plots
     """
 
-    ncols = 3
-
     for k in displays.keys():
         for kk in displays[k].keys():
             displays[k][kk].image = np.zeros(shape=constants.N_PIXELS)
 
     displays = make_camera_displays(data, runid)
 
-    camera_displays = [
-        displays[parentkey][childkey].figure
-        for parentkey in displays.keys()
-        for childkey in displays[parentkey].keys()
-    ]
-
-    layout_camera_displays = gridplot(
-        camera_displays,
-        sizing_mode="scale_width",
-        ncols=ncols,
-    )
-
+    layout_camera_displays = create_all_camera_display_layouts(displays)
     tab_camera_displays = TabPanel(
-        child=layout_camera_displays, title="Camera displays"
+        child=column(*layout_camera_displays), title="Camera displays"
     )
 
     return tab_camera_displays
@@ -239,6 +295,80 @@ def make_camera_display(source, parent_key, child_key):
     except KeyError:
         image = np.zeros(shape=constants.N_PIXELS)
         display.image = image
-    display.add_colorbar()
+
+    fig = display.figure
+    # add axis labels
+    pix_x = geom.pix_x
+    pix_y = geom.pix_y
+    cam_coords = SkyCoord(x=pix_x, y=pix_y, frame=geom.frame)
+    fig.xaxis.axis_label = f"x / {cam_coords.x.unit}"
+    fig.yaxis.axis_label = f"y / {cam_coords.y.unit}"
+    fig.xaxis.axis_label_text_font_size = "12pt"
+    fig.xaxis.axis_label_text_font_style = "normal"
+    fig.yaxis.axis_label_text_font_size = "12pt"
+    fig.yaxis.axis_label_text_font_style = "normal"
+
+    # add colorbar
+    color_bar = ColorBar(
+        color_mapper=display._color_mapper,
+        padding=5,
+    )
+    fig.add_layout(color_bar, "right")
+    color_bar.title_text_font_size = "14pt"
+    color_bar.title_text_font_style = "normal"
+
+    with open(labels_path, "r", encoding="utf-8") as file:
+        colorbar_labels = json.load(file)["colorbar_labels_camera_display"]
+
+    try:
+        color_bar.title = colorbar_labels[parent_key]
+    except ValueError:
+        color_bar.title = ""
+    except KeyError:
+        color_bar.title = ""
+
     display.figure.title = child_key
     return display
+
+
+def create_all_camera_display_layouts(displays):
+    """Creates all layouts for the Camera display plots,
+       containing the camera displays and a title for each layout
+
+    Parameters
+    ----------
+    displays : dict
+        Nested dictionary containing camera display plots,
+        created with `make_camera_display`
+
+    Returns
+    -------
+    list
+        List containing all the layouts, as a `column`
+        with the title and camera displays for each layout
+    """
+
+    ncols = 3
+    all_layouts = []
+
+    with open(labels_path, "r", encoding="utf-8") as file:
+        section_titles = json.load(file)["section_titles_camera_display"]
+
+    for key, title in section_titles.items():
+        camera_displays = [
+            displays[parentkey][childkey].figure
+            for parentkey in displays.keys()
+            for childkey in displays[parentkey].keys()
+            if key in parentkey
+        ]
+        title_displays = Div(text=f"<h2>{title}</h2>")
+        layout_camera_displays = column(
+            title_displays,
+            gridplot(
+                camera_displays,
+                ncols=ncols,
+            ),
+        )
+        all_layouts.append(layout_camera_displays)
+
+    return all_layouts
