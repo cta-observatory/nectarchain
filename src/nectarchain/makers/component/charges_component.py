@@ -6,7 +6,7 @@ from argparse import ArgumentError
 import numpy as np
 import numpy.ma as ma
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Dict, Path, Unicode
+from ctapipe.core.traits import Bool, Dict, Path, Unicode
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
 from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
 from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
@@ -131,6 +131,11 @@ class ChargesComponent(ArrayDataComponent):
         allow_none=True,
     ).tag(config=True)
 
+    use_default_pedestal = Bool(
+        default_value=False,
+        help="Option to use default pedestal values if `pedestal_file` is not provided",
+    ).tag(config=True)
+
     SubComponents = copy.deepcopy(ArrayDataComponent.SubComponents)
     SubComponents.read_only = True
 
@@ -179,6 +184,11 @@ class ChargesComponent(ArrayDataComponent):
                 )
             except Exception as e:
                 log.warning(e)
+
+        elif self.use_default_pedestal:
+            self.__pedestal_hg = PEDESTAL_DEFAULT
+            self.__pedestal_lg = PEDESTAL_DEFAULT
+            log.info(f"Using default pedestal values: {PEDESTAL_DEFAULT} ADC")
 
     def _init_trigger_type(self, trigger_type: EventType, **kwargs):
         """Initializes the ChargesMaker based on the trigger type.
