@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,15 @@ from lmfit.models import Model
 from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
 from traitlets.config import Config
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.StreamHandler()],
+)
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
 
 config = Config(
     dict(
@@ -597,9 +607,9 @@ def plot_deadtime_and_expo_fit(
     params = model.make_params(A=2e3, R=-0.001)
     result = model.fit(entries, params, x=bin_middles)
     if verbose:
-        print("**** FIT RESULTS RUN {} ****".format(run))
-        print(result.fit_report())
-        print("chisqr = {}, redchi = {}".format(result.chisqr, result.redchi))
+        log.info("**** FIT RESULTS RUN {} ****".format(run))
+        log.info(result.fit_report())
+        log.info("chisqr = {}, redchi = {}".format(result.chisqr, result.redchi))
 
     parameter_A_new = result.params["A"].value
     parameter_R_new = result.params["R"].value
@@ -671,9 +681,11 @@ def plot_deadtime_and_expo_fit(
 
         plt.xlabel(r"$\Delta$T [$\mu$s]", fontsize=15)
         plt.ylabel("Entries", fontsize=15)
-        plt.savefig(
-            os.path.join(output_plot, "deadtime_and_expo_fit_{}.png".format(run))
+        plot_path = os.path.join(
+            output_plot, "deadtime_and_expo_fit_{}.png".format(run)
         )
+        plt.savefig(plot_path)
+        log.info(f"Plot saved at {plot_path}")
 
     return (
         deadtime,

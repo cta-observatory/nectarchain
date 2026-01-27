@@ -912,17 +912,13 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
         for thing in output_file:
             group = output_file[thing]
             dataset = group["UCTSContainer_0"]
-            data = dataset[:]
-            for tup in data:
+            for tup in dataset:
                 try:
                     ucts_timestamps.extend(tup[3])
                     event_counter.extend(tup[7])
                     busy_counter.extend(tup[6])
                 except Exception:
                     break
-
-        # tom_mu_all = output[0].tom_mu
-        # tom_sigma_all = output[0].tom_sigma
 
         ucts_timestamps = np.array(ucts_timestamps).flatten()
 
