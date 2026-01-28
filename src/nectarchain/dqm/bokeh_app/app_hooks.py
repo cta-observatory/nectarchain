@@ -38,8 +38,9 @@ def get_rundata(src, runid):
     src : DQMDB
         Object-oriented database defined in nectarchain.dqm.db_utils
         from ZODB and ZEO ClientStorage
-    runid : int
-        NectarCAM run number
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'
 
     Returns
     -------
@@ -59,9 +60,11 @@ def make_timelines(source, runid=None):
     Parameters
     ----------
     source : dict
-        Dictionary returned by `get_rundata()`
-    runid : int, optional
-        NectarCAM run number, by default None
+        Dictionary returned by `get_rundata`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        By default None
 
     Returns
     -------
@@ -87,16 +90,18 @@ def make_timelines(source, runid=None):
 
 # TODO: check consistency of the gridplot
 def update_timelines(data, timelines, runid=None):
-    """Reset each timeline previously created by `make_timelines()`
+    """Reset each timeline previously created by `make_timelines`
 
     Parameters
     ----------
     data : dict
-        Dictionary returned by `get_rundata()`
+        Dictionary returned by `get_rundata`
     timelines : dict
-        Nested dictionary containing line plots created by `make_timelines()`
-    runid : int, optional
-        NectarCAM run number, by default None
+        Nested dictionary containing line plots created by `make_timelines`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        By default None
 
     Returns
     -------
@@ -130,14 +135,15 @@ def update_timelines(data, timelines, runid=None):
 
 
 def make_camera_displays(source, runid):
-    """Make camera display plots using `make_camera_display()`
+    """Make camera display plots using `make_camera_display`
 
     Parameters
     ----------
     source : dict
-        Dictionary returned by `get_rundata()`
-    runid : int
-        NectarCAM run number
+        Dictionary returned by `get_rundata`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
 
     Returns
     -------
@@ -157,16 +163,18 @@ def make_camera_displays(source, runid):
 
 
 def update_camera_displays(data, displays, runid=None):
-    """Reset each display previously created by `make_camera_displays()`
+    """Reset each display previously created by `make_camera_displays`
 
     Parameters
     ----------
     data : dict
-        Dictionary returned by `get_rundata()`
+        Dictionary returned by `get_rundata`
     displays : dict
-        Nested dictionary containing display plots created by `make_camera_displays()`
-    runid : int, optional
-        NectarCAM run number, by default None
+        Nested dictionary containing display plots created by `make_camera_displays`
+    runid : str, optional
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        By default None
 
     Returns
     -------
@@ -201,15 +209,16 @@ def update_camera_displays(data, displays, runid=None):
     return tab_camera_displays
 
 
-# TODO: understand how to write docs for parent_ and child_ keys
+# TODO: some more explanation about the parent and child keys
+# may help the user, if needed
 def make_camera_display(source, parent_key, child_key):
     """Make camera display plot to fill the nested dict
-       created by `make_camera_displays()`
+       created by `make_camera_displays`
 
     Parameters
     ----------
     source : dict
-        Dictionary returned by `get_rundata()`
+        Dictionary returned by `get_rundata`
     parent_key : str
         Parent key to extract quantity from the dict
     child_key : str
