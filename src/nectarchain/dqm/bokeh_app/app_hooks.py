@@ -18,6 +18,7 @@ from ctapipe.instrument import CameraGeometry
 # ctapipe imports
 from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe_io_nectarcam import constants
+from logging_config import setup_logger
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 labels_path = os.path.join(base_dir, "data", "labels.json")
@@ -34,6 +35,8 @@ TEST_PATTERN = "(?:% s)" % "|".join(NOTINDISPLAY)
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
+
+logger = setup_logger()
 
 
 def get_rundata(src, runid):
@@ -56,6 +59,9 @@ def get_rundata(src, runid):
     """
 
     run_data = src[runid]
+
+    logger.info(f"Successfully extracted data for run {runid}")
+
     return run_data
 
 
@@ -85,7 +91,10 @@ def make_timelines(source, runid=None):
         # Prepare timeline line plots only for pixel quantities evolving with time
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in source[parentkey].keys():
-                print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
+                logger.info(
+                    f"Run id {runid}," + f" preparing plot for {parentkey}, {childkey}"
+                )
+                timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(source[parentkey][childkey]))
                 timelines[parentkey][childkey] = figure(
                     title=childkey,
@@ -115,6 +124,8 @@ def make_timelines(source, runid=None):
             timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
             timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
             timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+
+    logger.info(f"Successfully created timeline plots for run {runid}")
 
     return dict(timelines)
 
@@ -185,10 +196,15 @@ def make_camera_displays(source, runid):
     for parentkey in source.keys():
         if not re.match(TEST_PATTERN, parentkey):
             for childkey in source[parentkey].keys():
-                print(f"Run id {runid} Preparing plot for {parentkey}, {childkey}")
+                logger.info(
+                    f"Run id {runid}," + f" preparing plot for {parentkey}, {childkey}"
+                )
                 displays[parentkey][childkey] = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
                 )
+
+    logger.info(f"Successfully created camera display plots for run {runid}")
+
     return dict(displays)
 
 
@@ -267,12 +283,20 @@ def make_camera_display(source, parent_key, child_key):
     display = CameraDisplay(geometry=geom)
     try:
         display.image = image
-    except ValueError:
+    except ValueError as e:
         image = np.zeros(shape=display.image.shape)
         display.image = image
-    except KeyError:
+        logger.error(
+            f"Exception '{e}', filled camera plot"
+            + f"{parent_key}, {child_key} with zeros"
+        )
+    except KeyError as e:
         image = np.zeros(shape=constants.N_PIXELS)
         display.image = image
+        logger.error(
+            f"Exception '{e}', filled camera plot"
+            + f"{parent_key}, {child_key} with zeros"
+        )
 
     fig = display.figure
     # add axis labels

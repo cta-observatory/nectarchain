@@ -14,11 +14,14 @@ from bokeh.plotting import curdoc
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
+from logging_config import setup_logger
 
 from nectarchain.dqm.db_utils import DQMDB
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
+
+logger = setup_logger()
 
 
 def update(attr, old, new):
@@ -56,6 +59,7 @@ def update(attr, old, new):
     """
 
     runid = new
+    logger.info(f"Requested to display information for run: {runid}")
     source = get_rundata(db, runid)
 
     tab_camera_displays = update_camera_displays(source, displays, runid)
@@ -65,11 +69,12 @@ def update(attr, old, new):
     tabs = Tabs(tabs=[tab_camera_displays, tab_timelines], sizing_mode="scale_width")
 
     page_layout.children[1] = tabs
+    logger.info("Updated layouts and TabPanel objects for tabs.")
 
 
-print("Opening connection to ZODB")
+logger.info("Opening connection to ZODB")
 db = DQMDB(read_only=True).root
-print("Getting list of run numbers")
+logger.info("Getting list of run numbers")
 runids = sorted(list(db.keys()), reverse=True)
 
 # First, get the run id with the most populated result dictionary
@@ -78,16 +83,16 @@ runids = sorted(list(db.keys()), reverse=True)
 # run_dict_lengths = [len(db[r]) for r in runids]
 # runid = runids[np.argmax(run_dict_lengths)]
 runid = "NectarCAM_Run6310"
-print(f"We will start with run {runid}")
+logger.info(f"We will start with run {runid}")
 
-print("Defining Select")
+logger.info("Defining Select")
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 # run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 run_select = Select(
     value=runid, title="NectarCAM run number", options=runids, css_classes=["select"]
 )
 
-print(f"Getting data for run {run_select.value}")
+logger.info(f"Getting data for run {run_select.value}")
 source = get_rundata(db, run_select.value)
 displays = make_camera_displays(source, runid)
 timelines = make_timelines(source, runid)
@@ -131,6 +136,10 @@ tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 tabs = Tabs(
     tabs=[tab_camera_displays, tab_timelines],
 )
+
+# TODO: may want to add a list to the logging of all created tabs,
+# to keep track of what is being displayed
+logger.info("Created layouts and TabPanel objects for tabs")
 
 page_layout = column([controls, tabs], sizing_mode="scale_width")
 
