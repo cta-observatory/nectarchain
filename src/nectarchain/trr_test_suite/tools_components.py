@@ -16,6 +16,11 @@ from scipy.signal import find_peaks
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
+from nectarchain.trr_test_suite.utils import (
+    get_adc_to_pe,
+    get_bad_pixels_list,
+    get_ff_coeff,
+)
 from nectarchain.utils.constants import GAIN_DEFAULT
 
 
@@ -95,6 +100,165 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
             std_err[channel] = np.std(pix_std_charge)
 
         return mean_charge, std_charge, std_err, npixels
+
+
+class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
+    """This class, `ChargeResolutionTestTool`, is a subclass of
+    `EventsLoopNectarCAMCalibrationTool`. It is responsible for performing a linearity
+    test on NectarCAM data. The class has a `componentsList` attribute that specifies
+    the list of NectarCAM components to be applied.
+
+    The `finish` method is the main functionality of this class. It reads the charge\
+        data from the output file, calculates the mean charge, standard deviation,\
+            and standard error for both the high gain and low gain channels, and\
+                returns these values. This information can be used to assess\
+                    the linearity of the NectarCAM system.
+    """
+
+    name = "ChargeResolutionTestTool"
+
+    temperature = Field(
+        default=14, dtype=np.float64, allow_none=True, description="temperature of run"
+    )
+
+    ff_model = Field(
+        default=None,
+        dtype=np.int32,
+        description="Model for FF coefficients: "
+        "1-Independent, 2- 2-D Gaussian model (Anastasiia's method),"
+        "Default:None, ff_coefficients =1",
+    )
+
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value=["ChargesComponent"],
+        help="List of Component names to be apply, the order will be respected",
+    ).tag(config=True)
+
+    def set_thermal_params(self, temp, ff_model):
+        self.temperature = temp
+        self.ff_model = ff_model
+
+    def finish(self, *args, **kwargs):
+        output = super().finish(return_output_component=True, *args, **kwargs)
+
+        charge_container = output[0].containers[EventType.FLATFIELD]
+
+        mean_charge = [0, 0]  # per channel
+        std_charge = [0, 0]
+        std_err = [0, 0]
+
+        charge_hg = charge_container["charges_hg"]
+        charge_lg = charge_container["charges_lg"]
+        tom = charge_container["peak_hg"]
+        npixels = charge_container["npixels"]
+        # print("charge hg ",charge_hg, len(charge_hg), len(charge_hg[0]))
+        charge_hg = np.array(charge_hg, dtype=float)
+        charge_lg = np.array(charge_lg, dtype=float)
+
+        # ToM cut==============
+        tom_mean = np.nanmean(tom, axis=0)
+        diff = np.abs(tom - tom_mean)
+        # mask events shifted by more than 6 ns
+        charge_hg[np.where(diff > 6)] = np.nan
+        charge_lg[np.where(diff > 6)] = np.nan
+
+        """
+        output_file = h5py.File(self.output_path)
+
+        for thing in output_file:
+            group = output_file[thing]
+            dataset = group["ChargeContainer_0"]
+            data = dataset[:]
+            # print("data",data)
+            for tup in data:
+                try:
+                    npixels = tup[1]
+                    charge_hg.extend(tup[6])
+                    charge_lg.extend(tup[7])
+                    tom_mean.append(tup[8])
+                except Exception:
+                    break
+
+        output_file.close()
+        """
+        # print("temperature ", self.temperature)
+        adc_to_pe = get_adc_to_pe(self.temperature)
+        bad_pix = get_bad_pixels_list()
+        # print("bad_pix",bad_pix)
+
+        if self.ff_model not in (1, 2):
+            ff_coeff = 1
+        else:
+            ff_coeff = get_ff_coeff(self.temperature, self.ff_model)
+
+        charge_lg[:, bad_pix] = np.nan
+        charge_hg[:, bad_pix] = np.nan
+
+        # print("bad pix list ", bad_pix)
+
+        charge_lg = np.array(charge_lg)
+        charge_hg = np.array(charge_hg)
+
+        mean_charge = [0, 0]  # per channel
+        std_charge = [0, 0]
+        std_err = [0, 0]
+
+        mean_resolution = [0, 0]
+
+        charge_pe_hg = charge_hg / (ff_coeff * adc_to_pe)
+        charge_pe_lg = charge_lg / (ff_coeff * adc_to_pe)
+
+        n_events = len(charge_pe_hg)
+        print("n_events", n_events)
+
+        """
+        print(
+            charge_pe_lg,
+            len(charge_pe_lg),
+            len(charge_pe_hg),
+            np.nanmean(charge_pe_hg, axis=0),
+            np.nanmean(charge_pe_lg, axis=0),
+        )
+        """
+        # print("min ", np.min(np.concatenate(charge_pe_lg)),
+        # np.min(np.concatenate(charge_pe_hg)))
+
+        ratio_hglg = np.nanmean(
+            np.nanmean(charge_pe_hg, axis=0) / np.nanmean(charge_pe_lg, axis=0)
+        )
+        print("ratio ", ratio_hglg)
+
+        for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
+            # print(channel,charge)
+            pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
+            # print(pix_mean_charge)
+
+            pix_std_charge = np.nanstd(charge, axis=0)
+
+            pix_resolution = pix_std_charge / pix_mean_charge
+
+            # average of all pixels
+            mean_charge[channel] = np.nanmean(pix_mean_charge)
+
+            mean_resolution[channel] = np.nanmean(pix_resolution)
+
+            # print("pix ",npixels,channel,pix_resolution,min(pix_resolution),
+            # max(pix_resolution),np.where(pix_mean_charge<0),max(pix_std_charge))
+
+            # mean_res_std[channel]    = np.std(pix_resolution[pix_resolution>-500])
+            std_charge[channel] = np.nanmean(pix_std_charge)
+            # for the charge resolution
+            std_err[channel] = np.std(pix_std_charge)
+
+        return (
+            mean_charge,
+            std_charge,
+            std_err,
+            npixels,
+            mean_resolution,
+            ratio_hglg,
+        )
 
 
 class ToMContainer(NectarCAMContainer):
