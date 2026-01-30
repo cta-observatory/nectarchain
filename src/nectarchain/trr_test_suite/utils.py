@@ -305,6 +305,26 @@ def get_adc_to_pe(temperature):
     return np.array(adc_to_pe)
 
 
+def get_ff_coeff(temperature, ff_model):
+    temp = np.array([0, -5, 14, 25, 20, 10])
+    runs = np.array([6672, 6729, 6954, 7020, 7077, 7144])
+
+    if temperature in temp:
+        run_no = runs[temp == temperature][0]
+    else:
+        return 1
+
+    df = pd.read_csv(
+        "resources/FF_coeff/FF_calibration_run{}.dat".format(run_no), sep=r"\s+"
+    )
+
+    if ff_model == 1:
+        ff = np.array(df["FF_coef_independent_way"])
+    else:
+        ff = np.array(df["FF_coef_model_way"])
+    return ff
+
+
 def pe_from_intensity_percentage(
     percent,
     percent_from_calibration=intensity_percent,
