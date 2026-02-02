@@ -55,17 +55,14 @@ def update(attr, old, new):
       `on_change` handlers.
     """
 
-    runid = run_select.value
+    runid = new
     source = get_rundata(db, runid)
 
     tab_camera_displays = update_camera_displays(source, displays, runid)
     tab_timelines = update_timelines(source, timelines, runid)
 
     # Combine panels into tabs
-    tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines],
-        sizing_mode="scale_width",
-    )
+    tabs = Tabs(tabs=[tab_camera_displays, tab_timelines], sizing_mode="scale_width")
 
     page_layout.children[1] = tabs
 
@@ -86,7 +83,9 @@ print(f"We will start with run {runid}")
 print("Defining Select")
 # runid_input = NumericInput(value=db.root.keys()[-1], title="NectarCAM run number")
 # run_select = Select(value=runid, title="NectarCAM run number", options=runids)
-run_select = Select(value=runid, title="NectarCAM run number", options=runids)
+run_select = Select(
+    value=runid, title="NectarCAM run number", options=runids, css_classes=["select"]
+)
 
 print(f"Getting data for run {run_select.value}")
 source = get_rundata(db, run_select.value)
@@ -107,6 +106,7 @@ camera_displays = [
     for parentkey in displays.keys()
     for childkey in displays[parentkey].keys()
 ]
+
 list_timelines = [
     timelines[parentkey][childkey]
     for parentkey in timelines.keys()

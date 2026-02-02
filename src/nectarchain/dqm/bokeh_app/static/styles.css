@@ -1,0 +1,32 @@
+/* Style for Select widget */
+.select .bk-input {
+    background-color: #f0f8ff !important;
+    border: 1px solid #4a90e2 !important;
+    border-radius: 5px !important;
+    padding: 5px !important;
+    font-size: 32px;
+}
+
+/* Style for the dropdown menu of Select */
+.select .bk-menu {
+    background-color: #f0f8ff !important;
+    border: 1px solid #4a90e2 !important;
+}
+
+/* TODO: possible more styles */
+/* Style for Button widget */
+/* .button .bk-btn {
+    background-color: #4a90e2 !important;
+    color: white !important;
+    border-radius: 5px !important;
+    padding: 8px 15px !important;
+} */
+
+/* Style for Div widget */
+/* .div {
+    background-color: #e6f7ff !important;
+    border-radius: 10px !important;
+    padding: 15px !important;
+    border: 1px solid #4a90e2 !important;
+} */
+
