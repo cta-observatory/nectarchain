@@ -8,8 +8,10 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from nectarchain.trr_test_suite.tools_components import TimingResolutionTestTool
-from nectarchain.trr_test_suite.utils import pe2photons, photons2pe
+from nectarchain.trr_verification_package.tools_components import (
+    TimingResolutionTestTool,
+)
+from nectarchain.trr_verification_package.utils import pe2photons, photons2pe
 
 
 def get_args():

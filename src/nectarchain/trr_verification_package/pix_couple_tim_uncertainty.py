@@ -6,7 +6,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+from nectarchain.trr_verification_package.tools_components import ToMPairsTool
 
 
 def get_args():

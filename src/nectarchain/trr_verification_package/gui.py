@@ -27,12 +27,12 @@ from PyQt5.QtWidgets import (
     QWidgetItem,
 )
 
-import nectarchain.trr_test_suite.deadtime as deadtime
-import nectarchain.trr_test_suite.linearity as linearity
-import nectarchain.trr_test_suite.pedestal as pedestal
-import nectarchain.trr_test_suite.pix_tim_uncertainty as pix_tim_uncertainty
-import nectarchain.trr_test_suite.trigger_timing as trigger_timing
-from nectarchain.trr_test_suite import (
+import nectarchain.trr_verification_package.deadtime as deadtime
+import nectarchain.trr_verification_package.linearity as linearity
+import nectarchain.trr_verification_package.pedestal as pedestal
+import nectarchain.trr_verification_package.pix_tim_uncertainty as pix_tim_uncertainty
+import nectarchain.trr_verification_package.trigger_timing as trigger_timing
+from nectarchain.trr_verification_package import (
     pix_couple_tim_uncertainty as pix_couple_tim_uncertainty,
 )
 

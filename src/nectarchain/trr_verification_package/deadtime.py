@@ -10,8 +10,8 @@ import numpy as np
 from astropy import units as u
 from iminuit import Minuit
 
-from nectarchain.trr_test_suite.tools_components import DeadtimeTestTool
-from nectarchain.trr_test_suite.utils import (
+from nectarchain.trr_verification_package.tools_components import DeadtimeTestTool
+from nectarchain.trr_verification_package.utils import (
     ExponentialFitter,
     deadtime_labels,
     source_ids_deadtime,
