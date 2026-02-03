@@ -3,12 +3,14 @@
 
 import logging
 import os
+import re
 from collections import defaultdict
 
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import tables
 from charge_config import (
     BAD_MODULE_IDS,
     BAD_PIXELS_GAIN,
@@ -22,7 +24,7 @@ from charge_config import (
     ivalnsb_map,
     outdir,
     path,
-    pedestal_file,
+    pedestal_folder,
     temp_map,
     vvalff_map,
 )
@@ -334,15 +336,40 @@ def load_ff_file(temp, ff_map, ff_dir):
     return ff_dict
 
 
+def load_pedestal_h5(filepath):
+    h5file = tables.open_file(filepath)
+
+    # --- access combined pedestal ---
+    table = h5file.root.data_combined.NectarCAMPedestalContainer_0[0]
+
+    pixel_ids = table["pixels_id"]
+    pedestal_wf = table["pedestal_mean_hg"]  # (n_pixels, nsamples)
+
+    # baseline per pixel = mean over samples
+    baseline = pedestal_wf.mean(axis=1)
+
+    h5file.close()
+
+    return pixel_ids, dict(zip(pixel_ids, baseline))
+
+
 # ================================
 # LOAD PEDESTALS
 # ================================
-ped_data = np.load(pedestal_file)
-ped_temperature = ped_data["temperature"]
-ped_baseline = ped_data["baseline"]
-ped_pixel_ids = ped_data["pixel_ids"]
-ped_vvalff = ped_data["vvalff"]
-ped_ivalnsb = ped_data["ivalnsb"]
+pedestal_dir = pedestal_folder
+# Will store: ped_files[(T, NSB)] = filepath
+ped_files = {}
+pattern = re.compile(r"pedestal_cfilt3s_T(?P<T>-?\d+)_NSB(?P<NSB>[\d.]+)\.h5")
+for fname in os.listdir(pedestal_dir):
+    match = pattern.match(fname)
+    if match:
+        T = float(match.group("T"))
+        NSB = float(match.group("NSB"))
+        ped_files[(T, NSB)] = os.path.join(pedestal_dir, fname)
+
+# Convenience arrays for nearest-neighbor lookup
+ped_T_vals = np.array(sorted(set(T for T, _ in ped_files)))
+ped_NSB_vals = np.array(sorted(set(NSB for _, NSB in ped_files)))
 
 # ================================
 # PROCESSING
@@ -355,17 +382,19 @@ for temp, runs in temp_map.items():
     nsbs = ivalnsb_map[temp]
 
     for i, run in enumerate(runs):
-        print(run)
         Voo = voltages[i]
         Inn = nsbs[i]
 
-        # pedestal
-        t_idx = int(np.argmin(np.abs(ped_temperature - temp)))
-        iff = int(np.argmin(np.abs(ped_vvalff - Voo)))
-        jnsb = int(np.argmin(np.abs(ped_ivalnsb - Inn)))
-        ped_vals = ped_baseline[t_idx, iff, jnsb, :]
+        # --- find closest available pedestal ---
+        T_sel = ped_T_vals[np.argmin(np.abs(ped_T_vals - temp))]
+        NSB_sel = ped_NSB_vals[np.argmin(np.abs(ped_NSB_vals - Inn))]
 
-        ped_dict = dict(zip(ped_pixel_ids, ped_vals))
+        ped_file = ped_files[(T_sel, NSB_sel)]
+
+        # --- load pedestal ---
+        ped_pixel_ids, ped_dict = load_pedestal_h5(ped_file)
+
+        # ped_dict is identical in spirit to before
 
         # FF correction
         try:
@@ -609,55 +638,133 @@ for (V, I), subset in df_all_pixels.groupby(["V", "NSB"]):
 
 
 # ================================
-# PLOT AVERAGE PEDESTALS PER TEMPERATURE
+# PLOT CAMERA AVG VS TEMP - GROUPED BY VOLTAGE WITH SHADED NSB SPREAD
 # ================================
-avg_ped_per_temp = []
-std_ped_per_temp = []
-temps_sorted = sorted(temp_map.keys())
 
-for temp in temps_sorted:
-    runs = temp_map[temp]
-    voltages = vvalff_map[temp]
-    nsbs = ivalnsb_map[temp]
+# Reorganize data: group by (Temperature, Voltage), collect all NSB values.
+# Also collect ALL points regardless of voltage/NSB for the global fit.
+voltage_temp_data = defaultdict(lambda: defaultdict(list))
+all_temp_data = defaultdict(list)
 
-    ped_vals_all = []
-    for i, run in enumerate(runs):
-        Voo = voltages[i]
-        Inn = nsbs[i]
+for (V, I), records in avg_charges_config.items():
+    for rec in records:
+        temp = rec["Temperature"]
+        cam_avg = rec["CameraAvgCharge"]
+        voltage_temp_data[V][temp].append(cam_avg)
+        all_temp_data[temp].append(cam_avg)
 
-        # get indices for pedestal arrays
-        t_idx = int(np.argmin(np.abs(ped_temperature - temp)))
-        iff = int(np.argmin(np.abs(ped_vvalff - Voo)))
-        jnsb = int(np.argmin(np.abs(ped_ivalnsb - Inn)))
-        ped_vals = ped_baseline[t_idx, iff, jnsb, :]
+# ============================================================
+#              GLOBAL LINEAR FIT (all voltages + NSBs)
+# ============================================================
+global_temps = np.array(sorted(all_temp_data.keys()), dtype=float)
+global_means = np.array([np.mean(all_temp_data[t]) for t in global_temps])
+global_stds = np.array([np.std(all_temp_data[t]) for t in global_temps])
+global_counts = np.array([len(all_temp_data[t]) for t in global_temps])
+global_sems = global_stds / np.sqrt(global_counts)
 
-        # Filter out bad pixels from modules
-        good_pixel_mask = np.array([pid not in bad_ids for pid in ped_pixel_ids])
-        ped_vals_good = ped_vals[good_pixel_mask]
+# Weighted fit: only where SEM > 0
+fit_mask = global_sems > 0
+weights = 1.0 / global_sems[fit_mask] ** 2
 
-        ped_vals_all.append(ped_vals_good)
+coeffs, cov = np.polyfit(
+    global_temps[fit_mask], global_means[fit_mask], 1, w=np.sqrt(weights), cov=True
+)
+slope, intercept = coeffs
+slope_err, intercept_err = np.sqrt(np.diag(cov))
 
-    # flatten all good pixel pedestals for this temperature across runs
-    ped_vals_all = np.concatenate(ped_vals_all)
-    avg_ped_per_temp.append(np.mean(ped_vals_all))
-    std_ped_per_temp.append(np.std(ped_vals_all))
-
-# plot
-plt.figure(figsize=(8, 5))
-plt.errorbar(temps_sorted, avg_ped_per_temp, yerr=std_ped_per_temp, fmt="o-", capsize=4)
-plt.xlabel("Temperature (°C)")
-plt.ylabel("Average Pedestal (ADC)")
-plt.title(
-    f"Camera Average Pedestal vs Temperature "
-    f"(excluding {len(BAD_MODULE_IDS)} bad modules)"
+logger.info(
+    "Global fit: Charge = (%.4f ± %.4f) * T + (%.4f ± %.4f)",
+    slope,
+    slope_err,
+    intercept,
+    intercept_err,
 )
 
-plt.grid(True)
-plt.tight_layout()
-plt.savefig(os.path.join(outdir, "AvgPedestal_vs_Temperature.png"), dpi=150)
-plt.show()
+T_fit = np.linspace(global_temps.min() - 1, global_temps.max() + 1, 200)
+charge_fit = slope * T_fit + intercept
 
-print("\n=== Summary ===")
-print(f"Bad modules excluded: {len(BAD_MODULE_IDS)}")
-print(f"Bad pixels excluded: {len(BAD_PIXELS_FROM_MODULES)}")
-print(f"Total pixels analyzed: {len(ped_pixel_ids) - len(BAD_PIXELS_FROM_MODULES)}")
+# ============================================================
+#                        PLOTTING
+# ============================================================
+fig, ax = plt.subplots(figsize=(12, 8))
+
+# --- Per-voltage lines + shaded NSB spread ---
+voltages = sorted(voltage_temp_data.keys())
+colors = plt.cm.viridis(np.linspace(0, 1, len(voltages)))
+
+for i, V in enumerate(voltages):
+    temps = sorted(voltage_temp_data[V].keys())
+
+    means, mins, maxs = [], [], []
+    for temp in temps:
+        charges_at_temp = voltage_temp_data[V][temp]
+        means.append(np.mean(charges_at_temp))
+        mins.append(np.min(charges_at_temp))
+        maxs.append(np.max(charges_at_temp))
+
+    temps = np.array(temps, dtype=float)
+    means = np.array(means)
+    mins = np.array(mins)
+    maxs = np.array(maxs)
+
+    ax.plot(
+        temps,
+        means,
+        "o-",
+        color=colors[i],
+        linewidth=2,
+        markersize=6,
+        label=f"V={V} V",
+        zorder=3,
+    )
+    ax.fill_between(temps, mins, maxs, color=colors[i], alpha=0.2, zorder=1)
+
+# --- Global mean ± std error bars ---
+ax.errorbar(
+    global_temps,
+    global_means,
+    yerr=global_stds,
+    fmt="o",
+    color="black",
+    markersize=8,
+    capsize=5,
+    capthick=1.5,
+    zorder=5,
+    label="Mean ± std (all V, NSB)",
+)
+
+# --- Global linear fit ---
+fit_label = (
+    f"Fit: $({slope:.4f} \\pm {slope_err:.4f})\\,T$\n"
+    f"$+ ({intercept:.4f} \\pm {intercept_err:.4f})$"
+)
+ax.plot(
+    T_fit,
+    charge_fit,
+    color="red",
+    linewidth=2.5,
+    linestyle="--",
+    label=fit_label,
+    zorder=4,
+)
+
+# ============================================================
+#                   AXES, LEGEND
+# ============================================================
+ax.set_xlabel("Temperature [°C]", fontsize=16)
+ax.set_ylabel("Camera Average Normalized Charge [p.e.]", fontsize=16)
+ax.tick_params(axis="both", which="major", labelsize=14)
+ax.tick_params(axis="both", which="minor", labelsize=12)
+ax.grid(True, alpha=0.3)
+
+ax.legend(
+    loc="upper left",
+    fontsize=12,
+    frameon=True,
+    framealpha=0.9,
+)
+
+plt.tight_layout()
+plt.savefig(os.path.join(outdir, "CameraAvgCharge_ByVoltage_NSBSpread.png"), dpi=150)
+plt.show()
+plt.close()
