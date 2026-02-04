@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import pickle
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -572,6 +573,9 @@ def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
+    sys.argv = sys.argv[:1]
 
     labels = deadtime_labels
 
