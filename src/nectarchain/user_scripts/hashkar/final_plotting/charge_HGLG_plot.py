@@ -54,14 +54,13 @@ camera_geom = CameraGeometry.from_name("NectarCam").transform_to(
 
 
 """
-Charge normalization analysis script:
-- Reads pedestal maps depending on (temperature, FF voltage, NSB intensity)
-- Subtracts baseline dynamically for each run
-- Applies FF correction, SPE gain normalization, and generates per-pixel maps
-- Produces camera-average vs temperature plots
-(all configurations on the same figure)
+Charge normalization analysis script with HG/LG gain splitting:
+- Uses HG data for Voltage <= 12V
+- Uses LG data × mean(HG/LG ratio from V<=12) for Voltage > 12V
+- Reads gain-appropriate pedestals (HG vs LG)
+- Applies FF correction and SPE gain normalization (same for both)
+- Produces camera-average vs temperature plots with shaded NSB spread
 - Produces per-pixel slope maps per (Voltage, NSB)
-- Excludes bad modules from calculations and plots
 """
 
 # ================================
@@ -82,7 +81,6 @@ def get_bad_pixels_from_modules(bad_module_ids):
     return bad_pixels
 
 
-# Get all bad pixel IDs from bad modules
 BAD_PIXELS_FROM_MODULES = get_bad_pixels_from_modules(BAD_MODULE_IDS)
 logger.info("Total bad pixels from bad modules: %d", len(BAD_PIXELS_FROM_MODULES))
 bad_ids = None
@@ -91,74 +89,7 @@ bad_ids = None
 def get_bad_hv_pixels_db(
     run, path, db_data_path, hv_tolerance=4.0, telid=0, verbose=False
 ):
-    """
-    Identify pixels for which |measured HV - target HV| > hv_tolerance.
-
-    Parameters
-    ----------
-    run : int
-        Run number.
-    path : str
-        Path to rawdata (needed by DBInfos.init_from_run).
-    db_data_path : str
-        Path to sqlite monitoring database.
-    hv_tolerance : float
-        Allowed HV deviation relative to target HV (default: 4 V).
-    telid : int
-        Telescope ID.
-    verbose : bool
-        Print detailed information.
-
-    Returns
-    -------
-    set
-        Pixel IDs failing the HV criterion.
-    """
-    """
-    # Load DBInfos
-    dbinfos = DBInfos.init_from_run(run, path=path, dbpath=db_data_path, verbose=False)
-    dbinfos.connect("monitoring_drawer_temperatures", "monitoring_channel_voltages")
-
-    try:
-        hv_measured = (
-            dbinfos.tel[telid]
-            .monitoring_channel_voltages
-            .voltage
-            .datas
-        )
-
-        hv_target = (
-            dbinfos.tel[telid]
-            .monitoring_channel_voltages
-            .target_voltage
-            .datas
-        )  # input here the target voltage
-
-    except Exception as e:
-        logger.error(
-        "Error retrieving HV data for run %s, telid %s: %s", run, telid, e
-        )
-
-        return set()
-
-    # Mean values per pixel (ignore obviously wrong measurement frames)
-    hv_measured_mean = np.nanmean(hv_measured, where=hv_measured > 400, axis=-1)
-    hv_target_mean   = np.nanmean(hv_target,  where=hv_target > 400,   axis=-1)
-
-    # Apply Vincent's condition: |measured - target| > tolerance
-    deviation = np.abs(hv_measured_mean - hv_target_mean)
-    bad_pixels = set(np.where(deviation > hv_tolerance)[0])
-
-    if verbose:
-        logger.info(
-            "Run %s: %d bad pixels (|HV_meas - HV_target| > %.1f V)",
-            run,
-            len(bad_pixels),
-            hv_tolerance,
-        )
-        logger.debug("Bad pixel IDs: %s", sorted(bad_pixels))
-
-    """
+    """Identify pixels with |measured HV - target HV| > hv_tolerance."""
     bad_pixels = BAD_PIXELS_HV
     return bad_pixels
 
@@ -166,24 +97,81 @@ def get_bad_hv_pixels_db(
 # ================================
 # HELPER FUNCTIONS
 # ================================
-def load_charge_file(filename, dataset_name="FLATFIELD"):
+def load_charge_file(filename, gain="HG", peak_time_tolerance=6.0):
+    """
+    Load charge data from HDF5 file for specified gain (HG or LG).
+    Applies peak time filtering: keeps only events where mean peak time per event
+    is within peak_time_tolerance of the global mean, then returns mean charge per pixel.
+    """
     with h5py.File(filename, "r") as f:
-        logger.info("Filename: %s", filename)
+        logger.info("Filename: %s, Gain: %s", filename, gain)
         container = f.get("data/ChargesContainer_0")
-        dataset = container.get(dataset_name)
+        dataset = container.get("FLATFIELD")
         dataset0 = dataset[0]
         pixels_id = dataset0["pixels_id"]
-        charges_hg = dataset0["charges_hg"].squeeze()
-    return np.array(pixels_id), np.array(charges_hg)
+
+        if gain == "HG":
+            charges_all = dataset0[
+                "charges_hg"
+            ]  # shape: (N_events, N_pixels) or (N_pixels,)
+            peaks_all = dataset0[
+                "peak_hg"
+            ]  # shape: (N_events, N_pixels) or (N_pixels,)
+        elif gain == "LG":
+            charges_all = dataset0["charges_lg"]
+            peaks_all = dataset0["peak_lg"]
+        else:
+            raise ValueError(f"Invalid gain: {gain}")
+
+        # Convert to numpy arrays
+        charges_all = np.array(charges_all)
+        peaks_all = np.array(peaks_all)
+
+        # If 1D (single event), no filtering needed
+        if charges_all.ndim == 1:
+            logger.info("Single event detected, no peak time filtering applied")
+            return np.array(pixels_id), charges_all
+
+        # --- Peak time filtering for multi-event data ---
+        # charges_all shape: (N_events, N_pixels)
+        # peaks_all shape: (N_events, N_pixels)
+
+        # Compute mean peak time per event (average over pixels)
+        mean_peak_per_event = np.mean(peaks_all, axis=1)  # shape: (N_events,)
+        global_mean_peak = np.mean(mean_peak_per_event)
+
+        # Filter events: keep only those within tolerance
+        mask_events = (
+            np.abs(mean_peak_per_event - global_mean_peak) <= peak_time_tolerance
+        )
+        n_total = len(mean_peak_per_event)
+        n_kept = np.sum(mask_events)
+
+        logger.info(
+            "Peak time filter: kept %d/%d events (tolerance=%.1f ns)",
+            n_kept,
+            n_total,
+            peak_time_tolerance,
+        )
+
+        if n_kept == 0:
+            logger.warning("All events filtered out! Returning NaN charges")
+            return np.array(pixels_id), np.full(len(pixels_id), np.nan)
+
+        # Apply mask and compute mean across filtered events
+        charges_filtered = charges_all[mask_events, :]  # shape: (N_kept, N_pixels)
+        charges_mean = np.mean(charges_filtered, axis=0)  # shape: (N_pixels,)
+
+        return np.array(pixels_id), charges_mean
 
 
 def read_gain_file(spe_run, window, shift, method, dirname):
+    """Read SPE gain file (same for HG and LG)."""
     filename = (
         f"FlatFieldSPENominalStdNectarCAM_run{spe_run}_"
         f"maxevents5000_{method}_window_shift_{shift}_"
         f"window_width_{window}.h5"
     )
-
     spe_filename = os.path.join(dirname, filename)
 
     with h5py.File(spe_filename, "r") as f:
@@ -198,6 +186,7 @@ def read_gain_file(spe_run, window, shift, method, dirname):
 
 
 def detect_bad_pixels(pixels_id, charges, nsigma=5):
+    """Detect statistical outliers via sigma clipping."""
     vals = np.array(charges, dtype=float)
     mean_val = np.nanmean(vals)
     std_val = np.nanstd(vals)
@@ -206,6 +195,7 @@ def detect_bad_pixels(pixels_id, charges, nsigma=5):
 
 
 def compute_slopes_and_stats(df_pixels, runs, temperatures):
+    """Compute per-pixel slopes vs temperature."""
     pixel_gains = df_pixels.pivot_table(
         index="Pixel", columns="Run", values="Gain"
     ).reindex(columns=runs)
@@ -231,8 +221,7 @@ def compute_slopes_and_stats(df_pixels, runs, temperatures):
 
 
 def plot_camera(values, pixel_ids, camera_geom, title, fig_path, cmap="viridis"):
-    """Plot camera display, automatically masking bad pixels from modules"""
-    # Filter out bad pixels from modules
+    """Plot camera display, masking bad pixels."""
     good_mask = np.array([pid not in bad_ids for pid in pixel_ids])
     filtered_pixel_ids = pixel_ids[good_mask]
     filtered_values = np.array(values)[good_mask]
@@ -250,67 +239,29 @@ def plot_camera(values, pixel_ids, camera_geom, title, fig_path, cmap="viridis")
     plt.close(fig)
 
 
-def plot_pixel_histogram(
-    values,
-    pixel_ids,
-    title,
-    fig_path,
-    bins=50,
-    xlabel="Value",
-):
-    """
-    Plot histogram of per-pixel values, excluding bad pixels,
-    with camera average and standard deviation.
-    """
-
-    # Exclude bad pixels
+def plot_pixel_histogram(values, pixel_ids, title, fig_path, bins=50, xlabel="Value"):
+    """Plot histogram of per-pixel values."""
     good_mask = np.array([pid not in bad_ids for pid in pixel_ids])
     good_values = np.array(values, dtype=float)[good_mask]
-
-    # Remove NaNs / infs
     good_values = good_values[np.isfinite(good_values)]
 
     mean_val = np.mean(good_values)
     std_val = np.std(good_values)
 
     fig, ax = plt.subplots(figsize=(7.5, 5))
-
-    ax.hist(
-        good_values,
-        bins=bins,
-        histtype="stepfilled",
-        alpha=0.7,
-        label="Pixels",
-    )
-
-    # Mean and ±1σ
+    ax.hist(good_values, bins=bins, histtype="stepfilled", alpha=0.7, label="Pixels")
+    ax.axvline(mean_val, linestyle="--", linewidth=2, label=rf"Mean = {mean_val:.3e}")
     ax.axvline(
-        mean_val,
-        linestyle="--",
-        linewidth=2,
-        label=rf"Mean = {mean_val:.3e}",
+        mean_val + std_val, linestyle=":", linewidth=2, label=rf"+1σ = {std_val:.3e}"
     )
     ax.axvline(
-        mean_val + std_val,
-        linestyle=":",
-        linewidth=2,
-        label=rf"+1σ = {std_val:.3e}",
-    )
-    ax.axvline(
-        mean_val - std_val,
-        linestyle=":",
-        linewidth=2,
-        label=rf"-1σ = {std_val:.3e}",
+        mean_val - std_val, linestyle=":", linewidth=2, label=rf"-1σ = {std_val:.3e}"
     )
 
     ax.set_xlabel(xlabel, fontsize=16)
     ax.set_ylabel("Number of pixels", fontsize=16)
     ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.tick_params(axis="both", which="minor", labelsize=12)
-    # ax.set_title(title)
     ax.grid(True, alpha=0.3)
-
-    # 🔑 Compact legend INSIDE
     ax.legend(
         loc="upper right",
         fontsize=9,
@@ -327,6 +278,7 @@ def plot_pixel_histogram(
 
 
 def load_ff_file(temp, ff_map, ff_dir):
+    """Load flatfield coefficients."""
     ff_run = ff_map.get(temp)
     if ff_run is None:
         raise ValueError(f"No FF run defined for temp {temp}")
@@ -336,30 +288,33 @@ def load_ff_file(temp, ff_map, ff_dir):
     return ff_dict
 
 
-def load_pedestal_h5(filepath):
+def load_pedestal_h5(filepath, gain="HG"):
+    """Load pedestal from HDF5 file for specified gain."""
     h5file = tables.open_file(filepath)
-
-    # --- access combined pedestal ---
     table = h5file.root.data_combined.NectarCAMPedestalContainer_0[0]
 
     pixel_ids = table["pixels_id"]
-    pedestal_wf = table["pedestal_mean_hg"]  # (n_pixels, nsamples)
 
-    # baseline per pixel = mean over samples
+    if gain == "HG":
+        pedestal_wf = table["pedestal_mean_hg"]
+    elif gain == "LG":
+        pedestal_wf = table["pedestal_mean_lg"]
+    else:
+        raise ValueError(f"Invalid gain: {gain}")
+
     baseline = pedestal_wf.mean(axis=1)
-
     h5file.close()
 
     return pixel_ids, dict(zip(pixel_ids, baseline))
 
 
 # ================================
-# LOAD PEDESTALS
+# LOAD PEDESTAL FILE MAP
 # ================================
 pedestal_dir = pedestal_folder
-# Will store: ped_files[(T, NSB)] = filepath
 ped_files = {}
 pattern = re.compile(r"pedestal_cfilt3s_T(?P<T>-?\d+)_NSB(?P<NSB>[\d.]+)\.h5")
+
 for fname in os.listdir(pedestal_dir):
     match = pattern.match(fname)
     if match:
@@ -367,13 +322,144 @@ for fname in os.listdir(pedestal_dir):
         NSB = float(match.group("NSB"))
         ped_files[(T, NSB)] = os.path.join(pedestal_dir, fname)
 
-# Convenience arrays for nearest-neighbor lookup
 ped_T_vals = np.array(sorted(set(T for T, _ in ped_files)))
 ped_NSB_vals = np.array(sorted(set(NSB for _, NSB in ped_files)))
 
 # ================================
-# PROCESSING
+# FIRST PASS: COMPUTE HG/LG RATIO FROM V <= 12 RUNS
 # ================================
+logger.info("=== COMPUTING HG/LG RATIO FROM V <= 12 RUNS ===")
+
+hg_low_volt_data = []  # (run, mean_charge_hg)
+lg_low_volt_data = []  # (run, mean_charge_lg)
+
+for temp, runs in temp_map.items():
+    voltages = vvalff_map[temp]
+    nsbs = ivalnsb_map[temp]
+
+    for i, run in enumerate(runs):
+        Voo = voltages[i]
+        if Voo > 12:
+            continue  # Skip high-voltage runs for ratio calculation
+
+        Inn = nsbs[i]
+
+        # Find closest pedestal
+        T_sel = ped_T_vals[np.argmin(np.abs(ped_T_vals - temp))]
+        NSB_sel = ped_NSB_vals[np.argmin(np.abs(ped_NSB_vals - Inn))]
+        ped_file = ped_files[(T_sel, NSB_sel)]
+
+        # Load pedestals for both gains
+        ped_pixel_ids_hg, ped_dict_hg = load_pedestal_h5(ped_file, gain="HG")
+        ped_pixel_ids_lg, ped_dict_lg = load_pedestal_h5(ped_file, gain="LG")
+
+        # FF correction
+        try:
+            ff_dict = load_ff_file(temp, ff_map, ff_dir)
+        except Exception:
+            ff_dict = {pid: 1.0 for pid in ped_pixel_ids_hg}
+
+        # SPE gain
+        gain_run = gain_map[temp]
+        try:
+            spe_pixels, spe_gains = read_gain_file(
+                gain_run, WINDOW, SHIFT, METHOD, gain_path
+            )
+        except Exception:
+            continue
+        pixel_to_gain = dict(zip(spe_pixels, spe_gains))
+
+        # Load charge file
+        charge_filename = os.path.join(
+            dirname,
+            f"ChargesNectarCAMCalibration_run{run}_"
+            f"maxevents5000_{METHOD}_window_shift_{SHIFT}_window_width_{WINDOW}.h5",
+        )
+        if not os.path.exists(charge_filename):
+            continue
+
+        # Load HG and LG charges
+        pixels_id_hg, charges_hg = load_charge_file(charge_filename, gain="HG")
+        pixels_id_lg, charges_lg = load_charge_file(charge_filename, gain="LG")
+
+        # Average over events if 2D
+        if charges_hg.ndim > 1:
+            charges_hg = np.mean(charges_hg, axis=0)
+        if charges_lg.ndim > 1:
+            charges_lg = np.mean(charges_lg, axis=0)
+
+        # Process HG
+        charges_hg_pedcorr = np.array(
+            [
+                charges_hg[i] - ped_dict_hg.get(pid, np.nan) * WINDOW
+                for i, pid in enumerate(pixels_id_hg)
+            ]
+        )
+        charges_hg_ffcorr = np.array(
+            [
+                charges_hg_pedcorr[i] * ff_dict.get(pid, 1.0)
+                for i, pid in enumerate(pixels_id_hg)
+            ]
+        )
+        charges_hg_normalized = np.array(
+            [
+                charges_hg_ffcorr[i] / pixel_to_gain.get(pid, np.nan)
+                for i, pid in enumerate(pixels_id_hg)
+            ]
+        )
+
+        # Process LG
+        charges_lg_pedcorr = np.array(
+            [
+                charges_lg[i] - ped_dict_lg.get(pid, np.nan) * WINDOW
+                for i, pid in enumerate(pixels_id_lg)
+            ]
+        )
+        charges_lg_ffcorr = np.array(
+            [
+                charges_lg_pedcorr[i] * ff_dict.get(pid, 1.0)
+                for i, pid in enumerate(pixels_id_lg)
+            ]
+        )
+        charges_lg_normalized = np.array(
+            [
+                charges_lg_ffcorr[i] / pixel_to_gain.get(pid, np.nan)
+                for i, pid in enumerate(pixels_id_lg)
+            ]
+        )
+
+        # Camera-average charge per run (no bad pixel filtering yet)
+        mean_hg = np.nanmean(charges_hg_normalized)
+        mean_lg = np.nanmean(charges_lg_normalized)
+
+        hg_low_volt_data.append((run, mean_hg))
+        lg_low_volt_data.append((run, mean_lg))
+
+        logger.info(
+            "Run %s (V=%.1f): HG_mean=%.4f, LG_mean=%.4f", run, Voo, mean_hg, mean_lg
+        )
+
+# Compute per-run ratios, then take global mean
+ratios = []
+for (run_hg, hg_val), (run_lg, lg_val) in zip(hg_low_volt_data, lg_low_volt_data):
+    if (
+        run_hg == run_lg
+        and not np.isnan(hg_val)
+        and not np.isnan(lg_val)
+        and lg_val != 0
+    ):
+        ratio = hg_val / lg_val
+        ratios.append(ratio)
+        logger.info("Run %s: HG/LG ratio = %.4f", run_hg, ratio)
+
+global_ratio = np.mean(ratios) if ratios else 1.0
+logger.info("=== GLOBAL HG/LG RATIO (V <= 12): %.4f ===", global_ratio)
+
+# ================================
+# SECOND PASS: PROCESS ALL RUNS WITH GAIN SELECTION
+# ================================
+logger.info("=== PROCESSING ALL RUNS WITH GAIN SELECTION ===")
+
 avg_charges_config = defaultdict(list)
 all_pixel_records = []
 
@@ -385,16 +471,21 @@ for temp, runs in temp_map.items():
         Voo = voltages[i]
         Inn = nsbs[i]
 
-        # --- find closest available pedestal ---
+        # Select gain based on voltage
+        use_gain = "HG" if Voo <= 12 else "LG"
+        scaling_factor = 1.0 if use_gain == "HG" else global_ratio
+
+        logger.info(
+            "Run %s: V=%.1f → using %s (scale=%.4f)", run, Voo, use_gain, scaling_factor
+        )
+
+        # Find closest pedestal
         T_sel = ped_T_vals[np.argmin(np.abs(ped_T_vals - temp))]
         NSB_sel = ped_NSB_vals[np.argmin(np.abs(ped_NSB_vals - Inn))]
-
         ped_file = ped_files[(T_sel, NSB_sel)]
 
-        # --- load pedestal ---
-        ped_pixel_ids, ped_dict = load_pedestal_h5(ped_file)
-
-        # ped_dict is identical in spirit to before
+        # Load pedestal for selected gain
+        ped_pixel_ids, ped_dict = load_pedestal_h5(ped_file, gain=use_gain)
 
         # FF correction
         try:
@@ -412,33 +503,27 @@ for temp, runs in temp_map.items():
             continue
         pixel_to_gain = dict(zip(spe_pixels, spe_gains))
 
-        # load charges
+        # Load charge file
         charge_filename = os.path.join(
             dirname,
-            (
-                f"ChargesNectarCAMCalibration_run{run}_"
-                f"maxevents5000_{METHOD}_window_shift_{SHIFT}_"
-                f"window_width_{WINDOW}.h5"
-            ),
+            f"ChargesNectarCAMCalibration_run{run}_"
+            f"maxevents5000_{METHOD}_window_shift_{SHIFT}_window_width_{WINDOW}.h5",
         )
-
         if not os.path.exists(charge_filename):
             continue
-        pixels_id, charges_hg = load_charge_file(charge_filename)
 
-        # Check if there are multiple events (i.e., charges_hg is 2D)
-        if charges_hg.ndim > 1:
-            charges_hg = np.mean(charges_hg, axis=0)
-        else:
-            charges_hg = charges_hg
+        pixels_id, charges = load_charge_file(charge_filename, gain=use_gain)
 
-        logger.info("Temperature: %s, Run: %s", temp, run)
-        logger.info("Mean of charges_hg: %.6f", np.mean(charges_hg))
+        if charges.ndim > 1:
+            charges = np.mean(charges, axis=0)
 
-        # pedestal subtraction + FF + SPE normalization
+        logger.info("Temperature: %s, Run: %s, Gain: %s", temp, run, use_gain)
+        logger.info("Mean raw charge: %.6f", np.mean(charges))
+
+        # Pedestal subtraction + FF + SPE normalization
         charges_pedcorr = np.array(
             [
-                charges_hg[i] - ped_dict.get(pid, np.nan) * WINDOW
+                charges[i] - ped_dict.get(pid, np.nan) * WINDOW
                 for i, pid in enumerate(pixels_id)
             ]
         )
@@ -455,59 +540,35 @@ for temp, runs in temp_map.items():
             ]
         )
 
-        # 1. Get HV-bad pixels
-        hv_bad_pixels = get_bad_hv_pixels_db(
-            run,
-            path=path,
-            db_data_path=db_data_path,
-            hv_tolerance=4.0,
-            telid=0,
-            verbose=True,
-        )
+        # Apply HG/LG scaling if using LG
+        charges_final = charges_normalized * scaling_factor
 
-        # 2. Get module-bad pixels
+        # Bad pixel identification
+        hv_bad_pixels = get_bad_hv_pixels_db(
+            run, path, db_data_path, hv_tolerance=4.0, telid=0, verbose=False
+        )
         module_bad_pixels = set(BAD_PIXELS_FROM_MODULES)
         gain_bad_pixels = set(BAD_PIXELS_GAIN)
-
-        # Combine all non-statistical bad pixels
-        hv_bad_pixels = set(hv_bad_pixels)
-        hv_bad_pixel = set(hv_bad_pixels)
-        gain_bad_pixels = set(gain_bad_pixels)
-        non_statistical_bad = hv_bad_pixels.union(module_bad_pixels).union(
-            gain_bad_pixels
+        non_statistical_bad = (
+            set(hv_bad_pixels).union(module_bad_pixels).union(gain_bad_pixels)
         )
 
-        logger.info(
-            "Fixed bad pixels (HV + modules + gain): %d", len(non_statistical_bad)
-        )
-
-        # 3. Select ONLY the remaining good pixels
         remaining_pixel_ids = [p for p in pixels_id if p not in non_statistical_bad]
         remaining_charges = [
-            charges_normalized[i]
+            charges_final[i]
             for i, p in enumerate(pixels_id)
             if p not in non_statistical_bad
         ]
 
-        # 4. Compute statistical bad pixels only on remaining ones
-        stat_bad_relative = detect_bad_pixels(
+        stat_bad_pixels = detect_bad_pixels(
             remaining_pixel_ids, remaining_charges, nsigma=NSIGMA_BADPIX
         )
-
-        # Map the relative indices back to pixel IDs
-        stat_bad_pixels = {remaining_pixel_ids[i] for i in stat_bad_relative}
-
-        logger.info(
-            "Statistical bad pixels (after exclusions): %d", len(stat_bad_pixels)
-        )
-
-        # 5. Final union of ALL bad pixels
         bad_ids = non_statistical_bad.union(stat_bad_pixels)
 
         logger.info("Total bad pixels: %d", len(bad_ids))
 
-        # store per-pixel (excluding bad pixels)
-        for pid, charge in zip(pixels_id, charges_normalized):
+        # Store per-pixel records
+        for pid, charge in zip(pixels_id, charges_final):
             if pid not in bad_ids:
                 all_pixel_records.append(
                     {
@@ -520,9 +581,9 @@ for temp, runs in temp_map.items():
                     }
                 )
 
-        # store camera average (excluding bad pixels)
+        # Store camera average
         good_charges = [
-            g for pid, g in zip(pixels_id, charges_normalized) if pid not in bad_ids
+            g for pid, g in zip(pixels_id, charges_final) if pid not in bad_ids
         ]
         cam_avg = np.nanmean(good_charges)
         cam_std = np.nanstd(good_charges)
@@ -543,10 +604,7 @@ df_all_pixels = pd.DataFrame(all_pixel_records)
 plt.figure(figsize=(20, 12))
 for (V, I), records in avg_charges_config.items():
     df_cfg = pd.DataFrame(records).sort_values("Temperature")
-
-    # compute mean and standard error instead of std
     cam_avgs = df_cfg["CameraAvgCharge"].values
-    # Count only good pixels for SEM calculation
     n_good_pixels = len(ped_pixel_ids) - len(bad_ids)
     cam_errs = np.array(
         [g / np.sqrt(n_good_pixels) for g in df_cfg["CameraStd"].values]
@@ -561,10 +619,7 @@ for (V, I), records in avg_charges_config.items():
         label=f"V={V} V, NSB={I} mA",
     )
 
-# Replace the problematic section around line 880 with this:
-logger.info(f"Total configurations processed: {len(avg_charges_config)}")
-for (V, I), records in avg_charges_config.items():
-    logger.info(f"Config V={V}, NSB={I}: {len(records)} temperature points")
+logger.info("Total configurations processed: %d", len(avg_charges_config))
 
 plt.xlabel("Temperature (°C)", fontsize=16)
 plt.ylabel("Camera Average Normalized Charge (p.e.)", fontsize=16)
@@ -572,14 +627,10 @@ plt.tick_params(axis="both", which="major", labelsize=14)
 plt.tick_params(axis="both", which="minor", labelsize=12)
 plt.grid(True)
 
-# Get legend handles and labels
 handles, labels = plt.gca().get_legend_handles_labels()
-
-# Only sort and display legend if there are items to show
 if handles and labels:
     sorted_handles_labels = sorted(zip(labels, handles), key=lambda x: x[0])
     sorted_labels, sorted_handles = zip(*sorted_handles_labels)
-
     plt.legend(
         sorted_handles,
         sorted_labels,
@@ -597,7 +648,6 @@ plt.tight_layout()
 plt.savefig(os.path.join(outdir, "CameraAvgCharge_AllConfigs_SEM.png"), dpi=150)
 plt.show()
 plt.close()
-
 
 # ================================
 # PER-PIXEL SLOPE VS TEMP PER (V,NSB)
@@ -636,13 +686,9 @@ for (V, I), subset in df_all_pixels.groupby(["V", "NSB"]):
         xlabel="Slope [p.e./°C]",
     )
 
-
 # ================================
 # PLOT CAMERA AVG VS TEMP - GROUPED BY VOLTAGE WITH SHADED NSB SPREAD
 # ================================
-
-# Reorganize data: group by (Temperature, Voltage), collect all NSB values.
-# Also collect ALL points regardless of voltage/NSB for the global fit.
 voltage_temp_data = defaultdict(lambda: defaultdict(list))
 all_temp_data = defaultdict(list)
 
@@ -662,7 +708,6 @@ global_stds = np.array([np.std(all_temp_data[t]) for t in global_temps])
 global_counts = np.array([len(all_temp_data[t]) for t in global_temps])
 global_sems = global_stds / np.sqrt(global_counts)
 
-# Weighted fit: only where SEM > 0
 fit_mask = global_sems > 0
 weights = 1.0 / global_sems[fit_mask] ** 2
 
@@ -688,7 +733,6 @@ charge_fit = slope * T_fit + intercept
 # ============================================================
 fig, ax = plt.subplots(figsize=(12, 8))
 
-# --- Per-voltage lines + shaded NSB spread ---
 voltages = sorted(voltage_temp_data.keys())
 colors = plt.cm.viridis(np.linspace(0, 1, len(voltages)))
 
@@ -719,7 +763,6 @@ for i, V in enumerate(voltages):
     )
     ax.fill_between(temps, mins, maxs, color=colors[i], alpha=0.2, zorder=1)
 
-# --- Global mean ± std error bars ---
 ax.errorbar(
     global_temps,
     global_means,
@@ -733,7 +776,6 @@ ax.errorbar(
     label="Mean ± std (all V, NSB)",
 )
 
-# --- Global linear fit ---
 fit_label = (
     f"Fit: $({slope:.4f} \\pm {slope_err:.4f})\\,T$\n"
     f"$+ ({intercept:.4f} \\pm {intercept_err:.4f})$"
@@ -748,23 +790,17 @@ ax.plot(
     zorder=4,
 )
 
-# ============================================================
-#                   AXES, LEGEND
-# ============================================================
 ax.set_xlabel("Temperature [°C]", fontsize=16)
 ax.set_ylabel("Camera Average Normalized Charge [p.e.]", fontsize=16)
 ax.tick_params(axis="both", which="major", labelsize=14)
 ax.tick_params(axis="both", which="minor", labelsize=12)
 ax.grid(True, alpha=0.3)
 
-ax.legend(
-    loc="upper left",
-    fontsize=12,
-    frameon=True,
-    framealpha=0.9,
-)
+ax.legend(loc="upper left", fontsize=12, frameon=True, framealpha=0.9)
 
 plt.tight_layout()
 plt.savefig(os.path.join(outdir, "CameraAvgCharge_ByVoltage_NSBSpread.png"), dpi=150)
 plt.show()
 plt.close()
+
+logger.info("=== ANALYSIS COMPLETE ===")

@@ -14,7 +14,7 @@ db_data_path = os.path.join(os.environ["NECTARCAMDATA"], "runs")
 # ----------------------
 # Load runs from JSON
 # ----------------------
-json_file = os.path.join(os.path.dirname(__file__), "metadata/gain_metadata.json")
+json_file = os.path.join(os.path.dirname(__file__), "gain_metadata.json")
 with open(json_file, "r") as f:
     config = json.load(f)
 

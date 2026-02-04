@@ -459,7 +459,8 @@ for run_type, run_list in zip(["SPE", "Photostat"], [SPE_runs, Photostat_runs]):
 # ================================
 # Combined SPE vs Photostat
 # ================================
-plt.figure(figsize=(9, 6))
+fig, ax = plt.subplots(figsize=(9, 6))
+
 for run_type, run_list, color in zip(
     ["SPE", "Photostat"], [SPE_runs, Photostat_runs], ["tab:blue", "tab:red"]
 ):
@@ -486,34 +487,74 @@ for run_type, run_list, color in zip(
     all_bad_pixels = global_bad_pixels.union(BAD_MODULE_PIXELS)
     df_pixels_clean = df_pixels[~df_pixels["Pixel"].isin(all_bad_pixels)]
 
+    # Group by temperature: mean, std, count
     grouped = df_pixels_clean.groupby("Temperature")["Gain"]
     mean_vs_temp = grouped.mean()
     std_vs_temp = grouped.std()
     count_vs_temp = grouped.count()
 
-    temps = mean_vs_temp.index.values
+    temps = mean_vs_temp.index.values.astype(float)
     means = mean_vs_temp.values
     stds = std_vs_temp.values
     counts = count_vs_temp.values
 
-    yerr = stds / np.sqrt(counts)
-    yerr = np.nan_to_num(yerr, nan=0.0, posinf=0.0, neginf=0.0)
+    # SEM for error bars and fit weights
+    sem = stds / np.sqrt(counts)
+    sem = np.nan_to_num(sem, nan=0.0, posinf=0.0, neginf=0.0)
 
-    plt.errorbar(
-        temps, means, yerr=yerr, fmt="o", capsize=5, color=color, label=f"{run_type}"
+    # --- Weighted linear fit (weights = 1/SEM²) ---
+    # Guard: only fit where SEM > 0
+    fit_mask = sem > 0
+    weights = np.zeros_like(sem)
+    weights[fit_mask] = 1.0 / sem[fit_mask] ** 2
+
+    coeffs, cov = np.polyfit(
+        temps[fit_mask], means[fit_mask], 1, w=np.sqrt(weights[fit_mask]), cov=True
+    )
+    slope, intercept = coeffs
+    slope_err, intercept_err = np.sqrt(np.diag(cov))
+
+    print(
+        f"[{run_type}] Gain = ({slope:.4f} ± {slope_err:.4f}) * T "
+        f"+ ({intercept:.4f} ± {intercept_err:.4f})"
     )
 
-plt.xlabel("Temperature (°C)")
-plt.ylabel("Gain")
-plt.legend()
-plt.grid(True)
+    # Fit line
+    T_fit = np.linspace(temps.min() - 1, temps.max() + 1, 200)
+    fit_line = slope * T_fit + intercept
+
+    # --- Plot data points with error bars ---
+    ax.errorbar(
+        temps,
+        means,
+        yerr=sem,
+        fmt="o",
+        capsize=5,
+        color=color,
+        label=f"{run_type} data",
+        zorder=3,
+    )
+
+    # --- Plot fit line ---
+    fit_label = (
+        f"{run_type} fit: $({slope:.4f} \\pm {slope_err:.4f})\\,T$\n"
+        f"$+ ({intercept:.4f} \\pm {intercept_err:.4f})$"
+    )
+    ax.plot(T_fit, fit_line, color=color, linewidth=2, linestyle="--", label=fit_label)
+
+ax.set_xlabel("Temperature [°C]", fontsize=14)
+ax.set_ylabel("Gain [ADC p.e.$^{-1}$]", fontsize=14)
+ax.tick_params(axis="both", which="major", labelsize=12)
+ax.grid(True, alpha=0.3)
+ax.legend(fontsize=11, loc="best")
+
+plt.tight_layout()
 plt.savefig(
     os.path.join(outdir, "SPE_vs_Photostat_MeanStd_vs_Temperature.png"), dpi=150
 )
 plt.close()
 
 logging.info("Done. Combined plot saved.")
-
 
 # ================================
 # Average values for camera plots
