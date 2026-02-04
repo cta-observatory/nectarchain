@@ -3,7 +3,7 @@ import os
 
 
 # Load metadata from external JSON file
-def load_metadata(filepath="./metadata/charge_metadata.json"):
+def load_metadata(filepath="metadata/charge_metadata.json"):
     """Load configuration metadata from JSON file."""
     with open(filepath, "r") as f:
         return json.load(f)
@@ -31,7 +31,7 @@ BASEFIGURE = os.environ["NECTARCHAIN_FIGURES"]
 
 dirname = f"{BASE}/runs/charges"
 gain_path = f"{BASE}/SPEfit/thermal_gain"
-pedestal_file = f"{BASE}/pedestals/Baseline_Thermal_Tests.npz"
+pedestal_folder = f"{BASE}/pedestal_thermaltest_2025/"
 ff_dir = f"{BASE}/FF"
 path = f"{BASE}/runs"
 db_data_path = path

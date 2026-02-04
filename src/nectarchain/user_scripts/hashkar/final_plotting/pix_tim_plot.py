@@ -4,19 +4,25 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from Utils import pe2photons, photons2pe
 
-plt.style.use("plot_style.mpltstyle")
+from nectarchain.trr_test_suite.utils import pe2photons, photons2pe
+
+plt.style.use("../../../utils/plot_style.mpltstyle")
 
 # ============================================================
 #                   PATHS AND CONFIG
 # ============================================================
 DATA_DIR = os.environ["NECTARCAMDATA"]
+BASEFIGURE = os.environ["NECTARCHAIN_FIGURES"]
 JSON_PATH = "./metadata/runs_metadata.json"
 output_dir = os.path.join(DATA_DIR, "timing_output/plots")
+output_fig = os.path.join(BASEFIGURE, "timing_output/plots")
 
-HG_FILE = os.path.join(DATA_DIR, "pix_time_uncer_data_HG.txt")
-LG_FILE = os.path.join(DATA_DIR, "pix_time_uncer_data_LG.txt")
+os.makedirs(output_fig, exist_ok=True)
+os.makedirs(output_dir, exist_ok=True)
+
+HG_FILE = os.path.join(DATA_DIR, "timing_output/pix_time_uncer_data_HG.txt")
+LG_FILE = os.path.join(DATA_DIR, "timing_output/pix_time_uncer_data_LG.txt")
 
 # ============================================================
 #                   LOAD DATA
@@ -234,7 +240,7 @@ axx.legend(fontsize=12, loc="best")
 # ============================================================
 #                        SAVE
 # ============================================================
-output_path = os.path.join(output_dir, "mean_rms_vs_photons.png")
-plt.savefig(output_path, dpi=300, bbox_inches="tight")
+output_path = os.path.join(output_fig, "mean_rms_vs_photons.png")
+plt.savefig(output_path, dpi=300)
 print(f"\nSaved to {output_path}")
 plt.show()

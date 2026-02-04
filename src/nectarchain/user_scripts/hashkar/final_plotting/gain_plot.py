@@ -28,9 +28,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-plt.style.use("../../utils/plot_style.mpltstyle")
+plt.style.use("../../../utils/plot_style.mpltstyle")
 
-os.makedirs(outdir, exist_ok=True)
 
 camera_geom = CameraGeometry.from_name("NectarCam")
 
