@@ -72,7 +72,7 @@ for i in Runs:
 
         plt.xlabel("mean FF coefficient for all pixels (HG)")
         plt.legend()
-        plt.savefig("./FFplots/run{}_FFcam.png".format(i))
+        plt.savefig(os.path.join(outdir, f"run{i}_FFcam.png"))
 
         j = j + 1
         plt.close()
