@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -11,6 +12,11 @@ from ff_config import Runs, categorize_run1, categorize_run2, dirname, outdir
 # import all runs, NSB/temp lists, functions, and paths
 sys.path.append(os.path.dirname(__file__))
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 j = 0
 MEAN_FF_CAM = []
@@ -48,8 +54,6 @@ for i in Runs:
     MEAN_FF_CAM.append(mean_ff_cam)
     STD_FF_CAM.append(std_ff_cam)
 
-    # print(len(filtered_arr))
-
     fig = plt.figure(figsize=(5, 4))
     plt.scatter(GDpixels, mean_ff_pix_filtered)
     plt.ylabel("FF coefficient")
@@ -72,8 +76,8 @@ for i in Runs:
 
         j = j + 1
         plt.close()
-    except Exception:
-        print("error")
+    except Exception as e:
+        logger.error(f"Caught error: {e}")
 
 # ----------------- Populate df ----------------- #
 df = pd.DataFrame(
