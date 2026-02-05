@@ -11,8 +11,8 @@ from ctapipe.core import run_tool
 from lmfit.models import Model
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
-from nectarchain.trr_test_suite.tools_components import LinearityTestTool
-from nectarchain.trr_test_suite.utils import (
+from nectarchain.trr_verification_package.tools_components import LinearityTestTool
+from nectarchain.trr_verification_package.utils import (
     err_ratio,
     err_sum,
     linear_fit_function,
