@@ -23,9 +23,9 @@ BAD_PIXELS = set(metadata["bad_pixels"])
 
 
 # ----------------- Helper functions ----------------- #
-def categorize_run1(run):
+def categorize_runs_nsb(run):
     return NSB_map.get(run, "Unknown")
 
 
-def categorize_run2(run):
+def categorize_runs_temperature(run):
     return temp_map.get(run, None)

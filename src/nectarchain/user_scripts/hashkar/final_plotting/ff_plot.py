@@ -7,7 +7,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tables
-from ff_config import Runs, categorize_run1, categorize_run2, dirname, outdir
+from ff_config import (
+    Runs,
+    categorize_runs_nsb,
+    categorize_runs_temperature,
+    dirname,
+    outdir,
+)
 
 # import all runs, NSB/temp lists, functions, and paths
 sys.path.append(os.path.dirname(__file__))
@@ -83,8 +89,8 @@ for i in Runs:
 df = pd.DataFrame(
     {
         "Run": Runs,
-        "Temperature": [categorize_run2(r) for r in Runs],
-        "NSB_Label": [categorize_run1(r) for r in Runs],
+        "Temperature": [categorize_runs_temperature(r) for r in Runs],
+        "NSB_Label": [categorize_runs_nsb(r) for r in Runs],
         "MEAN_FF_CAM": MEAN_FF_CAM,
         "STD_FF_CAM": STD_FF_CAM,
     }
