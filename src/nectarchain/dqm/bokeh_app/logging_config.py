@@ -19,9 +19,11 @@ def setup_logger(logger_name="nectarchain.dqm.bokeh_app", log_level=logging.INFO
         Configured logger
     """
 
-    # FIXME: temporary dir for the Bokeh app logs is
-    # src/nectarchain/dqm/bokeh_app/logs. We may need something better and cleaner.
-    log_dir = os.path.join(os.path.dirname(__file__), "logs")
+    # either write the logs to $NECTARCHAIN_LOG,
+    # or to src/nectarchain/dqm/bokeh_app/logs as default.
+    log_dir = os.environ.get(
+        "NECTARCHAIN_LOG", os.path.join(os.path.dirname(__file__), "logs")
+    )
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, "app.log")
 
