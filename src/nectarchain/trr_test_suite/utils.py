@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,15 @@ from lmfit.models import Model
 from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
 from traitlets.config import Config
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.StreamHandler()],
+)
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
 
 config = Config(
     dict(
@@ -225,14 +235,14 @@ intensity_to_charge = np.array(
 
 source_ids_deadtime = (
     [0 for i in range(3332, 3342)]
-    + [1 for i in range(3342, 3350)]
-    + [2 for i in range(3552, 3562)]
+    + [1 for i in range(3342, 3351)]
+    + [2 for i in range(3552, 3563)]
 )
 
 deadtime_labels = {
-    0: {"source": "random generator", "color": "blue"},
-    1: {"source": "nsb source", "color": "green"},
-    2: {"source": "laser", "color": "red"},
+    0: {"source": "FFCLS", "color": "red"},
+    1: {"source": "NSB", "color": "blue"},
+    2: {"source": "Laser", "color": "purple"},
 }
 
 
@@ -438,13 +448,13 @@ def photons2ADC(n):
     return charge
 
 
-# from federica's notebook
+# from Federica's notebook
 class ExponentialFitter:
     """Represents an exponential fitter class that computes the expected distribution
     and the minus 2 log likelihood for a given dataset and exponential parameters.
 
     Attributes:
-        datas (numpy.ndarray): The input data array.
+        data (numpy.ndarray): The input data array.
         bin_edges (numpy.ndarray): The bin edges for the data.
 
     Methods:
@@ -457,8 +467,8 @@ class ExponentialFitter:
             Computes the minus 2 log likelihood given the parameters in `x`.
     """
 
-    def __init__(self, datas, bin_edges):
-        self.datas = datas.copy()
+    def __init__(self, data, bin_edges):
+        self.data = data.copy()
         self.bin_edges = bin_edges.copy()
 
     def compute_expected_distribution(self, norm, loc, scale):
@@ -478,155 +488,204 @@ class ExponentialFitter:
         expected = self.compute_expected_distribution(norm, loc, scale)
         chi2_mask = expected > 0.0
         minus2loglike = -2.0 * np.sum(
-            poisson.logpmf(self.datas[chi2_mask], mu=expected[chi2_mask])
+            poisson.logpmf(self.data[chi2_mask], mu=expected[chi2_mask])
         )
         minus2loglike0 = -2.0 * np.sum(
-            poisson.logpmf(self.datas[chi2_mask], mu=self.datas[chi2_mask])
+            poisson.logpmf(self.data[chi2_mask], mu=self.data[chi2_mask])
         )
-        #         print(f'{minus2loglike0 = }')
         return minus2loglike - minus2loglike0
 
 
 def pois(x, A, R):
     """Computes the expected distribution for a Poisson process with rate parameter `R`.
 
-    Args:
-        x (float): The input value.
-        A (float): The amplitude parameter.
-        R (float): The rate parameter.
+    Parameters
+    ----------
+    x : float
+        The input value.
+    A : float
+        The amplitude parameter.
+    R : float
+        The rate parameter.
 
-    Returns:
-        float: The expected distribution for the Poisson process.
+    Returns
+    -------
+    A * np.exp(x * R) : float
+        The expected distribution for the Poisson process.
     """
-    """Poisson function, parameter r (rate) is the fit parameter."""
+
+    # Poisson function, parameter R (rate) is the fit parameter.
     return A * np.exp(x * R)
 
 
-def deadtime_and_expo_fit(time_tot, deadtime_us, run, output_plot=None):
-    """Computes the deadtime and exponential fit parameters for a given dataset.
+# function by Federica
+def plot_deadtime_and_expo_fit(
+    total_delta_t_for_busy_time, deadtime_us, run, verbose=False, output_plot=None
+):
+    """Compute the deadtime and exponential fit parameters for a given dataset.
 
-    Args:
-        time_tot (float): The total time of the dataset.
-        deadtime_us (float): The deadtime of the dataset in microseconds.
-        run (int): The run number.
-        output_plot (str, optional): The path to save the output plot.
+    Parameters
+    ----------
+    total_delta_t_for_busy_time : float
+        The total time of the dataset.
+    deadtime_us : numpy.ndarray
+        The deadtime of the dataset in microseconds.
+    run : int
+        The run number.
+    verbose : bool
+        Whether to print the fit results or not.
+    output_plot : str, optional
+        The path to save the output plot.
 
-    Returns:
-        tuple: A tuple containing the following values:
-            - deadtime (float): The deadtime of the dataset.
-            - deadtime_bin (float): The bin edge corresponding to the deadtime.
-            - deadtime_err (float): The error on the deadtime.
-            - deadtime_bin_length (float): The length of the deadtime bin.
-            - total_delta_t_for_busy_time (float): The total time of the dataset.
-            - parameter_A_new (float): The amplitude parameter of the exponential fit.
-            - parameter_R_new (float): The rate parameter of the exponential fit.
-            - parameter_A_err_new (float): The error on the amplitude parameter.
-            - parameter_R_err_new (float): The error on the rate parameter.
-            - first_bin_length (float): The length of the first bin.
-            - tot_nr_events_histo (int): The total number of events in the histogram.
+    Returns
+    -------
+    deadtime : float
+        The deadtime of the dataset.
+    deadtime_bin : float
+        The bin edge corresponding to the deadtime.
+    deadtime_err : float
+        The error on the deadtime.
+    deadtime_bin_length : float
+        The length of the deadtime bin.
+    total_delta_t_for_busy_time : float
+        The total time of the dataset.
+    parameter_A_new : float
+        The amplitude parameter of the exponential fit.
+    parameter_R_new : float
+        The rate parameter of the exponential fit.
+    parameter_A_err_new : float
+        The error on the amplitude parameter.
+    parameter_R_err_new : float
+        The error on the rate parameter.
+    first_bin_length : float
+        The length of the first bin.
+    tot_nr_events_histo : int
+        The total number of events in the histogram.
     """
-    # function by federica
+    # Select max value for the x axis depending on what is the maximum
+    # measured deadtime, to not cut the distribution
+    max_x_values_for_plot = np.array([500, 1000, 1500, 2000, 2500])
+    max_x_value_for_plot = max_x_values_for_plot[
+        np.argmin(np.abs(max(deadtime_us) - max_x_values_for_plot))
+    ]
 
-    total_delta_t_for_busy_time = time_tot
-    data = deadtime_us
-    pucts = np.histogram(data, bins=100, range=(1e-2, 50))
+    entries, bin_edges = np.histogram(
+        deadtime_us, bins=100, range=(0, max_x_value_for_plot + 20)
+    )
 
-    deadtime = min(data[~np.isnan(data)])
+    # Deadtime defined as the minimum value
+    # from the measured deltaT on the events timestamps
+    deadtime = min(deadtime_us[~np.isnan(deadtime_us)])
 
-    first_nonemptybin = np.where(pucts[0] > 0)[0][0]
+    first_nonempty_bin = np.where(entries > 0)[0][0]
     deadtime_err = (
-        pucts[1][first_nonemptybin] - pucts[1][first_nonemptybin - 1]
-    ) / np.sqrt(pucts[0][first_nonemptybin])
-    deadtime_bin = pucts[1][first_nonemptybin]
-    deadtime_bin_length = pucts[1][first_nonemptybin] - pucts[1][first_nonemptybin - 1]
+        bin_edges[first_nonempty_bin] - bin_edges[first_nonempty_bin - 1]
+    ) / np.sqrt(entries[first_nonempty_bin])
+
+    deadtime_bin = bin_edges[first_nonempty_bin]
+    deadtime_bin_length = (
+        bin_edges[first_nonempty_bin] - bin_edges[first_nonempty_bin - 1]
+    )
 
     # the bins should be of integer width, because poisson is an integer distribution
-    bins = np.arange(100000) - 0.5
+    x_steps_for_bins = np.arange(0, max_x_value_for_plot + 20, step=5)
+    x_steps_for_bins = x_steps_for_bins[1:] - 5
+
     entries, bin_edges = np.histogram(
-        data, bins=bins, range=[0, total_delta_t_for_busy_time]
+        deadtime_us, bins=x_steps_for_bins, range=[0, total_delta_t_for_busy_time]
     )
-    bin_middles = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+    bin_middles = 0.5 * (bin_edges[1:] + bin_edges[:-1]) - deadtime
+    # bin_middles is used to fit the exponential function,
+    # from https://arxiv.org/abs/2311.11631,
+    # Eq. 2: f(deltaT, deadtime, R) = A x exp(-R(deltaT - deadtime))
 
     first_bin_length = bin_edges[1] - bin_edges[0]
     tot_nr_events_histo = np.sum(entries)
 
-    # second fit
+    # fit with the exponential function
     model = Model(pois)
     params = model.make_params(A=2e3, R=-0.001)
     result = model.fit(entries, params, x=bin_middles)
-    # print('**** FIT RESULTS RUN {} ****'.format(run))
-    # print(result.fit_report())
-    # print('chisqr = {}, redchi = {}'.format(result.chisqr, result.redchi))
+    if verbose:
+        log.info("**** FIT RESULTS RUN {} ****".format(run))
+        log.info(result.fit_report())
+        log.info("chisqr = {}, redchi = {}".format(result.chisqr, result.redchi))
 
     parameter_A_new = result.params["A"].value
-    parameter_R_new = -1 * result.params["R"].value
+    parameter_R_new = result.params["R"].value
     parameter_A_err_new = result.params["A"].stderr
     parameter_R_err_new = result.params["R"].stderr
 
-    plt.close()
-
     if output_plot:
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61))
+        _, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
+        # plot deltaT distribution
         plt.hist(
-            data,
-            bins=np.arange(1000) - 0.5,
-            alpha=0.8,
+            deadtime_us,
+            bins=x_steps_for_bins,
             histtype="step",
             density=0,
-            lw=2,
-            label="Run {}".format(run),
+            lw=3,
         )
 
-        # # plot poisson-deviation with fitted parameter
-        x_plot = np.arange(0, 1000)
-
+        # plot exponential function with fitted parameter
         plt.plot(
-            x_plot,
-            pois(x_plot, result.params["A"].value, result.params["R"].value),
+            x_steps_for_bins,
+            pois(x_steps_for_bins, parameter_A_new, parameter_R_new),
             marker="",
             linestyle="-",
             lw=3,
             color="C3",
-            alpha=0.85,
-            label=r"Fit result: %2.3f $\exp^{-{x}/({%2.0f}~\mu\mathrm{s})}$"
-            % (result.params["A"].value, abs(1 / result.params["R"].value)),
         )
 
-        R = ((-1 * result.params["R"].value) * (1 / u.us)).to(u.kHz).value
+        # Chi2 computation
+        observed_events = entries
+        expected_events = pois(x_steps_for_bins, parameter_A_new, parameter_R_new)[1:]
+        chi_sqr = np.sum((observed_events - expected_events) ** 2 / expected_events)
+        dof = result.summary()["nfree"]
 
-        R_stderr = ((result.params["R"].stderr) * (1 / u.us)).to(u.kHz).value
+        rate = ((-1 * parameter_R_new) * (1 / u.us)).to(u.kHz).value  # rate in kHz
+        rate_stderr = ((parameter_R_err_new) * (1 / u.us)).to(u.kHz).value
 
         ax.text(
-            600,
-            entries[1] / 1,
-            r"$y = A \cdot \exp({-R \cdot x})$\n"
-            #          + r'$A=%2.2f \pm %2.2f$'%(as_si((result.params['A'].value/1000)
-            # *1e3,2), as_si((result.params['A'].stderr/1000)*1e3,2))
-            + r"$A=%2.2f \pm %2.2f$"
-            % (result.params["A"].value, result.params["A"].stderr)
+            max_x_value_for_plot - 50,
+            np.max(entries) - 10,
+            f"Run {run}"
             + "\n"
-            + r"$R=(%2.2f \pm %2.2f)$ kHz" % (R, R_stderr)
+            + r"$f(\Delta t) = A \cdot$"
+            + r"$\exp({-R \cdot (\delta t - \Delta_{\mathrm{min}})})$"
             + "\n"
-            + r"$\chi^2_\nu = %2.2f$" % ((result.redchi))
+            + r"$A=%2.2f \pm %2.2f$" % (parameter_A_new, parameter_A_err_new)
             + "\n"
-            + r"$\delta_{\mathrm{deadtime}} = %2.3f \, \mu$s" % (deadtime),
+            + r"$R=(%2.2f \pm %2.2f)$ kHz" % (rate, rate_stderr)
+            + "\n"
+            + r"$\chi^2$/dof = %2.0f/%2.0f" % (chi_sqr, dof)
+            + "\n"
+            + r"$\delta_{\mathrm{min}} = (%2.3f \pm %2.3f) \, \mu$s"
+            % (deadtime, np.abs(deadtime_err) * 1e-3),
             backgroundcolor="white",
             bbox=dict(
                 facecolor="white", edgecolor="C3", lw=2, boxstyle="round,pad=0.3"
             ),
-            ha="left",
+            ha="right",
             va="top",
             fontsize=17,
             color="k",
             alpha=0.9,
         )
 
-        plt.xlabel(r"$\Delta$T [$\mu$s]")
-        plt.ylabel("Entries")
-        plt.title("Run {}".format(run), y=1.02)
-        plt.savefig(
-            os.path.join(output_plot, "deadtime_and_expo_fit_{}.png".format(run))
+        ax.tick_params(axis="both", labelsize=16)
+        ax.tick_params(which="major", direction="in", length=7, width=2)
+        ax.tick_params(which="minor", direction="in", length=4, width=1)
+
+        ax.set_xlim(-15, max_x_value_for_plot)
+
+        plt.xlabel(r"$\Delta$T [$\mu$s]", fontsize=15)
+        plt.ylabel("Entries", fontsize=15)
+        plot_path = os.path.join(
+            output_plot, "deadtime_and_expo_fit_{}.png".format(run)
         )
+        plt.savefig(plot_path)
+        log.info(f"Plot saved at {plot_path}")
 
     return (
         deadtime,
