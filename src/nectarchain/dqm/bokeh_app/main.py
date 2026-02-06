@@ -14,9 +14,10 @@ from bokeh.plotting import curdoc
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
-from logging_config import setup_logger
 
 from nectarchain.dqm.db_utils import DQMDB
+
+from .logging_config import setup_logger
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())

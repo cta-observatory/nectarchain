@@ -18,7 +18,8 @@ from ctapipe.instrument import CameraGeometry
 # ctapipe imports
 from ctapipe.visualization.bokeh import CameraDisplay
 from ctapipe_io_nectarcam import constants
-from logging_config import setup_logger
+
+from .logging_config import setup_logger
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 labels_path = os.path.join(base_dir, "data", "labels.json")
