@@ -22,10 +22,15 @@ from nectarchain.trr_test_suite.utils import (
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
     level=logging.INFO,
-    handlers=[logging.StreamHandler()],
+    handlers=[logging.getLogger("__main__").handlers],
 )
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+
+plt.style.use(
+    os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+    )
+)
 
 
 def plot_deadtime_vs_collected_trigger_rate(
@@ -65,7 +70,7 @@ def plot_deadtime_vs_collected_trigger_rate(
         Path to temporary output directory for the GUI
     """
 
-    fig, ax = plt.subplots(figsize=(10 * 1.1, 10 * 1.1 / 1.61), layout="constrained")
+    fig, ax = plt.subplots()
 
     for source in range(0, 3):
         mask_source = np.where(ids == source)[0]
@@ -124,11 +129,7 @@ def plot_deadtime_vs_collected_trigger_rate(
         verticalalignment="center",
     )
 
-    ax.tick_params(axis="both", labelsize=16)
-    ax.tick_params(which="major", direction="in", length=7, width=2)
-    ax.tick_params(which="minor", direction="in", length=4, width=1)
-
-    plt.legend(loc="upper right", fontsize=15)
+    plt.legend()
 
     plt.xlim(0.0, 15)
     plt.yscale("log")
@@ -178,9 +179,7 @@ def plot_fitted_rate_vs_collected_trigger_rate(
         1,
         sharex="col",
         sharey="row",
-        figsize=(10, 8),
         gridspec_kw={"height_ratios": [5, 2]},
-        layout="constrained",
     )
 
     xx = collected_trigger_rates / 1000
@@ -239,15 +238,7 @@ def plot_fitted_rate_vs_collected_trigger_rate(
             label=labels[source]["source"],
         )
 
-    ax1.legend(frameon=False, loc="upper left", ncol=1, fontsize=15)
-
-    ax1.tick_params(axis="both", labelsize=16)
-    ax1.tick_params(which="major", direction="in", length=7, width=2)
-    ax1.tick_params(which="minor", direction="in", length=4, width=1)
-
-    ax2.tick_params(axis="both", labelsize=16)
-    ax2.tick_params(which="major", direction="in", length=7, width=2)
-    ax2.tick_params(which="minor", direction="in", length=4, width=1)
+    ax1.legend()
 
     plot_path = os.path.join(output_dir, "fitted_vs_collected_trigger_rates.png")
     plt.savefig(plot_path)
@@ -494,7 +485,8 @@ def get_args():
             DIRAC.\n For the purposes of testing this script, the default data are the\
                 runs used for this test in the TRR document.\n"
         + "You can optionally specify the number of events to be processed \
-            (default 8000).\n"
+            (default 8000).\n",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "-r",
@@ -520,7 +512,7 @@ def get_args():
         "-e",
         "--evts",
         type=int,
-        help="Number of events to process from each run. Default is 8000.",
+        help="Number of events to process from each run.",
         required=False,
         default=8000,
     )
@@ -536,6 +528,7 @@ def get_args():
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
     )
+    parser.add_argument("--log", default="info", help="Log level", type=str)
 
     return parser
 
@@ -563,6 +556,7 @@ def main():
 
     parser = get_args()
     args = parser.parse_args()
+    log.setLevel(args.log.upper())
 
     runlist = args.runlist
     ids = args.source
