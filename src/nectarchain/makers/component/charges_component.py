@@ -154,6 +154,7 @@ class ChargesComponent(ArrayDataComponent):
     def _init_pedestal_arrays(self):
         self.__pedestal_hg = None
         self.__pedestal_lg = None
+        pedestal_file_loaded = False
 
         if self.pedestal_file is not None:
             try:
@@ -182,10 +183,11 @@ class ChargesComponent(ArrayDataComponent):
                     "pedestal_mean_lg",
                     pixel_id_axis=0,
                 )
+                pedestal_file_loaded = True
             except Exception as e:
                 log.warning(e)
 
-        elif self.use_default_pedestal:
+        if not pedestal_file_loaded and self.use_default_pedestal:
             self.__pedestal_hg = PEDESTAL_DEFAULT
             self.__pedestal_lg = PEDESTAL_DEFAULT
             log.info(f"Using default pedestal values: {PEDESTAL_DEFAULT} ADC")
