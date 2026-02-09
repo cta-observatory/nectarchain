@@ -1,6 +1,5 @@
 import os
 import pathlib
-from itertools import combinations
 
 import h5py
 import numpy as np
@@ -591,93 +590,54 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
 
         tom_no_fit_all = []
 
-        pixels_id = []
-
         output_file = h5py.File(self.output_path)
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["ToMContainer"]
+            dataset = group["ToMContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
                 try:
-                    pixels_id.extend(tup[2])
+                    n_pixels = tup[1]
+                    pixels_id = tup[2]
                     tom_no_fit_all.extend(tup[7])
                 except Exception:
                     break
 
         output_file.close()
-        pixels_id = np.array(pixels_id)
-        tom_no_fit_all = np.array(tom_no_fit_all)
 
-        # clean cr events
-        # good_evts = output[0].good_evts
-        # charge=charge_all[good_evts]
-        # mean_charge_pe = np.mean(np.mean(charge,axis=0))/58.
-        tom_no_fit = np.array(tom_no_fit_all, dtype=np.float64)  # tom(event,pixel)
-        # tom_no_fit = tom_no_fit[np.all(tom_no_fit>0,axis=0)]
-        tom_corrected = -np.ones(
-            tom_no_fit.shape, dtype=np.float128
-        )  # -1 for the ones that have tom beyond 0-60
+        pixels_id = np.array(pixels_id, dtype=np.uint16)
 
-        iter = enumerate(pixels_id)
+        tom_no_fit = np.array(tom_no_fit_all, dtype=np.float64)
+        tom_corrected = -np.ones(tom_no_fit.shape, dtype=np.float128)
 
-        for i, pix in iter:
-            # print(pix, pmt_tt[pix])
-            normal_values = [
-                a and b for a, b in zip(tom_no_fit[:, i] > 0, tom_no_fit[:, i] < 60)
-            ]
+        valid_mask = (tom_no_fit > 0) & (tom_no_fit < 60)
+        corrections = pmt_tt[pixels_id]
+        tom_corrected = tom_no_fit - corrections[None, :]
+        tom_corrected[~valid_mask] = -1
 
-            tom_corrected[normal_values, i] = (
-                tom_no_fit[:, i][normal_values] - pmt_tt[pix]
-            )
+        # Indices of all pixel pairs (i < j)
+        pair_indices = np.triu_indices(n_pixels, k=1)
+        pixel_pairs = list(zip(pair_indices[0], pair_indices[1]))
 
-            # print(tom_corrected)
+        # Compute all pairwise differences at once
+        diff_no_corr = tom_no_fit[:, :, None] - tom_no_fit[:, None, :]
+        diff_corr = tom_corrected[:, :, None] - tom_corrected[:, None, :]
 
-        pixel_ind = [
-            i for i in range(len(pixels_id))
-        ]  # dealing with indices of pixels in array
-        pixel_pairs = list(combinations(pixel_ind, 2))
-        dt_no_correction = np.zeros((len(pixel_pairs), tom_no_fit_all.shape[0]))
-        dt_corrected = np.zeros((len(pixel_pairs), tom_no_fit_all.shape[0]))
+        # Extract only upper-triangular pairs -> shape (n_pairs, n_events)
+        dt_no_correction = diff_no_corr[:, pair_indices[0], pair_indices[1]].T
+        dt_corrected = diff_corr[:, pair_indices[0], pair_indices[1]].T
 
-        for i, pair in enumerate(pixel_pairs):
-            pix1_ind = pixel_ind[pair[0]]
-            pix2_ind = pixel_ind[pair[1]]
+        valid_no_corr = valid_mask[:, :, None] & valid_mask[:, None, :]
+        valid_corr = (tom_corrected > 0) & (tom_corrected < 60)
+        valid_corr = valid_corr[:, :, None] & valid_corr[:, None, :]
 
-            for event in range(tom_no_fit_all.shape[0]):
-                cond_no_correction = (
-                    tom_no_fit[event, pix1_ind] > 0
-                    and tom_no_fit[event, pix1_ind] < 60
-                    and tom_no_fit[event, pix2_ind] > 0
-                    and tom_no_fit[event, pix2_ind] < 60
-                )
-                cond_correction = (
-                    tom_corrected[event, pix1_ind] > 0
-                    and tom_corrected[event, pix1_ind] < 60
-                    and tom_corrected[event, pix2_ind] > 0
-                    and tom_corrected[event, pix2_ind] < 60
-                )
+        valid_no_corr_pairs = valid_no_corr[:, pair_indices[0], pair_indices[1]].T
+        valid_corr_pairs = valid_corr[:, pair_indices[0], pair_indices[1]].T
 
-                if cond_no_correction:  # otherwise will be nan
-                    dt_no_correction[i, event] = (
-                        tom_no_fit[event, pix1_ind] - tom_no_fit[event, pix2_ind]
-                    )
-
-                else:
-                    dt_no_correction[i, event] = np.nan
-
-                if cond_correction:
-                    dt_corrected[i, event] = (
-                        tom_corrected[event, pix1_ind] - tom_corrected[event, pix2_ind]
-                    )
-
-                else:
-                    dt_corrected[i, event] = np.nan
-
-        # rms_no_fit = np.zeros(output[0].npixels)
-        # rms_no_fit_err = np.zeros(output[0].npixels)
+        dt_no_correction[~valid_no_corr_pairs] = np.nan
+        dt_corrected[~valid_corr_pairs] = np.nan
 
         return (
             tom_no_fit,
