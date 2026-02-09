@@ -1,6 +1,7 @@
 """Description: This file is used to import all the classes and functions
 from the data module."""
 
+
 from .container import (
     ArrayDataContainer,
     ChargesContainer,
@@ -8,6 +9,7 @@ from .container import (
     GainContainer,
     NectarCAMContainer,
     NectarCAMPedestalContainer,
+    PhotostatContainer,
     SPEfitContainer,
     TriggerMapContainer,
     WaveformsContainer,
@@ -28,6 +30,7 @@ __all__ = [
     "WaveformsContainer",
     "WaveformsContainers",
     "GainContainer",
+    "PhotostatContainer",
     "SPEfitContainer",
     "NectarCAMPedestalContainer",
     "DataManagement",

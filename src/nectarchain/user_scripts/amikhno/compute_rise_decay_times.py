@@ -292,7 +292,7 @@ if __name__ == "__main__":
     camera = CameraGeometry.from_name("NectarCam-003").transform_to(
         EngineeringCameraFrame()
     )
-    tel_id = 0
+
     waveforms_all = []
     # load run
 
@@ -300,8 +300,12 @@ if __name__ == "__main__":
 
     for event in reader:
         if event.trigger.event_type == EventType.FLATFIELD:
-            broken_pixels = event.mon.tel[0].pixel_status.hardware_failing_pixels[0]
-            waveform = event.r0.tel[tel_id].waveform[0][~broken_pixels]
+            broken_pixels = event.mon.tel[
+                reader.subarray.tel_ids[0]
+            ].pixel_status.hardware_failing_pixels[0]
+            waveform = event.r0.tel[reader.subarray.tel_ids[0]].waveform[0][
+                ~broken_pixels
+            ]
             waveforms_all.append(waveform)
 
     waveforms_array = np.array(waveforms_all)

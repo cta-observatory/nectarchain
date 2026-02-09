@@ -8,7 +8,7 @@ from ctapipe.core import Component
 from matplotlib import pyplot as plt
 from scipy.stats import linregress
 
-from ...data.container import ChargesContainer, GainContainer, SPEfitContainer
+from ...data.container import ChargesContainer, PhotostatContainer, SPEfitContainer
 from ..component import ChargesComponent
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -51,14 +51,14 @@ class PhotoStatisticAlgorithm(Component):
 
         self.__check_shape()
 
-        self.__results = GainContainer(
-            is_valid=np.zeros((self.npixels), dtype=bool),
-            high_gain=np.zeros((self.npixels, 3)),
-            low_gain=np.zeros((self.npixels, 3)),
-            pixels_id=self._pixels_id,
-            charge=np.zeros((self.npixels, 1)),
-            charge_std=np.zeros((self.npixels, 1)),
-        )
+        self.__results = PhotostatContainer()
+
+        self.__results.pixels_id = self._pixels_id
+        self.__results.is_valid = np.zeros(self.npixels, dtype=bool)
+        self.__results.high_gain = np.zeros((self.npixels, 3))
+        self.__results.low_gain = np.zeros((self.npixels, 3))
+        self.__results.charge = np.zeros((self.npixels, 1))
+        self.__results.charge_std = np.zeros((self.npixels, 1))
 
     @classmethod
     def create_from_chargesContainer(

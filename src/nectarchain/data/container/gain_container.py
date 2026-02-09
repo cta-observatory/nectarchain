@@ -41,6 +41,19 @@ class GainContainer(NectarCAMContainer):
     )
     low_gain = Field(type=np.ndarray, dtype=np.float64, ndim=2, description="low gain")
     pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
+
+
+class PhotostatContainer(GainContainer):
+    """Class representing a PhotoStatistic container.
+
+    This class inherits from the GainContainer class, providing additional fields
+    needed for Flat Field calibration.
+    Attributes:
+        charge (np.ndarray): Array of charges values.
+        charge_std (np.ndarray): Array of standard deviations of charges.
+
+    """
+
     charge = Field(type=np.ndarray, dtype=np.float64, ndim=1, description="charge")
     charge_std = Field(
         type=np.ndarray, dtype=np.float64, ndim=1, description="charge_std"

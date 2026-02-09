@@ -23,12 +23,22 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize._numdiff import approx_derivative
 
-from nectarchain.data.container import GainContainer
+from nectarchain.data.container import PhotostatContainer
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
 from nectarchain.makers.extractor.utils import CtapipeExtractor
 
-plt.style.use("../../utils/plot_style.mpltstyle")
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+if not log.handlers:
+    log.addHandler(handler)
+
+
+# plt.style.use("../../utils/plot_style.mpltstyle")
 
 parser = argparse.ArgumentParser(description="Run NectarCAM photostatistics analysis")
 
@@ -100,7 +110,9 @@ args = parser.parse_args()
 def pre_process_fits(filename):
     with HDF5TableReader(filename) as h5_table:
         assert h5_table._h5file.isopen == True
-        for container in h5_table.read("/data/GainContainer_0", GainContainer):
+        for container in h5_table.read(
+            "/data/PhotostatContainer_0", PhotostatContainer
+        ):
             log.info(container.as_dict())
             break
     h5_table.close()
@@ -245,7 +257,7 @@ def Gaussian_model(array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
 
 
 # least-squares score function = sum of data residuals squared
-def LSQ(a0, a1, a2, a3):
+def lsq(a0, a1, a2, a3):
     a4 = a3  # This equality comees from assumption that the 2D-Gaussian is symmetric.
     return np.sum(
         (n_pe - Gaussian_model([a0, a1, a2, a3, a4])) ** 2 / (sigma_masked**2)
@@ -266,7 +278,7 @@ def optimize_with_outlier_rejection(sigma, data):
     n_pe, sigma_masked, mask_upd = define_delete_out(sigma, data)
 
     # Fit with Minuit using previous best parameters
-    minuit = Minuit(LSQ, a0=1000.0, a1=0.0, a2=0.0, a3=1.5)
+    minuit = Minuit(lsq, a0=1000.0, a1=0.0, a2=0.0, a3=1.5)
     minuit.migrad()
 
     if not minuit.fmin.is_valid:
@@ -362,7 +374,7 @@ def propagate_scipy_compatible(model, params, cov):
     return y, ycov
 
 
-def error_propagation_compute(data, minuit_resulting, plot=True, rebin=True):
+def error_propagation_compute(data, minuit_resulting, plot=True):
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
 
     # --- Parameters and covariance from Minuit
@@ -388,40 +400,36 @@ def error_propagation_compute(data, minuit_resulting, plot=True, rebin=True):
     )
     yerr_prop = np.sqrt(np.diag(ycov))
 
-    # --- Optionally rebin by θ
-    if rebin:
-        theta = np.rad2deg(
-            np.sqrt(
-                (camera.pix_x.value - values[1]) ** 2
-                + (camera.pix_y.value - values[2]) ** 2
-            )
-            / 12
+    theta = np.rad2deg(
+        np.sqrt(
+            (camera.pix_x.value - values[1]) ** 2
+            + (camera.pix_y.value - values[2]) ** 2
         )
-        bins = np.arange(np.min(theta), np.max(theta) + 0.1, 0.1)
+        / 12
+    )
+    bins = np.arange(np.min(theta), np.max(theta) + 0.1, 0.1)
 
-        sum_y, _ = np.histogram(theta, bins=bins, weights=y)
-        sum_y_err, _ = np.histogram(theta, bins=bins, weights=yerr_prop)
-        count, _ = np.histogram(theta, bins=bins)
+    sum_y, _ = np.histogram(theta, bins=bins, weights=y)
+    sum_y_err, _ = np.histogram(theta, bins=bins, weights=yerr_prop)
+    count, _ = np.histogram(theta, bins=bins)
 
-        rebinned_y = np.where(count > 0, sum_y / count, np.nan)
-        rebinned_y_err = np.where(count > 0, sum_y_err / count, np.nan)
-        bin_centers = 0.5 * (bins[:-1] + bins[1:])
-    else:
-        rebinned_y, rebinned_y_err, bin_centers = None, None, None
+    binned_y = np.where(count > 0, sum_y / count, np.nan)
+    binned_y_err = np.where(count > 0, sum_y_err / count, np.nan)
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
 
     # --- Optional plotting
-    if plot and rebin:
+    if plot:
         fig_model = plt.figure(figsize=(6, 5))
         ax = plt.subplot()
         ax.scatter(theta, data, label="data", zorder=0, alpha=0.3)
         ax.fill_between(
             bin_centers,
-            rebinned_y - rebinned_y_err,
-            rebinned_y + rebinned_y_err,
+            binned_y - binned_y_err,
+            binned_y + binned_y_err,
             facecolor="C1",
             alpha=0.5,
         )
-        ax.plot(bin_centers, rebinned_y, color="r", label="model")
+        ax.plot(bin_centers, binned_y, color="r", label="model")
         plt.ylabel("Number of photoelectrons")
         plt.xlabel("θ [deg]")
         plt.legend()
@@ -432,7 +440,7 @@ def error_propagation_compute(data, minuit_resulting, plot=True, rebin=True):
         "param_errors": errors,
         "model_values": y,
         "model_errors": yerr_prop,
-        "rebinned": (bin_centers, rebinned_y, rebinned_y_err),
+        "rebinned": (bin_centers, binned_y, binned_y_err),
     }
 
 
@@ -479,25 +487,25 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
         std = np.std(data)
         outliers = [np.abs(data - mean) > 3 * std]
 
-        sigma = ma.masked_array(sigma, mask=outliers)
-        data = ma.masked_array(data, mask=outliers)
-        return data, sigma, outliers
+        sigma_var = ma.masked_array(sigma, mask=outliers)
+        data_var = ma.masked_array(data, mask=outliers)
+        return data_var, sigma_var, outliers
 
     # Update data, sigma, and mask
-    n_pe, sigma_masked, mask_upd = define_delete_out(sigma, data)
+    n_pe_var, sigma_masked_var, mask_upd = define_delete_out(sigma, data)
 
     # Define the least-squares function
-    def LSQ_wrap_var(array_parameters):
+    def lsq_wrap_var(array_parameters):
         A, x, y, std_x, v_int = array_parameters  # changed
         std_y = std_x  # changed
         return np.sum(
-            (n_pe - Gaussian_model([A, x, y, std_x, std_y])) ** 2
-            / (sigma_masked**2 + v_int)
-            - np.log(sigma_masked**2 / (sigma_masked**2 + v_int))
+            (n_pe_var - Gaussian_model([A, x, y, std_x, std_y])) ** 2
+            / (sigma_masked_var**2 + v_int)
+            - np.log(sigma_masked_var**2 / (sigma_masked_var**2 + v_int))
         )
 
     # Initialize Minuit with updated function and parameters
-    minuit_new = Minuit(LSQ_wrap_var, minuit)
+    minuit_new = Minuit(lsq_wrap_var, minuit)
     minuit_new.limits["x0"] = (0, None)  # A>0
     minuit_new.limits["x3"] = (0, None)  # std_x > 0
     minuit_new.limits["x4"] = (0, None)  # V_int > 0
@@ -520,13 +528,13 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
             minuit_new.values["x3"],
         ]
     )
-    residuals = (n_pe - model) / model
+    residuals = (n_pe_var - model) / model
     max_residual = np.max(np.abs(residuals))
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
     dict_missing_pix["rejected_outliers"] = (
         N_PIXELS
-        - sigma_masked.count()
+        - sigma_masked_var.count()
         - dict_missing_pix["Missing pixels"]
         - dict_missing_pix["high_gain = 0"]
     )
@@ -574,7 +582,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
     pdf.savefig(fig4)
     plt.close(fig4)
 
-    return n_pe, model, minuit_new, residuals
+    return n_pe_var, model, minuit_new, residuals
 
 
 def compute_ff_coefs(charges, gains):
@@ -690,13 +698,28 @@ def main():
     if not log.handlers:
         log.addHandler(handler)
 
-    # Assign other variables
+    #--- Assign other variables ---
     run_number = args.FF_run_number
     run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
-    filename_ps = (
-        args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
-        f"_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
+    method = args.method
+    extractor = args.extractor_kwargs
+    # only one run file is loaded as it is used only to retrieve camera geometry and bad pixels
+
+    log.info(
+        f"Method is {method},  the extractor kwargs are: {extractor['window_shift']}, {extractor['window_width']}"
     )
+
+    filename_ps = (
+            args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
+                                 f"_{method}_window_shift_{extractor['window_shift']}_window_width_{extractor['window_width']}_Pedrun{run_number}_FullWaveformSum.h5"
+    )
+
+    log.info(
+        f"filename_ps = {args.analysis_file} /PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
+    )
+
+    log.info(f"ADD_VARIANCE = {args.add_variance}")
+
 
     if args.add_variance:
         log.info("Running analysis with variance correction...")
@@ -753,16 +776,16 @@ def main():
             log.warning(e, exc_info=True)
 
     else:
-        log.info(f"[INFO] File {run_path} already exists, skipping computation.")
+        log.info(f"[INFO] File {filename_ps} already exists, skipping computation.")
 
     log.info("SPE fit was found, begin the analysis")
     # Create PdfPages object
     pdf = PdfPages(f"Plots_analysis_run{run_number}.pdf")
 
-    source = EventSource.from_url(input_url=run_path, max_events=100)
-    camera = source.subarray.tel[0].camera.geometry.transform_to(
-        EngineeringCameraFrame()
-    )
+    source = EventSource.from_url(input_url=run_path, max_events=1)
+    camera = source.subarray.tel[
+        source.subarray.tel_ids[0]
+    ].camera.geometry.transform_to(EngineeringCameraFrame())
 
     for event in source:
         log.info(event.index.event_id, event.trigger.event_type, event.trigger.time)
@@ -771,7 +794,9 @@ def main():
     fig00 = plt.figure(13, figsize=(5, 5))
     disp = CameraDisplay(geometry=camera, show_frame=False)
     chan = 0
-    disp.image = event.mon.tel[0].pixel_status.hardware_failing_pixels[chan]
+    disp.image = event.mon.tel[
+        source.subarray.tel_ids[0]
+    ].pixel_status.hardware_failing_pixels[chan]
     disp.set_limits_minmax(0, 1)
     disp.cmap = plt.cm.coolwarm
     disp.add_colorbar()
