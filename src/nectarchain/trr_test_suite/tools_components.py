@@ -449,45 +449,27 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["ToMComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     def finish(self, bootstrap=False, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
+        output = super().finish(return_output_component=True, *args, **kwargs)
 
-        # tom_mu_all= output[0].tom_mu
-        # tom_sigma_all= output[0].tom_sigma
-        output_file = h5py.File(self.output_path)
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        try:
+            charge_container = output[0].containers[EventType.SUBARRAY]
+        except Exception:
+            charge_container = output[0].containers[EventType.FLATFIELD]
 
-        charge_all = []
-        tom_no_fit_all = []
-        good_evts = []
+        charge_all = charge_container["charges_hg"]
+        tom_no_fit_all = charge_container["peak_hg"]
+        npixels = charge_container["npixels"]
+        good_evts = np.where(
+            np.max(charge_all, axis=1) < 10 * np.mean(charge_all, axis=1)
+        )[0]
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["ToMContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    npixels = tup[1]
-                    charge_all.extend(tup[6])
-                    tom_no_fit_all.extend(tup[7])
-                    good_evts.extend(tup[8])
-                except Exception:
-                    break
-
-        output_file.close()
-
-        tom_no_fit_all = np.array(tom_no_fit_all)
-        charge_all = np.array(charge_all)
-        # print(tom_no_fit_all)
-        # print(charge_all)
-
-        # clean cr events
-        good_evts = np.array(good_evts)
-        # print(good_evts)
         charge = charge_all[good_evts]
         mean_charge_pe = np.mean(np.mean(charge, axis=0)) / GAIN_DEFAULT
 
