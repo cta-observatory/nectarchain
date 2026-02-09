@@ -158,7 +158,7 @@ def main():
         yerr=rms_no_fit_weighted_err,
         ls="",
         marker="o",
-        label=r"$\mathtt{scipy.signal.find\_peaks}$",
+        label=r"$\mathtt{ctapipe.image.extractor}$",
     )
     # plt.errorbar(x=photons_spline[:],
     #              y=np.sqrt(np.array(rms_mu_weighted[:])**2),
