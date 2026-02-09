@@ -578,34 +578,26 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["ToMComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=True, *args[1:], **kwargs)
+        output = super().finish(return_output_component=True, *args[1:], **kwargs)
 
         tt_path = args[0]
         pmt_tt = pd.read_csv(tt_path)["tom_pmttt_delta_correction"].values
 
-        tom_no_fit_all = []
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        try:
+            charge_container = output[0].containers[EventType.SUBARRAY]
+        except Exception:
+            charge_container = output[0].containers[EventType.FLATFIELD]
 
-        output_file = h5py.File(self.output_path)
-
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["ToMContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    n_pixels = tup[1]
-                    pixels_id = tup[2]
-                    tom_no_fit_all.extend(tup[7])
-                except Exception:
-                    break
-
-        output_file.close()
+        n_pixels = charge_container["npixels"]
+        pixels_id = charge_container["pixels_id"]
+        tom_no_fit_all = charge_container["peak_hg"]
 
         pixels_id = np.array(pixels_id, dtype=np.uint16)
 
