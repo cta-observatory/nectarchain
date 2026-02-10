@@ -27,6 +27,7 @@ from nectarchain.data.container import PhotostatContainer
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
 from nectarchain.makers.extractor.utils import CtapipeExtractor
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -55,6 +56,16 @@ parser.add_argument(
     "--analysis-file",
     default=f'{os.environ.get("NECTARCAMDATA", "").strip()}',
     help="Analysis file name",
+)
+
+parser.add_argument(
+    "-c",
+    "--camera",
+    choices=ALLOWED_CAMERAS,
+    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+    help="""Process data for a specific NectarCAM camera.
+Default: NectarCAMQM (Qualification Model).""",
+    type=str,
 )
 
 # Accept True/False as string
@@ -703,6 +714,7 @@ def main():
     run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
     method = args.method
     extractor = args.extractor_kwargs
+    camera = args.camera
     # only one run file is loaded as it is used only to retrieve camera geometry and bad pixels
 
     log.info(
@@ -765,6 +777,7 @@ def main():
                 progress_bar=True,
                 run_number=[run_number],
                 max_events=None,
+                camera=camera,
                 Ped_run_number=[run_number],
                 SPE_result=path[0],
             )
