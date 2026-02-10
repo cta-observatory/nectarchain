@@ -1,4 +1,5 @@
 import argparse
+import copy
 import json
 import logging
 import os
@@ -684,7 +685,7 @@ def compute_ff_coefs_model(data, data_std, model, model_std):
     return FF_coefs, std_FF
 
 
-def main():
+def main(**kwargs):
     os.makedirs(
         f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
         exist_ok=True,
@@ -726,9 +727,7 @@ def main():
         f"_{method}_window_shift_{extractor['window_shift']}_window_width_{extractor['window_width']}_Pedrun{run_number}_FullWaveformSum.h5"
     )
 
-    log.info(
-        f"filename_ps = {args.analysis_file} /PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}_LocalPeakWindowSum_window_shift_4_window_width_16_Pedrun{run_number}_FullWaveformSum.h5"
-    )
+    log.info(f"filename_ps = {filename_ps}")
 
     log.info(f"ADD_VARIANCE = {args.add_variance}")
 
@@ -739,7 +738,7 @@ def main():
 
     if not os.path.exists(filename_ps):
         log.info(
-            f"[INFO] {filename_ps} not found, running gain_PhotoStat_computation.py..."
+            f"[INFO] {filename_ps} not found, running PhotoStatisticNectarCAMCalibrationTool..."
         )
 
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
@@ -780,6 +779,7 @@ def main():
                 camera=camera,
                 Ped_run_number=run_number,
                 SPE_result=path[0],
+                **kwargs,
             )
             tool.setup()
             tool.start()
@@ -978,4 +978,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    kwargs = copy.deepcopy(vars(args))
+    kwargs.pop("camera")
+
+    main(**kwargs)
