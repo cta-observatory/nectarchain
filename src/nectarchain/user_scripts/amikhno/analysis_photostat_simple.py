@@ -463,6 +463,44 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf, plot=True):
             alpha=0.5,
         )
         ax.plot(bin_centers, binned_y, color="r", label="model")
+
+        x_fov = 4.0
+        idx = np.nanargmin(np.abs(bin_centers - x_fov))
+        y_center = binned_y[idx]
+        length = 0.02 * y_center
+        cap_width = 0.25
+        label = "2%"
+
+        # compute top & bottom
+        y_top = y_center + length / 2
+        y_bottom = y_center - length / 2
+
+        # vertical line
+        plt.plot(
+            [x_fov + cap_width, x_fov + cap_width],
+            [y_bottom, y_top],
+            color="black",
+            lw=2,
+        )
+
+        plt.plot([x_fov, x_fov + cap_width], [y_top, y_top], color="black", lw=2)
+
+        plt.plot([x_fov, x_fov + cap_width], [y_bottom, y_bottom], color="black", lw=2)
+
+        plt.text(
+            x_fov + cap_width + 0.05,
+            y_center,
+            label,
+            va="center",
+            ha="left",
+            fontsize=14,
+            color="black",
+        )
+
+        plt.axvline(
+            x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
+        )
+
         plt.ylabel("Number of photoelectrons")
         plt.xlabel("θ [deg]")
         plt.legend()
