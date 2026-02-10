@@ -389,7 +389,7 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
     )
 
 
-def run_deadtime_test_tool_process(runlist: list, nevents: int):
+def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray):
     """Run `DeadtimeTestTool` from `utils.py` over the provided run list
 
     Parameters
@@ -398,6 +398,8 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int):
         list containing the NectarCAM run numbers
     nevents : int
         max number of events
+    ids : np.ndarray
+        Source ids for all the runs.
 
     Returns
     -------
@@ -425,7 +427,7 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int):
     time_tot = []
     deadtime_us, deadtime_pc = [], []
 
-    for run in runlist:
+    for run, id in zip(runlist, ids):
         log.info("Processing `DeadtimeTestTool` on run {}".format(run))
         tool = DeadtimeTestTool(
             progress_bar=True,
@@ -433,13 +435,14 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int):
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
-            window_width=16,
+            method="LocalPeakWindowSum",
+            extractor_kwargs={"window_width": 16, "window_shift": 6},
             overwrite=True,
         )
         tool.initialize()
         tool.setup()
         tool.start()
-        output = tool.finish()
+        output = tool.finish(id=id)
 
         ucts_timestamps.append(output[0])
         ucts_deltat.append(output[1])
@@ -582,7 +585,7 @@ def main():
         time_tot,
         deadtime_us,
         deadtime_pc,
-    ) = run_deadtime_test_tool_process(runlist=runlist, nevents=nevents)
+    ) = run_deadtime_test_tool_process(runlist=runlist, nevents=nevents, ids=ids)
 
     results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
 
