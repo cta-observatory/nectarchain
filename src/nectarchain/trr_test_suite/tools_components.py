@@ -562,7 +562,7 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["UCTSComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
@@ -573,39 +573,35 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
                 component.excl_muons = True
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
-        # print(self.output_path)
-        output_file = h5py.File(self.output_path)
+        output = super().finish(return_output_component=True, *args, **kwargs)
 
-        ucts_timestamps = []
-        charge_per_event = []
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        try:
+            charge_container = output[0].containers[EventType.SUBARRAY]
+        except Exception:
+            charge_container = output[0].containers[EventType.FLATFIELD]
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["UCTSContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    ucts_timestamps.extend(tup[3])
-                    charge_per_event.extend(tup[4])
+        ucts_timestamps = charge_container["ucts_timestamp"]
+        charges_hg = charge_container["charges_hg"]
+        good_events = np.where(
+            np.max(charges_hg, axis=1) < 10 * np.mean(charges_hg, axis=1),
+            True,
+            False,
+        )
 
-                except Exception:
-                    break
-        # print(output_file.keys())
-        # tom_mu_all= output[0].tom_mu
-        # tom_sigma_all= output[0].tom_sigma
-        # ucts_timestamps= np.array(output_file["ucts_timestamp"])
-        ucts_timestamps = np.array(ucts_timestamps).flatten()
+        # Only select "good events"
+        ucts_timestamps = ucts_timestamps[good_events]
+        charges_hg = charges_hg[good_events]
+
+        # Compute mean charge per event and convert to PE
+        charge_per_event = np.mean(charges_hg) / GAIN_DEFAULT
 
         # dt in nanoseconds
         delta_t = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
         ]
-        # event_counter = np.array(output_file['ucts_event_counter'])
-        # busy_counter=np.array(output_file['ucts_busy_counter'])
-        output_file.close()
 
         # make hist to get rms value
         hist_values, bin_edges = np.histogram(delta_t, bins=50)
