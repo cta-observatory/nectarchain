@@ -496,40 +496,33 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["UCTSComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be applied, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
-        output_file = h5py.File(self.output_path)
+        id = kwargs.pop("id")
+        output = super().finish(return_output_component=True, *args, **kwargs)
 
-        ucts_timestamps = []
-        event_counter = []
-        busy_counter = []
+        # Specify event type
+        # NOTE: will probably need to be revisited
+        if id == 0:  # FFCLS
+            event_type = EventType.FLATFIELD
+        elif id == 1:  # NSB
+            event_type = EventType.SUBARRAY
+        elif id == 2:  # Laser
+            event_type = EventType.SUBARRAY
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["UCTSContainer_0"]
-            for tup in dataset:
-                try:
-                    ucts_timestamps.extend(tup[3])
-                    event_counter.extend(tup[7])
-                    busy_counter.extend(tup[6])
-                except Exception:
-                    break
+        charge_container = output[0].containers[event_type]
 
-        ucts_timestamps = np.array(ucts_timestamps).flatten()
-
-        event_counter = np.array(event_counter).flatten()
-        busy_counter = np.array(busy_counter).flatten()
+        ucts_timestamps = charge_container["ucts_timestamp"]
+        event_counter = charge_container["ucts_event_counter"]
+        busy_counter = charge_container["ucts_busy_counter"]
 
         ucts_deltat = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
         ]
-
-        output_file.close()
 
         time_tot = ((ucts_timestamps[-1] - ucts_timestamps[0]) * u.ns).to(u.s)
         collected_trigger_rate = (event_counter[-1] + busy_counter[-1]) / time_tot
