@@ -139,9 +139,9 @@ def pre_process_fits(filename):
         if len(container_dict["low_gain"].shape) > 1
         else 1
     )
-    charge_std_shape = (
-        container_dict["charge_std"].shape[1]
-        if len(container_dict["charge_std"].shape) > 1
+    charge_hg_std_shape = (
+        container_dict["charge_hg_std"].shape[1]
+        if len(container_dict["charge_hg_std"].shape) > 1
         else 1
     )
 
@@ -150,8 +150,8 @@ def pre_process_fits(filename):
         "pixels_id": missing_pixels,
         "high_gain": np.zeros((len(missing_pixels), hg_shape)),
         "low_gain": np.zeros((len(missing_pixels), lg_shape)),
-        "charge": np.zeros(len(missing_pixels)),  # Ensures same shape as 'high_gain'
-        "charge_std": np.zeros((len(missing_pixels), charge_std_shape)),
+        "charge_hg": np.zeros(len(missing_pixels)),  # Ensures same shape as 'high_gain'
+        "charge_hg_std": np.zeros((len(missing_pixels), charge_hg_std_shape)),
     }
 
     # Merge original and missing data
@@ -162,11 +162,11 @@ def pre_process_fits(filename):
     merged_lg = np.concatenate(
         [container_dict["low_gain"], missing_entries["low_gain"]], axis=0
     )
-    merged_charge = np.concatenate(
-        [container_dict["charge"], missing_entries["charge"]]
+    merged_charge_hg = np.concatenate(
+        [container_dict["charge_hg"], missing_entries["charge_hg"]]
     )
-    merged_charge_std = np.concatenate(
-        [container_dict["charge"], missing_entries["charge"]]
+    merged_charge_hg_std = np.concatenate(
+        [container_dict["charge_hg"], missing_entries["charge_hg"]]
     )
 
     # Sort by pixel_id to maintain order
@@ -174,22 +174,22 @@ def pre_process_fits(filename):
     container_dict["pixels_id"] = merged_pixel_ids[sorted_indices]
     container_dict["high_gain"] = merged_hg[sorted_indices]
     container_dict["low_gain"] = merged_lg[sorted_indices]
-    container_dict["charge"] = merged_charge[sorted_indices]
-    container_dict["charge_std"] = merged_charge_std[sorted_indices]
+    container_dict["charge_hg"] = merged_charge_hg[sorted_indices]
+    container_dict["charge_hg_std"] = merged_charge_hg_std[sorted_indices]
     mask_check_hg = [a <= 0 for a in container_dict["high_gain"][:, 0]]
     masked_hg = ma.masked_array(container_dict["high_gain"][:, 0], mask=mask_check_hg)
 
     high_gain = container_dict["high_gain"][:, 0]
     n_pe = np.divide(
-        container_dict["charge"],
+        container_dict["charge_hg"],
         high_gain,
         out=np.zeros_like(high_gain, dtype=float),
         where=high_gain > 0,
     )
     std_n_pe = np.sqrt(
         np.divide(
-            container_dict["charge_std"] * n_pe,
-            container_dict["charge"],
+            container_dict["charge_hg_std"] * n_pe,
+            container_dict["charge_hg"],
             out=np.zeros_like(high_gain, dtype=float),
             where=high_gain != 0,
         )
@@ -240,7 +240,7 @@ def pre_process_fits(filename):
         dict_missing_pix,
         container_dict["high_gain"],
         container_dict["low_gain"],
-        container_dict["charge"],
+        container_dict["charge_hg"],
     )
 
 
@@ -698,7 +698,7 @@ def main():
     if not log.handlers:
         log.addHandler(handler)
 
-    #--- Assign other variables ---
+    # --- Assign other variables ---
     run_number = args.FF_run_number
     run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
     method = args.method
@@ -710,8 +710,8 @@ def main():
     )
 
     filename_ps = (
-            args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
-                                 f"_{method}_window_shift_{extractor['window_shift']}_window_width_{extractor['window_width']}_Pedrun{run_number}_FullWaveformSum.h5"
+        args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
+        f"_{method}_window_shift_{extractor['window_shift']}_window_width_{extractor['window_width']}_Pedrun{run_number}_FullWaveformSum.h5"
     )
 
     log.info(
@@ -719,7 +719,6 @@ def main():
     )
 
     log.info(f"ADD_VARIANCE = {args.add_variance}")
-
 
     if args.add_variance:
         log.info("Running analysis with variance correction...")

@@ -57,8 +57,8 @@ class PhotoStatisticAlgorithm(Component):
         self.__results.is_valid = np.zeros(self.npixels, dtype=bool)
         self.__results.high_gain = np.zeros((self.npixels, 3))
         self.__results.low_gain = np.zeros((self.npixels, 3))
-        self.__results.charge = np.zeros((self.npixels, 1))
-        self.__results.charge_std = np.zeros((self.npixels, 1))
+        self.__results.charge_hg = np.zeros((self.npixels, 1))
+        self.__results.charge_hg_std = np.zeros((self.npixels, 1))
 
     @classmethod
     def create_from_chargesContainer(
@@ -144,8 +144,8 @@ class PhotoStatisticAlgorithm(Component):
         ).T
         self._results.is_valid = mask
         log.info("Trying to write charges")
-        self._results.charge = self.meanChargeHG
-        self._results.charge_std = self.sigmaChargeHG
+        self._results.charge_hg = self.meanChargeHG
+        self._results.charge_hg_std = self.sigmaChargeHG
 
         figpath = kwargs.get("figpath", False)
         if figpath:
