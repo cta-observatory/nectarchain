@@ -85,7 +85,7 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         hist, _charge = np.histogram(
             charge,
             bins=np.arange(
-                np.uint16(np.min(charge)) - 1, np.uint16(np.max(charge)) + 2, 1
+                np.floor(np.min(charge) - 1), np.ceil(np.max(charge) + 2), 1
             ),
         )
         # print(f"hist.shape[0] = {hist.shape[0]}")
