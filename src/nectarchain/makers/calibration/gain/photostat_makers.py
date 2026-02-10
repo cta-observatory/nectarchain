@@ -219,4 +219,4 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         #                      containers = container,
         #    )
         # else :
-        super()._write_container(container=container, index_component=0)
+        super()._write_container(container=container, index_component=index_component)
