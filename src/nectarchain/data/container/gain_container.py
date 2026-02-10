@@ -48,10 +48,10 @@ class PhotostatContainer(GainContainer):
 
     This class inherits from the GainContainer class, providing additional fields
     needed for Flat Field calibration.
+
     Attributes:
         charge_hg (np.ndarray): Array of high-gain charges values.
         charge_hg_std (np.ndarray): Array of standard deviations of high-gain charges.
-
     """
 
     charge_hg = Field(
