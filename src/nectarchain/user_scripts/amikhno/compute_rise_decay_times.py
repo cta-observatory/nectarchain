@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 
 import numpy as np
@@ -11,6 +12,14 @@ from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam import NectarCAMEventSource
 from matplotlib import pyplot as plt
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+if not log.handlers:
+    log.addHandler(handler)
 
 plt.style.use("../../utils/plot_style.mpltstyle")
 
@@ -115,7 +124,7 @@ def extract_times(mean_waveform, total_time=60):
 def plot_waveform_param(mean_signals, pix_id, rise_times, decay_times, t_max_values):
     # ---- Choose pixel to plot ----
     pixel_id = pix_id
-    print(f"dtype pix_id {type(pix_id)}")  # change this to any pixel index (0–1854)
+    log.info(f"dtype pix_id {type(pix_id)}")  # change this to any pixel index (0–1854)
 
     # Get waveform and results for this pixel
     mean_waveform = mean_signals[pixel_id]
@@ -317,7 +326,7 @@ if __name__ == "__main__":
     t_max_values = np.zeros(1855)
 
     mean_signal_per_pixel = np.mean(waveforms_array, axis=0)
-    print(f"shape of the mean signal per pix {mean_signal_per_pixel.shape[0]}")
+    log.info(f"shape of the mean signal per pix {mean_signal_per_pixel.shape[0]}")
 
     for pix in range(1855):
         rise, decay, t_max = extract_times(mean_signal_per_pixel[pix])
@@ -325,13 +334,13 @@ if __name__ == "__main__":
         decay_times[pix] = decay
         t_max_values[pix] = t_max
 
-    print("Rise times shape:", rise_times.shape)  # (1855,)
-    print("Decay times shape:", decay_times.shape)  # (1855,)
-    print("T_max shape:", t_max_values.shape)  # (1855,)
+    log.info("Rise times shape:", rise_times.shape)  # (1855,)
+    log.info("Decay times shape:", decay_times.shape)  # (1855,)
+    log.info("T_max shape:", t_max_values.shape)  # (1855,)
 
     plot_waveform_param(
         mean_signal_per_pixel, pixel_number, rise_times, decay_times, t_max_values
     )
     plot_over_camera(rise_times, decay_times, t_max_values)
 
-    print("[INFO]: Done")
+    log.info("[INFO]: Done")
