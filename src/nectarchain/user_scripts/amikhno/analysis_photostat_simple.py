@@ -505,7 +505,9 @@ def characterize_peak(minuit, camera):
 
 
 # values for minuit are taken from the firs fit without any
-def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera, pdf):
+def optimize_with_outlier_rejection_variance(
+    sigma, data, dict_missing_pix, minuit, camera, pdf
+):
     def define_delete_out(sigma, data):
         mean = np.mean(data)
         std = np.std(data)
@@ -645,7 +647,7 @@ def compute_ff_coefs(charges, gains, pdf):
     )
     ax.axvline(mean + std, color="red", linestyle="dashed", linewidth=1.5)
     ax.set_title(
-        f"Distribution of FF coefficient, run {run_number}, model independent",
+        f"Distribution of FF coefficient, model independent",
         fontsize=16,
     )
     ax.set_xlabel("FF coefficient", fontsize=16)
@@ -685,9 +687,7 @@ def compute_ff_coefs_model(data, data_std, model, model_std, pdf):
         label=f"±1σ = {std:.2f}",
     )
     ax.axvline(mean + std, color="red", linestyle="dashed", linewidth=1.5)
-    ax.set_title(
-        f"Distribution of FF coefficient, run {run_number}, model-based", fontsize=16
-    )
+    ax.set_title(f"Distribution of FF coefficient, model-based", fontsize=16)
     ax.set_xlabel("FF coefficient", fontsize=16)
     ax.set_ylabel("Count", fontsize=16)
     ax.tick_params(axis="both", labelsize=16)
@@ -881,6 +881,7 @@ def main(**kwargs):
         ) = optimize_with_outlier_rejection_variance(
             sigma_masked,
             n_pe,
+            dict_missing_pix,
             [
                 minuit_1.values["a0"],
                 minuit_1.values["a1"],
