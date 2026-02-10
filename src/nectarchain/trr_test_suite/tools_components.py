@@ -559,12 +559,6 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def setup(self):
-        super().setup()
-        for component in self.components:
-            if isinstance(component, UCTSComp):
-                component.excl_muons = True
-
     def finish(self, *args, **kwargs):
         output = super().finish(return_output_component=True, *args, **kwargs)
 
