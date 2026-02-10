@@ -147,7 +147,6 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             chargesContainers = ChargesContainers.from_hdf5(FF_files[0])
             if isinstance(chargesContainers, ChargesContainer):
                 self.components[0]._FF_chargesContainers = chargesContainers
-                self._write_charges(self.components[0]._FF_chargesContainers)
 
             else:
                 n_slices = 0
@@ -221,16 +220,3 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         #    )
         # else :
         super()._write_container(container=container, index_component=0)
-
-    def _write_charges(self, charges_container):
-        table_name = (
-            f"{self.method}_"
-            f"{CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}"
-        )
-
-        self.log.info(f"Explicitly writing charges to {table_name}")
-
-        self.writer.write(
-            table_name=table_name,
-            containers=charges_container,
-        )
