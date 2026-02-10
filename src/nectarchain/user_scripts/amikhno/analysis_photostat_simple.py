@@ -775,10 +775,10 @@ def main():
         try:
             tool = PhotoStatisticNectarCAMCalibrationTool(
                 progress_bar=True,
-                run_number=[run_number],
+                run_number=run_number,
                 max_events=None,
                 camera=camera,
-                Ped_run_number=[run_number],
+                Ped_run_number=run_number,
                 SPE_result=path[0],
             )
             tool.setup()
