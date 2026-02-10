@@ -105,8 +105,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--max_events_gain",
+    nargs="+",
     default=None,
-    help="Max events for gain runs",
+    help="Max events for gain runs (1 value/run, or a 1 value for all)",
     type=int,
 )
 parser.add_argument(
@@ -187,6 +188,49 @@ parser.add_argument(
     action="store_true",
     default=False,
     help="Display SPE histograms for each pixel during gain computation",
+)
+parser.add_argument(
+    "--gain_asked_pixels_id",
+    nargs="+",
+    default=None,
+    help="Pixel IDs to process during gain computation (default: all pixels)",
+    type=int,
+)
+parser.add_argument(
+    "--gain_reload_events",
+    action="store_true",
+    default=False,
+    help="Force re-computation of waveforms from fits.fz files for gain runs",
+)
+parser.add_argument(
+    "--gain_overwrite",
+    action="store_true",
+    default=False,
+    help="Force overwrite of existing gain output files on disk",
+)
+parser.add_argument(
+    "--gain_events_per_slice",
+    type=int,
+    default=None,
+    help="Split raw gain data with this many events per slice",
+)
+parser.add_argument(
+    "--gain_multiproc",
+    action="store_true",
+    default=False,
+    help="Use multiprocessing for gain computation",
+)
+parser.add_argument(
+    "--gain_nproc",
+    type=int,
+    default=8,
+    help="Number of processes to use when --gain_multiproc is set",
+)
+parser.add_argument(
+    "--gain_chunksize",
+    type=int,
+    default=1,
+    help="Chunk size per process when --gain_multiproc is set",
 )
 
 # Pedestal-specific options
@@ -343,7 +387,6 @@ class NectarCAMCalibrationPipeline:
             self.args.recompute_pedestal or self.args.recompute_all
         ):
             self.log.info(f"Pedestal for run {run_number} already exists, loading...")
-            # Load existing pedestal - store the path for later use
             self.pedestal_results[run_number] = output_path
             return output_path
 
@@ -374,52 +417,109 @@ class NectarCAMCalibrationPipeline:
 
         return output_path
 
-    def compute_gain(self, run_number):
-        """Compute gain calibration using SPE fit for a run"""
+    def _build_gain_kwargs(self):
+        """
+        Build the **kwargs dict passed to the SPE tool, mirroring the pattern
+        used in gain_SPEfit_computation.py.  Only gain-relevant keys are
+        included so that unrelated pipeline arguments are never forwarded.
+        """
+        kwargs = dict(
+            method=self.args.charge_method,
+            extractor_kwargs=self.extractor_kwargs,
+            log_level=logging.getLevelName(self.log.level),
+            overwrite=self.args.gain_overwrite,
+            reload_events=self.args.gain_reload_events,
+            display_toggle=self.args.gain_display,
+            multiproc=self.args.gain_multiproc,
+            nproc=self.args.gain_nproc,
+            chunksize=self.args.gain_chunksize,
+        )
+        # Optional keys – only add when a value was explicitly provided so we
+        # do not override tool defaults with None.
+        if self.args.gain_asked_pixels_id is not None:
+            kwargs["asked_pixels_id"] = self.args.gain_asked_pixels_id
+        if self.args.gain_events_per_slice is not None:
+            kwargs["events_per_slice"] = self.args.gain_events_per_slice
+        return kwargs
+
+    def compute_gain(self, run_number, max_events=None):
+        """
+        Compute gain calibration using SPE fit for a single run.
+
+        Parameters
+        ----------
+        run_number : int
+            Run number to process.
+        max_events : int or None
+            Maximum number of events to load (mirrors the per-run
+            ``max_events`` list logic of gain_SPEfit_computation.py).
+        """
         output_path = self.get_gain_output_path(run_number)
 
         if output_path.exists() and not (
             self.args.recompute_gain or self.args.recompute_all
         ):
             self.log.info(f"Gain for run {run_number} already exists, loading...")
-            # Store the path for later use
             self.gain_results[run_number] = output_path
             return output_path
 
         self.log.info(f"Computing gain (SPE fit) for run {run_number}...")
 
-        # Select appropriate class based on HHV and free_pp_n
+        # Select the appropriate tool class (same logic as reference script)
         if self.args.HHV:
-            if self.args.free_pp_n:
-                tool_class = FlatFieldSPEHHVNectarCAMCalibrationTool
-            else:
-                tool_class = FlatFieldSPEHHVStdNectarCAMCalibrationTool
+            tool_class = (
+                FlatFieldSPEHHVNectarCAMCalibrationTool
+                if self.args.free_pp_n
+                else FlatFieldSPEHHVStdNectarCAMCalibrationTool
+            )
         else:
-            if self.args.free_pp_n:
-                tool_class = FlatFieldSPENominalNectarCAMCalibrationTool
+            tool_class = (
+                FlatFieldSPENominalNectarCAMCalibrationTool
+                if self.args.free_pp_n
+                else FlatFieldSPENominalStdNectarCAMCalibrationTool
+            )
+
+        # Build kwargs the same way the reference script does, then pass
+        # run-level positional info separately (camera, run_number,
+        # max_events, progress_bar) so they are never duplicated in kwargs.
+        gain_kwargs = self._build_gain_kwargs()
+
+        try:
+            tool = tool_class(
+                progress_bar=True,
+                camera=self.args.camera,
+                run_number=run_number,
+                max_events=max_events,
+                **gain_kwargs,
+            )
+            tool.setup()
+
+            # Build figpath the same way as in the reference script
+            extractor_kwargs_str = CtapipeExtractor.get_extractor_kwargs_str(
+                tool.method,
+                tool.extractor_kwargs,
+            )
+
+            base_figpath = (
+                f"{self.figure_dir}/{tool.name}"
+                f"_run{tool.run_number}"
+                f"_{tool.method}"
+                f"_{extractor_kwargs_str}"
+            )
+
+            if gain_kwargs.get("reload_events") and max_events is not None:
+                figpath = f"{base_figpath}_maxevents{max_events}"
             else:
-                tool_class = FlatFieldSPENominalStdNectarCAMCalibrationTool
+                figpath = base_figpath
 
-        tool = tool_class(
-            progress_bar=True,
-            camera=self.args.camera,
-            run_number=run_number,
-            max_events=self.args.max_events_gain,
-            display_toggle=self.args.gain_display,
-            method=self.args.charge_method,
-            extractor_kwargs=self.extractor_kwargs,
-            overwrite=True,
-            log_level=logging.getLevelName(self.log.level),
-        )
+            tool.start(figpath=figpath)
+            tool.finish(figpath=figpath)
 
-        tool.setup()
-
-        # Setup figure path
-        figpath = self.figure_dir / f"gain_SPE_{run_number}"
-        figpath.mkdir(exist_ok=True)
-
-        tool.start(figpath=str(figpath))
-        tool.finish(figpath=str(figpath))
+        except Exception as e:
+            self.log.warning(
+                f"Gain computation failed for run {run_number}: {e}", exc_info=True
+            )
+            raise
 
         self.gain_results[run_number] = output_path
         self.log.info(f"Gain computation completed for run {run_number}")
@@ -608,7 +708,6 @@ class NectarCAMCalibrationPipeline:
         )
         try:
             with h5py.File(charge_path, "r") as f:
-                # Try different possible paths for charge data
                 if "data/ChargesContainer/charges_hg" in f:
                     charges_hg = f["data/ChargesContainer/charges_hg"][:]
                     charges_lg = f["data/ChargesContainer/charges_lg"][:]
@@ -616,10 +715,7 @@ class NectarCAMCalibrationPipeline:
                 elif "charges" in f:
                     charges = f["charges"][:]
                 else:
-                    # Look for any charge-like dataset
-                    self.log.error(
-                        f"Available keys in charge file: " f"{list(f.keys())}"
-                    )
+                    self.log.error(f"Available keys in charge file: {list(f.keys())}")
                     for key in f.keys():
                         content = (
                             list(f[key].keys())
@@ -669,7 +765,6 @@ class NectarCAMCalibrationPipeline:
                     self.log.warning(
                         "Cannot find gain data, using flatfield-derived gain"
                     )
-                    # Load flatfield to derive gain
                     flatfield_path = (
                         self.flatfield_results[flatfield_run]
                         if isinstance(
@@ -711,32 +806,24 @@ class NectarCAMCalibrationPipeline:
             return None
 
         # Ensure proper shapes
-        # charges shape should be (events, gains, pixels) or (gains, events, pixels)
         if charges.ndim == 3:
-            if charges.shape[1] == 2:
-                # Shape is (events, gains, pixels) - this is correct
-                pass
-            elif charges.shape[0] == 2:
-                # Shape is (gains, events, pixels) - need to transpose
+            if charges.shape[0] == 2:
+                # Shape is (gains, events, pixels)
+                # – transpose to (events, gains, pixels)
                 charges = np.transpose(charges, (1, 0, 2))
 
         # Apply calibration: (charge - pedestal) / gain * FF
         calibrated_charges = np.zeros_like(charges)
 
-        for gain_idx in range(min(charges.shape[1], 2)):  # Loop over gains (HG, LG)
-            for pixel_idx in range(charges.shape[2]):  # Loop over pixels
-                # Pedestal subtraction
+        for gain_idx in range(min(charges.shape[1], 2)):
+            for pixel_idx in range(charges.shape[2]):
                 ped_subtracted = (
                     charges[:, gain_idx, pixel_idx] - pedestals[gain_idx, pixel_idx]
                 )
-
-                # Gain correction
                 if gains[gain_idx, pixel_idx] != 0:
                     gain_corrected = ped_subtracted / gains[gain_idx, pixel_idx]
                 else:
                     gain_corrected = ped_subtracted
-
-                # Flatfield correction
                 calibrated_charges[:, gain_idx, pixel_idx] = (
                     gain_corrected * ff_coef[gain_idx, pixel_idx]
                 )
@@ -760,8 +847,7 @@ class NectarCAMCalibrationPipeline:
         return calibrated_charges
 
     def plot_calibration_vs_temperature(self):
-        """Plot all calibration parameters
-        and charges vs temperature as separate figures"""
+        """Plot all calibration parameters and charges vs temperature"""
         self.log.info("Creating calibration vs temperature plots...")
 
         if len(self.args.charge_runs) != len(self.args.temperatures):
@@ -769,12 +855,8 @@ class NectarCAMCalibrationPipeline:
             return
 
         temperatures = np.array(self.args.temperatures)
-
-        # Prepare data arrays
         n_temps = len(temperatures)
         n_pixels = constants.N_PIXELS
-
-        # Use high gain for plots
         gain_idx = constants.HIGH_GAIN
 
         pedestals_vs_temp = np.zeros((n_temps, n_pixels))
@@ -783,13 +865,11 @@ class NectarCAMCalibrationPipeline:
         raw_charge_mean_vs_temp = np.zeros((n_temps, n_pixels))
         calib_charge_mean_vs_temp = np.zeros((n_temps, n_pixels))
 
-        # Collect data
         for idx, (charge_run, temp) in enumerate(
             zip(self.args.charge_runs, temperatures)
         ):
             if charge_run in self.calibrated_charge_results:
                 result = self.calibrated_charge_results[charge_run]
-
                 pedestals_vs_temp[idx] = result["pedestals"][gain_idx]
                 gains_vs_temp[idx] = result["gains"][gain_idx]
                 ff_vs_temp[idx] = result["flatfield"][gain_idx]
@@ -800,7 +880,6 @@ class NectarCAMCalibrationPipeline:
                     result["calibrated_charges"][:, gain_idx, :], axis=0
                 )
 
-        # Apply bad pixel mask for plotting
         if self.args.use_bad_pixels and self.args.bad_pixels:
             for bad_pix in self.args.bad_pixels:
                 if bad_pix < n_pixels:
@@ -810,131 +889,69 @@ class NectarCAMCalibrationPipeline:
                     raw_charge_mean_vs_temp[:, bad_pix] = np.nan
                     calib_charge_mean_vs_temp[:, bad_pix] = np.nan
 
-        # Plot 1: Pedestal vs Temperature
-        fig, ax = plt.subplots(figsize=(10, 6))
-        for pix in range(0, n_pixels, 50):  # Plot every 50th pixel
-            if not (
+        def _is_bad(pix):
+            return (
                 self.args.use_bad_pixels
                 and self.args.bad_pixels
                 and pix in self.args.bad_pixels
-            ):
-                ax.plot(
-                    temperatures,
-                    pedestals_vs_temp[:, pix],
-                    "o-",
-                    alpha=0.3,
-                    markersize=3,
-                )
-        ax.set_xlabel("Temperature (°C)", fontsize=12)
-        ax.set_ylabel("Pedestal (ADC counts)", fontsize=12)
-        ax.set_title("Pedestal vs Temperature", fontsize=14)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        output_file = self.figure_dir / "pedestal_vs_temperature.png"
-        plt.savefig(output_file, dpi=150, bbox_inches="tight")
-        self.log.info(f"Pedestal vs temperature plot saved to {output_file}")
-        plt.close()
+            )
 
-        # Plot 2: Gain vs Temperature
-        fig, ax = plt.subplots(figsize=(10, 6))
-        for pix in range(0, n_pixels, 50):
-            if not (
-                self.args.use_bad_pixels
-                and self.args.bad_pixels
-                and pix in self.args.bad_pixels
-            ):
-                ax.plot(
-                    temperatures, gains_vs_temp[:, pix], "o-", alpha=0.3, markersize=3
-                )
-        ax.set_xlabel("Temperature (°C)", fontsize=12)
-        ax.set_ylabel("Gain (ADC/p.e.)", fontsize=12)
-        ax.set_title("Gain vs Temperature", fontsize=14)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        output_file = self.figure_dir / "gain_vs_temperature.png"
-        plt.savefig(output_file, dpi=150, bbox_inches="tight")
-        self.log.info(f"Gain vs temperature plot saved to {output_file}")
-        plt.close()
+        plots = [
+            (
+                "Pedestal vs Temperature",
+                "Pedestal (ADC counts)",
+                pedestals_vs_temp,
+                "pedestal_vs_temperature.png",
+            ),
+            (
+                "Gain vs Temperature",
+                "Gain (ADC/p.e.)",
+                gains_vs_temp,
+                "gain_vs_temperature.png",
+            ),
+            (
+                "Flatfield vs Temperature",
+                "Flatfield Coefficient",
+                ff_vs_temp,
+                "flatfield_vs_temperature.png",
+            ),
+            (
+                "Raw Charge vs Temperature",
+                "Raw Charge (ADC counts)",
+                raw_charge_mean_vs_temp,
+                "raw_charge_vs_temperature.png",
+            ),
+            (
+                "Calibrated Charge vs Temperature (Per Pixel)",
+                "Calibrated Charge (p.e.)",
+                calib_charge_mean_vs_temp,
+                "calibrated_charge_vs_temperature_perpixel.png",
+            ),
+        ]
 
-        # Plot 3: Flatfield vs Temperature
-        fig, ax = plt.subplots(figsize=(10, 6))
-        for pix in range(0, n_pixels, 50):
-            if not (
-                self.args.use_bad_pixels
-                and self.args.bad_pixels
-                and pix in self.args.bad_pixels
-            ):
-                ax.plot(temperatures, ff_vs_temp[:, pix], "o-", alpha=0.3, markersize=3)
-        ax.set_xlabel("Temperature (°C)", fontsize=12)
-        ax.set_ylabel("Flatfield Coefficient", fontsize=12)
-        ax.set_title("Flatfield vs Temperature", fontsize=14)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        output_file = self.figure_dir / "flatfield_vs_temperature.png"
-        plt.savefig(output_file, dpi=150, bbox_inches="tight")
-        self.log.info(f"Flatfield vs temperature plot saved to {output_file}")
-        plt.close()
+        for title, ylabel, data, filename in plots:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            for pix in range(0, n_pixels, 50):
+                if not _is_bad(pix):
+                    ax.plot(temperatures, data[:, pix], "o-", alpha=0.3, markersize=3)
+            ax.set_xlabel("Temperature (°C)", fontsize=12)
+            ax.set_ylabel(ylabel, fontsize=12)
+            ax.set_title(title, fontsize=14)
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            output_file = self.figure_dir / filename
+            plt.savefig(output_file, dpi=150, bbox_inches="tight")
+            self.log.info(f"Plot saved to {output_file}")
+            plt.close()
 
-        # Plot 4: Raw Charge vs Temperature
+        # Camera-average calibrated charge
         fig, ax = plt.subplots(figsize=(10, 6))
-        for pix in range(0, n_pixels, 50):
-            if not (
-                self.args.use_bad_pixels
-                and self.args.bad_pixels
-                and pix in self.args.bad_pixels
-            ):
-                ax.plot(
-                    temperatures,
-                    raw_charge_mean_vs_temp[:, pix],
-                    "o-",
-                    alpha=0.3,
-                    markersize=3,
-                )
-        ax.set_xlabel("Temperature (°C)", fontsize=12)
-        ax.set_ylabel("Raw Charge (ADC counts)", fontsize=12)
-        ax.set_title("Raw Charge vs Temperature", fontsize=14)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        output_file = self.figure_dir / "raw_charge_vs_temperature.png"
-        plt.savefig(output_file, dpi=150, bbox_inches="tight")
-        self.log.info(f"Raw charge vs temperature plot saved to {output_file}")
-        plt.close()
-
-        # Plot 5: Calibrated Charge vs Temperature (per pixel)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        for pix in range(0, n_pixels, 50):
-            if not (
-                self.args.use_bad_pixels
-                and self.args.bad_pixels
-                and pix in self.args.bad_pixels
-            ):
-                ax.plot(
-                    temperatures,
-                    calib_charge_mean_vs_temp[:, pix],
-                    "o-",
-                    alpha=0.3,
-                    markersize=3,
-                )
-        ax.set_xlabel("Temperature (°C)", fontsize=12)
-        ax.set_ylabel("Calibrated Charge (p.e.)", fontsize=12)
-        ax.set_title("Calibrated Charge vs Temperature (Per Pixel)", fontsize=14)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        output_file = self.figure_dir / "calibrated_charge_vs_temperature_perpixel.png"
-        plt.savefig(output_file, dpi=150, bbox_inches="tight")
-        self.log.info(
-            f"Calibrated charge vs temperature (per pixel) plot saved to {output_file}"
-        )
-        plt.close()
-
-        # Plot 6: Average calibrated charge vs Temperature (camera average)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        mean_calib_charge = np.nanmean(calib_charge_mean_vs_temp, axis=1)
-        std_calib_charge = np.nanstd(calib_charge_mean_vs_temp, axis=1)
+        mean_calib = np.nanmean(calib_charge_mean_vs_temp, axis=1)
+        std_calib = np.nanstd(calib_charge_mean_vs_temp, axis=1)
         ax.errorbar(
             temperatures,
-            mean_calib_charge,
-            yerr=std_calib_charge,
+            mean_calib,
+            yerr=std_calib,
             fmt="o-",
             capsize=5,
             markersize=8,
@@ -958,22 +975,18 @@ class NectarCAMCalibrationPipeline:
         """Create individual plots for each calibration parameter"""
         self.log.info("Creating individual calibration parameter plots...")
 
-        # Plot pedestals
         for run in self.args.pedestal_runs:
             if run in self.pedestal_results:
                 self._plot_pedestal(run)
 
-        # Plot gains
         for run in self.args.gain_runs:
             if run in self.gain_results:
                 self._plot_gain(run)
 
-        # Plot flatfields
         for run in self.args.flatfield_runs:
             if run in self.flatfield_results:
                 self._plot_flatfield(run)
 
-        # Plot charges
         for run in self.args.charge_runs:
             if run in self.charge_results:
                 self._plot_charge(run)
@@ -982,9 +995,9 @@ class NectarCAMCalibrationPipeline:
         """Plot pedestal distribution"""
         import h5py
 
-        pedestal_path = self.pedestal_results.get(run_number)
-        if pedestal_path is None:
-            pedestal_path = self.get_pedestal_output_path(run_number)
+        pedestal_path = self.pedestal_results.get(
+            run_number
+        ) or self.get_pedestal_output_path(run_number)
 
         if not Path(pedestal_path).exists():
             self.log.warning(f"Pedestal file not found for run {run_number}")
@@ -1010,21 +1023,12 @@ class NectarCAMCalibrationPipeline:
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Pedestal Distribution - Run {run_number}")
-
-        # High gain
-        axes[0].hist(ped_hg, bins=50, alpha=0.7, edgecolor="black")
-        axes[0].set_xlabel("Pedestal (ADC counts)")
-        axes[0].set_ylabel("Number of pixels")
-        axes[0].set_title("High Gain")
-        axes[0].grid(True, alpha=0.3)
-
-        # Low gain
-        axes[1].hist(ped_lg, bins=50, alpha=0.7, edgecolor="black")
-        axes[1].set_xlabel("Pedestal (ADC counts)")
-        axes[1].set_ylabel("Number of pixels")
-        axes[1].set_title("Low Gain")
-        axes[1].grid(True, alpha=0.3)
-
+        for ax, data, title in zip(axes, [ped_hg, ped_lg], ["High Gain", "Low Gain"]):
+            ax.hist(data, bins=50, alpha=0.7, edgecolor="black")
+            ax.set_xlabel("Pedestal (ADC counts)")
+            ax.set_ylabel("Number of pixels")
+            ax.set_title(title)
+            ax.grid(True, alpha=0.3)
         plt.tight_layout()
         output_file = self.figure_dir / f"pedestal_run{run_number}.png"
         plt.savefig(output_file, dpi=150, bbox_inches="tight")
@@ -1035,9 +1039,9 @@ class NectarCAMCalibrationPipeline:
         """Plot gain distribution"""
         import h5py
 
-        gain_path = self.gain_results.get(run_number)
-        if gain_path is None:
-            gain_path = self.get_gain_output_path(run_number)
+        gain_path = self.gain_results.get(run_number) or self.get_gain_output_path(
+            run_number
+        )
 
         if not Path(gain_path).exists():
             self.log.warning(f"Gain file not found for run {run_number}")
@@ -1060,21 +1064,16 @@ class NectarCAMCalibrationPipeline:
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Gain Distribution - Run {run_number}")
-
-        # High gain
-        axes[0].hist(gains[constants.HIGH_GAIN], bins=50, alpha=0.7, edgecolor="black")
-        axes[0].set_xlabel("Gain (ADC/p.e.)")
-        axes[0].set_ylabel("Number of pixels")
-        axes[0].set_title("High Gain")
-        axes[0].grid(True, alpha=0.3)
-
-        # Low gain
-        axes[1].hist(gains[constants.LOW_GAIN], bins=50, alpha=0.7, edgecolor="black")
-        axes[1].set_xlabel("Gain (ADC/p.e.)")
-        axes[1].set_ylabel("Number of pixels")
-        axes[1].set_title("Low Gain")
-        axes[1].grid(True, alpha=0.3)
-
+        for ax, idx, title in zip(
+            axes,
+            [constants.HIGH_GAIN, constants.LOW_GAIN],
+            ["High Gain", "Low Gain"],
+        ):
+            ax.hist(gains[idx], bins=50, alpha=0.7, edgecolor="black")
+            ax.set_xlabel("Gain (ADC/p.e.)")
+            ax.set_ylabel("Number of pixels")
+            ax.set_title(title)
+            ax.grid(True, alpha=0.3)
         plt.tight_layout()
         output_file = self.figure_dir / f"gain_run{run_number}.png"
         plt.savefig(output_file, dpi=150, bbox_inches="tight")
@@ -1085,9 +1084,9 @@ class NectarCAMCalibrationPipeline:
         """Plot flatfield coefficient distribution"""
         import h5py
 
-        ff_path = self.flatfield_results.get(run_number)
-        if ff_path is None:
-            ff_path = self.get_flatfield_output_path(run_number)
+        ff_path = self.flatfield_results.get(
+            run_number
+        ) or self.get_flatfield_output_path(run_number)
 
         if not Path(ff_path).exists():
             self.log.warning(f"Flatfield file not found for run {run_number}")
@@ -1110,23 +1109,16 @@ class NectarCAMCalibrationPipeline:
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Flatfield Coefficient Distribution - Run {run_number}")
-
-        # High gain
-        axes[0].hist(
-            ff_coef[constants.HIGH_GAIN], bins=50, alpha=0.7, edgecolor="black"
-        )
-        axes[0].set_xlabel("Flatfield Coefficient")
-        axes[0].set_ylabel("Number of pixels")
-        axes[0].set_title("High Gain")
-        axes[0].grid(True, alpha=0.3)
-
-        # Low gain
-        axes[1].hist(ff_coef[constants.LOW_GAIN], bins=50, alpha=0.7, edgecolor="black")
-        axes[1].set_xlabel("Flatfield Coefficient")
-        axes[1].set_ylabel("Number of pixels")
-        axes[1].set_title("Low Gain")
-        axes[1].grid(True, alpha=0.3)
-
+        for ax, idx, title in zip(
+            axes,
+            [constants.HIGH_GAIN, constants.LOW_GAIN],
+            ["High Gain", "Low Gain"],
+        ):
+            ax.hist(ff_coef[idx], bins=50, alpha=0.7, edgecolor="black")
+            ax.set_xlabel("Flatfield Coefficient")
+            ax.set_ylabel("Number of pixels")
+            ax.set_title(title)
+            ax.grid(True, alpha=0.3)
         plt.tight_layout()
         output_file = self.figure_dir / f"flatfield_run{run_number}.png"
         plt.savefig(output_file, dpi=150, bbox_inches="tight")
@@ -1137,9 +1129,9 @@ class NectarCAMCalibrationPipeline:
         """Plot charge distribution"""
         import h5py
 
-        charge_path = self.charge_results.get(run_number)
-        if charge_path is None:
-            charge_path = self.get_charge_output_path(run_number)
+        charge_path = self.charge_results.get(
+            run_number
+        ) or self.get_charge_output_path(run_number)
 
         if not Path(charge_path).exists():
             self.log.warning(f"Charge file not found for run {run_number}")
@@ -1162,36 +1154,23 @@ class NectarCAMCalibrationPipeline:
             self.log.warning(f"Error loading charge data for plotting: {e}")
             return
 
-        # Ensure proper shape
-        if charges.ndim == 3:
-            if charges.shape[0] == 2:
-                # Shape is (gains, events, pixels) - transpose
-                charges = np.transpose(charges, (1, 0, 2))
+        if charges.ndim == 3 and charges.shape[0] == 2:
+            charges = np.transpose(charges, (1, 0, 2))
+
+        mean_charges = np.mean(charges, axis=0)
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Charge Distribution - Run {run_number}")
-
-        # Calculate mean charge per pixel
-        mean_charges = np.mean(charges, axis=0)
-
-        # High gain
-        axes[0].hist(
-            mean_charges[constants.HIGH_GAIN], bins=50, alpha=0.7, edgecolor="black"
-        )
-        axes[0].set_xlabel("Mean Charge (ADC counts)")
-        axes[0].set_ylabel("Number of pixels")
-        axes[0].set_title("High Gain")
-        axes[0].grid(True, alpha=0.3)
-
-        # Low gain
-        axes[1].hist(
-            mean_charges[constants.LOW_GAIN], bins=50, alpha=0.7, edgecolor="black"
-        )
-        axes[1].set_xlabel("Mean Charge (ADC counts)")
-        axes[1].set_ylabel("Number of pixels")
-        axes[1].set_title("Low Gain")
-        axes[1].grid(True, alpha=0.3)
-
+        for ax, idx, title in zip(
+            axes,
+            [constants.HIGH_GAIN, constants.LOW_GAIN],
+            ["High Gain", "Low Gain"],
+        ):
+            ax.hist(mean_charges[idx], bins=50, alpha=0.7, edgecolor="black")
+            ax.set_xlabel("Mean Charge (ADC counts)")
+            ax.set_ylabel("Number of pixels")
+            ax.set_title(title)
+            ax.grid(True, alpha=0.3)
         plt.tight_layout()
         output_file = self.figure_dir / f"charge_run{run_number}.png"
         plt.savefig(output_file, dpi=150, bbox_inches="tight")
@@ -1219,12 +1198,19 @@ class NectarCAMCalibrationPipeline:
                 )
 
         # Step 2: Compute gains
+        # Mirror the reference script's per-run max_events list logic.
         self.log.info("\n" + "=" * 80)
         self.log.info("STEP 2: Gain (SPE) Calibration")
         self.log.info("=" * 80)
-        for run in self.args.gain_runs:
+        gain_max_events = self.args.max_events_gain
+        if gain_max_events is None:
+            gain_max_events = [None] * len(self.args.gain_runs)
+        elif len(gain_max_events) == 1:
+            gain_max_events = gain_max_events * len(self.args.gain_runs)
+
+        for run, max_ev in zip(self.args.gain_runs, gain_max_events):
             try:
-                self.compute_gain(run)
+                self.compute_gain(run, max_events=max_ev)
             except Exception as e:
                 self.log.error(
                     f"Error computing gain for run {run}: {e}", exc_info=True
@@ -1258,8 +1244,6 @@ class NectarCAMCalibrationPipeline:
         self.log.info("\n" + "=" * 80)
         self.log.info("STEP 5: Calibrated Charge Computation")
         self.log.info("=" * 80)
-
-        # Use first pedestal, gain, and flatfield run for all charge runs
         pedestal_run = self.args.pedestal_runs[0]
         gain_run = self.args.gain_runs[0]
         flatfield_run = self.args.flatfield_runs[0]
@@ -1279,7 +1263,6 @@ class NectarCAMCalibrationPipeline:
         self.log.info("\n" + "=" * 80)
         self.log.info("STEP 6: Creating Plots")
         self.log.info("=" * 80)
-
         try:
             self.plot_individual_calibration_parameters()
         except Exception as e:
@@ -1291,7 +1274,6 @@ class NectarCAMCalibrationPipeline:
             self.log.error(f"Error creating temperature plots: {e}", exc_info=True)
 
         elapsed_time = time.time() - start_time
-
         self.log.info("\n" + "=" * 80)
         self.log.info("Pipeline Complete!")
         self.log.info(f"Total execution time: {elapsed_time:.2f} seconds")
@@ -1318,7 +1300,6 @@ def main():
     log = logging.getLogger(__name__)
     log.setLevel(args.verbosity)
 
-    # Add console handler
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(args.verbosity)
     formatter = logging.Formatter(
@@ -1327,13 +1308,11 @@ def main():
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
-    # Quiet numba
     logging.getLogger("numba").setLevel(logging.WARNING)
 
     log.info(f"Log file: {log_file}")
     log.info(f"Arguments: {vars(args)}")
 
-    # Create and run pipeline
     pipeline = NectarCAMCalibrationPipeline(args, log)
     pipeline.run_pipeline()
 
