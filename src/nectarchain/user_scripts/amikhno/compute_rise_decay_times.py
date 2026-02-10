@@ -12,7 +12,7 @@ from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam import NectarCAMEventSource
 from matplotlib import pyplot as plt
 
-plt.style.use("/home/amikhno/Downloads/plot_style.mpltstyle")
+plt.style.use("../../utils/plot_style.mpltstyle")
 
 parser = argparse.ArgumentParser(
     description="Run computation of mean parameters of waveform"
