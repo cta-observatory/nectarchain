@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 NectarCAM Full Calibration and Analysis Pipeline
 
@@ -142,31 +141,31 @@ parser.add_argument(
 parser.add_argument(
     "--recompute_pedestal",
     action="store_true",
-    default=False,
+    default=True,
     help="Force recomputation of pedestal calibration",
 )
 parser.add_argument(
     "--recompute_gain",
     action="store_true",
-    default=False,
+    default=True,
     help="Force recomputation of gain calibration",
 )
 parser.add_argument(
     "--recompute_flatfield",
     action="store_true",
-    default=False,
+    default=True,
     help="Force recomputation of flatfield calibration",
 )
 parser.add_argument(
     "--recompute_charge",
     action="store_true",
-    default=False,
+    default=True,
     help="Force recomputation of charge extraction",
 )
 parser.add_argument(
     "--recompute_all",
     action="store_true",
-    default=False,
+    default=True,
     help="Force recomputation of all calibrations",
 )
 
