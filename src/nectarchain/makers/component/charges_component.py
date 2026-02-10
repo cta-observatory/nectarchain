@@ -57,7 +57,7 @@ list_nectarchain_charge_extractor = ["gradient_extractor"]
 
 @guvectorize(
     [
-        (int64[:], float64[:], bool_, bool_[:], int64[:]),
+        (float64[:], float64[:], bool_, bool_[:], int64[:]),
     ],
     "(s),(n),()->(n),(n)",
     nopython=True,
