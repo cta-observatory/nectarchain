@@ -120,21 +120,20 @@ def main():
 
     for i, run in enumerate(runlist):
         log.info("PROCESSING RUN {}".format(run))
+        pedestal_tool = PedestalNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=run,
+            max_events=12000,
+            events_per_slice=5000,
+            log_level=20,
+            overwrite=True,
+            filter_method=None,
+            method="FullWaveformSum",  # charges over entire window
+        )
         try:
-            pedestal_tool = PedestalNectarCAMCalibrationTool(
-                progress_bar=True,
-                run_number=run,
-                max_events=12000,
-                events_per_slice=5000,
-                log_level=20,
-                output_path=output_dir + f"/pedestal_{run}.h5",
-                overwrite=True,
-                filter_method=None,
-                method="FullWaveformSum",  # charges over entire window
-            )
             run_tool(pedestal_tool)
         except Exception as e:
-            log.warning(f"WARNING: {e}")
+            log.warning(e)
         tool = TriggerTimingTestTool(
             progress_bar=True,
             run_number=run,
@@ -144,7 +143,7 @@ def main():
             method="LocalPeakWindowSum",
             extractor_kwargs={"window_width": 16, "window_shift": 6},
             overwrite=True,
-            pedestal_file=output_dir + f"/pedestal_{run}.h5",
+            pedestal_file=pedestal_tool.output_path,
             use_default_pedestal=True,
         )
         tool.initialize()
