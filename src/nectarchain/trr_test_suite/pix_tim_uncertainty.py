@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -12,6 +13,10 @@ from ctapipe.core import run_tool
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import TimingResolutionTestTool
 from nectarchain.trr_test_suite.utils import pe2photons, photons2pe
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 def get_args():
@@ -86,8 +91,8 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
 
@@ -98,7 +103,7 @@ def main():
     mean_charge_pe = []
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
         # Old runs do not have interleaved pedestals
         try:
             pedestal_tool = PedestalNectarCAMCalibrationTool(
@@ -114,7 +119,7 @@ def main():
             )
             run_tool(pedestal_tool)
         except Exception as e:
-            print(f"WARNING: {e}")
+            log.warning(e)
         tool = TimingResolutionTestTool(
             progress_bar=True,
             run_number=run,
@@ -137,12 +142,12 @@ def main():
         rms_no_fit_err.append(output[1])
         mean_charge_pe.append(output[2])
 
-    print(rms_no_fit)
+    log.debug(rms_no_fit)
     rms_no_fit_err = np.array(rms_no_fit_err)
-    print(rms_no_fit_err)
+    log.debug(rms_no_fit_err)
     rms_no_fit_err[rms_no_fit_err == 0] = 1e-5  # almost zero
     # rms_no_fit_err[rms_no_fit_err==np.nan]=1e-5
-    print(rms_no_fit_err)
+    log.debug(rms_no_fit_err)
 
     # mean_rms_mu = np.mean(rms_mu,axis=1)
     # mean_rms_no_fit = np.mean(rms_no_fit,axis=1)
@@ -150,7 +155,7 @@ def main():
     # weights_mu_pix = 1/(np.array(rms_mu_err)+1e-5)**2
     weights_no_fit_pix = 1 / (rms_no_fit_err) ** 2
     weights_no_fit_pix[weights_no_fit_pix > 1e5] = 1e5
-    print(weights_no_fit_pix)
+    log.debug(weights_no_fit_pix)
 
     # rms_mu_weighted=[]
     # rms_mu_weighted_err=[]
@@ -167,8 +172,8 @@ def main():
         )
         rms_no_fit_weighted_err.append(np.sqrt(1 / np.nansum(weights_no_fit_pix[run])))
 
-    print(rms_no_fit_weighted)
-    print(rms_no_fit_weighted_err)
+    log.debug(rms_no_fit_weighted)
+    log.debug(rms_no_fit_weighted_err)
 
     # FIGURE
     fig, ax = plt.subplots(figsize=(10, 7), constrained_layout=True)
