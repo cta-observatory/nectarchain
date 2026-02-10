@@ -107,7 +107,6 @@ def get_bad_pixels(output_from_FlatFieldComponent):
     hi_lo = get_hi_lo_ratio(output_from_FlatFieldComponent)
 
     amp_int_per_pix_per_event = FlatFieldOutput.amp_int_per_pix_per_event[:, :, :]
-
     mean_amp_int_per_pix = np.mean(amp_int_per_pix_per_event, axis=0)
     mean_amp = np.mean(mean_amp_int_per_pix, axis=1)
     std_amp = np.std(mean_amp_int_per_pix, axis=1)
