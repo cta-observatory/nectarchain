@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -9,6 +10,10 @@ from ctapipe.core import run_tool
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 def get_args():
@@ -104,8 +109,8 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
     tom = []
@@ -119,7 +124,7 @@ def main():
     pixel_pairs = []
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
         # Old runs do not have interleaved pedestals
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
@@ -134,7 +139,7 @@ def main():
         try:
             run_tool(pedestal_tool)
         except Exception as e:
-            print(f"WARNING: {e}")
+            log.warning(e)
         tool = ToMPairsTool(
             progress_bar=True,
             run_number=run,
