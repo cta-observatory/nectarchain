@@ -7,7 +7,9 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.core import run_tool
 
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import TriggerTimingTestTool
 from nectarchain.trr_test_suite.utils import pe2photons
 
@@ -113,15 +115,32 @@ def main():
 
     for i, run in enumerate(runlist):
         print("PROCESSING RUN {}".format(run))
+        try:
+            pedestal_tool = PedestalNectarCAMCalibrationTool(
+                progress_bar=True,
+                run_number=run,
+                max_events=12000,
+                events_per_slice=5000,
+                log_level=20,
+                output_path=output_dir + f"/pedestal_{run}.h5",
+                overwrite=True,
+                filter_method=None,
+                method="FullWaveformSum",  # charges over entire window
+            )
+            run_tool(pedestal_tool)
+        except Exception as e:
+            print(f"WARNING: {e}")
         tool = TriggerTimingTestTool(
             progress_bar=True,
             run_number=run,
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
-            peak_height=10,
-            window_width=16,
+            method="LocalPeakWindowSum",
+            extractor_kwargs={"window_width": 16, "window_shift": 6},
             overwrite=True,
+            pedestal_file=output_dir + f"/pedestal_{run}.h5",
+            use_default_pedestal=True,
         )
         tool.initialize()
         tool.setup()
