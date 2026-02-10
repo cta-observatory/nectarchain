@@ -213,10 +213,4 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     )
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
-        # if isinstance(container, chargesContainers) :
-        #    self.writer.write(table_name =
-        #    f"{self.method}_{CtapipeExtractor.get_extractor_kwargs_str(self.extractor_kwargs)}",
-        #                      containers = container,
-        #    )
-        # else :
         super()._write_container(container=container, index_component=index_component)
