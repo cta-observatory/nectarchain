@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -12,6 +13,10 @@ from ctapipe.core import run_tool
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import TriggerTimingTestTool
 from nectarchain.trr_test_suite.utils import pe2photons
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 def get_args():
@@ -93,8 +98,8 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
 
@@ -114,7 +119,7 @@ def main():
     nevents = 1000
 
     for i, run in enumerate(runlist):
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
         try:
             pedestal_tool = PedestalNectarCAMCalibrationTool(
                 progress_bar=True,
@@ -129,7 +134,7 @@ def main():
             )
             run_tool(pedestal_tool)
         except Exception as e:
-            print(f"WARNING: {e}")
+            log.warning(f"WARNING: {e}")
         tool = TriggerTimingTestTool(
             progress_bar=True,
             run_number=run,
