@@ -119,7 +119,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def pre_process_fits(filename):
+def pre_process_fits(filename, camera, pdf):
     with HDF5TableReader(filename) as h5_table:
         assert h5_table._h5file.isopen == True
         for container in h5_table.read(
@@ -258,7 +258,7 @@ def pre_process_fits(filename):
 
 # Fit using ctapipe
 # First step of the fitting process
-def Gaussian_model(array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
+def Gaussian_model(camera, array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
     A, x, y, std_x, std_y = array
     model = A * (
         Gaussian(x * u.m, y * u.m, std_x * u.m, std_y * u.m, psi="0d").pdf(
@@ -266,14 +266,6 @@ def Gaussian_model(array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
         )
     )
     return model
-
-
-# least-squares score function = sum of data residuals squared
-def lsq(a0, a1, a2, a3):
-    a4 = a3  # This equality comees from assumption that the 2D-Gaussian is symmetric.
-    return np.sum(
-        (n_pe - Gaussian_model([a0, a1, a2, a3, a4])) ** 2 / (sigma_masked**2)
-    )
 
 
 def define_delete_out(sigma, data):
@@ -285,7 +277,17 @@ def define_delete_out(sigma, data):
     return data, sigma, outliers
 
 
-def optimize_with_outlier_rejection(sigma, data):
+def optimize_with_outlier_rejection(sigma, data, camera, pdf):
+    # least-squares score function = sum of data residuals squared
+    def lsq(a0, a1, a2, a3):
+        a4 = (
+            a3  # This equality comes from assumption that the 2D-Gaussian is symmetric.
+        )
+        return np.sum(
+            (n_pe - Gaussian_model(camera, [a0, a1, a2, a3, a4])) ** 2
+            / (sigma_masked**2)
+        )
+
     # Apply outlier mask based on data
     n_pe, sigma_masked, mask_upd = define_delete_out(sigma, data)
 
@@ -303,13 +305,14 @@ def optimize_with_outlier_rejection(sigma, data):
     )
 
     model = Gaussian_model(
+        camera,
         [
             minuit.values["a0"],
             minuit.values["a1"],
             minuit.values["a2"],
             minuit.values["a3"],
             minuit.values["a3"],
-        ]
+        ],
     )
     residuals = (n_pe - model) / model
     max_residual = np.max(np.abs(residuals))
@@ -360,24 +363,29 @@ def optimize_with_outlier_rejection(sigma, data):
     return n_pe, model, minuit, residuals
 
 
-def model(params):
-    # params = [A, mu_x, mu_y, sigma]
-    sigma_y = params[3]  # enforce sigma_x = sigma_y
-    return params[0] * (
-        Gaussian(
-            params[1] * u.m, params[2] * u.m, params[3] * u.m, sigma_y * u.m, psi="0d"
-        ).pdf(camera.pix_x, camera.pix_y)
-    )
-
-
-def propagate_scipy_compatible(model, params, cov):
+def propagate_scipy_compatible(model, params, cov, camera):
     """
     Computes output covariance via numerical Jacobian propagation.
     """
+
+    def model_(parameters):
+        # params = [A, mu_x, mu_y, sigma]
+        print(f" PARAMETERS = {parameters}")
+        sigma_y = parameters[3]  # enforce sigma_x = sigma_y
+        return parameters[0] * (
+            Gaussian(
+                parameters[1] * u.m,
+                parameters[2] * u.m,
+                parameters[3] * u.m,
+                sigma_y * u.m,
+                psi="0d",
+            ).pdf(camera.pix_x, camera.pix_y)
+        )
+
     params = np.asarray(params)
     cov = np.asarray(cov)
 
-    y = model(params)
+    y = model_(params)
     J = approx_derivative(model, params, method="2-point")
 
     # Covariance propagation
@@ -386,8 +394,21 @@ def propagate_scipy_compatible(model, params, cov):
     return y, ycov
 
 
-def error_propagation_compute(data, minuit_resulting, plot=True):
+def error_propagation_compute(data, minuit_resulting, camera, pdf, plot=True):
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
+
+    def model(params):
+        # params = [A, mu_x, mu_y, sigma]
+        sigma_y = params[3]  # enforce sigma_x = sigma_y
+        return params[0] * (
+            Gaussian(
+                params[1] * u.m,
+                params[2] * u.m,
+                params[3] * u.m,
+                sigma_y * u.m,
+                psi="0d",
+            ).pdf(camera.pix_x, camera.pix_y)
+        )
 
     # --- Parameters and covariance from Minuit
     values = [minuit_resulting.values[i] for i in range(4)]
@@ -408,7 +429,7 @@ def error_propagation_compute(data, minuit_resulting, plot=True):
 
     # --- Propagate errors through the model
     y, ycov = propagate_scipy_compatible(
-        lambda p: model(p), minuit_resulting.values, minuit_resulting.covariance
+        lambda p: model(p), minuit_resulting.values, minuit_resulting.covariance, camera
     )
     yerr_prop = np.sqrt(np.diag(ycov))
 
@@ -456,7 +477,7 @@ def error_propagation_compute(data, minuit_resulting, plot=True):
     }
 
 
-def characterize_peak(minuit, fit):
+def characterize_peak(minuit, camera):
     """Compute coordinated of the peak of
     the fitted Gaussian and corresponding pixel."""
     dist_squared = (camera.pix_x.value - minuit[1]) ** 2 + (
@@ -483,17 +504,8 @@ def characterize_peak(minuit, fit):
 # Same fit procedure but taking into account V_int
 
 
-# least-squares score function = sum of data residuals squared
-def LS_variance(a0, a1, a2, a3, v_int):
-    a4 = a3  # changed
-    return np.sum(
-        (n_pe - Gaussian_model([a0, a1, a2, a3, a4])) ** 2 / (sigma_masked**2 + v_int)
-        - np.log(sigma_masked**2 / (sigma_masked**2 + v_int))
-    )
-
-
 # values for minuit are taken from the firs fit without any
-def optimize_with_outlier_rejection_variance(sigma, data, minuit):
+def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera, pdf):
     def define_delete_out(sigma, data):
         mean = np.mean(data)
         std = np.std(data)
@@ -511,7 +523,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
         A, x, y, std_x, v_int = array_parameters  # changed
         std_y = std_x  # changed
         return np.sum(
-            (n_pe_var - Gaussian_model([A, x, y, std_x, std_y])) ** 2
+            (n_pe_var - Gaussian_model(camera, [A, x, y, std_x, std_y])) ** 2
             / (sigma_masked_var**2 + v_int)
             - np.log(sigma_masked_var**2 / (sigma_masked_var**2 + v_int))
         )
@@ -532,13 +544,14 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
     )  # changed
 
     model = Gaussian_model(
+        camera,
         [
             minuit_new.values["x0"],
             minuit_new.values["x1"],
             minuit_new.values["x2"],
             minuit_new.values["x3"],
             minuit_new.values["x3"],
-        ]
+        ],
     )
     residuals = (n_pe_var - model) / model
     max_residual = np.max(np.abs(residuals))
@@ -597,7 +610,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit):
     return n_pe_var, model, minuit_new, residuals
 
 
-def compute_ff_coefs(charges, gains):
+def compute_ff_coefs(charges, gains, pdf):
     log.info(f"SHAPE {gains.shape}")
     masked_charges = np.ma.masked_where(np.ma.getmask(charges), charges)
     masked_gains = np.ma.masked_where(np.ma.getmask(charges), gains)
@@ -646,7 +659,7 @@ def compute_ff_coefs(charges, gains):
     return eff
 
 
-def compute_ff_coefs_model(data, data_std, model, model_std):
+def compute_ff_coefs_model(data, data_std, model, model_std, pdf):
     FF_coefs = np.divide(data, model, where=model != 0)
     mean = np.mean(FF_coefs)
     std = np.std(FF_coefs)
@@ -792,10 +805,10 @@ def main(**kwargs):
 
     log.info("SPE fit was found, begin the analysis")
     # Create PdfPages object
-    pdf = PdfPages(f"Plots_analysis_run{run_number}.pdf")
+    pdf_file = PdfPages(f"Plots_analysis_run{run_number}.pdf")
 
     source = EventSource.from_url(input_url=run_path, max_events=1)
-    camera = source.subarray.tel[
+    camera_tel = source.subarray.tel[
         source.subarray.tel_ids[0]
     ].camera.geometry.transform_to(EngineeringCameraFrame())
 
@@ -804,7 +817,7 @@ def main(**kwargs):
 
     # Looking for broken pixels
     fig00 = plt.figure(13, figsize=(5, 5))
-    disp = CameraDisplay(geometry=camera, show_frame=False)
+    disp = CameraDisplay(geometry=camera_tel, show_frame=False)
     chan = 0
     disp.image = event.mon.tel[
         source.subarray.tel_ids[0]
@@ -813,7 +826,7 @@ def main(**kwargs):
     disp.cmap = plt.cm.coolwarm
     disp.add_colorbar()
     fig00.suptitle("Broken/missing pixels")
-    pdf.savefig(fig00)
+    pdf_file.savefig(fig00)
 
     (
         n_pe,
@@ -823,13 +836,13 @@ def main(**kwargs):
         high_gains,
         low_gains,
         charges,
-    ) = pre_process_fits(filename_ps)
+    ) = pre_process_fits(filename_ps, camera_tel, pdf_file)
 
     # First fit no variance
     data_1, fit_1, minuit_1, residuals_1 = optimize_with_outlier_rejection(
-        sigma_masked, n_pe
+        sigma_masked, n_pe, camera_tel, pdf_file
     )
-    dict_errors = error_propagation_compute(data_1, minuit_1)
+    dict_errors = error_propagation_compute(data_1, minuit_1, camera_tel, pdf_file)
     y_1, yerr_prop_1, minuit_vals_1, minuit_vals_errors_1 = (
         dict_errors["model_values"],
         dict_errors["model_errors"],
@@ -837,7 +850,7 @@ def main(**kwargs):
         dict_errors["param_errors"],
     )
     log.info(f"Resulting error for the model is {np.mean(yerr_prop_1/y_1)*100:.2f}%")
-    characterize_peak(minuit_vals_1, fit_1)
+    characterize_peak(minuit_vals_1, camera_tel)
     log.info(minuit_1.values)
 
     # Visualize how many pixels were masked
@@ -856,7 +869,7 @@ def main(**kwargs):
     fig_pie, ax = plt.subplots()
     ax.pie(dict_missing_pix.values(), labels=labels, autopct="%.0f%%")
     fig_pie.suptitle("Piechart of masked pixels")
-    pdf.savefig(fig_pie)
+    pdf_file.savefig(fig_pie)
 
     # Second fit with variance
     if args.add_variance:
@@ -875,6 +888,8 @@ def main(**kwargs):
                 minuit_1.values["a3"],
                 0.0,
             ],
+            camera_tel,
+            pdf_file,
         )
 
         plt.figure()
@@ -883,7 +898,7 @@ def main(**kwargs):
         plt.close()
 
         dict_error_var = error_propagation_compute(
-            data_varinace, minuit_variance_result, plot=True, rebin=True
+            data_varinace, minuit_variance_result, camera_tel, pdf_file, plot=True
         )
 
         (
@@ -902,18 +917,18 @@ def main(**kwargs):
             f"Resulting error for the model is "
             f"{np.mean(yerr_prop_variance / y_variance) * 100:.2f}%"
         )
-        log.info(np.min(camera.pix_x.value))
-        log.info(np.min(camera.pix_y.value))
-        log.info(np.mean(camera.pix_x.value))
+        log.info(np.min(camera_tel.pix_x.value))
+        log.info(np.min(camera_tel.pix_y.value))
+        log.info(np.mean(camera_tel.pix_x.value))
         log.info(minuit_values_variance[1])
         log.info(minuit_values_variance[2])
 
         characterize_peak(minuit_values_variance, fit_variance)
 
     # compute flat field coef
-    simple_ff_coefs = compute_ff_coefs(charges, high_gains)
+    simple_ff_coefs = compute_ff_coefs(charges, high_gains, pdf_file)
     ff_coefs_model, ff_coefs_model_err = compute_ff_coefs_model(
-        n_pe, std_n_pe, y_1, yerr_prop_1
+        n_pe, std_n_pe, y_1, yerr_prop_1, pdf_file
     )
 
     with open(f"Log_info_run_{run_number}_fixed.txt", "a") as f:
@@ -959,9 +974,9 @@ def main(**kwargs):
             )
 
     data = Table()
-    data["pixel_id"] = camera.pix_id
-    data["x"] = camera.pix_x
-    data["y"] = camera.pix_y
+    data["pixel_id"] = camera_tel.pix_id
+    data["x"] = camera_tel.pix_x
+    data["y"] = camera_tel.pix_y
     data["N_photoelectrons_fited"] = y_1
     data["N_photoelectrons_std_fited"] = yerr_prop_1
     data["FF_coef_independent_way"] = simple_ff_coefs
@@ -974,7 +989,7 @@ def main(**kwargs):
     data["N_photoelectrons_std_init"] = std_n_pe
     ascii.write(data, f"FF_calibration_run{run_number}.dat", overwrite=True)
 
-    pdf.close()
+    pdf_file.close()
 
 
 if __name__ == "__main__":
