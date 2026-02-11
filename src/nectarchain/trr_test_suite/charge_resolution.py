@@ -301,20 +301,20 @@ def main():
     plt.clf()
     for iNSB in range(len(NSB)):
         plt.errorbar(
-            ff_volt,
+            mean_charge[iNSB],
             ratio_lghg_nsb[iNSB],
             color=color[iNSB],
             marker="o",
             linestyle="",
             label="NSB={} MHz".format(NSB[iNSB]),
         )
-    plt.xlabel("FF voltage (V)")
+    plt.xlabel("Charge (p.e.)")
     plt.ylabel("HG/LG ratio")
     plt.grid()
     plt.legend()
     plt.tight_layout()
     # plt.ylim(1,600)
-    plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_V_T{temperature}.png"))
+    plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_pe_T{temperature}.png"))
 
     charge_plot = np.linspace(20, 1000)
     stat_limit = 1 / np.sqrt(charge_plot)  # statistical limit
