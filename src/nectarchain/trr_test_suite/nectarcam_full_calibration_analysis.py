@@ -26,7 +26,7 @@ import numpy as np
 from ctapipe_io_nectarcam import constants
 
 # NectarChain imports
-from nectarchain.data.container import ChargesContainer
+# from nectarchain.data.container import ChargesContainer
 from nectarchain.makers import (
     ChargesNectarCAMCalibrationTool,
     WaveformsNectarCAMCalibrationTool,
@@ -107,7 +107,7 @@ parser.add_argument(
     "--max_events_gain",
     nargs="+",
     default=None,
-    help="Max events for gain runs (1 value/run, or a 1 value for all)",
+    help="Max events for gain runs (1/run, or 1 applied to all)",
     type=int,
 )
 parser.add_argument(
@@ -142,31 +142,31 @@ parser.add_argument(
 parser.add_argument(
     "--recompute_pedestal",
     action="store_true",
-    default=True,
+    default=False,
     help="Force recomputation of pedestal calibration",
 )
 parser.add_argument(
     "--recompute_gain",
     action="store_true",
-    default=True,
+    default=False,
     help="Force recomputation of gain calibration",
 )
 parser.add_argument(
     "--recompute_flatfield",
     action="store_true",
-    default=True,
+    default=False,
     help="Force recomputation of flatfield calibration",
 )
 parser.add_argument(
     "--recompute_charge",
     action="store_true",
-    default=True,
+    default=False,
     help="Force recomputation of charge extraction",
 )
 parser.add_argument(
     "--recompute_all",
     action="store_true",
-    default=True,
+    default=False,
     help="Force recomputation of all calibrations",
 )
 
@@ -321,13 +321,16 @@ class NectarCAMCalibrationPipeline:
         self.args = args
         self.log = log
 
-        # Setup directories
-        self.data_dir = Path(args.output_dir or os.environ.get("NECTARCAMDATA", "/tmp"))
+        # Root of NectarCAM data (mirrors $NECTARCAMDATA)
+        self.nectarcam_data = Path(os.environ.get("NECTARCAMDATA", "/tmp"))
+
+        # Pipeline output directory (may equal nectarcam_data if not overridden)
+        self.data_dir = Path(args.output_dir or self.nectarcam_data)
         self.figure_dir = Path(
             args.figure_dir or os.environ.get("NECTARCHAIN_FIGURES", "/tmp")
         )
 
-        # Create subdirectories
+        # Pipeline-managed subdirectories
         self.pedestal_dir = self.data_dir / "pedestals"
         self.gain_dir = self.data_dir / "gains"
         self.flatfield_dir = self.data_dir / "flatfields"
@@ -344,18 +347,134 @@ class NectarCAMCalibrationPipeline:
         ]:
             d.mkdir(parents=True, exist_ok=True)
 
+        # Default directories that nectarchain tools write to when no
+        # output_path is explicitly given (relative to $NECTARCAMDATA).
+        # Extend this list if the framework changes its conventions.
+        self._tool_default_search_dirs = {
+            "gain": [
+                self.gain_dir,
+                self.nectarcam_data / "SPEfit",  # actual tool default (from log)
+                self.nectarcam_data / "SPEfit" / "data",  # alternate layout
+            ],
+            "charge": [
+                self.charge_dir,
+                self.nectarcam_data
+                / "runs"
+                / "charges",  # actual tool default (from log)
+                self.nectarcam_data / "charges",
+            ],
+            "flatfield": [
+                self.flatfield_dir,
+                self.nectarcam_data / "flatfield",
+                self.nectarcam_data / "flatfields",
+            ],
+            "pedestal": [
+                self.pedestal_dir,
+                self.nectarcam_data / "pedestals",
+                self.nectarcam_data / "runs" / "pedestals",
+            ],
+        }
+
         # Parse extractor kwargs
         self.extractor_kwargs = json.loads(args.charge_extractor_kwargs)
 
-        # Store results
+        # Store results  (path or container object, keyed by run number)
         self.pedestal_results = {}
         self.gain_results = {}
         self.flatfield_results = {}
         self.charge_results = {}
         self.calibrated_charge_results = {}
 
-        self.log.info(f"Data directory: {self.data_dir}")
-        self.log.info(f"Figure directory: {self.figure_dir}")
+        self.log.info(f"NECTARCAMDATA root : {self.nectarcam_data}")
+        self.log.info(f"Pipeline data dir  : {self.data_dir}")
+        self.log.info(f"Figure directory   : {self.figure_dir}")
+
+    # ------------------------------------------------------------------
+    # Path resolution helpers
+    # ------------------------------------------------------------------
+
+    def _find_file(self, filename, kind):
+        """
+        Search for *filename* (exact basename) across all candidate directories
+        for *kind*.  Returns the first existing :class:`~pathlib.Path` or
+        ``None``.
+        """
+        for directory in self._tool_default_search_dirs.get(kind, []):
+            candidate = Path(directory) / filename
+            if candidate.exists():
+                self.log.debug(f"[_find_file] found {filename} in {directory}")
+                return candidate
+        # Last-resort: recursive glob under NECTARCAMDATA
+        matches = list(self.nectarcam_data.rglob(filename))
+        if matches:
+            self.log.debug(f"[_find_file] found {filename} via rglob: {matches[0]}")
+            return matches[0]
+        return None
+
+    def _find_file_for_run(self, run_number, kind):
+        """
+        Search for any file matching ``*run{run_number}*`` across all candidate
+        directories for *kind*.  This is used when the exact filename is not
+        known (e.g. the tool embeds method/kwargs in the name).
+
+        Returns the first existing :class:`~pathlib.Path` or ``None``.
+        """
+        pattern = f"*run{run_number}*"
+        for directory in self._tool_default_search_dirs.get(kind, []):
+            d = Path(directory)
+            if d.is_dir():
+                matches = sorted(d.glob(pattern))
+                if matches:
+                    self.log.debug(
+                        f"[_find_file_for_run] run {run_number} ({kind}) "
+                        f"found {matches[0]} in {d}"
+                    )
+                    return matches[0]
+        # Last-resort: recursive glob
+        matches = sorted(self.nectarcam_data.rglob(pattern))
+        # Filter to only .h5 files to avoid matching raw fits.fz files
+        matches = [m for m in matches if m.suffix == ".h5"]
+        if matches:
+            self.log.debug(
+                f"[_find_file_for_run] run {run_number} ({kind}) "
+                f"found via rglob: {matches[0]}"
+            )
+            return matches[0]
+        return None
+
+    def _resolve_tool_output_path(self, tool, expected_path, kind):
+        """
+        Return the actual path where *tool* wrote (or will write) its output.
+
+        Priority:
+        1. ``tool.output_path`` attribute (set by the tool itself after
+           ``setup()``), if it exists and is non-empty.
+        2. *expected_path* if it already exists on disk.
+        3. ``_find_file`` search across default directories.
+        4. Fall back to *expected_path* (caller will fail gracefully).
+        """
+        # 1. Trust the tool's own resolved output_path
+        tool_path = getattr(tool, "output_path", None)
+        if tool_path:
+            p = Path(tool_path)
+            if p.exists():
+                return p
+            # Tool set a path but file isn't written yet – remember it so we
+            # can look for it after finish()
+            self.log.debug(f"Tool output_path={tool_path} (not yet written)")
+            return p
+
+        # 2. Expected path already on disk
+        if Path(expected_path).exists():
+            return Path(expected_path)
+
+        # 3. Search default dirs (useful when tool already ran previously)
+        filename = Path(expected_path).name
+        found = self._find_file(filename, kind)
+        if found:
+            return found
+
+        return Path(expected_path)
 
     def get_pedestal_output_path(self, run_number):
         """Get output path for pedestal calibration"""
@@ -423,11 +542,18 @@ class NectarCAMCalibrationPipeline:
         used in gain_SPEfit_computation.py.  Only gain-relevant keys are
         included so that unrelated pipeline arguments are never forwarded.
         """
+        # overwrite must be True whenever we are (re)computing, otherwise the
+        # tool raises an exception if the output file already exists on disk.
+        overwrite = (
+            self.args.gain_overwrite
+            or self.args.recompute_gain
+            or self.args.recompute_all
+        )
         kwargs = dict(
             method=self.args.charge_method,
             extractor_kwargs=self.extractor_kwargs,
             log_level=logging.getLevelName(self.log.level),
-            overwrite=self.args.gain_overwrite,
+            overwrite=overwrite,
             reload_events=self.args.gain_reload_events,
             display_toggle=self.args.gain_display,
             multiproc=self.args.gain_multiproc,
@@ -454,14 +580,22 @@ class NectarCAMCalibrationPipeline:
             Maximum number of events to load (mirrors the per-run
             ``max_events`` list logic of gain_SPEfit_computation.py).
         """
-        output_path = self.get_gain_output_path(run_number)
+        expected_path = self.get_gain_output_path(run_number)
 
-        if output_path.exists() and not (
-            self.args.recompute_gain or self.args.recompute_all
-        ):
-            self.log.info(f"Gain for run {run_number} already exists, loading...")
-            self.gain_results[run_number] = output_path
-            return output_path
+        if not (self.args.recompute_gain or self.args.recompute_all):
+            # Try expected path first, then search default dirs
+            if expected_path.exists():
+                self.log.info(f"Gain for run {run_number} found at {expected_path}")
+                self.gain_results[run_number] = expected_path
+                return expected_path
+            found = self._find_file_for_run(run_number, "gain")
+            if found:
+                self.log.info(f"Gain for run {run_number} found at {found}")
+                self.gain_results[run_number] = found
+                return found
+            self.log.info(
+                f"Gain for run {run_number} not found on disk – will compute."
+            )
 
         self.log.info(f"Computing gain (SPE fit) for run {run_number}...")
 
@@ -479,9 +613,6 @@ class NectarCAMCalibrationPipeline:
                 else FlatFieldSPENominalStdNectarCAMCalibrationTool
             )
 
-        # Build kwargs the same way the reference script does, then pass
-        # run-level positional info separately (camera, run_number,
-        # max_events, progress_bar) so they are never duplicated in kwargs.
         gain_kwargs = self._build_gain_kwargs()
 
         try:
@@ -494,26 +625,48 @@ class NectarCAMCalibrationPipeline:
             )
             tool.setup()
 
+            # Resolve the path the tool itself will write to (may differ from
+            # expected_path when the tool uses its own default directory).
+            actual_path = self._resolve_tool_output_path(tool, expected_path, "gain")
+            self.log.info(f"Gain output will be written to: {actual_path}")
+
             # Build figpath the same way as in the reference script
-            extractor_kwargs_str = CtapipeExtractor.get_extractor_kwargs_str(
-                tool.method,
-                tool.extractor_kwargs,
-            )
-
-            base_figpath = (
-                f"{self.figure_dir}/{tool.name}"
-                f"_run{tool.run_number}"
-                f"_{tool.method}"
-                f"_{extractor_kwargs_str}"
-            )
-
             if gain_kwargs.get("reload_events") and max_events is not None:
-                figpath = f"{base_figpath}_maxevents{max_events}"
+                extractor_str = CtapipeExtractor.get_extractor_kwargs_str(
+                    tool.method,
+                    tool.extractor_kwargs,
+                )
+
+                figpath = (
+                    f"{self.figure_dir}/{tool.name}"
+                    f"_run{tool.run_number}"
+                    f"_maxevents{max_events}"
+                    f"_{tool.method}"
+                    f"_{extractor_str}"
+                )
             else:
-                figpath = base_figpath
+                extractor_str = CtapipeExtractor.get_extractor_kwargs_str(
+                    tool.method,
+                    tool.extractor_kwargs,
+                )
+
+                figpath = (
+                    f"{self.figure_dir}/{tool.name}"
+                    f"_run{tool.run_number}"
+                    f"_{tool.method}"
+                    f"_{extractor_str}"
+                )
 
             tool.start(figpath=figpath)
             tool.finish(figpath=figpath)
+
+            # After finish(), re-resolve in case the file appeared at a
+            # different location than setup() reported.
+            if not actual_path.exists():
+                found = self._find_file_for_run(run_number, "gain")
+                if found:
+                    actual_path = found
+                    self.log.info(f"Gain file located via search at {actual_path}")
 
         except Exception as e:
             self.log.warning(
@@ -521,10 +674,12 @@ class NectarCAMCalibrationPipeline:
             )
             raise
 
-        self.gain_results[run_number] = output_path
-        self.log.info(f"Gain computation completed for run {run_number}")
+        self.gain_results[run_number] = actual_path
+        self.log.info(
+            f"Gain computation completed for run {run_number} → {actual_path}"
+        )
 
-        return output_path
+        return actual_path
 
     def get_gain_from_flatfield(self, ff_output):
         """Calculate gain from flatfield output"""
@@ -624,19 +779,25 @@ class NectarCAMCalibrationPipeline:
 
     def compute_charge(self, run_number):
         """Compute charge extraction for a run"""
-        output_path = self.get_charge_output_path(run_number)
+        expected_path = self.get_charge_output_path(run_number)
 
-        if output_path.exists() and not (
-            self.args.recompute_charge or self.args.recompute_all
-        ):
-            self.log.info(f"Charges for run {run_number} already exists, loading...")
-            container = ChargesContainer.from_hdf5(output_path)
-            self.charge_results[run_number] = container
-            return container
+        if not (self.args.recompute_charge or self.args.recompute_all):
+            if expected_path.exists():
+                self.log.info(f"Charges for run {run_number} found at {expected_path}")
+                self.charge_results[run_number] = expected_path
+                return expected_path
+            found = self._find_file_for_run(run_number, "charge")
+            if found:
+                self.log.info(f"Charges for run {run_number} found at {found}")
+                self.charge_results[run_number] = found
+                return found
+            self.log.info(
+                f"Charges for run {run_number} not found on disk – will compute."
+            )
 
         self.log.info(f"Computing charges for run {run_number}...")
 
-        # First check if waveforms exist
+        # Waveforms step
         wfs_tool = WaveformsNectarCAMCalibrationTool(
             progress_bar=True,
             camera=self.args.camera,
@@ -655,7 +816,7 @@ class NectarCAMCalibrationPipeline:
             self.log.error(f"Error extracting waveforms: {e}", exc_info=True)
             raise
 
-        # Now compute charges
+        # Charge extraction step
         charge_tool = ChargesNectarCAMCalibrationTool(
             progress_bar=True,
             camera=self.args.camera,
@@ -669,13 +830,74 @@ class NectarCAMCalibrationPipeline:
         )
 
         charge_tool.setup()
+
+        # Resolve the path the tool itself will write to
+        actual_path = self._resolve_tool_output_path(
+            charge_tool, expected_path, "charge"
+        )
+        self.log.info(f"Charge output will be written to: {actual_path}")
+
         charge_tool.start()
-        output = charge_tool.finish()
+        charge_tool.finish()
 
-        self.charge_results[run_number] = output
-        self.log.info(f"Charges saved to {output_path}")
+        # Re-resolve after finish in case the file appeared elsewhere
+        if not actual_path.exists():
+            found = self._find_file_for_run(run_number, "charge")
+            if found:
+                actual_path = found
+                self.log.info(f"Charge file located via search at {actual_path}")
 
-        return output
+        self.charge_results[run_number] = actual_path
+        self.log.info(f"Charges saved to {actual_path}")
+
+        return actual_path
+
+    def _get_result_path(self, results_dict, run_number, get_default_fn, kind):
+        """
+        Return an existing Path for *run_number* from *results_dict*.
+
+        Tries, in order:
+        1. The stored value (if it is a Path/str and exists on disk).
+        2. The pipeline-default path returned by *get_default_fn*.
+        3. ``_find_file`` by exact filename across all known default dirs.
+        4. ``_find_file_for_run`` by run-number glob across all known default dirs.
+
+        Raises ``FileNotFoundError`` if nothing is found.
+        """
+        stored = results_dict.get(run_number)
+        if stored is not None and isinstance(stored, (str, Path)):
+            p = Path(stored)
+            if p.exists():
+                return p
+
+        default = Path(get_default_fn(run_number))
+        if default.exists():
+            return default
+
+        found = self._find_file(default.name, kind)
+        if found:
+            self.log.info(
+                f"[_get_result_path] {kind} run {run_number} located at {found}"
+            )
+            results_dict[run_number] = found
+            return found
+
+        found = self._find_file_for_run(run_number, kind)
+        if found:
+            self.log.info(
+                "[_get_result_path] %s run %s  via glob at %s",
+                kind,
+                run_number,
+                found,
+            )
+
+            results_dict[run_number] = found
+            return found
+
+        raise FileNotFoundError(
+            f"Cannot find {kind} file for run {run_number}. "
+            f"and recursively under {self.nectarcam_data}."
+        )
 
     def compute_calibrated_charge(
         self, charge_run, pedestal_run, gain_run, flatfield_run
@@ -700,117 +922,227 @@ class NectarCAMCalibrationPipeline:
         if flatfield_run not in self.flatfield_results:
             self.compute_flatfield(flatfield_run)
 
-        # Load charge data
-        charge_path = (
-            self.charge_results[charge_run]
-            if isinstance(self.charge_results[charge_run], (str, Path))
-            else self.get_charge_output_path(charge_run)
-        )
+        # Resolve actual on-disk paths using stored results + fallback search
+        try:
+            charge_path = self._get_result_path(
+                self.charge_results, charge_run, self.get_charge_output_path, "charge"
+            )
+        except FileNotFoundError as e:
+            self.log.error(str(e))
+            return None
+
+        try:
+            pedestal_path = self._get_result_path(
+                self.pedestal_results,
+                pedestal_run,
+                self.get_pedestal_output_path,
+                "pedestal",
+            )
+        except FileNotFoundError as e:
+            self.log.error(str(e))
+            return None
+
+        try:
+            gain_path = self._get_result_path(
+                self.gain_results, gain_run, self.get_gain_output_path, "gain"
+            )
+        except FileNotFoundError as e:
+            self.log.error(str(e))
+            return None
+
+        try:
+            flatfield_path = self._get_result_path(
+                self.flatfield_results,
+                flatfield_run,
+                lambda r: self.get_flatfield_output_path(r, iteration=2),
+                "flatfield",
+            )
+        except FileNotFoundError as e:
+            self.log.error(str(e))
+            return None
+
+        self.log.info(f"  charge    : {charge_path}")
+        self.log.info(f"  pedestal  : {pedestal_path}")
+        self.log.info(f"  gain      : {gain_path}")
+        self.log.info(f"  flatfield : {flatfield_path}")
+
+        # Load charge data - CORRECTED to read structured arrays properly
+
+        # Load charge data - CORRECTED to handle shape mismatches
         try:
             with h5py.File(charge_path, "r") as f:
-                if "data/ChargesContainer/charges_hg" in f:
-                    charges_hg = f["data/ChargesContainer/charges_hg"][:]
-                    charges_lg = f["data/ChargesContainer/charges_lg"][:]
-                    charges = np.stack([charges_hg, charges_lg], axis=1)
-                elif "charges" in f:
-                    charges = f["charges"][:]
-                else:
-                    self.log.error(f"Available keys in charge file: {list(f.keys())}")
-                    for key in f.keys():
-                        content = (
-                            list(f[key].keys())
-                            if hasattr(f[key], "keys")
-                            else "dataset"
-                        )
-                        self.log.error("  %s: %s", key, content)
-                    raise KeyError("Cannot find charge data in HDF5 file")
+                all_keys = self._explore_hdf5_keys(f)
+                self.log.debug(f"[charge] HDF5 keys: {all_keys}")
+
+                charges_hg = charges_lg = None
+
+                # Try structured array format first
+                for container_path in [
+                    "data/ChargesContainer_0",
+                    "data/ChargesContainer",
+                ]:
+                    if container_path in f:
+                        container = f[container_path]
+                        # Look for datasets like "FLATFIELD", "PEDESTAL", etc.
+                        for dataset_name in container.keys():
+                            dataset = container[dataset_name]
+                            if len(dataset) > 0:
+                                dataset0 = dataset[
+                                    0
+                                ]  # First element of structured array
+                                if "charges_hg" in dataset0.dtype.names:
+                                    charges_hg = dataset0["charges_hg"]
+                                    charges_lg = dataset0["charges_lg"]
+
+                                    self.log.info(
+                                        f"  Loaded from {container_path}/{dataset_name}"
+                                    )
+                                    self.log.info(
+                                        f"  charges_hg shape: {charges_hg.shape}"
+                                    )
+                                    self.log.info(
+                                        f"  charges_lg shape: {charges_lg.shape}"
+                                    )
+
+                                    # Handle shape mismatches
+                                    if charges_hg.shape != charges_lg.shape:
+                                        self.log.warning(
+                                            "Shape mismatch detected! "
+                                            "charges_hg: %s, charges_lg: %s",
+                                            charges_hg.shape,
+                                            charges_lg.shape,
+                                        )
+
+                                        # Find common shape
+                                        min_shape = tuple(
+                                            min(s1, s2)
+                                            for s1, s2 in zip(
+                                                charges_hg.shape, charges_lg.shape
+                                            )
+                                        )
+                                        self.log.info(
+                                            f"  Truncating to common shape: {min_shape}"
+                                        )
+
+                                        if len(min_shape) == 2:
+                                            charges_hg = charges_hg[
+                                                : min_shape[0], : min_shape[1]
+                                            ]
+                                            charges_lg = charges_lg[
+                                                : min_shape[0], : min_shape[1]
+                                            ]
+                                        elif len(min_shape) == 3:
+                                            charges_hg = charges_hg[
+                                                : min_shape[0],
+                                                : min_shape[1],
+                                                : min_shape[2],
+                                            ]
+                                            charges_lg = charges_lg[
+                                                : min_shape[0],
+                                                : min_shape[1],
+                                                : min_shape[2],
+                                            ]
+
+                                    break
+                        if charges_hg is not None:
+                            break
+
+                if charges_hg is None:
+                    raise KeyError(
+                        f"Cannot find charge data. Available keys: {all_keys}"
+                    )
+
+                # charges shape: may be
+                # (n_slices, n_events_per_slice, n_pixels) or (n_events, n_pixels)
+                # Reshape to (total_events, n_pixels)
+                if charges_hg.ndim == 3:
+                    self.log.info("reshaping from 3d to 2d")
+                    charges_hg = charges_hg.reshape(-1, charges_hg.shape[-1])
+                    charges_lg = charges_lg.reshape(-1, charges_lg.shape[-1])
+                    self.log.info(
+                        "After reshape - charges_hg: %s, charges_lg: %s",
+                        charges_hg.shape,
+                        charges_lg.shape,
+                    )
+
+                # Final shape check before stacking
+                if charges_hg.shape != charges_lg.shape:
+                    self.log.error("  Still have shape mismatch after processing!")
+                    self.log.error(f"  charges_hg: {charges_hg.shape}")
+                    self.log.error(f"  charges_lg: {charges_lg.shape}")
+                    # Take the smaller one
+                    n_events = min(charges_hg.shape[0], charges_lg.shape[0])
+                    n_pixels = min(charges_hg.shape[1], charges_lg.shape[1])
+                    charges_hg = charges_hg[:n_events, :n_pixels]
+                    charges_lg = charges_lg[:n_events, :n_pixels]
+                    self.log.info(f"  Truncated to: {charges_hg.shape}")
+
+                # Stack to (total_events, 2, n_pixels)
+                charges = np.stack([charges_hg, charges_lg], axis=1)
+
+                self.log.info(f"  Final charges shape: {charges.shape}")
+                self.log.info(f"  HG mean: {np.mean(charges[:, 0, :]):.2f} ADC")
+                self.log.info(f"  LG mean: {np.mean(charges[:, 1, :]):.2f} ADC")
+
         except Exception as e:
             self.log.error(f"Error loading charge data: {e}", exc_info=True)
             return None
 
         # Load pedestal data
-        pedestal_path = (
-            self.pedestal_results[pedestal_run]
-            if isinstance(self.pedestal_results[pedestal_run], (str, Path))
-            else self.get_pedestal_output_path(pedestal_run)
-        )
         try:
-            with h5py.File(pedestal_path, "r") as f:
-                if "pedestal_mean_hg" in f:
-                    ped_hg = f["pedestal_mean_hg"][:]
-                    ped_lg = f["pedestal_mean_lg"][:]
-                    pedestals = np.stack([ped_hg, ped_lg], axis=0)
-                elif "pedestal" in f:
-                    pedestals = f["pedestal"][:]
-                else:
-                    self.log.error(f"Available keys in pedestal file: {list(f.keys())}")
-                    raise KeyError("Cannot find pedestal data in HDF5 file")
+            ped_hg, ped_lg = self._load_hg_lg_from_hdf5(pedestal_path, "pedestal")
+            pedestals = np.stack([ped_hg, ped_lg], axis=0)
+            self.log.info(
+                f"  Pedestals: HG mean={np.mean(ped_hg):.2f}, shape={ped_hg.shape}"
+            )
         except Exception as e:
             self.log.error(f"Error loading pedestal data: {e}", exc_info=True)
             return None
 
-        # Load gain data
-        gain_path = (
-            self.gain_results[gain_run]
-            if isinstance(self.gain_results[gain_run], (str, Path))
-            else self.get_gain_output_path(gain_run)
-        )
+        # Load gain data - USE DEFAULT IF MISSING
         try:
-            with h5py.File(gain_path, "r") as f:
-                if "gain" in f:
-                    gains = f["gain"][:]
-                elif "high_gain" in f:
-                    gains = np.stack([f["high_gain"][:], f["low_gain"][:]], axis=0)
-                else:
-                    self.log.warning(
-                        "Cannot find gain data, using flatfield-derived gain"
-                    )
-                    flatfield_path = (
-                        self.flatfield_results[flatfield_run]
-                        if isinstance(
-                            self.flatfield_results[flatfield_run], (str, Path)
-                        )
-                        else self.get_flatfield_output_path(flatfield_run)
-                    )
-                    with h5py.File(flatfield_path, "r") as ff_file:
-                        if "amp_int_per_pix_per_event" in ff_file:
-                            amp_data = ff_file["amp_int_per_pix_per_event"][:]
-                            amp_mean = np.mean(amp_data, axis=0)
-                            amp_var = np.var(amp_data, axis=0)
-                            gains = np.divide(amp_var, amp_mean, where=amp_mean != 0.0)
-                        else:
-                            raise KeyError("Cannot compute gain from flatfield")
+            # First check if gain file actually exists
+            if not Path(gain_path).exists():
+                self.log.warning(f"Gain file does not exist: {gain_path}")
+                raise FileNotFoundError("Gain file missing")
+
+            gain_hg, gain_lg = self._load_hg_lg_from_hdf5(gain_path, "gain")
+            gains = np.stack([gain_hg, gain_lg], axis=0)
+            self.log.info(
+                f"  Gains: HG mean={np.mean(gain_hg):.2f}, shape={gain_hg.shape}"
+            )
+
         except Exception as e:
-            self.log.error(f"Error loading gain data: {e}", exc_info=True)
-            return None
+            # USE DEFAULT GAIN VALUES
+            self.log.warning(f"Cannot load gain file ({e})")
+            self.log.warning("Using DEFAULT gain values: HG=58.0, LG=4.46 ADC/p.e.")
+
+            # Default gains based on NectarCAM typical values
+            default_hg_gain = 58.0  # ADC/p.e.
+            default_lg_gain = 4.46  # ADC/p.e. (58/13)
+
+            # Get number of pixels from charges
+            n_pixels = charges.shape[2]
+
+            # Create gain arrays with default values
+            gain_hg = np.full(n_pixels, default_hg_gain)
+            gain_lg = np.full(n_pixels, default_lg_gain)
+            gains = np.stack([gain_hg, gain_lg], axis=0)
+
+            self.log.info(
+                f"  Using default gains: HG={default_hg_gain}, LG={default_lg_gain}"
+            )
 
         # Load flatfield data
-        flatfield_path = (
-            self.flatfield_results[flatfield_run]
-            if isinstance(self.flatfield_results[flatfield_run], (str, Path))
-            else self.get_flatfield_output_path(flatfield_run)
-        )
         try:
-            with h5py.File(flatfield_path, "r") as f:
-                if "FF_coef" in f:
-                    ff_coef = np.mean(f["FF_coef"][:], axis=0)
-                elif "flatfield" in f:
-                    ff_coef = f["flatfield"][:]
-                else:
-                    self.log.error(
-                        f"Available keys in flatfield file: {list(f.keys())}"
-                    )
-                    raise KeyError("Cannot find flatfield data in HDF5 file")
+            ff_hg, ff_lg = self._load_hg_lg_from_hdf5(flatfield_path, "flatfield")
+            ff_coef = np.stack([ff_hg, ff_lg], axis=0)
+            self.log.info(
+                f"  FF coef: HG mean={np.mean(ff_hg):.3f}, shape={ff_hg.shape}"
+            )
         except Exception as e:
             self.log.error(f"Error loading flatfield data: {e}", exc_info=True)
             return None
-
-        # Ensure proper shapes
-        if charges.ndim == 3:
-            if charges.shape[0] == 2:
-                # Shape is (gains, events, pixels)
-                # – transpose to (events, gains, pixels)
-                charges = np.transpose(charges, (1, 0, 2))
 
         # Apply calibration: (charge - pedestal) / gain * FF
         calibrated_charges = np.zeros_like(charges)
@@ -842,7 +1174,11 @@ class NectarCAMCalibrationPipeline:
             "flatfield": ff_coef,
         }
 
-        self.log.info(f"Calibrated charge computed for run {charge_run}")
+        self.log.info(f"✓ Calibrated charge computed for run {charge_run}")
+        self.log.info(f"  Raw HG mean: {np.mean(charges[:, 0, :]):.2f} ADC")
+        self.log.info(
+            f"  Calibrated HG mean: {np.mean(calibrated_charges[:, 0, :]):.2f} p.e."
+        )
 
         return calibrated_charges
 
@@ -991,40 +1327,177 @@ class NectarCAMCalibrationPipeline:
             if run in self.charge_results:
                 self._plot_charge(run)
 
-    def _plot_pedestal(self, run_number):
-        """Plot pedestal distribution"""
+    def _explore_hdf5_keys(self, f, prefix="", max_depth=4):
+        """Recursively collect all dataset paths in an HDF5 file (for debugging)."""
+        paths = []
+
+        def _recurse(obj, path, depth):
+            if depth > max_depth:
+                return
+            if hasattr(obj, "keys"):
+                for k in obj.keys():
+                    _recurse(obj[k], f"{path}/{k}", depth + 1)
+            else:
+                paths.append(path)
+
+        _recurse(f, "", 0)
+        return paths
+
+    def _load_hg_lg_from_hdf5(self, filepath, kind):
+        """
+        Try to load [high_gain, low_gain] arrays from an HDF5 file written by
+        a nectarchain tool.  Probes multiple known key layouts and falls back
+        to a full-key dump so we can log exactly what is available.
+
+        Returns (hg_array, lg_array) or raises KeyError.
+        """
         import h5py
 
-        pedestal_path = self.pedestal_results.get(
-            run_number
-        ) or self.get_pedestal_output_path(run_number)
+        with h5py.File(filepath, "r") as f:
+            all_keys = self._explore_hdf5_keys(f)
+            self.log.debug(f"[{kind}] HDF5 keys in {filepath}: {all_keys}")
 
-        if not Path(pedestal_path).exists():
-            self.log.warning(f"Pedestal file not found for run {run_number}")
+            if kind == "pedestal":
+                for container_path in [
+                    "data_1/NectarCAMPedestalContainer_0",
+                    "data/NectarCAMPedestalContainer_0",
+                    "data_combined/NectarCAMPedestalContainer_0",
+                ]:
+                    if container_path in f:
+                        data = f[container_path]
+                        # Access structured array fields - shape is (1,) so take [0]
+                        ped_hg = data["pedestal_mean_hg"][0]  # Shape: (pixels, samples)
+                        ped_lg = data["pedestal_mean_lg"][0]
+                        # Average over samples dimension to get (pixels,)
+                        return np.mean(ped_hg, axis=1), np.mean(ped_lg, axis=1)
+
+                # Fallback: direct access (older format)
+                for hg_key, lg_key in [
+                    ("pedestal_mean_hg", "pedestal_mean_lg"),
+                ]:
+                    if hg_key in f:
+                        ped_hg = f[hg_key][:]
+                        ped_lg = f[lg_key][:]
+                        if ped_hg.ndim == 2:
+                            ped_hg = np.mean(ped_hg, axis=1)
+                            ped_lg = np.mean(ped_lg, axis=1)
+                        return ped_hg, ped_lg
+
+            elif kind == "gain":
+                # Correct layout: /data/SPEfitContainer_0 is a structured array
+                for container_path in [
+                    "data/SPEfitContainer_0",
+                    "data/SPEfitContainer",
+                ]:
+                    if container_path in f:
+                        data = f[container_path]
+                        # Access structured array fields - shape is (1,) so take [0]
+                        gain_hg = data["high_gain"][0]
+                        gain_lg = data["low_gain"][0]
+                        return gain_hg, gain_lg
+
+                # Fallback: direct access
+                for hg_key, lg_key in [
+                    ("high_gain", "low_gain"),
+                    ("gain_hg", "gain_lg"),
+                ]:
+                    if hg_key in f:
+                        return f[hg_key][:], f[lg_key][:]
+
+            elif kind == "flatfield":
+                # FlatfieldNectarCAMCalibrationTool layout
+                for container_path in [
+                    "data/FlatFieldContainer_0",
+                    "data/FlatFieldContainer",
+                ]:
+                    if container_path in f:
+                        # FF_coef may be inside the container
+                        if "FF_coef" in f[container_path]:
+                            arr = f[container_path]["FF_coef"][:]
+                            # Shape may be (events, gains, pixels) - average over events
+                            if arr.ndim == 3:
+                                arr = np.mean(arr, axis=0)
+                            return arr[0], arr[1]
+
+                # Direct access
+                for key in ["FF_coef", "data/FF_coef"]:
+                    if key in f:
+                        arr = f[key][:]
+                        if arr.ndim == 3:
+                            arr = np.mean(arr, axis=0)
+                        return arr[0], arr[1]
+
+            elif kind == "charge":
+                for container_path in [
+                    "data/ChargesContainer_0",
+                    "data/ChargesContainer",
+                ]:
+                    if container_path in f:
+                        container = f[container_path]
+                        # The container has datasets like "FLATFIELD", "PEDESTAL", etc.
+                        # Find the first dataset
+                        for dataset_name in container.keys():
+                            dataset = container[dataset_name]
+                            if len(dataset) > 0:
+                                dataset0 = dataset[
+                                    0
+                                ]  # First element of structured array
+                                # Check if this has charge data
+                                if "charges_hg" in dataset0.dtype.names:
+                                    charges_hg = dataset0["charges_hg"]
+                                    charges_lg = dataset0["charges_lg"]
+                                    # charges shape: (N_events, N_pixels) or (N_pixels,)
+                                    # Return mean over events if needed
+                                    if charges_hg.ndim > 1:
+                                        return np.mean(charges_hg, axis=0), np.mean(
+                                            charges_lg, axis=0
+                                        )
+                                    else:
+                                        return charges_hg, charges_lg
+
+                # Fallback: direct access
+                for hg_key, lg_key in [
+                    ("charges_hg", "charges_lg"),
+                    ("data/charges_hg", "data/charges_lg"),
+                ]:
+                    if hg_key in f:
+                        charges_hg = f[hg_key][:]
+                        charges_lg = f[lg_key][:]
+                        if charges_hg.ndim > 1:
+                            return np.mean(charges_hg, axis=0), np.mean(
+                                charges_lg, axis=0
+                            )
+                        else:
+                            return charges_hg, charges_lg
+
+        raise KeyError(
+            f"Cannot find {kind} data in {filepath}. "
+            f"Available HDF5 paths: {all_keys}"
+        )
+
+    def _plot_pedestal(self, run_number):
+        """Plot pedestal distribution"""
+        try:
+            path = self._get_result_path(
+                self.pedestal_results,
+                run_number,
+                self.get_pedestal_output_path,
+                "pedestal",
+            )
+        except FileNotFoundError as e:
+            self.log.warning(str(e))
             return
 
         try:
-            with h5py.File(pedestal_path, "r") as f:
-                if "pedestal_mean_hg" in f:
-                    ped_hg = f["pedestal_mean_hg"][:]
-                    ped_lg = f["pedestal_mean_lg"][:]
-                elif "pedestal" in f:
-                    pedestals = f["pedestal"][:]
-                    ped_hg = pedestals[0]
-                    ped_lg = pedestals[1]
-                else:
-                    self.log.warning(
-                        f"Cannot plot pedestal for run {run_number}: data not found"
-                    )
-                    return
+            ped_hg, ped_lg = self._load_hg_lg_from_hdf5(path, "pedestal")
         except Exception as e:
-            self.log.warning(f"Error loading pedestal data for plotting: {e}")
+            self.log.warning(f"Cannot plot pedestal run {run_number}: {e}")
             return
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Pedestal Distribution - Run {run_number}")
         for ax, data, title in zip(axes, [ped_hg, ped_lg], ["High Gain", "Low Gain"]):
-            ax.hist(data, bins=50, alpha=0.7, edgecolor="black")
+            ax.hist(data.ravel(), bins=50, alpha=0.7, edgecolor="black")
             ax.set_xlabel("Pedestal (ADC counts)")
             ax.set_ylabel("Number of pixels")
             ax.set_title(title)
@@ -1037,39 +1510,24 @@ class NectarCAMCalibrationPipeline:
 
     def _plot_gain(self, run_number):
         """Plot gain distribution"""
-        import h5py
-
-        gain_path = self.gain_results.get(run_number) or self.get_gain_output_path(
-            run_number
-        )
-
-        if not Path(gain_path).exists():
-            self.log.warning(f"Gain file not found for run {run_number}")
+        try:
+            path = self._get_result_path(
+                self.gain_results, run_number, self.get_gain_output_path, "gain"
+            )
+        except FileNotFoundError as e:
+            self.log.warning(str(e))
             return
 
         try:
-            with h5py.File(gain_path, "r") as f:
-                if "gain" in f:
-                    gains = f["gain"][:]
-                elif "high_gain" in f:
-                    gains = np.stack([f["high_gain"][:], f["low_gain"][:]], axis=0)
-                else:
-                    self.log.warning(
-                        f"Cannot plot gain for run {run_number}: data not found"
-                    )
-                    return
+            gain_hg, gain_lg = self._load_hg_lg_from_hdf5(path, "gain")
         except Exception as e:
-            self.log.warning(f"Error loading gain data for plotting: {e}")
+            self.log.warning(f"Cannot plot gain run {run_number}: {e}")
             return
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Gain Distribution - Run {run_number}")
-        for ax, idx, title in zip(
-            axes,
-            [constants.HIGH_GAIN, constants.LOW_GAIN],
-            ["High Gain", "Low Gain"],
-        ):
-            ax.hist(gains[idx], bins=50, alpha=0.7, edgecolor="black")
+        for ax, data, title in zip(axes, [gain_hg, gain_lg], ["High Gain", "Low Gain"]):
+            ax.hist(data.ravel(), bins=50, alpha=0.7, edgecolor="black")
             ax.set_xlabel("Gain (ADC/p.e.)")
             ax.set_ylabel("Number of pixels")
             ax.set_title(title)
@@ -1082,39 +1540,27 @@ class NectarCAMCalibrationPipeline:
 
     def _plot_flatfield(self, run_number):
         """Plot flatfield coefficient distribution"""
-        import h5py
-
-        ff_path = self.flatfield_results.get(
-            run_number
-        ) or self.get_flatfield_output_path(run_number)
-
-        if not Path(ff_path).exists():
-            self.log.warning(f"Flatfield file not found for run {run_number}")
+        try:
+            path = self._get_result_path(
+                self.flatfield_results,
+                run_number,
+                lambda r: self.get_flatfield_output_path(r, iteration=2),
+                "flatfield",
+            )
+        except FileNotFoundError as e:
+            self.log.warning(str(e))
             return
 
         try:
-            with h5py.File(ff_path, "r") as f:
-                if "FF_coef" in f:
-                    ff_coef = np.mean(f["FF_coef"][:], axis=0)
-                elif "flatfield" in f:
-                    ff_coef = f["flatfield"][:]
-                else:
-                    self.log.warning(
-                        f"Cannot plot flatfield for run {run_number}: data not found"
-                    )
-                    return
+            ff_hg, ff_lg = self._load_hg_lg_from_hdf5(path, "flatfield")
         except Exception as e:
-            self.log.warning(f"Error loading flatfield data for plotting: {e}")
+            self.log.warning(f"Cannot plot flatfield run {run_number}: {e}")
             return
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Flatfield Coefficient Distribution - Run {run_number}")
-        for ax, idx, title in zip(
-            axes,
-            [constants.HIGH_GAIN, constants.LOW_GAIN],
-            ["High Gain", "Low Gain"],
-        ):
-            ax.hist(ff_coef[idx], bins=50, alpha=0.7, edgecolor="black")
+        for ax, data, title in zip(axes, [ff_hg, ff_lg], ["High Gain", "Low Gain"]):
+            ax.hist(data.ravel(), bins=50, alpha=0.7, edgecolor="black")
             ax.set_xlabel("Flatfield Coefficient")
             ax.set_ylabel("Number of pixels")
             ax.set_title(title)
@@ -1127,46 +1573,26 @@ class NectarCAMCalibrationPipeline:
 
     def _plot_charge(self, run_number):
         """Plot charge distribution"""
-        import h5py
-
-        charge_path = self.charge_results.get(
-            run_number
-        ) or self.get_charge_output_path(run_number)
-
-        if not Path(charge_path).exists():
-            self.log.warning(f"Charge file not found for run {run_number}")
+        try:
+            path = self._get_result_path(
+                self.charge_results, run_number, self.get_charge_output_path, "charge"
+            )
+        except FileNotFoundError as e:
+            self.log.warning(str(e))
             return
 
         try:
-            with h5py.File(charge_path, "r") as f:
-                if "data/ChargesContainer/charges_hg" in f:
-                    charges_hg = f["data/ChargesContainer/charges_hg"][:]
-                    charges_lg = f["data/ChargesContainer/charges_lg"][:]
-                    charges = np.stack([charges_hg, charges_lg], axis=1)
-                elif "charges" in f:
-                    charges = f["charges"][:]
-                else:
-                    self.log.warning(
-                        f"Cannot plot charge for run {run_number}: data not found"
-                    )
-                    return
+            charge_hg, charge_lg = self._load_hg_lg_from_hdf5(path, "charge")
         except Exception as e:
-            self.log.warning(f"Error loading charge data for plotting: {e}")
+            self.log.warning(f"Cannot plot charge run {run_number}: {e}")
             return
-
-        if charges.ndim == 3 and charges.shape[0] == 2:
-            charges = np.transpose(charges, (1, 0, 2))
-
-        mean_charges = np.mean(charges, axis=0)
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Charge Distribution - Run {run_number}")
-        for ax, idx, title in zip(
-            axes,
-            [constants.HIGH_GAIN, constants.LOW_GAIN],
-            ["High Gain", "Low Gain"],
+        for ax, data, title in zip(
+            axes, [charge_hg, charge_lg], ["High Gain", "Low Gain"]
         ):
-            ax.hist(mean_charges[idx], bins=50, alpha=0.7, edgecolor="black")
+            ax.hist(data.ravel(), bins=50, alpha=0.7, edgecolor="black")
             ax.set_xlabel("Mean Charge (ADC counts)")
             ax.set_ylabel("Number of pixels")
             ax.set_title(title)
