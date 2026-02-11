@@ -126,6 +126,11 @@ class TestRunner(QWidget):
         self.run_button.clicked.connect(self.run_test)
         controls_layout.addWidget(self.run_button)
 
+        # Button to chain and run all tests
+        self.run_all_button = QPushButton("Run All Tests", self)
+        self.run_all_button.clicked.connect(self.run_all_tests)
+        controls_layout.addWidget(self.run_all_button)
+
         # Set the controls layout to the group box
         controls_box.setLayout(controls_layout)
 
@@ -313,6 +318,16 @@ class TestRunner(QWidget):
 
     def show_help(self, help_text):
         QMessageBox.information(self, "Parameter Help", help_text)
+
+    def run_all_tests(self):
+        # Method to chain all tests
+
+        # Drop index 0, which corresponds to our placeholder "Select test"
+        for index in range(1, self.test_selector.count()):
+            # TODO: Not yest there: the list of module parameters are not updated from
+            #  one test to the other, to be fixed !
+            self.test_selector.setCurrentIndex(index)
+            self.run_test()
 
     def run_test(self):
         # Clean up old plot files to avoid loading leftover files
