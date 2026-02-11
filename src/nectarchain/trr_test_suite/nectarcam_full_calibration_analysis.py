@@ -1195,17 +1195,34 @@ class NectarCAMCalibrationPipeline:
         n_pixels = constants.N_PIXELS
         gain_idx = constants.HIGH_GAIN
 
-        pedestals_vs_temp = np.zeros((n_temps, n_pixels))
-        gains_vs_temp = np.zeros((n_temps, n_pixels))
-        ff_vs_temp = np.zeros((n_temps, n_pixels))
-        raw_charge_mean_vs_temp = np.zeros((n_temps, n_pixels))
-        calib_charge_mean_vs_temp = np.zeros((n_temps, n_pixels))
+        # Initialize with NaN instead of zeros
+        pedestals_vs_temp = np.full((n_temps, n_pixels), np.nan)
+        gains_vs_temp = np.full((n_temps, n_pixels), np.nan)
+        ff_vs_temp = np.full((n_temps, n_pixels), np.nan)
+        raw_charge_mean_vs_temp = np.full((n_temps, n_pixels), np.nan)
+        calib_charge_mean_vs_temp = np.full((n_temps, n_pixels), np.nan)
 
+        # Collect data
+        n_valid = 0
         for idx, (charge_run, temp) in enumerate(
             zip(self.args.charge_runs, temperatures)
         ):
             if charge_run in self.calibrated_charge_results:
                 result = self.calibrated_charge_results[charge_run]
+
+                # Log what we're extracting
+                self.log.info(f"Extracting data for run {charge_run} at temp {temp}°C")
+                self.log.info(f"  Pedestals shape: {result['pedestals'].shape}")
+                self.log.info(
+                    f"  Pedestals HG mean: {np.mean(result['pedestals'][gain_idx]):.2f}"
+                )
+                self.log.info(f"  Gains shape: {result['gains'].shape}")
+                self.log.info(f"  Raw charges shape: {result['raw_charges'].shape}")
+                self.log.info(
+                    "Raw charges HG mean: %.2f",
+                    np.mean(result["raw_charges"][:, gain_idx, :]),
+                )
+
                 pedestals_vs_temp[idx] = result["pedestals"][gain_idx]
                 gains_vs_temp[idx] = result["gains"][gain_idx]
                 ff_vs_temp[idx] = result["flatfield"][gain_idx]
@@ -1215,6 +1232,41 @@ class NectarCAMCalibrationPipeline:
                 calib_charge_mean_vs_temp[idx] = np.nanmean(
                     result["calibrated_charges"][:, gain_idx, :], axis=0
                 )
+                n_valid += 1
+            else:
+                self.log.warning(
+                    f"No calibrated charge data for run {charge_run} at temp {temp}°C"
+                )
+
+        if n_valid == 0:
+            self.log.error(
+                "No valid calibrated charge data found! Cannot create plots."
+            )
+            return
+
+        self.log.info(f"Found {n_valid}/{n_temps} valid temperature points")
+
+        # Log some statistics before plotting
+        self.log.info(
+            "Pedestal data stats: min=%.2f, max=%.2f, mean=%.2f",
+            np.nanmin(pedestals_vs_temp),
+            np.nanmax(pedestals_vs_temp),
+            np.nanmean(pedestals_vs_temp),
+        )
+
+        self.log.info(
+            "Raw charge data stats: min=%.2f, max=%.2f, mean=%.2f",
+            np.nanmin(raw_charge_mean_vs_temp),
+            np.nanmax(raw_charge_mean_vs_temp),
+            np.nanmean(raw_charge_mean_vs_temp),
+        )
+
+        self.log.info(
+            "Calibrated charge data stats: min=%.2f, max=%.2f, mean=%.2f",
+            np.nanmin(calib_charge_mean_vs_temp),
+            np.nanmax(calib_charge_mean_vs_temp),
+            np.nanmean(calib_charge_mean_vs_temp),
+        )
 
         if self.args.use_bad_pixels and self.args.bad_pixels:
             for bad_pix in self.args.bad_pixels:
@@ -1266,10 +1318,27 @@ class NectarCAMCalibrationPipeline:
         ]
 
         for title, ylabel, data, filename in plots:
+            # Check if we have any non-NaN data
+            if np.all(np.isnan(data)):
+                self.log.warning(f"Skipping {filename} - all data is NaN")
+                continue
+
             fig, ax = plt.subplots(figsize=(10, 6))
+            n_plotted = 0
             for pix in range(0, n_pixels, 50):
                 if not _is_bad(pix):
-                    ax.plot(temperatures, data[:, pix], "o-", alpha=0.3, markersize=3)
+                    # Only plot if this pixel has some valid data
+                    if not np.all(np.isnan(data[:, pix])):
+                        ax.plot(
+                            temperatures, data[:, pix], "o-", alpha=0.3, markersize=3
+                        )
+                        n_plotted += 1
+
+            if n_plotted == 0:
+                self.log.warning(f"No valid data to plot for {filename}")
+                plt.close()
+                continue
+
             ax.set_xlabel("Temperature (°C)", fontsize=12)
             ax.set_ylabel(ylabel, fontsize=12)
             ax.set_title(title, fontsize=14)
@@ -1277,35 +1346,38 @@ class NectarCAMCalibrationPipeline:
             plt.tight_layout()
             output_file = self.figure_dir / filename
             plt.savefig(output_file, dpi=150, bbox_inches="tight")
-            self.log.info(f"Plot saved to {output_file}")
+            self.log.info(f"Plot saved to {output_file} ({n_plotted} pixels plotted)")
             plt.close()
 
         # Camera-average calibrated charge
-        fig, ax = plt.subplots(figsize=(10, 6))
-        mean_calib = np.nanmean(calib_charge_mean_vs_temp, axis=1)
-        std_calib = np.nanstd(calib_charge_mean_vs_temp, axis=1)
-        ax.errorbar(
-            temperatures,
-            mean_calib,
-            yerr=std_calib,
-            fmt="o-",
-            capsize=5,
-            markersize=8,
-            linewidth=2,
-            color="blue",
-            ecolor="blue",
-        )
-        ax.set_xlabel("Temperature (°C)", fontsize=12)
-        ax.set_ylabel("Mean Calibrated Charge (p.e.)", fontsize=12)
-        ax.set_title("Camera Average Calibrated Charge vs Temperature", fontsize=14)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        output_file = (
-            self.figure_dir / "calibrated_charge_vs_temperature_camera_average.png"
-        )
-        plt.savefig(output_file, dpi=150, bbox_inches="tight")
-        self.log.info(f"Average calib. charge vs temp plot saved to {output_file}")
-        plt.close()
+        if not np.all(np.isnan(calib_charge_mean_vs_temp)):
+            fig, ax = plt.subplots(figsize=(10, 6))
+            mean_calib = np.nanmean(calib_charge_mean_vs_temp, axis=1)
+            std_calib = np.nanstd(calib_charge_mean_vs_temp, axis=1)
+            ax.errorbar(
+                temperatures,
+                mean_calib,
+                yerr=std_calib,
+                fmt="o-",
+                capsize=5,
+                markersize=8,
+                linewidth=2,
+                color="blue",
+                ecolor="blue",
+            )
+            ax.set_xlabel("Temperature (°C)", fontsize=12)
+            ax.set_ylabel("Mean Calibrated Charge (p.e.)", fontsize=12)
+            ax.set_title("Camera Average Calibrated Charge vs Temperature", fontsize=14)
+            ax.grid(True, alpha=0.3)
+            plt.tight_layout()
+            output_file = (
+                self.figure_dir / "calibrated_charge_vs_temperature_camera_average.png"
+            )
+            plt.savefig(output_file, dpi=150, bbox_inches="tight")
+            self.log.info(f"Average calib. charge vs temp plot saved to {output_file}")
+            plt.close()
+        else:
+            self.log.warning("Skipping camera average plot - all data is NaN")
 
     def plot_individual_calibration_parameters(self):
         """Create individual plots for each calibration parameter"""
@@ -1405,27 +1477,57 @@ class NectarCAMCalibrationPipeline:
                         return f[hg_key][:], f[lg_key][:]
 
             elif kind == "flatfield":
-                # FlatfieldNectarCAMCalibrationTool layout
-                for container_path in [
-                    "data/FlatFieldContainer_0",
-                    "data/FlatFieldContainer",
-                ]:
-                    if container_path in f:
-                        # FF_coef may be inside the container
-                        if "FF_coef" in f[container_path]:
-                            arr = f[container_path]["FF_coef"][:]
-                            # Shape may be (events, gains, pixels) - average over events
-                            if arr.ndim == 3:
-                                arr = np.mean(arr, axis=0)
-                            return arr[0], arr[1]
+                import tables
 
-                # Direct access
-                for key in ["FF_coef", "data/FF_coef"]:
-                    if key in f:
-                        arr = f[key][:]
-                        if arr.ndim == 3:
-                            arr = np.mean(arr, axis=0)
-                        return arr[0], arr[1]
+                try:
+                    h5file = tables.open_file(str(filepath), mode="r")
+
+                    # Get first result group (typically "data")
+                    if not h5file.root.__members__:
+                        h5file.close()
+                        raise KeyError("No data groups in flatfield file root")
+
+                    result = h5file.root.__members__[0]
+                    self.log.debug(f"[flatfield] Using result group: {result}")
+
+                    # Access FlatFieldContainer_0 table using PyTables
+                    table = h5file.root[result]["FlatFieldContainer_0"][0]
+                    ff = table["FF_coef"]
+
+                    self.log.debug(f"[flatfield] FF_coef shape: {ff.shape}")
+                    # ff shape: (n_events, n_gains, n_pixels)
+
+                    h5file.close()
+
+                    # Take mean over events, then extract HG and LG
+                    if ff.ndim == 3:
+                        ff_mean = np.mean(ff, axis=0)  # → (n_gains, n_pixels)
+                        if ff_mean.shape[0] >= 2:
+                            return ff_mean[0], ff_mean[1]  # HG, LG
+                        else:
+                            self.log.warning(
+                                "[flatfield] Only 1 gain, duplicating for HG/LG"
+                            )
+                            return ff_mean[0], ff_mean[0]
+                    elif ff.ndim == 2:
+                        # Already (n_gains, n_pixels)
+                        if ff.shape[0] >= 2:
+                            return ff[0], ff[1]
+                        else:
+                            return ff[0], ff[0]
+                    else:
+                        raise ValueError(f"Unexpected FF_coef shape: {ff.shape}")
+
+                except Exception as e:
+                    if "h5file" in locals():
+                        try:
+                            if h5file.isopen:
+                                h5file.close()
+                        except (tables.HDF5ExtError, OSError) as e:
+                            logging.warning(f"Error closing PyTables file: {e}")
+                            pass
+                    self.log.error(f"[flatfield] PyTables load failed: {e}")
+                    raise KeyError(f"Cannot load flatfield from {filepath}. Error: {e}")
 
             elif kind == "charge":
                 for container_path in [
