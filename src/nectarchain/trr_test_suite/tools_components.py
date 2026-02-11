@@ -1092,12 +1092,11 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
     componentsList = ComponentNameList(
         NectarCAMComponent,
         default_value=["UCTSComp"],
-        help="List of Component names to be apply, the order will be respected",
+        help="List of Component names to be applied, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
         super().finish(return_output_component=False, *args, **kwargs)
-        # print(self.output_path)
         output_file = h5py.File(self.output_path)
 
         ucts_timestamps = []
@@ -1107,29 +1106,24 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
         for thing in output_file:
             group = output_file[thing]
             dataset = group["UCTSContainer_0"]
-            data = dataset[:]
-            for tup in data:
+            for tup in dataset:
                 try:
                     ucts_timestamps.extend(tup[3])
                     event_counter.extend(tup[7])
                     busy_counter.extend(tup[6])
                 except Exception:
                     break
-        # print(output_file.keys())
-        # tom_mu_all= output[0].tom_mu
-        # tom_sigma_all= output[0].tom_sigma
-        # ucts_timestamps= np.array(output_file["ucts_timestamp"])
+
         ucts_timestamps = np.array(ucts_timestamps).flatten()
-        # print(ucts_timestamps)
+
         event_counter = np.array(event_counter).flatten()
         busy_counter = np.array(busy_counter).flatten()
-        # print(ucts_timestamps)
-        delta_t = [
+
+        ucts_deltat = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
         ]
-        # event_counter = np.array(output_file['ucts_event_counter'])
-        # busy_counter=np.array(output_file['ucts_busy_counter'])
+
         output_file.close()
 
         time_tot = ((ucts_timestamps[-1] - ucts_timestamps[0]) * u.ns).to(u.s)
@@ -1138,7 +1132,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
         return (
             ucts_timestamps,
-            delta_t,
+            ucts_deltat,
             event_counter,
             busy_counter,
             collected_trigger_rate,
