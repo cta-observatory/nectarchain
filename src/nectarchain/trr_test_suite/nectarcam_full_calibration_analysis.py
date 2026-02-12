@@ -1567,71 +1567,68 @@ class NectarCAMCalibrationPipeline:
         )
 
         for title, ylabel, data, filename in plots:
-            # Skip entirely if not a single row has real data
             if not np.any(np.isfinite(data)):
                 self.log.warning(f"Skipping '{title}' – no valid data available.")
                 continue
 
             fig, ax = plt.subplots(figsize=(10, 6))
+
+            # Only valid temperature rows
+            t_valid = temperatures[valid_temp_mask]
+            data_valid = data[valid_temp_mask]
+
+            # -------------------------------
+            # 1) Per-pixel sampled lines
+            # -------------------------------
             for pix in range(0, n_pixels, 50):
                 if not _is_bad(pix):
-                    col = data[:, pix]
-                    # Only connect points where we actually have data
                     ax.plot(
-                        temperatures[valid_temp_mask],
-                        col[valid_temp_mask],
+                        t_valid,
+                        data_valid[:, pix],
                         "o-",
-                        alpha=0.3,
+                        alpha=0.5,
                         markersize=3,
+                        linewidth=1,
                     )
+
+            # -------------------------------
+            # 2) Mean and Std across pixels
+            # -------------------------------
+            mean_vals = np.nanmean(data_valid, axis=1)
+            std_vals = np.nanstd(data_valid, axis=1)
+
+            # Hard mean line
+            ax.plot(
+                t_valid,
+                mean_vals,
+                "k-",
+                linewidth=3,
+                label="Mean",
+                zorder=10,
+            )
+
+            # Std band
+            ax.fill_between(
+                t_valid,
+                mean_vals - std_vals,
+                mean_vals + std_vals,
+                alpha=0.2,
+                label="±1σ",
+                zorder=9,
+            )
+
+            # -------------------------------
             ax.set_xlabel("Temperature (°C)", fontsize=12)
             ax.set_ylabel(ylabel, fontsize=12)
             ax.set_title(title + missing_note, fontsize=14)
             ax.grid(True, alpha=0.3)
+            ax.legend()
+
             plt.tight_layout()
             output_file = self.figure_dir / filename
             plt.savefig(output_file, dpi=150, bbox_inches="tight")
             self.log.info(f"Plot saved to {output_file}")
             plt.close()
-
-        # Camera-average calibrated charge
-        if np.any(np.isfinite(calib_charge_mean_vs_temp)):
-            fig, ax = plt.subplots(figsize=(10, 6))
-            mean_calib = np.nanmean(calib_charge_mean_vs_temp, axis=1)
-            std_calib = np.nanstd(calib_charge_mean_vs_temp, axis=1)
-            # Only plot temperatures that have real data
-            t_valid = temperatures[valid_temp_mask]
-            m_valid = mean_calib[valid_temp_mask]
-            s_valid = std_calib[valid_temp_mask]
-            ax.errorbar(
-                t_valid,
-                m_valid,
-                yerr=s_valid,
-                fmt="o-",
-                capsize=5,
-                markersize=8,
-                linewidth=2,
-                color="blue",
-                ecolor="blue",
-            )
-            ax.set_xlabel("Temperature (°C)", fontsize=12)
-            ax.set_ylabel("Mean Calibrated Charge (p.e.)", fontsize=12)
-            ax.set_title(
-                "Camera Average Calibrated Charge vs Temperature" + missing_note,
-                fontsize=14,
-            )
-            ax.grid(True, alpha=0.3)
-            plt.tight_layout()
-            output_file = (
-                self.figure_dir / "calibrated_charge_vs_temperature_camera_average.png"
-            )
-            plt.savefig(output_file, dpi=150, bbox_inches="tight")
-            self.log.info(f"Average calib. charge vs temp plot saved to {output_file}")
-            plt.close()
-        else:
-            self.log.warning(
-                "Skipping camera-average plot – no calibrated charge data available."
-            )
 
     def plot_individual_calibration_parameters(self):
         """Create individual plots for each calibration parameter"""
@@ -1956,17 +1953,18 @@ class NectarCAMCalibrationPipeline:
                 )
 
         # Step 5: Compute calibrated charges
-        self.log.info("\n" + "=" * 80)
-        self.log.info("STEP 5: Calibrated Charge Computation")
-        self.log.info("=" * 80)
-        pedestal_run = self.args.pedestal_runs[0]
-        gain_run = self.args.gain_runs[0]
-        flatfield_run = self.args.flatfield_runs[0]
-
-        for charge_run in self.args.charge_runs:
+        for pedestal_run, gain_run, flatfield_run, charge_run in zip(
+            self.args.pedestal_runs,
+            self.args.gain_runs,
+            self.args.flatfield_runs,
+            self.args.charge_runs,
+        ):
             try:
                 self.compute_calibrated_charge(
-                    charge_run, pedestal_run, gain_run, flatfield_run
+                    charge_run,
+                    pedestal_run,
+                    gain_run,
+                    flatfield_run,
                 )
             except Exception as e:
                 self.log.error(
