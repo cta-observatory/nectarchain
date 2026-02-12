@@ -8,11 +8,11 @@ NectarCAM data are stored on the `EGI <https://www.egi.eu/>`_ grid using `CTA-DI
 Starting with DIRAC
 ===================
 
-To start interacting with DIRAC, one needs to initialize a proxy, with the ``cta_nectarcam`` role enabled:
+To start interacting with DIRAC, one needs to initialize a proxy, with the ``ctao_nectarcam`` role enabled:
 
 .. code-block:: console
 
-   $ dirac-proxy-init -M -g cta_nectarcam
+   $ dirac-proxy-init -M -g ctao_nectarcam
 
 DIRAC commands are quite long and can be tedious to learn and handle. Two main families of DIRAC commands which are useful are:
 
@@ -106,7 +106,7 @@ CTA-DIRAC has a web portal available at https://ctadirac-01.cscs.cta-observatory
 
 .. tip::
 
-    If you submitted your jobs using the ``cta_nectarcam`` role, you would need to re-authenticate in the portal with this role: Click on *Settings* in the bottom left, and select *cta_nectarcam* under *Group*.
+    If you submitted your jobs using the ``ctao_nectarcam`` role, you would need to re-authenticate in the portal with this role: Click on *Settings* in the bottom left, and select *ctao_nectarcam* under *Group*.
 
 Proxy error
 ^^^^^^^^^^^
@@ -115,7 +115,7 @@ If from your laptop, when initializing your DIRAC proxy, you ever encounter an e
 
 .. code-block:: console
 
-   $ dirac-proxy-init -M -g cta_nectarcam
+   $ dirac-proxy-init -M -g ctao_nectarcam
    Your proxy is valid until Sat Aug  3 11:31:07 2024
    ; StdErr: ..........................................................
    [...]

@@ -1,5 +1,5 @@
 #launching DIRAC proxy
-#dirac-proxy-init -M -g cta_nectarcam d
+#dirac-proxy-init -M -g ctao_nectarcam d
 
 # chmod +x submit_job_thermal.sh 
 # sbatch submit_job_thermal.sh 
