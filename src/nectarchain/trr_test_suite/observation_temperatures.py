@@ -1,6 +1,9 @@
 """
 NectarCAM Full Calibration and Analysis Pipeline
 
+This script runs tests on the influence of observation temperatures on pedestal, charge,
+and flat-field to validate the requirements B-ENV-0210 and B-ENV-0230.
+
 This script performs a complete calibration pipeline including:
 1. Pedestal computation
 2. Gain (SPE fit) computation
