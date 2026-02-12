@@ -108,11 +108,11 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     test on NectarCAM data. The class has a `componentsList` attribute that specifies
     the list of NectarCAM components to be applied.
 
-    The `finish` method is the main functionality of this class. It reads the charge\
-        data from the output file, calculates the mean charge, standard deviation,\
-            and standard error for both the high gain and low gain channels, and\
-                returns these values. This information can be used to assess\
-                    the linearity of the NectarCAM system.
+    The `finish` method is the main functionality of this class. It reads the charge
+    data from the output file, calculates the mean charge, standard deviation, and
+    standard error for both the high gain and low gain channels, and returns these
+    values. This information can be used to assess the linearity of the NectarCAM
+    system.
     """
 
     name = "ChargeResolutionTestTool"
