@@ -127,7 +127,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def set_thermal_params(self, temp, ff_model):
+    def set_thermal_params(self, temp):
         self.temperature = temp
 
     def get_adc_to_pe(self, temperature):

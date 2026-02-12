@@ -72,17 +72,6 @@ number of pixels used (default 1000).
         required=False,
         default=14,
     )
-    parser.add_argument(
-        "-ff",
-        "--ff_model",
-        type=int,
-        help="Model number for FF_coefficients to be used,"
-        "default None, ff_coefficients=1"
-        "1- Independent, 2- 2D Gaussian model by Anastasiia, else ff_coefficients=1",
-        required=False,
-        default=None,
-    )
-
     return parser
 
 
@@ -135,7 +124,6 @@ def main():
 
         temperature = args.temperature
         nevents = args.evts
-        ff_model = args.ff_model
 
         output_dir = os.path.abspath(args.output)
 
@@ -175,7 +163,7 @@ def main():
             tool.initialize()
             tool.setup()
             tool.start()
-            tool.set_thermal_params(temperature, ff_model)
+            tool.set_thermal_params(temperature)
             output = tool.finish()
 
             # output = read_file(run, temperature)
