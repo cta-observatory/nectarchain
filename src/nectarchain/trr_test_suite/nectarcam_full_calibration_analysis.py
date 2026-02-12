@@ -9,8 +9,12 @@ This script performs a complete calibration pipeline including:
 5. Calibrated charge computation (pedestal subtraction, gain correction, FF correction)
 6. Plotting of all calibration parameters vs temperature
 
-Author: Generated for NectarCAM calibration analysis
-Date: 2026-02-10
+The script is designed to be flexible and configurable via command-line arguments,
+allowing users to specify run numbers, processing options, and output directories.
+It also includes robust path resolution logic to handle the various output locations
+used by the nectarchain tools.
+
+Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
 """
 
 import argparse
@@ -365,7 +369,6 @@ class NectarCAMCalibrationPipeline:
 
         # Default directories that nectarchain tools write to when no
         # output_path is explicitly given (relative to $NECTARCAMDATA).
-        # Extend this list if the framework changes its conventions.
         self._tool_default_search_dirs = {
             "gain": [
                 self.gain_dir,
