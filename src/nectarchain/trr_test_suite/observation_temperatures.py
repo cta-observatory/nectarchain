@@ -65,28 +65,28 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
     parser.add_argument(
         "--pedestal_runs",
         nargs="+",
-        required=True,
+        default=[7020, 7077, 6954, 7144, 6543, 6672, 6729],
         help="Run number(s) for pedestal calibration",
         type=int,
     )
     parser.add_argument(
         "--gain_runs",
         nargs="+",
-        required=True,
+        default=[7066, 7123, 7000, 7191, 6589, 6718, 6775, 6853],
         help="Run number(s) for gain (SPE) calibration",
         type=int,
     )
     parser.add_argument(
         "--flatfield_runs",
         nargs="+",
-        required=True,
+        default=[7066, 7123, 7000, 7191, 6589, 6718, 6775, 6853],
         help="Run number(s) for flatfield calibration",
         type=int,
     )
     parser.add_argument(
         "--charge_runs",
         nargs="+",
-        required=True,
+        default=[7020, 7077, 6954, 7144, 6543, 6672, 6729],
         help="Run number(s) for charge extraction",
         type=int,
     )
@@ -95,7 +95,7 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
     parser.add_argument(
         "--temperatures",
         nargs="+",
-        required=True,
+        default=[25, 20, 14, 10, 5, 0, -5],
         help="Temperature values corresponding to charge runs (in same order)",
         type=float,
     )
@@ -341,7 +341,7 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
         type=str,
     )
 
-    return parser
+    return parser.parse_args()
 
 
 class NectarCAMCalibrationPipeline:
