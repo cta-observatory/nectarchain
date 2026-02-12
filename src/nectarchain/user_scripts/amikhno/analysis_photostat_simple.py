@@ -760,7 +760,9 @@ def main(**kwargs):
 
     # --- Assign other variables ---
     run_number = args.FF_run_number
-    run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
+    run_path = args.run_path + (
+        f"/runs/NectarCAM.Run" f"{str(run_number).zfill(4)}.0000.fits.fz"
+    )
     spe_run_number = args.SPE_run_number
     method = args.method
     extractor = args.extractor_kwargs
