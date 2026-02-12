@@ -134,6 +134,9 @@ def main():
     color = ["black", "red", "blue", "green", "yellow"]
     log.info("NSB Run FF", NSB, runs_list, ff_v_list)
 
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
+    sys.argv = sys.argv[:1]
+
     ratio_lghg_nsb = []
     mean_resolution_nsb = []
     mean_charge = []
@@ -151,8 +154,6 @@ def main():
         output_dir = os.path.abspath(args.output)
 
         log.debug(f"Output directory: {output_dir}")
-
-        sys.argv = sys.argv[:1]
 
         charge = np.zeros((len(runlist), 2))
         std = np.zeros((len(runlist), 2))
