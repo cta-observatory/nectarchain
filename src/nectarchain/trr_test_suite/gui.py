@@ -27,14 +27,13 @@ from PyQt5.QtWidgets import (
     QWidgetItem,
 )
 
+import nectarchain.trr_test_suite.deadtime as deadtime
+import nectarchain.trr_test_suite.linearity as linearity
+import nectarchain.trr_test_suite.pedestal as pedestal
+import nectarchain.trr_test_suite.pix_tim_uncertainty as pix_tim_uncertainty
+import nectarchain.trr_test_suite.trigger_timing as trigger_timing
 from nectarchain.trr_test_suite import (
-    charge_resolution,
-    deadtime,
-    linearity,
-    pedestal,
-    pix_couple_tim_uncertainty,
-    pix_tim_uncertainty,
-    trigger_timing,
+    pix_couple_tim_uncertainty as pix_couple_tim_uncertainty,
 )
 
 # Ensure the src directory is in sys.path
@@ -63,7 +62,6 @@ class TestRunner(QWidget):
     """
 
     test_modules = {
-        "Charge Resolution Test": charge_resolution,
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
         "Pedestal Test": pedestal,
@@ -107,7 +105,6 @@ class TestRunner(QWidget):
         self.test_selector.addItem("Select Test")
         self.test_selector.addItems(
             [
-                "Charge Resolution Test",
                 "Linearity Test",
                 "Deadtime Test",
                 "Pedestal Test",
