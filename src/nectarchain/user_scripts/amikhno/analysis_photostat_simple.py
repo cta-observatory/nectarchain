@@ -45,7 +45,10 @@ if not log.handlers:
 
 plt.style.use("../../utils/plot_style.mpltstyle")
 
-parser = argparse.ArgumentParser(description="Run NectarCAM photostatistics analysis")
+parser = argparse.ArgumentParser(
+    description="Run NectarCAM photostatistics analysis",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 
 parser.add_argument("--FF_run_number", required=True, help="Run number", type=int)
 parser.add_argument("--SPE_run_number", required=True, help="SPE run number", type=int)
@@ -61,8 +64,7 @@ parser.add_argument(
     "--camera",
     choices=ALLOWED_CAMERAS,
     default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
-    help="""Process data for a specific NectarCAM camera.
-Default: NectarCAMQM (Qualification Model).""",
+    help="Process data for a specific NectarCAM camera.",
     type=str,
 )
 
@@ -101,7 +103,7 @@ parser.add_argument(
 parser.add_argument(
     "--extractor_kwargs",
     default={"window_width": 8, "window_shift": 4},
-    help="charge extractor kwargs",
+    help="charge extractor parameters",
     type=json.loads,
 )
 parser.add_argument(
