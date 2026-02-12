@@ -26,7 +26,10 @@ from scipy.optimize._numdiff import approx_derivative
 
 from nectarchain.data.container import PhotostatContainer
 from nectarchain.data.management import DataManagement
-from nectarchain.makers.calibration import PhotoStatisticNectarCAMCalibrationTool
+from nectarchain.makers.calibration import (
+    FlatFieldSPENominalStdNectarCAMCalibrationTool,
+    PhotoStatisticNectarCAMCalibrationTool,
+)
 from nectarchain.makers.extractor.utils import CtapipeExtractor
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
@@ -51,12 +54,6 @@ parser.add_argument(
     "--run-path",
     default=f'{os.environ.get("NECTARCAMDATA", "").strip()}',
     help="Path to run file",
-)
-parser.add_argument(
-    "-a",
-    "--analysis-file",
-    default=f'{os.environ.get("NECTARCAMDATA", "").strip()}',
-    help="Analysis file name",
 )
 
 parser.add_argument(
@@ -764,6 +761,7 @@ def main(**kwargs):
     # --- Assign other variables ---
     run_number = args.FF_run_number
     run_path = args.run_path + f"/runs/NectarCAM.Run{run_number}.0000.fits.fz"
+    spe_run_number = args.SPE_run_number
     method = args.method
     extractor = args.extractor_kwargs
     camera = args.camera
@@ -773,10 +771,65 @@ def main(**kwargs):
         f"Method is {method},  the extractor kwargs are: {extractor['window_shift']}, {extractor['window_width']}"
     )
 
-    filename_ps = (
-        args.analysis_file + f"/PhotoStat/PhotoStatisticNectarCAM_FFrun{run_number}"
-        f"_{method}_window_shift_{extractor['window_shift']}_window_width_{extractor['window_width']}_Pedrun{run_number}_FullWaveformSum.h5"
+    str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
+        method=args.method, extractor_kwargs=args.extractor_kwargs
     )
+
+    if not args.SPE_config:
+        raise ValueError(
+            "You must specify the SPE_config to use, either HHVfree, HHVfixed or nominal"
+        )
+
+    spe_file_found = False
+    if args.SPE_config == "HHVfree":
+        try:
+            spe_filename = DataManagement.find_SPE_HHV(
+                run_number=args.SPE_run_number,
+                method=args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                free_pp_n=True,
+            )
+            spe_file_found = True
+        except FileNotFoundError:
+            pass
+    elif args.SPE_config == "HHVfixed":
+        try:
+            spe_filename = DataManagement.find_SPE_HHV(
+                run_number=args.SPE_run_number,
+                method=args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                free_pp_n=False,
+            )
+            spe_file_found = True
+        except FileNotFoundError:
+            pass
+    elif args.SPE_config == "nominal":
+        try:
+            spe_filename = DataManagement.find_SPE_nominal(
+                run_number=args.SPE_run_number,
+                method=args.method,
+                str_extractor_kwargs=str_extractor_kwargs,
+                free_pp_n=False,
+            )
+            spe_file_found = True
+        except FileNotFoundError:
+            pass
+
+    if not spe_file_found:
+        gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=spe_run_number,
+            camera=camera,
+            max_events=None,
+            method=method,
+            extractor_kwargs={
+                "window_width": extractor["window_width"],
+                "window_shift": extractor["window_shift"],
+            },
+        )
+        gain_tool.setup()
+        gain_tool.start()
+        spe_filename = gain_tool.finish(return_output_component=True)[0]
 
     log.info(f"filename_ps = {filename_ps}")
 
@@ -787,40 +840,21 @@ def main(**kwargs):
     else:
         log.info("Running analysis without variance correction...")
 
-    if not os.path.exists(filename_ps):
+    try:
+        filename_ps = DataManagement.find_photostat(
+            FF_run_number=run_number,
+            ped_run_number=run_number,
+            FF_method=method,
+            ped_method=method,
+            str_extractor_kwargs=str_extractor_kwargs,
+        )
+        log.info(
+            f"[INFO] File {filename_ps} already exists, skipping photostatistics computation."
+        )
+    except FileNotFoundError:
         log.info(
             f"[INFO] {filename_ps} not found, running PhotoStatisticNectarCAMCalibrationTool..."
         )
-
-        str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-            method=args.method, extractor_kwargs=args.extractor_kwargs
-        )
-
-        if args.SPE_config is None:
-            raise ValueError(
-                "You must specify the SPE_config to use, either HHVfree, HHVfixed or nominal"
-            )
-        if args.SPE_config == "HHVfree":
-            path = DataManagement.find_SPE_HHV(
-                run_number=args.SPE_run_number,
-                method=args.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                free_pp_n=True,
-            )
-        elif args.SPE_config == "HHVfixed":
-            path = DataManagement.find_SPE_HHV(
-                run_number=args.SPE_run_number,
-                method=args.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                free_pp_n=False,
-            )
-        elif args.SPE_config == "nominal":
-            path = DataManagement.find_SPE_nominal(
-                run_number=args.SPE_run_number,
-                method=args.method,
-                str_extractor_kwargs=str_extractor_kwargs,
-                free_pp_n=False,
-            )
 
         try:
             tool = PhotoStatisticNectarCAMCalibrationTool(
@@ -829,7 +863,7 @@ def main(**kwargs):
                 max_events=None,
                 camera=camera,
                 Ped_run_number=run_number,
-                SPE_result=path[0],
+                SPE_result=spe_filename,
                 **kwargs,
             )
             tool.setup()
@@ -837,9 +871,6 @@ def main(**kwargs):
             tool.finish()
         except Exception as e:
             log.warning(e, exc_info=True)
-
-    else:
-        log.info(f"[INFO] File {filename_ps} already exists, skipping computation.")
 
     log.info("SPE fit was found, begin the analysis")
     # Create PdfPages object
