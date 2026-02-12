@@ -145,7 +145,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                 )
             )
 
-            if os.path.exists(gain_file_name) == False:
+            if not os.path.exists(gain_file_name):
                 gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=gain_run,
