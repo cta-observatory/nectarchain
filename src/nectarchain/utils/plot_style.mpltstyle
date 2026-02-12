@@ -120,6 +120,4 @@ savefig.bbox        : tight ## 'tight' or 'standard'.
 savefig.transparent : False    ## setting that controls whether figures are saved with a
                                 ## transparent background by default
 #savefig.frameon : True			## enable frame of figure when saving 
-#savefig.orientation : portrait	## Orientation of saved figure				
-
-
+#savefig.orientation : portrait	## Orientation of saved figure
