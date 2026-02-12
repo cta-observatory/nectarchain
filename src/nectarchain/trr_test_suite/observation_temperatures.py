@@ -1,25 +1,3 @@
-"""
-NectarCAM Full Calibration and Analysis Pipeline
-
-This script runs tests on the influence of observation temperatures on pedestal, charge,
-and flat-field to validate the requirements B-ENV-0210 and B-ENV-0230.
-
-This script performs a complete calibration pipeline including:
-1. Pedestal computation
-2. Gain (SPE fit) computation
-3. Flatfield computation
-4. Charge extraction
-5. Calibrated charge computation (pedestal subtraction, gain correction, FF correction)
-6. Plotting of all calibration parameters vs temperature
-
-The script is designed to be flexible and configurable via command-line arguments,
-allowing users to specify run numbers, processing options, and output directories.
-It also includes robust path resolution logic to handle the various output locations
-used by the nectarchain tools.
-
-Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
-"""
-
 import argparse
 import json
 import logging
@@ -33,8 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ctapipe_io_nectarcam import constants
 
-# NectarChain imports
-# from nectarchain.data.container import ChargesContainer
+# nectarchain imports
 from nectarchain.makers import (
     ChargesNectarCAMCalibrationTool,
     WaveformsNectarCAMCalibrationTool,
@@ -49,292 +26,322 @@ from nectarchain.makers.calibration import (
 )
 from nectarchain.makers.extractor.utils import CtapipeExtractor
 
-# Argument parser
-parser = argparse.ArgumentParser(
-    prog="nectarcam_full_calibration_analysis.py",
-    description="Complete NectarCAM calibration pipeline",
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-)
 
-# Run numbers for different calibration types
-parser.add_argument(
-    "--pedestal_runs",
-    nargs="+",
-    required=True,
-    help="Run number(s) for pedestal calibration",
-    type=int,
-)
-parser.add_argument(
-    "--gain_runs",
-    nargs="+",
-    required=True,
-    help="Run number(s) for gain (SPE) calibration",
-    type=int,
-)
-parser.add_argument(
-    "--flatfield_runs",
-    nargs="+",
-    required=True,
-    help="Run number(s) for flatfield calibration",
-    type=int,
-)
-parser.add_argument(
-    "--charge_runs",
-    nargs="+",
-    required=True,
-    help="Run number(s) for charge extraction",
-    type=int,
-)
+def get_args():
+    """Parses command-line arguments for the test script on the influence of
+    observation temperatures.
 
-# Temperature data
-parser.add_argument(
-    "--temperatures",
-    nargs="+",
-    required=True,
-    help="Temperature values corresponding to charge runs (in same order)",
-    type=float,
-)
+    Returns
+    -------
+    parser : argparse.ArgumentParser
+        The parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="""NectarCAM Full Calibration and Analysis Pipeline
 
-# Camera selection
-parser.add_argument(
-    "-c",
-    "--camera",
-    default="NectarCAM",
-    help="Process data for a specific NectarCAM camera (default: NectarCAM)",
-    type=str,
-)
+This script runs tests on the influence of observation temperatures on pedestal,
+charge, and flat-field to validate the requirements B-ENV-0210 and B-ENV-0230.
 
-# Max events
-parser.add_argument(
-    "--max_events_pedestal",
-    default=None,
-    help="Max events for pedestal runs",
-    type=int,
-)
-parser.add_argument(
-    "--max_events_gain",
-    nargs="+",
-    default=None,
-    help="Max events for gain runs (1/ run, or a single value applied to all)",
-    type=int,
-)
-parser.add_argument(
-    "--max_events_flatfield",
-    default=10000,
-    help="Max events for flatfield runs",
-    type=int,
-)
-parser.add_argument(
-    "--max_events_charge",
-    default=None,
-    help="Max events for charge runs",
-    type=int,
-)
+This script performs a complete calibration pipeline including:
+1. Pedestal computation
+2. Gain (SPE fit) computation
+3. Flatfield computation
+4. Charge extraction
+5. Calibrated charge computation (pedestal subtraction, gain correction,
+FF correction)
+6. Plotting of all calibration parameters vs temperature
 
-# Bad pixels
-parser.add_argument(
-    "--bad_pixels",
-    nargs="+",
-    default=None,
-    help="List of bad pixel IDs to exclude from analysis",
-    type=int,
-)
-parser.add_argument(
-    "--use_bad_pixels",
-    action="store_true",
-    default=False,
-    help="Apply bad pixel masking in the analysis",
-)
+The script is designed to be flexible and configurable via command-line arguments,
+allowing users to specify run numbers, processing options, and output directories.
+It also includes robust path resolution logic to handle the various output locations
+used by the nectarchain tools.
 
-# Processing options
-parser.add_argument(
-    "--recompute_pedestal",
-    action="store_true",
-    default=False,
-    help="Force recomputation of pedestal calibration",
-)
-parser.add_argument(
-    "--recompute_gain",
-    action="store_true",
-    default=False,
-    help="Force recomputation of gain calibration",
-)
-parser.add_argument(
-    "--recompute_flatfield",
-    action="store_true",
-    default=False,
-    help="Force recomputation of flatfield calibration",
-)
-parser.add_argument(
-    "--recompute_charge",
-    action="store_true",
-    default=False,
-    help="Force recomputation of charge extraction",
-)
-parser.add_argument(
-    "--recompute_all",
-    action="store_true",
-    default=False,
-    help="Force recomputation of all calibrations",
-)
+Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
+""",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-# Gain-specific options
-parser.add_argument(
-    "--HHV",
-    action="store_true",
-    default=False,
-    help="Gain runs taken at high voltage (HHV)",
-)
-parser.add_argument(
-    "--free_pp_n",
-    action="store_true",
-    default=False,
-    help="Let pp and n parameters free in SPE fit",
-)
-parser.add_argument(
-    "--gain_display",
-    action="store_true",
-    default=False,
-    help="Display SPE histograms for each pixel during gain computation",
-)
-parser.add_argument(
-    "--gain_asked_pixels_id",
-    nargs="+",
-    default=None,
-    help="Pixel IDs to process during gain computation (default: all pixels)",
-    type=int,
-)
-parser.add_argument(
-    "--gain_reload_events",
-    action="store_true",
-    default=False,
-    help="Force re-computation of waveforms from fits.fz files for gain runs",
-)
-parser.add_argument(
-    "--gain_overwrite",
-    action="store_true",
-    default=False,
-    help="Force overwrite of existing gain output files on disk",
-)
-parser.add_argument(
-    "--gain_events_per_slice",
-    type=int,
-    default=None,
-    help="Split raw gain data with this many events per slice",
-)
-parser.add_argument(
-    "--gain_multiproc",
-    action="store_true",
-    default=False,
-    help="Use multiprocessing for gain computation",
-)
-parser.add_argument(
-    "--gain_nproc",
-    type=int,
-    default=8,
-    help="Number of processes to use when --gain_multiproc is set",
-)
-parser.add_argument(
-    "--gain_chunksize",
-    type=int,
-    default=1,
-    help="Chunk size per process when --gain_multiproc is set",
-)
+    # Run numbers for different calibration types
+    parser.add_argument(
+        "--pedestal_runs",
+        nargs="+",
+        required=True,
+        help="Run number(s) for pedestal calibration",
+        type=int,
+    )
+    parser.add_argument(
+        "--gain_runs",
+        nargs="+",
+        required=True,
+        help="Run number(s) for gain (SPE) calibration",
+        type=int,
+    )
+    parser.add_argument(
+        "--flatfield_runs",
+        nargs="+",
+        required=True,
+        help="Run number(s) for flatfield calibration",
+        type=int,
+    )
+    parser.add_argument(
+        "--charge_runs",
+        nargs="+",
+        required=True,
+        help="Run number(s) for charge extraction",
+        type=int,
+    )
 
-# Pedestal-specific options
-parser.add_argument(
-    "--events_per_slice",
-    type=int,
-    default=300,
-    help="Events per slice for pedestal computation",
-)
-parser.add_argument(
-    "--filter_method",
-    type=str,
-    default="WaveformsStdFilter",
-    help="Filter method for pedestal computation",
-)
-parser.add_argument(
-    "--wfs_std_threshold",
-    type=float,
-    default=4.0,
-    help="Waveform std threshold for pedestal filtering",
-)
+    # Temperature data
+    parser.add_argument(
+        "--temperatures",
+        nargs="+",
+        required=True,
+        help="Temperature values corresponding to charge runs (in same order)",
+        type=float,
+    )
 
-# Flatfield-specific options
-parser.add_argument(
-    "--flatfield_window_width",
-    type=int,
-    default=12,
-    help="Window width for flatfield charge extraction",
-)
-parser.add_argument(
-    "--flatfield_window_shift",
-    type=int,
-    default=4,
-    help="Window shift for flatfield charge extraction",
-)
+    # Camera selection
+    parser.add_argument(
+        "-c",
+        "--camera",
+        default="NectarCAM",
+        help="Process data for a specific NectarCAM camera (default: NectarCAM)",
+        type=str,
+    )
 
-# Charge extraction options
-parser.add_argument(
-    "--charge_method",
-    choices=[
-        "FullWaveformSum",
-        "FixedWindowSum",
-        "GlobalPeakWindowSum",
-        "LocalPeakWindowSum",
-        "SlidingWindowMaxSum",
-        "TwoPassWindowSum",
-    ],
-    default="LocalPeakWindowSum",
-    help="Charge extractor method",
-    type=str,
-)
-parser.add_argument(
-    "--charge_extractor_kwargs",
-    default='{"window_width": 16, "window_shift": 4}',
-    help="Charge extractor kwargs (JSON format)",
-    type=str,
-)
+    # Max events
+    parser.add_argument(
+        "--max_events_pedestal",
+        default=None,
+        help="Max events for pedestal runs",
+        type=int,
+    )
+    parser.add_argument(
+        "--max_events_gain",
+        nargs="+",
+        default=None,
+        help="Max events for gain runs (1/ run, or a single value applied to all)",
+        type=int,
+    )
+    parser.add_argument(
+        "--max_events_flatfield",
+        default=10000,
+        help="Max events for flatfield runs",
+        type=int,
+    )
+    parser.add_argument(
+        "--max_events_charge",
+        default=None,
+        help="Max events for charge runs",
+        type=int,
+    )
 
-# Output options
-parser.add_argument(
-    "--output_dir",
-    type=str,
-    default=None,
-    help="Output directory for calibration files (default: $NECTARCAMDATA)",
-)
-parser.add_argument(
-    "--figure_dir",
-    type=str,
-    default=None,
-    help="Output directory for figures (default: $NECTARCHAIN_FIGURES)",
-)
+    # Bad pixels
+    parser.add_argument(
+        "--bad_pixels",
+        nargs="+",
+        default=None,
+        help="List of bad pixel IDs to exclude from analysis",
+        type=int,
+    )
+    parser.add_argument(
+        "--use_bad_pixels",
+        action="store_true",
+        default=False,
+        help="Apply bad pixel masking in the analysis",
+    )
 
-# Pipeline mode
-parser.add_argument(
-    "--mode",
-    choices=["full", "pedestal", "gain", "flatfield", "charge"],
-    default="full",
-    help=(
-        "Pipeline mode: 'full' runs complete pipeline with calibrated charge, "
-        "'pedestal' runs only pedestal computation and plots, "
-        "'gain' runs only gain computation and plots, "
-        "'flatfield' runs only flatfield computation and plots, "
-        "'charge' runs only charge extraction and plots"
-    ),
-    type=str,
-)
+    # Processing options
+    parser.add_argument(
+        "--recompute_pedestal",
+        action="store_true",
+        default=False,
+        help="Force recomputation of pedestal calibration",
+    )
+    parser.add_argument(
+        "--recompute_gain",
+        action="store_true",
+        default=False,
+        help="Force recomputation of gain calibration",
+    )
+    parser.add_argument(
+        "--recompute_flatfield",
+        action="store_true",
+        default=False,
+        help="Force recomputation of flatfield calibration",
+    )
+    parser.add_argument(
+        "--recompute_charge",
+        action="store_true",
+        default=False,
+        help="Force recomputation of charge extraction",
+    )
+    parser.add_argument(
+        "--recompute_all",
+        action="store_true",
+        default=False,
+        help="Force recomputation of all calibrations",
+    )
 
-# Verbosity
-parser.add_argument(
-    "-v",
-    "--verbosity",
-    help="Set the verbosity level of logger",
-    default="INFO",
-    choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
-    type=str,
-)
+    # Gain-specific options
+    parser.add_argument(
+        "--HHV",
+        action="store_true",
+        default=False,
+        help="Gain runs taken at high voltage (HHV)",
+    )
+    parser.add_argument(
+        "--free_pp_n",
+        action="store_true",
+        default=False,
+        help="Let pp and n parameters free in SPE fit",
+    )
+    parser.add_argument(
+        "--gain_display",
+        action="store_true",
+        default=False,
+        help="Display SPE histograms for each pixel during gain computation",
+    )
+    parser.add_argument(
+        "--gain_asked_pixels_id",
+        nargs="+",
+        default=None,
+        help="Pixel IDs to process during gain computation (default: all pixels)",
+        type=int,
+    )
+    parser.add_argument(
+        "--gain_reload_events",
+        action="store_true",
+        default=False,
+        help="Force re-computation of waveforms from fits.fz files for gain runs",
+    )
+    parser.add_argument(
+        "--gain_overwrite",
+        action="store_true",
+        default=False,
+        help="Force overwrite of existing gain output files on disk",
+    )
+    parser.add_argument(
+        "--gain_events_per_slice",
+        type=int,
+        default=None,
+        help="Split raw gain data with this many events per slice",
+    )
+    parser.add_argument(
+        "--gain_multiproc",
+        action="store_true",
+        default=False,
+        help="Use multiprocessing for gain computation",
+    )
+    parser.add_argument(
+        "--gain_nproc",
+        type=int,
+        default=8,
+        help="Number of processes to use when --gain_multiproc is set",
+    )
+    parser.add_argument(
+        "--gain_chunksize",
+        type=int,
+        default=1,
+        help="Chunk size per process when --gain_multiproc is set",
+    )
+
+    # Pedestal-specific options
+    parser.add_argument(
+        "--events_per_slice",
+        type=int,
+        default=300,
+        help="Events per slice for pedestal computation",
+    )
+    parser.add_argument(
+        "--filter_method",
+        type=str,
+        default="WaveformsStdFilter",
+        help="Filter method for pedestal computation",
+    )
+    parser.add_argument(
+        "--wfs_std_threshold",
+        type=float,
+        default=4.0,
+        help="Waveform std threshold for pedestal filtering",
+    )
+
+    # Flatfield-specific options
+    parser.add_argument(
+        "--flatfield_window_width",
+        type=int,
+        default=12,
+        help="Window width for flatfield charge extraction",
+    )
+    parser.add_argument(
+        "--flatfield_window_shift",
+        type=int,
+        default=4,
+        help="Window shift for flatfield charge extraction",
+    )
+
+    # Charge extraction options
+    parser.add_argument(
+        "--charge_method",
+        choices=[
+            "FullWaveformSum",
+            "FixedWindowSum",
+            "GlobalPeakWindowSum",
+            "LocalPeakWindowSum",
+            "SlidingWindowMaxSum",
+            "TwoPassWindowSum",
+        ],
+        default="LocalPeakWindowSum",
+        help="Charge extractor method",
+        type=str,
+    )
+    parser.add_argument(
+        "--charge_extractor_kwargs",
+        default='{"window_width": 16, "window_shift": 4}',
+        help="Charge extractor kwargs (JSON format)",
+        type=str,
+    )
+
+    # Output options
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default=None,
+        help="Output directory for calibration files (default: $NECTARCAMDATA)",
+    )
+    parser.add_argument(
+        "--figure_dir",
+        type=str,
+        default=None,
+        help="Output directory for figures (default: $NECTARCHAIN_FIGURES)",
+    )
+
+    # Pipeline mode
+    parser.add_argument(
+        "--mode",
+        choices=["full", "pedestal", "gain", "flatfield", "charge"],
+        default="full",
+        help=(
+            "Pipeline mode: 'full' runs complete pipeline with calibrated charge, "
+            "'pedestal' runs only pedestal computation and plots, "
+            "'gain' runs only gain computation and plots, "
+            "'flatfield' runs only flatfield computation and plots, "
+            "'charge' runs only charge extraction and plots"
+        ),
+        type=str,
+    )
+
+    # Verbosity
+    parser.add_argument(
+        "-v",
+        "--verbosity",
+        help="Set the verbosity level of logger",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+        type=str,
+    )
+
+    return parser
 
 
 class NectarCAMCalibrationPipeline:
@@ -1995,7 +2002,7 @@ class NectarCAMCalibrationPipeline:
 
 def main():
     """Main function"""
-    args = parser.parse_args()
+    args = get_args()
 
     # Setup logging
     log_dir = Path(os.environ.get("NECTARCHAIN_LOG", "/tmp")) / str(os.getpid())
