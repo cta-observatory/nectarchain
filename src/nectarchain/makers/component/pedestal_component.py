@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import numpy.ma as ma
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Dict, Float, Integer, Path, Unicode
+from ctapipe.core.traits import Bool, Dict, Float, Integer, Path, Unicode
 from ctapipe_io_nectarcam.constants import HIGH_GAIN, LOW_GAIN, N_GAINS
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
@@ -148,6 +148,13 @@ class PedestalEstimationComponent(NectarCAMComponent):
         default_value=None,
         help="Path to h5 file with pedestal calibration coefficients",
         allow_none=True,
+    ).tag(
+        config=False
+    )  # False because we are doing the pedestal calibration here!
+
+    use_default_pedestal = Bool(
+        default_value=False,
+        help="Option to use default pedestal values if `pedestal_file` is not provided",
     ).tag(
         config=False
     )  # False because we are doing the pedestal calibration here!

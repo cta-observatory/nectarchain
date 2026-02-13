@@ -6,7 +6,7 @@ from argparse import ArgumentError
 import numpy as np
 import numpy.ma as ma
 from ctapipe.containers import EventType
-from ctapipe.core.traits import Dict, Path, Unicode
+from ctapipe.core.traits import Bool, Dict, Path, Unicode
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
 from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
 from ctapipe.image.extractor import GlobalPeakWindowSum  # noqa: F401
@@ -57,7 +57,7 @@ list_nectarchain_charge_extractor = ["gradient_extractor"]
 
 @guvectorize(
     [
-        (int64[:], float64[:], bool_, bool_[:], int64[:]),
+        (float64[:], float64[:], bool_, bool_[:], int64[:]),
     ],
     "(s),(n),()->(n),(n)",
     nopython=True,
@@ -85,7 +85,7 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
         hist, _charge = np.histogram(
             charge,
             bins=np.arange(
-                np.uint16(np.min(charge)) - 1, np.uint16(np.max(charge)) + 2, 1
+                np.floor(np.min(charge) - 1), np.ceil(np.max(charge) + 2), 1
             ),
         )
         # print(f"hist.shape[0] = {hist.shape[0]}")
@@ -131,6 +131,11 @@ class ChargesComponent(ArrayDataComponent):
         allow_none=True,
     ).tag(config=True)
 
+    use_default_pedestal = Bool(
+        default_value=False,
+        help="Option to use default pedestal values if `pedestal_file` is not provided",
+    ).tag(config=True)
+
     SubComponents = copy.deepcopy(ArrayDataComponent.SubComponents)
     SubComponents.read_only = True
 
@@ -149,6 +154,7 @@ class ChargesComponent(ArrayDataComponent):
     def _init_pedestal_arrays(self):
         self.__pedestal_hg = None
         self.__pedestal_lg = None
+        pedestal_file_loaded = False
 
         if self.pedestal_file is not None:
             try:
@@ -177,8 +183,14 @@ class ChargesComponent(ArrayDataComponent):
                     "pedestal_mean_lg",
                     pixel_id_axis=0,
                 )
+                pedestal_file_loaded = True
             except Exception as e:
                 log.warning(e)
+
+        if not pedestal_file_loaded and self.use_default_pedestal:
+            self.__pedestal_hg = PEDESTAL_DEFAULT
+            self.__pedestal_lg = PEDESTAL_DEFAULT
+            log.info(f"Using default pedestal values: {PEDESTAL_DEFAULT} ADC")
 
     def _init_trigger_type(self, trigger_type: EventType, **kwargs):
         """Initializes the ChargesMaker based on the trigger type.
