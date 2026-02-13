@@ -366,7 +366,7 @@ def propagate_scipy_compatible(model, params, cov, camera):
 
     def model_(parameters):
         # params = [A, mu_x, mu_y, sigma]
-        print(f" PARAMETERS = {parameters}")
+        log.info(f" PARAMETERS = {parameters}")
         sigma_y = parameters[3]  # enforce sigma_x = sigma_y
         return parameters[0] * (
             Gaussian(
