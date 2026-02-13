@@ -27,13 +27,13 @@ from PyQt5.QtWidgets import (
     QWidgetItem,
 )
 
-import nectarchain.trr_test_suite.deadtime as deadtime
-import nectarchain.trr_test_suite.linearity as linearity
-import nectarchain.trr_test_suite.pedestal as pedestal
-import nectarchain.trr_test_suite.pix_tim_uncertainty as pix_tim_uncertainty
-import nectarchain.trr_test_suite.trigger_timing as trigger_timing
 from nectarchain.trr_test_suite import (
-    pix_couple_tim_uncertainty as pix_couple_tim_uncertainty,
+    deadtime,
+    linearity,
+    pedestal,
+    pix_couple_tim_uncertainty,
+    pix_tim_uncertainty,
+    trigger_timing,
 )
 
 # Ensure the src directory is in sys.path
@@ -103,16 +103,7 @@ class TestRunner(QWidget):
 
         self.test_selector = QComboBox(self)
         self.test_selector.addItem("Select Test")
-        self.test_selector.addItems(
-            [
-                "Linearity Test",
-                "Deadtime Test",
-                "Pedestal Test",
-                "Pixel Time Uncertainty Test",
-                "Time Uncertainty Between Couples of Pixels",
-                "Trigger Timing Test",
-            ]
-        )
+        self.test_selector.addItems(list(self.test_modules.keys()))
         self.test_selector.setFixedWidth(400)  # Fixed width for the dropdown
         self.test_selector.currentIndexChanged.connect(self.update_parameters)
         controls_layout.addWidget(self.test_selector)
