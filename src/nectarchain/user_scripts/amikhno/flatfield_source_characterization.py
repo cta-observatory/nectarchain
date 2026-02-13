@@ -293,7 +293,13 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
 
     if not minuit.fmin.is_valid:
         log.info("Warning: Fit did not converge! Stopping iteration.")
-    log.info(f"covariance table: {tab.tabulate(*minuit.covariance.to_table())}")
+    log.info(
+        f"""Covariance matrix:
+    
+{tab.tabulate(*minuit.covariance.to_table())}
+
+"""
+    )
     log.info(
         f"Fit new parameters: amplitude = {minuit.values['a0']}, "
         f"x = {minuit.values['a1']}, y = {minuit.values['a2']}, "
@@ -571,7 +577,13 @@ def optimize_with_outlier_rejection_variance(
     minuit_new.limits["x4"] = (0, None)  # V_int > 0
     minuit_new.migrad()
 
-    log.info(f"covariance table: {tab.tabulate(*minuit_new.covariance.to_table())}")
+    log.info(
+        f"""Covariance matrix:
+
+{tab.tabulate(*minuit_new.covariance.to_table())}
+
+"""
+    )
     log.info(
         f"Fit new parameters: amplitude = {minuit_new.values['x0']},"
         f" x = {minuit_new.values['x1']}, y = {minuit_new.values['x2']},"
