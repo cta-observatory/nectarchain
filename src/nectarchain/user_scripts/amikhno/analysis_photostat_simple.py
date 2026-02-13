@@ -835,8 +835,6 @@ def main(**kwargs):
         gain_tool.start()
         spe_filename = gain_tool.finish(return_output_component=True)[0]
 
-    log.info(f"filename_ps = {filename_ps}")
-
     log.info(f"ADD_VARIANCE = {args.add_variance}")
 
     if args.add_variance:
@@ -853,11 +851,12 @@ def main(**kwargs):
             str_extractor_kwargs=str_extractor_kwargs,
         )
         log.info(
-            f"[INFO] File {filename_ps} already exists, skipping photostatistics computation."
+            f"File {filename_ps} already exists, skipping photostatistics computation."
         )
     except FileNotFoundError:
         log.info(
-            f"[INFO] {filename_ps} not found, running PhotoStatisticNectarCAMCalibrationTool..."
+            f"Photostatistics results file not found, running "
+            f"PhotoStatisticNectarCAMCalibrationTool..."
         )
 
         try:
