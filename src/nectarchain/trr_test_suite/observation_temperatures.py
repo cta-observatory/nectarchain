@@ -341,7 +341,7 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
         type=str,
     )
 
-    return parser.parse_args()
+    return parser
 
 
 class NectarCAMCalibrationPipeline:
@@ -2002,7 +2002,8 @@ class NectarCAMCalibrationPipeline:
 
 def main():
     """Main function"""
-    args = get_args()
+    parser = get_args()
+    args = parser.parse_args()
 
     # Setup logging
     log_dir = Path(os.environ.get("NECTARCHAIN_LOG", "/tmp")) / str(os.getpid())
