@@ -22,7 +22,7 @@
 # You will also need to have an active proxy for EGI, initialized e.g. with:
 #
 # ```
-# dirac-proxy-init -M -g cta_nectarcam
+# dirac-proxy-init -M -g ctao_nectarcam
 # ```
 #
 # You can also check whether you currently have an active proxy with the command `dirac-proxy-info`.

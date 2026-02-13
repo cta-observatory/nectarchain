@@ -117,7 +117,6 @@ def main():
         mean_charge_pe.append(output[2])
 
     print(rms_no_fit)
-    photons_spline = np.array(mean_charge_pe) * 100 / 25
     rms_no_fit_err = np.array(rms_no_fit_err)
     print(rms_no_fit_err)
     rms_no_fit_err[rms_no_fit_err == 0] = 1e-5  # almost zero
@@ -154,7 +153,7 @@ def main():
     fig, ax = plt.subplots(figsize=(10, 7), constrained_layout=True)
 
     plt.errorbar(
-        x=photons_spline[:],
+        x=mean_charge_pe[:],
         y=np.sqrt(np.array(rms_no_fit_weighted[:]) ** 2),
         yerr=rms_no_fit_weighted_err,
         ls="",
@@ -176,7 +175,7 @@ def main():
         label="Quantification rms noise",
     )
 
-    plt.axvspan(20, 1000, alpha=0.1, color="C4")
+    plt.axvspan(photons2pe(20), photons2pe(1000), alpha=0.1, color="C4")
 
     ax.text(
         51.5,
@@ -206,12 +205,12 @@ def main():
     )
 
     plt.legend(frameon=True, prop={"size": 18}, loc="upper right", handlelength=1.2)
-    plt.xlabel("Illumination charge [photons]")
+    plt.xlabel("Illumination charge [p.e.]")
     plt.ylabel("Mean rms per pixel [ns]")
     plt.xscale("log")
     plt.ylim((0, 2.7))
     secax = ax.secondary_xaxis("top", functions=(pe2photons, photons2pe))
-    secax.set_xlabel("Illumination charge [p.e.]", labelpad=7)
+    secax.set_xlabel("Illumination charge [photons]", labelpad=7)
     plt.savefig(os.path.join(output_dir, "pix_tim_uncertainty.png"))
 
     if temp_output:
