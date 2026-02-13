@@ -884,7 +884,11 @@ def main(**kwargs):
     ].camera.geometry.transform_to(EngineeringCameraFrame())
 
     for event in source:
-        log.info(event.index.event_id, event.trigger.event_type, event.trigger.time)
+        log.info(
+            f"Event 1: ID {event.index.event_id}, type"
+            f" {event.trigger.event_type}, "
+            f"time {event.trigger.time}"
+        )
 
     # Looking for broken pixels
     fig00 = plt.figure(13, figsize=(5, 5))
