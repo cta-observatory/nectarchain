@@ -33,15 +33,12 @@ from nectarchain.makers.calibration import (
 from nectarchain.makers.extractor.utils import CtapipeExtractor
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
+)
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
-
-
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-if not log.handlers:
-    log.addHandler(handler)
-
+log.handlers = logging.getLogger("__main__").handlers
 
 plt.style.use("../../utils/plot_style.mpltstyle")
 
@@ -741,24 +738,7 @@ def main(**kwargs):
         exist_ok=True,
     )
 
-    logging.basicConfig(
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-        force=True,
-        level=args.verbosity,
-        filename=f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
-    )
-
-    log = logging.getLogger(__name__)
     log.setLevel(args.verbosity)
-
-    handler = logging.StreamHandler()
-    handler.setLevel(args.verbosity)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    if not log.handlers:
-        log.addHandler(handler)
 
     # --- Assign other variables ---
     run_number = args.FF_run_number
