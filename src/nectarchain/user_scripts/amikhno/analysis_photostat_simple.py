@@ -847,9 +847,9 @@ def main(**kwargs):
             FF_run_number=run_number,
             ped_run_number=run_number,
             FF_method=method,
-            ped_method=method,
+            ped_method="FullWaveformSum",
             str_extractor_kwargs=str_extractor_kwargs,
-        )
+        )[0]
         log.info(
             f"File {filename_ps} already exists, skipping photostatistics computation."
         )
@@ -866,12 +866,19 @@ def main(**kwargs):
                 max_events=None,
                 camera=camera,
                 Ped_run_number=run_number,
-                SPE_result=spe_filename,
+                SPE_result=spe_filename[0],
                 **kwargs,
             )
             tool.setup()
             tool.start()
             tool.finish()
+            filename_ps = DataManagement.find_photostat(
+                FF_run_number=run_number,
+                ped_run_number=run_number,
+                FF_method=method,
+                ped_method="FullWaveformSum",
+                str_extractor_kwargs=str_extractor_kwargs,
+            )[0]
         except Exception as e:
             log.warning(e, exc_info=True)
 
