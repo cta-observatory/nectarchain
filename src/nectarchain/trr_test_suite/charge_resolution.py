@@ -9,9 +9,12 @@ import numpy as np
 import pandas as pd
 from ctapipe.core import run_tool
 
-from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
+from nectarchain.makers.calibration import (
+    FlatFieldSPENominalStdNectarCAMCalibrationTool,
+    PedestalNectarCAMCalibrationTool,
+)
 from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
-from nectarchain.trr_test_suite.utils import err_ratio, plot_parameters
+from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
 
 plt.style.use("../utils/plot_style.mpltstyle")
 
@@ -151,6 +154,35 @@ def main():
                 method="FullWaveformSum",  # charges over entire window
             )
             run_tool(pedestal_tool)
+
+            window_shift = 4
+            window_width = 16
+            max_events = 5000
+            method = "LocalPeakWindowSum"
+
+            gain_run = int(get_gain_run(temperature))
+            gain_file_name = (
+                "FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
+                "{}_window_shift_{}_window_width_{}.h5".format(
+                    gain_run, max_events, method, window_shift, window_width
+                )
+            )
+
+            if os.path.exists(gain_file_name) == False:
+                gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
+                    progress_bar=True,
+                    run_number=gain_run,
+                    max_events=5000,
+                    method=method,
+                    output_path=gain_file_name,
+                    extractor_kwargs={
+                        "window_width": 16,
+                        "window_shift": 4,
+                    },
+                )
+                run_tool(gain_tool)
+
+            print("gain_file_name==========", gain_file_name)
             tool = ChargeResolutionTestTool(
                 progress_bar=True,
                 run_number=run,
@@ -163,8 +195,7 @@ def main():
             tool.initialize()
             tool.setup()
             tool.start()
-            tool.set_thermal_params(temperature)
-            output = tool.finish()
+            output = tool.finish(gain_file=gain_file_name)
 
             # output = read_file(run, temperature)
 

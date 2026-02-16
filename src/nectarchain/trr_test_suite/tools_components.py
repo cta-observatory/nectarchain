@@ -8,19 +8,17 @@ import pandas as pd
 from astropy import units as u
 from ctapipe.containers import EventType, Field
 from ctapipe.core.traits import ComponentNameList, Integer
-from ctapipe.io import read_table
+
+# from ctapipe.io import read_table
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.signal import find_peaks
 
-from nectarchain.data.container import NectarCAMContainer
+from nectarchain.data.container import NectarCAMContainer, SPEfitContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
-from nectarchain.makers.calibration import (
-    FlatFieldSPENominalStdNectarCAMCalibrationTool,
-)
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import get_bad_pixels_list, get_gain_run
+from nectarchain.trr_test_suite.utils import get_bad_pixels_list
 from nectarchain.utils.constants import GAIN_DEFAULT
 
 
@@ -127,78 +125,21 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def set_thermal_params(self, temp):
-        self.temperature = temp
-
-    def get_adc_to_pe(self, temperature):
-        window_shift = 4
-        window_width = 16
-        max_events = 5000
-        method = "LocalPeakWindowSum"
-        try:
-            gain_run = int(get_gain_run(temperature))
-
-            gain_file_name = (
-                "FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
-                "{}_window_shift_{}_window_width_{}.h5".format(
-                    gain_run, max_events, method, window_shift, window_width
-                )
-            )
-
-            if os.path.exists(gain_file_name) == False:
-                gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
-                    progress_bar=True,
-                    run_number=gain_run,
-                    max_events=max_events,
-                    method=method,
-                    output_path=gain_file_name,
-                    extractor_kwargs={
-                        "window_width": window_width,
-                        "window_shift": window_shift,
-                    },
-                )
-                gain_tool.setup()
-                gain_tool.start()
-                gain_tool.finish()
-
-            # Output generated
-            # Reading the output
-
-            # print(gain_file_name)
-            try:
-                gain_data = read_table(gain_file_name, path="/data/SPEfitContainer_0")
-                # print("gain data read")
-
-            except KeyError:
-                gain_data = read_table(
-                    gain_file_name, path="/data/PhotostatfitContainer_0"
-                )
-
-            data = {
-                "is_valid": gain_data["is_valid"][0],
-                "high_gain_lw": [x[0] for x in gain_data["high_gain"][0]],
-                "high_gain": [x[1] for x in gain_data["high_gain"][0]],
-                "high_gain_up": [x[-1] for x in gain_data["high_gain"][0]],
-                "pedestal_lw": [x[0] for x in gain_data["pedestal"][0]],
-                "pedestal": [x[1] for x in gain_data["pedestal"][0]],
-                "pedestal_up": [x[-1] for x in gain_data["pedestal"][0]],
-                "pixels_id": gain_data["pixels_id"][0],
-                # 'luminosity': gain_data['luminosity']
-            }
-            # print(data["high_gain_lw"])
-            adc_to_pe = data["high_gain_lw"]
-            # print("here ",adc_to_pe)
-
-            return adc_to_pe
-
-        except Exception:
-            return GAIN_DEFAULT
-
     def finish(self, *args, **kwargs):
         output = super().finish(return_output_component=True, *args, **kwargs)
+        # print("output ",output,args,kwargs,kwargs["gain_file"])
 
         charge_container = output[0].containers[EventType.FLATFIELD]
 
+        # Read gain
+        print(kwargs["gain_file"])
+        gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
+        print(gain_data)
+        adc_to_pe = gain_data.high_gain[:, 0]
+        # except Exception:
+        #    adc_to_pe = GAIN_DEFAULT
+
+        # Read charges
         mean_charge = [0, 0]  # per channel
         std_charge = [0, 0]
         std_err = [0, 0]
@@ -223,9 +164,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             charge_lg[:, bad_pix] = np.nan
             charge_hg[:, bad_pix] = np.nan
 
-        # Read gain
-        adc_to_pe = self.get_adc_to_pe(self.temperature)
-        # print("adc_to_pe",adc_to_pe)
+        print("adc_to_pe", adc_to_pe)
 
         # print("bad pix list ", bad_pix)
 
