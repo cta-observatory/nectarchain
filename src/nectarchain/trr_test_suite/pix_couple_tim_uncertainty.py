@@ -5,8 +5,13 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.utils import get_dataset_path
 
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+
+TRANSIT_TIME_CORRECTIONS = get_dataset_path(
+    "hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod.csv"
+)
 
 
 def get_args():
@@ -55,9 +60,7 @@ def get_args():
         type=str,
         help=".csv file with pmt transit time corrections",
         required=False,
-        default="../transit_time/"
-        "hv_pmt_tom_correction_laser_measurement_per_pixel_fit"
-        "sqrt_hv_newmethod.csv",
+        default=TRANSIT_TIME_CORRECTIONS,
     )
     parser.add_argument(
         "-o",
@@ -92,9 +95,6 @@ def main():
 
     parser = get_args()
     args = parser.parse_args()
-
-    tt_path = "/Users/dm277349/nectarchain_data/transit_time/\
-        hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod.csv"
 
     runlist = args.runlist
     nevents = args.evts
