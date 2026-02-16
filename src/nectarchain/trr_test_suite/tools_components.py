@@ -106,18 +106,14 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     test on NectarCAM data. The class has a `componentsList` attribute that specifies
     the list of NectarCAM components to be applied.
 
-    The `finish` method is the main functionality of this class. It reads the charge\
-        data from the output file, calculates the mean charge, standard deviation,\
-            and standard error for both the high gain and low gain channels, and\
-                returns these values. This information can be used to assess\
-                    the linearity of the NectarCAM system.
+    The `finish` method is the main functionality of this class. It reads the charge
+    data from the output file, calculates the mean charge, standard deviation, and
+    standard error for both the high gain and low gain channels, and returns these
+    values. This information can be used to assess the linearity of the NectarCAM
+    system.
     """
 
     name = "ChargeResolutionTestTool"
-
-    temperature = Field(
-        default=14, dtype=np.float64, allow_none=True, description="temperature of run"
-    )
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -132,12 +128,13 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_container = output[0].containers[EventType.FLATFIELD]
 
         # Read gain
-        print(kwargs["gain_file"])
-        gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
-        print(gain_data)
-        adc_to_pe = gain_data.high_gain[:, 0]
-        # except Exception:
-        #    adc_to_pe = GAIN_DEFAULT
+        try:
+            # print(kwargs["gain_file"])
+            gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
+            # print(gain_data)
+            adc_to_pe = gain_data.high_gain[:, 0]
+        except Exception:
+            adc_to_pe = GAIN_DEFAULT
 
         # Read charges
         mean_charge = [0, 0]  # per channel

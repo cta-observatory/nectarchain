@@ -28,15 +28,20 @@ def get_args():
 
     parser = argparse.ArgumentParser(
         description="""Intensity resolution B-TEL-1010 using FF+NSB runs.
+
 According to the nectarchain component interface, you have to set a NECTARCAMDATA
 environment variable in the folder where you have the data from your runs or where
 you want them to be downloaded.
-You have to give a list of runs in <run_file>.json, e.g. run_list.json and pass it to
-the args corresponding value of voltage and the NSB value of the sets and an output
-directory to save the final plot.
-If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.
-For the purposes of testing this script, default data is from the runs used for this
+
+You have to give a list of runs in <run_file>.json, e.g.
+`charge_resolution_run_list.json` and pass it to the args corresponding value of voltage
+and the NSB value of the sets and an output directory to save the final plot.
+
+If the data are not in `$NECTARCAMDATA`, the files will be downloaded through DIRAC.
+
+For the purposes of testing this script, default data are from the runs used for this
 test in the TRR document.
+
 You can optionally specify the number of events to be processed (default 500) and the
 number of pixels used (default 1000).
 """
@@ -47,7 +52,7 @@ number of pixels used (default 1000).
         type=str,
         help="Run file path and name",
         required=False,
-        default="resources/run_list.json",
+        default="resources/charge_resolution_run_list.json",
     )
 
     parser.add_argument(
@@ -148,7 +153,6 @@ def main():
                 max_events=1000,
                 events_per_slice=5000,
                 log_level=20,
-                output_path=output_dir + f"/pedestal_{run}.h5",
                 overwrite=True,
                 filter_method=None,
                 method="FullWaveformSum",  # charges over entire window
@@ -189,7 +193,7 @@ def main():
                 max_events=nevents,
                 method="LocalPeakWindowSum",
                 extractor_kwargs={"window_width": 16, "window_shift": 4},
-                pedestal_file=output_dir + f"/pedestal_{run}.h5",
+                pedestal_file=pedestal_tool.output_path,
                 overwrite=True,
             )
             tool.initialize()
