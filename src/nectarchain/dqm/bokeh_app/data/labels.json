@@ -1,0 +1,41 @@
+{
+    "y_axis_labels_timelines": {
+        "CAMERA-BADPIXTIMELINE-PED-HIGH-GAIN": "Fraction of bad pixels",
+        "CAMERA-BADPIXTIMELINE-PED-LOW-GAIN": "Fraction of bad pixels",
+        "CAMERA-BADPIXTIMELINE-PHY-HIGH-GAIN": "Fraction of bad pixels",
+        "CAMERA-BADPIXTIMELINE-PHY-LOW-GAIN": "Fraction of bad pixels"
+    }, 
+    "colorbar_labels_camera_display": {
+        "CAMERA-TEMPERATURE-AVERAGE": "$$^{\\circ}$$C",
+        "CAMERA-AVERAGE-PED-OVEREVENTS-OVERSAMP-HIGH-GAIN": "Pedestal (ADC counts)",
+        "CAMERA-AVERAGE-PED-OVEREVENTS-OVERSAMP-LOW-GAIN": "Pedestal (ADC counts)",
+        "CAMERA-AVERAGE-PHY-OVEREVENTS-OVERSAMP-HIGH-GAIN": "Average Signal in photoelectrons (p.e.)",
+        "CAMERA-AVERAGE-PHY-OVEREVENTS-OVERSAMP-LOW-GAIN": "Average Signal in photoelectrons (p.e.)",
+        "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN": "0: Good, 1: Bad",
+        "CAMERA-BADPIX-PED-PHY-OVEREVENTS-LOW-GAIN": "0: Good, 1: Bad",
+        "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN": "0: Good, 1: Bad",
+        "CAMERA-BADPIX-PHY-OVEREVENTS-LOW-GAIN": "0: Good, 1: Bad",
+        "CHARGE-INTEGRATION-PED-ALL-AVERAGE-HIGH-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-AVERAGE-LOW-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-MEDIAN-HIGH-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-MEDIAN-LOW-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-RMS-HIGH-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-RMS-LOW-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-STD-HIGH-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-PED-ALL-STD-LOW-GAIN": "Pedestal (ADC counts)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-HIGH-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-LOW-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-HIGH-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-MEDIAN-LOW-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-RMS-HIGH-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-RMS-LOW-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-STD-HIGH-GAIN": "Photoelectrons (p.e.)",
+        "CHARGE-INTEGRATION-IMAGE-ALL-STD-LOW-GAIN": "Photoelectrons (p.e.)"
+    },
+    "section_titles_camera_display": {
+        "TEMPERATURE": "Camera Temperature",
+        "CAMERA-AVERAGE": "Camera Average",
+        "CAMERA-BADPIX": "Bad pixels",
+        "CHARGE-INTEGRATION": "Camera charge integration"
+    }
+}
