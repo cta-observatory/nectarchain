@@ -825,7 +825,13 @@ def main(**kwargs):
         )
         gain_tool.setup()
         gain_tool.start()
-        spe_filename = gain_tool.finish(return_output_component=True)[0]
+        gain_tool.finish(return_output_component=True)
+        spe_filename = DataManagement.find_SPE_nominal(
+            run_number=args.SPE_run_number,
+            method=args.method,
+            str_extractor_kwargs=str_extractor_kwargs,
+            free_pp_n=False,
+        )
 
     log.info(f"ADD_VARIANCE = {args.add_variance}")
 
