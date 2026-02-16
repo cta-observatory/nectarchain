@@ -10,7 +10,10 @@ from ctapipe.utils import get_dataset_path
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
 
 TRANSIT_TIME_CORRECTIONS = get_dataset_path(
-    "hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod.csv"
+    filename=(
+        "hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod" ".csv"
+    ),
+    url="http://cccta-dataserver.in2p3.fr/data/ctapipe-test-data/v1.1.0",
 )
 
 
@@ -55,14 +58,6 @@ def get_args():
         default=100,
     )
     parser.add_argument(
-        "-t",
-        "--pmt_transit_time",
-        type=str,
-        help=".csv file with pmt transit time corrections",
-        required=False,
-        default=TRANSIT_TIME_CORRECTIONS,
-    )
-    parser.add_argument(
         "-o",
         "--output",
         type=str,
@@ -98,7 +93,7 @@ def main():
 
     runlist = args.runlist
     nevents = args.evts
-    tt_path = args.pmt_transit_time
+    tt_path = TRANSIT_TIME_CORRECTIONS
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
