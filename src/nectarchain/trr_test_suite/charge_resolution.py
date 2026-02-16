@@ -150,7 +150,7 @@ def main():
                 max_events=1000,
                 events_per_slice=5000,
                 log_level=20,
-                output_path=output_dir + f"/pedestal_{run}.h5",
+                # output_path=output_dir + f"/pedestal_{run}.h5",
                 overwrite=True,
                 filter_method=None,
                 method="FullWaveformSum",  # charges over entire window
@@ -162,7 +162,7 @@ def main():
                 max_events=nevents,
                 method="LocalPeakWindowSum",
                 extractor_kwargs={"window_width": 16, "window_shift": 4},
-                pedestal_file=output_dir + f"/pedestal_{run}.h5",
+                pedestal_file=pedestal_tool.output_path,
                 overwrite=True,
             )
             tool.initialize()
