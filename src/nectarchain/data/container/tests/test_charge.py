@@ -13,14 +13,14 @@ def create_fake_chargeContainer():
         pixels_id=np.array([2, 4, 3, 8, 6, 9, 7, 1, 5, 10], dtype=np.uint16),
         nevents=np.uint64(nevents),
         npixels=np.uint16(npixels),
-        charges_hg=rng.integers(
-            low=0, high=1000, size=(nevents, npixels), dtype=np.int32
+        charges_hg=rng.uniform(low=0, high=1000, size=(nevents, npixels)).astype(
+            np.float32
         ),
-        charges_lg=rng.integers(
-            low=0, high=1000, size=(nevents, npixels), dtype=np.int32
+        charges_lg=rng.uniform(low=0, high=1000, size=(nevents, npixels)).astype(
+            np.float32
         ),
-        peak_hg=rng.integers(low=0, high=60, size=(nevents, npixels), dtype=np.uint16),
-        peak_lg=rng.integers(low=0, high=60, size=(nevents, npixels), dtype=np.uint16),
+        peak_hg=rng.uniform(low=0, high=60, size=(nevents, npixels)).astype(np.float32),
+        peak_lg=rng.uniform(low=0, high=60, size=(nevents, npixels)).astype(np.float32),
         run_number=np.uint16(TestChargesContainer.run_number),
         camera="TEST",
         method="test_method",
@@ -69,10 +69,10 @@ class TestChargesContainer:
         nevents = np.uint64(TestChargesContainer.nevents)
         npixels = np.uint16(TestChargesContainer.npixels)
         run_number = np.uint16(TestChargesContainer.run_number)
-        charges_hg = np.int32(np.random.randn(nevents, npixels))
-        charges_lg = np.int32(np.random.randn(nevents, npixels))
-        peak_hg = np.uint16(np.random.randn(nevents, npixels))
-        peak_lg = np.uint16(np.random.randn(nevents, npixels))
+        charges_hg = np.float32(np.random.randn(nevents, npixels))
+        charges_lg = np.float32(np.random.randn(nevents, npixels))
+        peak_hg = np.float32(np.random.randn(nevents, npixels))
+        peak_lg = np.float32(np.random.randn(nevents, npixels))
         method = "FullWaveformSum"
         charge_container = ChargesContainer(
             charges_hg=charges_hg,

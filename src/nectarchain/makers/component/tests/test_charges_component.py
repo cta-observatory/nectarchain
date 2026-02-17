@@ -149,19 +149,19 @@ class TestChargesComponent(BaseTestArrayDataComponent):
 
         assert np.all(
             instance.charges_hg(event.trigger.event_type)
-            == np.int32(instance._charges_hg[f"{name}"])
+            == np.float32(instance._charges_hg[f"{name}"])
         )
         assert np.all(
             instance.charges_lg(event.trigger.event_type)
-            == np.int32(instance._charges_lg[f"{name}"])
+            == np.float32(instance._charges_lg[f"{name}"])
         )
         assert np.all(
             instance.peak_hg(event.trigger.event_type)
-            == np.uint16(instance._peak_hg[f"{name}"])
+            == np.float32(instance._peak_hg[f"{name}"])
         )
         assert np.all(
             instance.peak_lg(event.trigger.event_type)
-            == np.uint16(instance._peak_lg[f"{name}"])
+            == np.float32(instance._peak_lg[f"{name}"])
         )
 
     def test_finish(self, instance, event):
