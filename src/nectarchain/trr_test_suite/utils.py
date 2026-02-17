@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
 from traitlets.config import Config
 
+from nectarchain.utils.constants import GAIN_DEFAULT
+
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
     level=logging.INFO,
@@ -199,7 +201,7 @@ optical_density_390ns = np.array(
     ]
 )
 
-adc_to_pe = 58.0
+adc_to_pe = GAIN_DEFAULT
 
 plot_parameters = {
     "High Gain": {
