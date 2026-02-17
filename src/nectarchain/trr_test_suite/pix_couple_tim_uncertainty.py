@@ -1,13 +1,20 @@
 import argparse
+import logging
 import os
 import pickle
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.core import run_tool
 from ctapipe.utils import get_dataset_path
 
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 TRANSIT_TIME_CORRECTIONS = get_dataset_path(
     filename=(
@@ -97,8 +104,8 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
     tom = []
@@ -112,16 +119,33 @@ def main():
     pixel_pairs = []
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
+        # Old runs do not have interleaved pedestals
+        pedestal_tool = PedestalNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=run,
+            max_events=12000,
+            events_per_slice=5000,
+            log_level=20,
+            overwrite=True,
+            filter_method=None,
+            method="FullWaveformSum",  # charges over entire window
+        )
+        try:
+            run_tool(pedestal_tool)
+        except Exception as e:
+            log.warning(e)
         tool = ToMPairsTool(
             progress_bar=True,
             run_number=run,
             events_per_slice=501,
             max_events=nevents,
             log_level=20,
-            peak_height=10,
-            window_width=16,
+            method="LocalPeakWindowSum",
+            extractor_kwargs={"window_width": 16, "window_shift": 6},
             overwrite=True,
+            pedestal_file=pedestal_tool.output_path,
+            use_default_pedestal=True,  # only done if pedestal_file cannot be loaded
         )
         tool.initialize()
         tool.setup()

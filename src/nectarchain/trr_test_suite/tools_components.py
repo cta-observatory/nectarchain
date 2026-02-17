@@ -1,6 +1,5 @@
 import os
 import pathlib
-from itertools import combinations
 
 import h5py
 import numpy as np
@@ -10,8 +9,6 @@ from ctapipe.containers import EventType, Field
 from ctapipe.core.traits import ComponentNameList, Integer
 from ctapipe_io_nectarcam import constants
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.signal import find_peaks
 
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
@@ -97,337 +94,6 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
         return mean_charge, std_charge, std_err, npixels
 
 
-class ToMContainer(NectarCAMContainer):
-    """
-    Attributes:
-        run_number (np.uint16): The run number associated with the waveforms.
-        npixels (np.uint16): The number of effective pixels.
-        pixels_id (np.ndarray[np.uint16]): The pixel IDs.
-        ucts_timestamp (np.ndarray[np.uint64]): The UCTS timestamps of the events.
-        event_type (np.ndarray[np.uint8]): The trigger event types.
-        event_id (np.ndarray[np.uint32]): The event IDs.
-        charge_hg (np.ndarray[np.float64]): The mean high gain charge per event.
-        tom_no_fit (np.ndarray[np.float64]): The time of maximum from\
-            the data (no fitting).
-        good_evts (np.ndarray[np.uint32]): The IDs of the good (non-cosmic ray) events.
-    """
-
-    run_number = Field(
-        type=np.uint16,
-        description="run number associated to the waveforms",
-    )
-    npixels = Field(
-        type=np.uint16,
-        description="number of effective pixels",
-    )
-    pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
-    ucts_timestamp = Field(
-        type=np.ndarray, dtype=np.uint64, ndim=1, description="events ucts timestamp"
-    )
-    event_type = Field(
-        type=np.ndarray, dtype=np.uint8, ndim=1, description="trigger event type"
-    )
-    event_id = Field(type=np.ndarray, dtype=np.uint32, ndim=1, description="event ids")
-
-    charge_hg = Field(
-        type=np.ndarray,
-        dtype=np.float64,
-        ndim=2,
-        description="The mean high gain charge per event",
-    )
-
-    # tom_mu = Field(
-    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of maximum of
-    # signal fitted with gaussian"
-    # )
-
-    # tom_sigma = Field(
-    #     type=np.ndarray, dtype=np.float64, ndim=2, description="Time of fitted
-    # maximum sigma"
-    # )
-    tom_no_fit = Field(
-        type=np.ndarray,
-        dtype=np.float64,
-        ndim=2,
-        description="Time of maximum from data (no fitting)",
-    )
-    good_evts = Field(
-        type=np.ndarray,
-        dtype=np.uint32,
-        ndim=1,
-        description="good (non cosmic ray) event ids",
-    )
-
-
-class ToMComp(NectarCAMComponent):
-    """This class, `ToMComp`, is a component of the NectarCAM system that is responsible
-    for processing waveform data. It has several configurable parameters, including the
-    width and shift before the peak of the time window for charge extraction, the peak
-    height threshold.
-
-    The `__init__` method initializes some important component members, such as\
-        timestamps, event type, event ids, pedestal and charge values for both gain\
-            channels.
-
-    The `__call__` method is the main entry point for processing an event. It extracts\
-        the waveform data, calculates the pedestal, charge, and time of maximum (ToM)\
-            for each pixel, and filters out events that do not meet the peak\
-                height threshold. The results are stored in various member variables,\
-                    which are then returned in the `finish` method.
-
-    The `finish` method collects the processed data from the member variables and\
-        returns a `ToMContainer` object, which contains the run number, number of\
-            pixels, pixel IDs, UCTS timestamps, event types, event IDs, high-gain\
-                charge, ToM without fitting, and IDs of good (non-cosmic ray) events.
-    """
-
-    window_shift = Integer(
-        default_value=6,
-        help="the time in ns before the peak to extract charge",
-    ).tag(config=True)
-
-    window_width = Integer(
-        default_value=16,
-        help="the duration of the extraction window in ns",
-    ).tag(config=True)
-
-    peak_height = Integer(
-        default_value=10,
-        help="height of peak to consider event not to be just pedestal (ADC counts)",
-    ).tag(config=True)
-
-    def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
-        super().__init__(
-            subarray=subarray, config=config, parent=parent, *args, **kwargs
-        )
-        # If you want you can add here members of MyComp, they will contain
-        # interesting quantity during the event loop process
-
-        self.__ucts_timestamp = []
-        self.__event_type = []
-        self.__event_id = []
-
-        self.__charge_hg = []
-        self.__pedestal_hg = []
-
-        # self.__tom_mu = []
-
-        # self.__tom_sigma = []
-
-        self.__tom_no_fit = []
-
-        self.__good_evts = []
-
-        self.__ff_event_ind = -1
-
-    # This method need to be defined !
-    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        self.__event_id.append(np.uint32(event.index.event_id))
-
-        self.__event_type.append(event.trigger.event_type.value)
-        self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
-
-        wfs = []
-        wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
-
-        self.__ff_event_ind += 1
-
-        # #####THE JOB IS HERE######
-
-        for i, (pedestal, charge, tom_no_fit) in enumerate(
-            zip([self.__pedestal_hg], [self.__charge_hg], [self.__tom_no_fit])
-        ):
-            wf = np.array(wfs[i])  # waveform per gain
-            index_peak = np.argmax(wf, axis=1)  # tom per event/pixel
-            # use it to first find pedestal and then will filter out no signal events
-            index_peak[index_peak < 20] = 20
-            index_peak[index_peak > 40] = 40
-            signal_start = index_peak - self.window_shift
-            signal_stop = index_peak + self.window_width - self.window_shift
-
-            ped = np.array(
-                [
-                    np.mean(wf[pix, 0 : signal_start[pix]])
-                    for pix in range(len(self.pixels_id))
-                ]
-            )
-
-            pedestal.append(ped)
-
-            tom_no_fit_evt = np.zeros(len(self.pixels_id))
-            chg = np.zeros(len(self.pixels_id))
-            # will calculate tom & charge like federica
-            for pix in range(len(self.pixels_id)):
-                y = (
-                    wf[pix] - ped[pix]
-                )  # np.maximum(wf[pix] - ped[pix],np.zeros(len(wf[pix])))
-
-                x = np.linspace(0, len(y), len(y))
-                xi = np.linspace(0, len(y), 251)
-                ius = InterpolatedUnivariateSpline(x, y)
-                yi = ius(xi)
-                peaks, _ = find_peaks(
-                    yi,
-                    height=self.peak_height,
-                )
-                # print(peaks)
-                peaks = peaks[xi[peaks] > 20]
-                peaks = peaks[xi[peaks] < 32]
-                # print(peaks)
-
-                if len(peaks) > 0:
-                    # find the max peak
-                    # max_peak = max(yi[peaks])
-                    max_peak_index = np.argmax(yi[peaks], axis=0)
-
-                    # Check if there is not a peak but a plateaux
-                    yi_rounded = np.around(yi[peaks] / max(yi[peaks]), 1)
-                    maxima_peak_index = np.argwhere(yi_rounded == np.amax(yi_rounded))
-
-                    # saturated events
-                    if (
-                        (len(maxima_peak_index) > 1)
-                        and (min(xi[peaks[maxima_peak_index]]) > signal_start[pix])
-                        and (max(xi[peaks[maxima_peak_index]]) < signal_stop[pix])
-                    ):
-                        # saturated event
-
-                        max_peak_index = int(np.median(maxima_peak_index))
-
-                        # simple sum integration
-                        x_max_pos = np.argmin(
-                            np.abs(x - xi[peaks[max_peak_index]])
-                        )  # find the maximum in the not splined array
-                        charge_sum = y[
-                            (x_max_pos - (self.window_width - 10)) : (
-                                x_max_pos + (self.window_width - 6)
-                            )
-                        ].sum()
-
-                        # gaussian fit
-                        # change_grad_pos_left = 3
-                        # change_grad_pos_right = 3
-
-                        # mask = np.ma.masked_where(y > (4095 - 400), x)
-                        # x_fit = np.ma.compressed(mask)
-                        # mask = np.ma.masked_where(y > (4095 - 400), y)
-                        # y_fit = np.ma.compressed(mask)
-                        # mean = xi[peaks[max_peak_index]]
-                        # sigma = change_grad_pos_right + change_grad_pos_left
-
-                        # # fit
-                        # model = Model(gaus)
-                        # params = model.make_params(a=yi[peaks[max_peak_index]] * 3,
-                        # mu=mean, sigma=sigma)
-                        # result = model.fit(y_fit, params, x=x_fit)
-
-                        # result_sigma = result.params['sigma'].value
-                        # result_mu = result.params['mu'].value
-
-                        max_position_x_prefit = xi[peaks[max_peak_index]]
-
-                    elif (
-                        (len(maxima_peak_index) == 1)
-                        and (xi[peaks[max_peak_index]] > signal_start[pix])
-                        and (xi[peaks[max_peak_index]] < signal_stop[pix])
-                    ):
-                        # simple sum integration
-                        x_max_pos = np.argmin(
-                            np.abs(x - xi[peaks[max_peak_index]])
-                        )  # find the maximum in the not splined array
-                        charge_sum = y[
-                            (x_max_pos - (self.window_width - 10)) : (
-                                x_max_pos + (self.window_width - 6)
-                            )
-                        ].sum()
-
-                        # gaussian fit
-                        # change_grad_pos_left = 3
-                        # change_grad_pos_right = 3
-                        # mean = xi[peaks[max_peak_index]]
-                        # sigma = change_grad_pos_right + change_grad_pos_left # define
-                        # window for the gaussian fit
-
-                        # x_fit =  xi[peaks[max_peak_index]-change_grad_pos_left:peaks
-                        # [max_peak_index]+change_grad_pos_right]
-                        # y_fit =  yi[peaks[max_peak_index]-change_grad_pos_left:peaks
-                        # [max_peak_index]+change_grad_pos_right]
-                        # model = Model(gaus)
-                        # params = model.make_params(a=yi[peaks[max_peak_index]],
-                        # mu=mean,sigma=sigma)
-                        # result = model.fit(y_fit, params, x=x_fit)
-
-                        max_position_x_prefit = xi[peaks[max_peak_index]]
-                        # result_sigma  = result.params['sigma'].value
-                        # result_mu  = result.params['mu'].value
-
-                    else:
-                        # index_x_window_min = list(xi).index(closest_value(xi,
-                        # signal_start[pix]))
-                        charge_sum = y[
-                            signal_start[pix] : signal_start[pix] + self.window_width
-                        ].sum()
-
-                        max_position_x_prefit = -1
-                        # result_sigma = -1
-                        # result_mu = -1
-
-                else:
-                    # If no maximum is found, the integration is done between 20 and 36
-                    # ns.
-                    signal_start[pix] = 20
-
-                    # index_x_window_min = list(xi).index(closest_value(xi,
-                    # signal_start[pix]))
-                    charge_sum = y[
-                        signal_start[pix] : signal_start[pix] + self.window_width
-                    ].sum()
-
-                    max_position_x_prefit = -1
-
-                    # result_sigma = -1
-                    # result_mu = -1
-
-                # tom_mu_evt[pix] = result_mu
-                # tom_sigma_evt[pix] = result_sigma
-                tom_no_fit_evt[pix] = max_position_x_prefit
-                chg[pix] = charge_sum
-
-            # tom_mu.append(tom_mu_evt)
-            # tom_sigma.append(tom_sigma_evt)
-            tom_no_fit.append(tom_no_fit_evt)
-            # print("tom for event", tom_no_fit_evt)
-            charge.append(chg)
-
-            # is it a good event?
-            if np.max(chg) < 10 * np.mean(chg):
-                # print("is good evt")
-                self.__good_evts.append(self.__ff_event_ind)
-
-    # This method need to be defined !
-    def finish(self):
-        output = ToMContainer(
-            run_number=ToMContainer.fields["run_number"].type(self._run_number),
-            npixels=ToMContainer.fields["npixels"].type(self._npixels),
-            pixels_id=ToMContainer.fields["pixels_id"].dtype.type(self.pixels_id),
-            ucts_timestamp=ToMContainer.fields["ucts_timestamp"].dtype.type(
-                self.__ucts_timestamp
-            ),
-            event_type=ToMContainer.fields["event_type"].dtype.type(self.__event_type),
-            event_id=ToMContainer.fields["event_id"].dtype.type(self.__event_id),
-            charge_hg=ToMContainer.fields["charge_hg"].dtype.type(self.__charge_hg),
-            # tom_mu=ToMContainer.fields["tom_mu"].dtype.type(
-            #     self.__tom_mu
-            # ),
-            # tom_sigma=ToMContainer.fields["tom_sigma"].dtype.type(
-            #     self.__tom_sigma
-            # ),
-            tom_no_fit=ToMContainer.fields["tom_no_fit"].dtype.type(self.__tom_no_fit),
-            good_evts=ToMContainer.fields["good_evts"].dtype.type(self.__good_evts),
-        )
-        return output
-
-
 class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     """This class, `TimingResolutionTestTool`, is a subclass of
     `EventsLoopNectarCAMCalibrationTool` and is used to perform timing resolution tests
@@ -449,49 +115,29 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["ToMComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     def finish(self, bootstrap=False, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
+        output = super().finish(return_output_component=True, *args, **kwargs)
 
-        # tom_mu_all= output[0].tom_mu
-        # tom_sigma_all= output[0].tom_sigma
-        output_file = h5py.File(self.output_path)
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        try:
+            charge_container = output[0].containers[EventType.SUBARRAY]
+        except Exception:
+            charge_container = output[0].containers[EventType.FLATFIELD]
 
-        charge_all = []
-        tom_no_fit_all = []
-        good_evts = []
+        charge_all = charge_container["charges_hg"]
+        tom_no_fit_all = charge_container["peak_hg"]
+        npixels = charge_container["npixels"]
+        good_evts = np.where(
+            np.max(charge_all, axis=1) < 10 * np.mean(charge_all, axis=1)
+        )[0]
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["ToMContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    npixels = tup[1]
-                    charge_all.extend(tup[6])
-                    tom_no_fit_all.extend(tup[7])
-                    good_evts.extend(tup[8])
-                except Exception:
-                    break
-
-        output_file.close()
-
-        tom_no_fit_all = np.array(tom_no_fit_all)
-        charge_all = np.array(charge_all)
-        # print(tom_no_fit_all)
-        # print(charge_all)
-
-        # clean cr events
-        good_evts = np.array(good_evts)
-        # print(good_evts)
         charge = charge_all[good_evts]
-        mean_charge_pe = np.mean(np.mean(charge, axis=0)) / 58.0
-        # tom_mu = np.array(tom_mu_all[good_evts]).reshape(len(good_evts),
-        # output[0].npixels)
+        mean_charge_pe = np.mean(np.mean(charge, axis=0)) / GAIN_DEFAULT
 
         # tom_sigma = np.array(tom_sigma_all[good_evts]).reshape(len(good_evts),
         # output[0].npixels)
@@ -599,105 +245,58 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["ToMComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=True, *args[1:], **kwargs)
+        output = super().finish(return_output_component=True, *args[1:], **kwargs)
 
         tt_path = args[0]
         pmt_tt = pd.read_csv(tt_path)["tom_pmttt_delta_correction"].values
 
-        tom_no_fit_all = []
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        try:
+            charge_container = output[0].containers[EventType.SUBARRAY]
+        except Exception:
+            charge_container = output[0].containers[EventType.FLATFIELD]
 
-        pixels_id = []
+        n_pixels = charge_container["npixels"]
+        pixels_id = charge_container["pixels_id"]
+        tom_no_fit_all = charge_container["peak_hg"]
 
-        output_file = h5py.File(self.output_path)
+        pixels_id = np.array(pixels_id, dtype=np.uint16)
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["ToMContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    pixels_id.extend(tup[2])
-                    tom_no_fit_all.extend(tup[7])
-                except Exception:
-                    break
+        tom_no_fit = np.array(tom_no_fit_all, dtype=np.float64)
+        tom_corrected = -np.ones(tom_no_fit.shape, dtype=np.float128)
 
-        output_file.close()
-        pixels_id = np.array(pixels_id)
-        tom_no_fit_all = np.array(tom_no_fit_all)
+        valid_mask = (tom_no_fit > 0) & (tom_no_fit < 60)
+        corrections = pmt_tt[pixels_id]
+        tom_corrected = tom_no_fit - corrections[None, :]
+        tom_corrected[~valid_mask] = -1
 
-        # clean cr events
-        # good_evts = output[0].good_evts
-        # charge=charge_all[good_evts]
-        # mean_charge_pe = np.mean(np.mean(charge,axis=0))/58.
-        tom_no_fit = np.array(tom_no_fit_all, dtype=np.float64)  # tom(event,pixel)
-        # tom_no_fit = tom_no_fit[np.all(tom_no_fit>0,axis=0)]
-        tom_corrected = -np.ones(
-            tom_no_fit.shape, dtype=np.float128
-        )  # -1 for the ones that have tom beyond 0-60
+        # Indices of all pixel pairs (i < j)
+        pair_indices = np.triu_indices(n_pixels, k=1)
+        pixel_pairs = list(zip(pair_indices[0], pair_indices[1]))
 
-        iter = enumerate(pixels_id)
+        # Compute all pairwise differences at once
+        diff_no_corr = tom_no_fit[:, :, None] - tom_no_fit[:, None, :]
+        diff_corr = tom_corrected[:, :, None] - tom_corrected[:, None, :]
 
-        for i, pix in iter:
-            # print(pix, pmt_tt[pix])
-            normal_values = [
-                a and b for a, b in zip(tom_no_fit[:, i] > 0, tom_no_fit[:, i] < 60)
-            ]
+        # Extract only upper-triangular pairs -> shape (n_pairs, n_events)
+        dt_no_correction = diff_no_corr[:, pair_indices[0], pair_indices[1]].T
+        dt_corrected = diff_corr[:, pair_indices[0], pair_indices[1]].T
 
-            tom_corrected[normal_values, i] = (
-                tom_no_fit[:, i][normal_values] - pmt_tt[pix]
-            )
+        valid_no_corr = valid_mask[:, :, None] & valid_mask[:, None, :]
+        valid_corr = (tom_corrected > 0) & (tom_corrected < 60)
+        valid_corr = valid_corr[:, :, None] & valid_corr[:, None, :]
 
-            # print(tom_corrected)
+        valid_no_corr_pairs = valid_no_corr[:, pair_indices[0], pair_indices[1]].T
+        valid_corr_pairs = valid_corr[:, pair_indices[0], pair_indices[1]].T
 
-        pixel_ind = [
-            i for i in range(len(pixels_id))
-        ]  # dealing with indices of pixels in array
-        pixel_pairs = list(combinations(pixel_ind, 2))
-        dt_no_correction = np.zeros((len(pixel_pairs), tom_no_fit_all.shape[0]))
-        dt_corrected = np.zeros((len(pixel_pairs), tom_no_fit_all.shape[0]))
-
-        for i, pair in enumerate(pixel_pairs):
-            pix1_ind = pixel_ind[pair[0]]
-            pix2_ind = pixel_ind[pair[1]]
-
-            for event in range(tom_no_fit_all.shape[0]):
-                cond_no_correction = (
-                    tom_no_fit[event, pix1_ind] > 0
-                    and tom_no_fit[event, pix1_ind] < 60
-                    and tom_no_fit[event, pix2_ind] > 0
-                    and tom_no_fit[event, pix2_ind] < 60
-                )
-                cond_correction = (
-                    tom_corrected[event, pix1_ind] > 0
-                    and tom_corrected[event, pix1_ind] < 60
-                    and tom_corrected[event, pix2_ind] > 0
-                    and tom_corrected[event, pix2_ind] < 60
-                )
-
-                if cond_no_correction:  # otherwise will be nan
-                    dt_no_correction[i, event] = (
-                        tom_no_fit[event, pix1_ind] - tom_no_fit[event, pix2_ind]
-                    )
-
-                else:
-                    dt_no_correction[i, event] = np.nan
-
-                if cond_correction:
-                    dt_corrected[i, event] = (
-                        tom_corrected[event, pix1_ind] - tom_corrected[event, pix2_ind]
-                    )
-
-                else:
-                    dt_corrected[i, event] = np.nan
-
-        # rms_no_fit = np.zeros(output[0].npixels)
-        # rms_no_fit_err = np.zeros(output[0].npixels)
+        dt_no_correction[~valid_no_corr_pairs] = np.nan
+        dt_corrected[~valid_corr_pairs] = np.nan
 
         return (
             tom_no_fit,
