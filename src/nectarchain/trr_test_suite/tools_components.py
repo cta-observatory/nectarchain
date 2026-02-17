@@ -617,7 +617,7 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
 
         for thing in output_file:
             group = output_file[thing]
-            dataset = group["ToMContainer"]
+            dataset = group["ToMContainer_0"]
             data = dataset[:]
             # print("data",data)
             for tup in data:
