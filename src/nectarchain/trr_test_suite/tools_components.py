@@ -115,6 +115,12 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
+    mean_charge_threshold = Float(
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge.",
+        default_value=10,
+    ).tag(config=True)
+
     def finish(self, bootstrap=False, *args, **kwargs):
         output = super().finish(return_output_component=True, *args, **kwargs)
 
@@ -129,7 +135,8 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         tom_no_fit_all = charge_container["peak_hg"]
         npixels = charge_container["npixels"]
         good_evts = np.where(
-            np.max(charge_all, axis=1) < 10 * np.mean(charge_all, axis=1)
+            np.max(charge_all, axis=1)
+            < self.mean_charge_threshold * np.mean(charge_all, axis=1)
         )[0]
 
         charge = charge_all[good_evts]
