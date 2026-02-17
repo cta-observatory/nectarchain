@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from astropy import units as u
 from ctapipe.containers import EventType
-from ctapipe.core.traits import ComponentNameList
+from ctapipe.core.traits import ComponentNameList, Float
 
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
@@ -384,6 +384,12 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
+    mean_charge_threshold = Float(
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge.",
+        default_value=10,
+    ).tag(config=True)
+
     def finish(self, *args, **kwargs):
         output = super().finish(return_output_component=True, *args, **kwargs)
 
@@ -397,7 +403,8 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
         ucts_timestamps = charge_container["ucts_timestamp"]
         charges_hg = charge_container["charges_hg"]
         good_events = np.where(
-            np.max(charges_hg, axis=1) < 10 * np.mean(charges_hg, axis=1),
+            np.max(charges_hg, axis=1)
+            < self.mean_charge_threshold * np.mean(charges_hg, axis=1),
             True,
             False,
         )
@@ -410,10 +417,7 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_per_event = np.mean(charges_hg) / GAIN_DEFAULT
 
         # dt in nanoseconds
-        delta_t = [
-            ucts_timestamps[i] - ucts_timestamps[i - 1]
-            for i in range(1, len(ucts_timestamps))
-        ]
+        delta_t = np.diff(ucts_timestamps)
 
         # make hist to get rms value
         hist_values, bin_edges = np.histogram(delta_t, bins=50)

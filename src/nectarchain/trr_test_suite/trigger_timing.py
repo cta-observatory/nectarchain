@@ -64,6 +64,15 @@ def get_args():
         default="./",
     )
     parser.add_argument(
+        "-t",
+        "--mean_charge_threshold",
+        type=float,
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge",
+        required=False,
+        default=10,
+    )
+    parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
     )
 
@@ -145,6 +154,7 @@ def main():
             overwrite=True,
             pedestal_file=pedestal_tool.output_path,
             use_default_pedestal=True,
+            mean_charge_threshold=args.mean_charge_threshold,
         )
         tool.initialize()
         tool.setup()
@@ -159,6 +169,7 @@ def main():
     rms = np.array(rms)
     err = np.array(err)
     charge = np.array(charge)
+    print(rms, err, charge)
 
     fig, ax = plt.subplots()
 
