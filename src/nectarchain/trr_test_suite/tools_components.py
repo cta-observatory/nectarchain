@@ -1,16 +1,12 @@
 import os
 import pathlib
 
-import h5py
 import numpy as np
 import pandas as pd
 from astropy import units as u
-from ctapipe.containers import EventType, Field
-from ctapipe.core.traits import ComponentNameList, Integer
-from ctapipe_io_nectarcam import constants
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+from ctapipe.containers import EventType
+from ctapipe.core.traits import ComponentNameList, Float
 
-from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.utils.constants import GAIN_DEFAULT
@@ -119,6 +115,12 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
+    mean_charge_threshold = Float(
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge.",
+        default_value=10,
+    ).tag(config=True)
+
     def finish(self, bootstrap=False, *args, **kwargs):
         output = super().finish(return_output_component=True, *args, **kwargs)
 
@@ -133,7 +135,8 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         tom_no_fit_all = charge_container["peak_hg"]
         npixels = charge_container["npixels"]
         good_evts = np.where(
-            np.max(charge_all, axis=1) < 10 * np.mean(charge_all, axis=1)
+            np.max(charge_all, axis=1)
+            < self.mean_charge_threshold * np.mean(charge_all, axis=1)
         )[0]
 
         charge = charge_all[good_evts]
@@ -308,177 +311,6 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
         )
 
 
-class UCTSContainer(NectarCAMContainer):
-    """Defines the fields for the UCTSContainer class, which is used to store various
-    data related to UCTS events.
-
-    The fields include:
-    - `run_number`: The run number associated with the waveforms.
-    - `npixels`: The number of effective pixels.
-    - `pixels_id`: The IDs of the pixels.
-    - `ucts_timestamp`: The UCTS timestamp of the events.
-    - `event_type`: The trigger event type.
-    - `event_id`: The IDs of the events.
-    - `ucts_busy_counter`: The UCTS busy counter.
-    - `ucts_event_counter`: The UCTS event counter.
-    """
-
-    run_number = Field(
-        type=np.uint16,
-        description="run number associated to the waveforms",
-    )
-    npixels = Field(
-        type=np.uint16,
-        description="number of effective pixels",
-    )
-    pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
-    ucts_timestamp = Field(
-        type=np.ndarray, dtype=np.uint64, ndim=1, description="events ucts timestamp"
-    )
-    mean_event_charge = Field(
-        type=np.ndarray,
-        dtype=np.uint32,
-        ndim=1,
-        description="average pixel charge for event",
-    )
-    event_type = Field(
-        type=np.ndarray, dtype=np.uint8, ndim=1, description="trigger event type"
-    )
-    event_id = Field(type=np.ndarray, dtype=np.uint32, ndim=1, description="event ids")
-    ucts_busy_counter = Field(
-        type=np.ndarray, dtype=np.uint32, ndim=1, description="busy counter"
-    )
-    ucts_event_counter = Field(
-        type=np.ndarray, dtype=np.uint32, ndim=1, description="event counter"
-    )
-
-
-class UCTSComp(NectarCAMComponent):
-    """The `__init__` method initializes the `UCTSComp` class, which is a
-    NectarCAMComponent. It sets up several member variables to store UCTS related data,
-    such as timestamps, event types, event IDs, busy counters, and event counters.
-
-    The `__call__` method is called for each event, and it appends the UCTS-related\
-        data from the event to the corresponding member variables.
-
-    The `finish` method creates and returns a `UCTSContainer` object, which is a\
-        container for the UCTS-related data that was collected during the event loop.
-    """
-
-    window_shift = Integer(
-        default_value=6,
-        help="the time in ns before the peak to extract charge",
-    ).tag(config=True)
-
-    window_width = Integer(
-        default_value=16,
-        help="the duration of the extraction window in ns",
-    ).tag(config=True)
-
-    def __init__(
-        self, subarray, config=None, parent=None, excl_muons=None, *args, **kwargs
-    ):
-        super().__init__(
-            subarray=subarray, config=config, parent=parent, *args, **kwargs
-        )
-        # If you want you can add here members of MyComp, they will contain interesting
-        # quantity during the event loop process
-
-        self.__ucts_timestamp = []
-        self.__event_type = []
-        self.__event_id = []
-        self.__ucts_busy_counter = []
-        self.__ucts_event_counter = []
-        self.excl_muons = None
-        self.__mean_event_charge = []
-
-    # This method need to be defined !
-    def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        take_event = True
-
-        # exclude muon events for the trigger timing test
-        if self.excl_muons:
-            wfs = []
-            wfs.append(event.r0.tel[0].waveform[constants.HIGH_GAIN][self.pixels_id])
-            # print(self.pixels_id)
-            wf = np.array(wfs[0])
-            # print(wf.shape)
-            index_peak = np.argmax(wf, axis=1)  # tom per event/pixel
-            # print(wf[100])
-            # print(index_peak[100])
-            index_peak[index_peak < 20] = 20
-            index_peak[index_peak > 40] = 40
-            signal_start = index_peak - self.window_shift
-            # signal_stop = index_peak + self.window_width - self.window_shift
-            # print(index_peak)
-            # print(signal_start)
-            # print(signal_stop)
-            chg = np.zeros(len(self.pixels_id))
-
-            ped = np.array(
-                [
-                    np.mean(wf[pix, 0 : signal_start[pix]])
-                    for pix in range(len(self.pixels_id))
-                ]
-            )
-
-            for pix in range(len(self.pixels_id)):
-                # print("iterating through pixels")
-                # print("pix", pix)
-
-                y = (
-                    wf[pix] - ped[pix]
-                )  # np.maximum(wf[pix] - ped[pix],np.zeros(len(wf[pix])))
-                charge_sum = y[
-                    signal_start[pix] : signal_start[pix] + self.window_width
-                ].sum()
-                # print(charge_sum)
-                chg[pix] = charge_sum
-
-            # is it a good event?
-            if np.max(chg) > 10 * np.mean(chg):
-                # print("is not good evt")
-                take_event = False
-            mean_charge = np.mean(chg) / 58.0
-
-        if take_event:
-            self.__event_id.append(np.uint32(event.index.event_id))
-            self.__event_type.append(event.trigger.event_type.value)
-            self.__ucts_timestamp.append(event.nectarcam.tel[0].evt.ucts_timestamp)
-            self.__ucts_busy_counter.append(
-                event.nectarcam.tel[0].evt.ucts_busy_counter
-            )
-            self.__ucts_event_counter.append(
-                event.nectarcam.tel[0].evt.ucts_event_counter
-            )
-
-            if self.excl_muons:
-                self.__mean_event_charge.append(mean_charge)
-
-    # This method need to be defined !
-    def finish(self):
-        output = UCTSContainer(
-            run_number=UCTSContainer.fields["run_number"].type(self._run_number),
-            npixels=UCTSContainer.fields["npixels"].type(self._npixels),
-            pixels_id=UCTSContainer.fields["pixels_id"].dtype.type(self.pixels_id),
-            ucts_timestamp=UCTSContainer.fields["ucts_timestamp"].dtype.type(
-                self.__ucts_timestamp
-            ),
-            mean_event_charge=UCTSContainer.fields["mean_event_charge"].dtype.type(
-                self.__mean_event_charge
-            ),
-            event_type=UCTSContainer.fields["event_type"].dtype.type(self.__event_type),
-            event_id=UCTSContainer.fields["event_id"].dtype.type(self.__event_id),
-            ucts_busy_counter=UCTSContainer.fields["ucts_busy_counter"].dtype.type(
-                self.__ucts_busy_counter
-            ),
-            ucts_event_counter=UCTSContainer.fields["ucts_event_counter"].dtype.type(
-                self.__ucts_event_counter
-            ),
-        )
-        return output
-
-
 class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
     """The `DeadtimeTestTool` class is an `EventsLoopNectarCAMCalibrationTool` that is
     used to test the deadtime of NectarCAM.
@@ -496,40 +328,33 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["UCTSComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be applied, the order will be respected",
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
-        output_file = h5py.File(self.output_path)
+        id = kwargs.pop("id")
+        output = super().finish(return_output_component=True, *args, **kwargs)
 
-        ucts_timestamps = []
-        event_counter = []
-        busy_counter = []
+        # Specify event type
+        # NOTE: will probably need to be revisited
+        if id == 0:  # FFCLS
+            event_type = EventType.FLATFIELD
+        elif id == 1:  # NSB
+            event_type = EventType.SUBARRAY
+        elif id == 2:  # Laser
+            event_type = EventType.SUBARRAY
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["UCTSContainer_0"]
-            for tup in dataset:
-                try:
-                    ucts_timestamps.extend(tup[3])
-                    event_counter.extend(tup[7])
-                    busy_counter.extend(tup[6])
-                except Exception:
-                    break
+        charge_container = output[0].containers[event_type]
 
-        ucts_timestamps = np.array(ucts_timestamps).flatten()
-
-        event_counter = np.array(event_counter).flatten()
-        busy_counter = np.array(busy_counter).flatten()
+        ucts_timestamps = charge_container["ucts_timestamp"]
+        event_counter = charge_container["ucts_event_counter"]
+        busy_counter = charge_container["ucts_busy_counter"]
 
         ucts_deltat = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
         ]
-
-        output_file.close()
 
         time_tot = ((ucts_timestamps[-1] - ucts_timestamps[0]) * u.ns).to(u.s)
         collected_trigger_rate = (event_counter[-1] + busy_counter[-1]) / time_tot
@@ -562,50 +387,44 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
-        default_value=["UCTSComp"],
+        default_value=["ChargesComponent"],
         help="List of Component names to be apply, the order will be respected",
     ).tag(config=True)
 
-    def setup(self):
-        super().setup()
-        for component in self.components:
-            if isinstance(component, UCTSComp):
-                component.excl_muons = True
+    mean_charge_threshold = Float(
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge.",
+        default_value=10,
+    ).tag(config=True)
 
     def finish(self, *args, **kwargs):
-        super().finish(return_output_component=False, *args, **kwargs)
-        # print(self.output_path)
-        output_file = h5py.File(self.output_path)
+        output = super().finish(return_output_component=True, *args, **kwargs)
 
-        ucts_timestamps = []
-        charge_per_event = []
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        try:
+            charge_container = output[0].containers[EventType.SUBARRAY]
+        except Exception:
+            charge_container = output[0].containers[EventType.FLATFIELD]
 
-        for thing in output_file:
-            group = output_file[thing]
-            dataset = group["UCTSContainer_0"]
-            data = dataset[:]
-            # print("data",data)
-            for tup in data:
-                try:
-                    ucts_timestamps.extend(tup[3])
-                    charge_per_event.extend(tup[4])
+        ucts_timestamps = charge_container["ucts_timestamp"]
+        charges_hg = charge_container["charges_hg"]
+        good_events = np.where(
+            np.max(charges_hg, axis=1)
+            < self.mean_charge_threshold * np.mean(charges_hg, axis=1),
+            True,
+            False,
+        )
 
-                except Exception:
-                    break
-        # print(output_file.keys())
-        # tom_mu_all= output[0].tom_mu
-        # tom_sigma_all= output[0].tom_sigma
-        # ucts_timestamps= np.array(output_file["ucts_timestamp"])
-        ucts_timestamps = np.array(ucts_timestamps).flatten()
+        # Only select "good events"
+        ucts_timestamps = ucts_timestamps[good_events]
+        charges_hg = charges_hg[good_events]
+
+        # Compute mean charge per event and convert to PE
+        charge_per_event = np.mean(charges_hg) / GAIN_DEFAULT
 
         # dt in nanoseconds
-        delta_t = [
-            ucts_timestamps[i] - ucts_timestamps[i - 1]
-            for i in range(1, len(ucts_timestamps))
-        ]
-        # event_counter = np.array(output_file['ucts_event_counter'])
-        # busy_counter=np.array(output_file['ucts_busy_counter'])
-        output_file.close()
+        delta_t = np.diff(ucts_timestamps)
 
         # make hist to get rms value
         hist_values, bin_edges = np.histogram(delta_t, bins=50)
