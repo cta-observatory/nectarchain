@@ -1,16 +1,12 @@
 import os
 import pathlib
 
-import h5py
 import numpy as np
 import pandas as pd
 from astropy import units as u
-from ctapipe.containers import EventType, Field
-from ctapipe.core.traits import ComponentNameList, Integer
-from ctapipe_io_nectarcam import constants
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
+from ctapipe.containers import EventType
+from ctapipe.core.traits import ComponentNameList
 
-from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.utils.constants import GAIN_DEFAULT
