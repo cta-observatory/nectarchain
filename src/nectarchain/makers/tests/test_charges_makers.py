@@ -75,14 +75,14 @@ class TestChargesNectarCAMCalibrationTool:
         assert output.charges_lg.shape == (nevents, n_pixels)
         assert isinstance(output.charges_hg, np.ndarray)
         assert isinstance(output.charges_lg, np.ndarray)
-        assert output.charges_hg.dtype == np.int32
-        assert output.charges_lg.dtype == np.int32
+        assert output.charges_hg.dtype == np.float32
+        assert output.charges_lg.dtype == np.float32
         assert output.peak_hg.shape == (nevents, n_pixels)
         assert output.peak_lg.shape == (nevents, n_pixels)
         assert isinstance(output.peak_hg, np.ndarray)
         assert isinstance(output.peak_lg, np.ndarray)
-        assert output.peak_hg.dtype == np.uint16
-        assert output.peak_lg.dtype == np.uint16
+        assert output.peak_hg.dtype == np.float32
+        assert output.peak_lg.dtype == np.float32
         assert isinstance(output.method, str)
         assert output.method == self.METHOD
 
