@@ -17,7 +17,11 @@ from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
 from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
 
 try:
-    plt.style.use("../utils/plot_style.mpltstyle")
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
+    )
 except FileNotFoundError as e:
     raise e
 
