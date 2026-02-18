@@ -16,7 +16,10 @@ from nectarchain.makers.calibration import (
 from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
 from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
 
-plt.style.use("../utils/plot_style.mpltstyle")
+try:
+    plt.style.use("../utils/plot_style.mpltstyle")
+except FileNotFoundError as e:
+    raise e
 
 
 def get_args():
