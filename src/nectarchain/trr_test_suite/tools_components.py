@@ -4,16 +4,13 @@ import pathlib
 import numpy as np
 import pandas as pd
 from astropy import units as u
-from ctapipe.containers import EventType, Field
-from ctapipe.core.traits import ComponentNameList, Float, Integer
 
-# from ctapipe.io import read_table
-from ctapipe_io_nectarcam import constants
-from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
-from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.signal import find_peaks
+# Imports from ctapipe
+from ctapipe.containers import EventType
+from ctapipe.core.traits import ComponentNameList, Float
 
-from nectarchain.data.container import NectarCAMContainer, SPEfitContainer
+# Imports from nectarchain
+from nectarchain.data.container import SPEfitContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_test_suite.utils import get_bad_pixels_list
