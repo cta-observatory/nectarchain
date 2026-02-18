@@ -99,8 +99,10 @@ def make_timelines(source, runid=None):
                 evts = np.arange(len(source[parentkey][childkey]))
                 timelines[parentkey][childkey] = figure(
                     title=childkey,
-                    x_range=(0, np.max(evts) + 100),
-                    y_range=(-1, np.max(source[parentkey][childkey]) + 5),
+                    x_range=(0, np.max(evts) + 50),
+                    y_range=(0, 1),
+                    # A fraction is plotted:
+                    # y-range values are between 0 and 1 because
                 )
                 timelines[parentkey][childkey].line(
                     x=evts,
@@ -281,6 +283,19 @@ def make_camera_display(source, parent_key, child_key):
 
     image = source[parent_key][child_key]
     image = np.nan_to_num(image, nan=0.0)
+    if "CAMERA-BADPIX-PED-PHY-OVEREVENTS" in parent_key:
+        image = set_bad_pixels_cap_value(image)
+    else:
+        mask_high_gain, mask_low_gain = get_bad_pixels_position(source=source)
+        if "LOW-GAIN" in parent_key:
+            image[mask_low_gain] = 0.0
+            min_colorbar = np.min(image[~mask_low_gain])
+            max_colorbar = np.max(image[~mask_low_gain])
+        else:
+            image[mask_high_gain] = 0.0
+            min_colorbar = np.min(image[~mask_high_gain])
+            max_colorbar = np.max(image[~mask_high_gain])
+
     display = CameraDisplay(geometry=geom)
     try:
         display.image = image
@@ -312,6 +327,13 @@ def make_camera_display(source, parent_key, child_key):
     fig.yaxis.axis_label_text_font_style = "normal"
 
     # add colorbar
+    if "CAMERA-BADPIX-PED-PHY-OVEREVENTS" not in parent_key:
+        display._color_mapper.low = min_colorbar
+        display._color_mapper.high = max_colorbar
+        # for pixels that are outside the colobar range, like bad pixels,
+        # set displayed color to white
+        display._color_mapper.low_color = "white"
+
     color_bar = ColorBar(
         color_mapper=display._color_mapper,
         padding=5,
@@ -333,3 +355,59 @@ def make_camera_display(source, parent_key, child_key):
     display.figure.title = child_key
 
     return display
+
+
+def set_bad_pixels_cap_value(image):
+    """Set cap value for the bad pixels to 1,
+       to follow the colorbar definition
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        2D array extracted from the database,
+        containing bad pixel values for the whole camera
+
+    Returns
+    -------
+    numpy.ndarray
+        The 2D image with the bad pixel values capped to 1
+    """
+
+    image[image > 1] = 1.0
+
+    return image
+
+
+def get_bad_pixels_position(source):
+    """Get the positions of the bad pixels
+       in the camera as boolean masks
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata`
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean mask containing the positions of
+        bad pixels in the camera for the High gain channel
+    numpy.ndarray
+        Boolean mask containing the positions of
+        bad pixels in the camera for the Low gain channel
+    """
+
+    image_high_gain = source["CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"][
+        "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"
+    ]
+    image_low_gain = source["CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"][
+        "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"
+    ]
+
+    mask_bad_pixels_high_gain = image_high_gain >= 1.0
+    # FIXME: bad pixels for High and Low gain may be the same
+    # (although it may depend on the definition of bad pixel),
+    # the mask defined below may be obsolete
+    mask_bad_pixels_low_gain = image_low_gain >= 1.0
+
+    return mask_bad_pixels_high_gain, mask_bad_pixels_low_gain
