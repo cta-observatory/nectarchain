@@ -49,10 +49,18 @@ This script performs a complete calibration pipeline including:
 4. Charge extraction
 5. Calibrated charge computation (pedestal subtraction, gain correction,
 FF correction)
-6. Plotting of all calibration parameters vs temperature
+6. Plotting of all calibration parameters vs temperature (only in --mode full)
 
 The script is designed to be flexible and configurable via command-line arguments,
 allowing users to specify run numbers, processing options, and output directories.
+
+The script allows running only specific stages of the pipeline,
+e.g., only pedestal computation and plotting, by using the --mode argument.
+In this case, only the relevant stages will be executed and plotted,
+while the rest will be skipped.
+No temperature dependence plots will be made in these partial modes,
+but the computed parameters will still be saved to disk for later analysis.
+
 It also includes robust path resolution logic to handle the various output locations
 used by the nectarchain tools.
 
@@ -65,28 +73,28 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
     parser.add_argument(
         "--pedestal_runs",
         nargs="+",
-        default=[7020, 7077, 6954, 7144, 6543, 6672, 6729],
+        default=[6882, 6891, 6900, 6909, 6918],
         help="Run number(s) for pedestal calibration",
         type=int,
     )
     parser.add_argument(
         "--gain_runs",
         nargs="+",
-        default=[7066, 7123, 7000, 7191, 6589, 6718, 6775, 6853],
+        default=[6882, 6891, 6900, 6909, 6918],
         help="Run number(s) for gain (SPE) calibration",
         type=int,
     )
     parser.add_argument(
         "--flatfield_runs",
         nargs="+",
-        default=[7066, 7123, 7000, 7191, 6589, 6718, 6775, 6853],
+        default=[6882, 6891, 6900, 6909, 6918],
         help="Run number(s) for flatfield calibration",
         type=int,
     )
     parser.add_argument(
         "--charge_runs",
         nargs="+",
-        default=[7020, 7077, 6954, 7144, 6543, 6672, 6729],
+        default=[6882, 6891, 6900, 6909, 6918],
         help="Run number(s) for charge extraction",
         type=int,
     )
@@ -95,7 +103,7 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
     parser.add_argument(
         "--temperatures",
         nargs="+",
-        default=[25, 20, 14, 10, 5, 0, -5],
+        default=[-5.0, -5.0, -5.0, -5.0, -5.0],
         help="Temperature values corresponding to charge runs (in same order)",
         type=float,
     )
@@ -329,6 +337,17 @@ Don't forget to set environment variable NECTARCAMDATA and  NECTRCHAIN_FIGURES
             "'charge' runs only charge extraction and plots"
         ),
         type=str,
+    )
+
+    # Temperature plotting in partial modes
+    parser.add_argument(
+        "--plot_vs_temp",
+        action="store_true",
+        default=False,
+        help=(
+            "In partial modes (pedestal/gain/flatfield/charge), also create "
+            "vs temperature plots using available calibration data."
+        ),
     )
 
     # Verbosity
@@ -1481,8 +1500,16 @@ class NectarCAMCalibrationPipeline:
 
         return calibrated_charges
 
-    def plot_calibration_vs_temperature(self):
-        """Plot all calibration parameters and charges vs temperature"""
+    def plot_calibration_vs_temperature(self, plot_types=None):
+        """
+        Plot calibration parameters and charges vs temperature
+
+        Parameters
+        ----------
+        plot_types : list of str, optional
+            Which plots to create. Options: 'pedestal', 'gain', 'flatfield',
+            'raw_charge', 'calibrated_charge'. If None, creates all plots.
+        """
         self.log.info("Creating calibration vs temperature plots...")
 
         if len(self.args.charge_runs) != len(self.args.temperatures):
@@ -1493,6 +1520,16 @@ class NectarCAMCalibrationPipeline:
         n_temps = len(temperatures)
         n_pixels = constants.N_PIXELS
         gain_idx = constants.HIGH_GAIN
+
+        # Default to all plots if not specified
+        if plot_types is None:
+            plot_types = [
+                "pedestal",
+                "gain",
+                "flatfield",
+                "raw_charge",
+                "calibrated_charge",
+            ]
 
         # Initialise with NaN so missing runs produce gaps in plots, not zeros
         pedestals_vs_temp = np.full((n_temps, n_pixels), np.nan)
@@ -1541,38 +1578,42 @@ class NectarCAMCalibrationPipeline:
                 and pix in self.args.bad_pixels
             )
 
-        plots = [
-            (
+        # Map plot types to data
+        plot_data_map = {
+            "pedestal": (
                 "Pedestal vs Temperature",
                 "Pedestal (ADC counts)",
                 pedestals_vs_temp,
                 "pedestal_vs_temperature.png",
             ),
-            (
+            "gain": (
                 "Gain vs Temperature",
                 "Gain (ADC/p.e.)",
                 gains_vs_temp,
                 "gain_vs_temperature.png",
             ),
-            (
+            "flatfield": (
                 "Flatfield vs Temperature",
                 "Flatfield Coefficient",
                 ff_vs_temp,
                 "flatfield_vs_temperature.png",
             ),
-            (
+            "raw_charge": (
                 "Raw Charge vs Temperature",
                 "Raw Charge (ADC counts)",
                 raw_charge_mean_vs_temp,
                 "raw_charge_vs_temperature.png",
             ),
-            (
+            "calibrated_charge": (
                 "Calibrated Charge vs Temperature (Per Pixel)",
                 "Calibrated Charge (p.e.)",
                 calib_charge_mean_vs_temp,
                 "calibrated_charge_vs_temperature_perpixel.png",
             ),
-        ]
+        }
+
+        # Filter to only requested plot types
+        plots = [plot_data_map[ptype] for ptype in plot_types if ptype in plot_data_map]
 
         n_valid = int(valid_temp_mask.sum())
         missing_note = (
@@ -1836,11 +1877,42 @@ class NectarCAMCalibrationPipeline:
                     f"Error computing pedestal for run {run}: {e}", exc_info=True
                 )
 
-        # Plot
+        # Plot histograms
         self.log.info("\nCreating pedestal plots...")
         for run in self.args.pedestal_runs:
             if run in self.pedestal_results:
                 self._plot_pedestal(run)
+
+        # Plot vs temperature if requested
+        if self.args.plot_vs_temp:
+            self.log.info("\nCreating pedestal vs temperature plot...")
+            try:
+                # Load pedestal data into calibrated_charge_results
+                for run in self.args.pedestal_runs:
+                    if run in self.pedestal_results:
+                        try:
+                            path = self.pedestal_results[run]
+                            ped_hg, ped_lg = self._load_hg_lg_from_hdf5(
+                                path, "pedestal"
+                            )
+                            pedestals = np.stack([ped_hg, ped_lg], axis=0)
+
+                            self.calibrated_charge_results[run] = {
+                                "pedestals": pedestals,
+                                "gains": np.ones_like(pedestals),
+                                "flatfield": np.ones_like(pedestals),
+                                "raw_charges": np.zeros((1, 2, pedestals.shape[1])),
+                                "calibrated_charges": np.zeros(
+                                    (1, 2, pedestals.shape[1])
+                                ),
+                            }
+                        except Exception as e:
+                            self.log.warning(f"Cannot load pedestal {run}: {e}")
+
+                # Plot only pedestal
+                self.plot_calibration_vs_temperature(plot_types=["pedestal"])
+            except Exception as e:
+                self.log.error(f"Error creating vs temp plots: {e}", exc_info=True)
 
     def _run_gain_only(self):
         """Run only gain computation and plotting"""
@@ -1862,11 +1934,37 @@ class NectarCAMCalibrationPipeline:
                     f"Error computing gain for run {run}: {e}", exc_info=True
                 )
 
-        # Plot
+        # Plot histograms
         self.log.info("\nCreating gain plots...")
         for run in self.args.gain_runs:
             if run in self.gain_results:
                 self._plot_gain(run)
+
+        # Plot vs temperature if requested
+        if self.args.plot_vs_temp:
+            self.log.info("\nCreating gain vs temperature plot...")
+            try:
+                for run in self.args.gain_runs:
+                    if run in self.gain_results:
+                        try:
+                            path = self.gain_results[run]
+                            gain_hg, gain_lg = self._load_hg_lg_from_hdf5(path, "gain")
+                            gains = np.stack([gain_hg, gain_lg], axis=0)
+
+                            self.calibrated_charge_results[run] = {
+                                "pedestals": np.zeros_like(gains),
+                                "gains": gains,
+                                "flatfield": np.ones_like(gains),
+                                "raw_charges": np.zeros((1, 2, gains.shape[1])),
+                                "calibrated_charges": np.zeros((1, 2, gains.shape[1])),
+                            }
+                        except Exception as e:
+                            self.log.warning(f"Cannot load gain {run}: {e}")
+
+                # Plot only gain
+                self.plot_calibration_vs_temperature(plot_types=["gain"])
+            except Exception as e:
+                self.log.error(f"Error creating vs temp plots: {e}", exc_info=True)
 
     def _run_flatfield_only(self):
         """Run only flatfield computation and plotting"""
@@ -1882,11 +1980,37 @@ class NectarCAMCalibrationPipeline:
                     f"Error computing flatfield for run {run}: {e}", exc_info=True
                 )
 
-        # Plot
+        # Plot histograms
         self.log.info("\nCreating flatfield plots...")
         for run in self.args.flatfield_runs:
             if run in self.flatfield_results:
                 self._plot_flatfield(run)
+
+        # Plot vs temperature if requested
+        if self.args.plot_vs_temp:
+            self.log.info("\nCreating flatfield vs temperature plot...")
+            try:
+                for run in self.args.flatfield_runs:
+                    if run in self.flatfield_results:
+                        try:
+                            path = self.flatfield_results[run]
+                            ff_hg, ff_lg = self._load_hg_lg_from_hdf5(path, "flatfield")
+                            ff = np.stack([ff_hg, ff_lg], axis=0)
+
+                            self.calibrated_charge_results[run] = {
+                                "pedestals": np.zeros_like(ff),
+                                "gains": np.ones_like(ff),
+                                "flatfield": ff,
+                                "raw_charges": np.zeros((1, 2, ff.shape[1])),
+                                "calibrated_charges": np.zeros((1, 2, ff.shape[1])),
+                            }
+                        except Exception as e:
+                            self.log.warning(f"Cannot load flatfield {run}: {e}")
+
+                # Plot only flatfield
+                self.plot_calibration_vs_temperature(plot_types=["flatfield"])
+            except Exception as e:
+                self.log.error(f"Error creating vs temp plots: {e}", exc_info=True)
 
     def _run_charge_only(self):
         """Run only charge extraction and plotting"""
@@ -1902,11 +2026,40 @@ class NectarCAMCalibrationPipeline:
                     f"Error computing charge for run {run}: {e}", exc_info=True
                 )
 
-        # Plot
+        # Plot histograms
         self.log.info("\nCreating charge plots...")
         for run in self.args.charge_runs:
             if run in self.charge_results:
                 self._plot_charge(run)
+
+        # Plot vs temperature if requested
+        if self.args.plot_vs_temp:
+            self.log.info("\nCreating charge vs temperature plot...")
+            try:
+                for run in self.args.charge_runs:
+                    if run in self.charge_results:
+                        try:
+                            path = self.charge_results[run]
+                            charge_hg, charge_lg = self._load_hg_lg_from_hdf5(
+                                path, "charge"
+                            )
+                            charges = np.stack([charge_hg, charge_lg], axis=0)
+                            charges_expanded = charges[np.newaxis, :, :]
+
+                            self.calibrated_charge_results[run] = {
+                                "pedestals": np.zeros_like(charges),
+                                "gains": np.ones_like(charges),
+                                "flatfield": np.ones_like(charges),
+                                "raw_charges": charges_expanded,
+                                "calibrated_charges": charges_expanded,
+                            }
+                        except Exception as e:
+                            self.log.warning(f"Cannot load charge {run}: {e}")
+
+                # Plot only raw charge
+                self.plot_calibration_vs_temperature(plot_types=["raw_charge"])
+            except Exception as e:
+                self.log.error(f"Error creating vs temp plots: {e}", exc_info=True)
 
     def _run_full_pipeline(self):
         """Run the complete calibration pipeline with all steps"""
