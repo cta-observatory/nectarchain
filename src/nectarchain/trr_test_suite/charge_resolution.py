@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import pickle
 import sys
 
 import matplotlib.pyplot as plt
@@ -95,6 +96,11 @@ number of pixels used (default 1000).
         required=False,
         default=14,
     )
+
+    parser.add_argument(
+        "--temp_output", help="Temporary output directory for GUI", default=None
+    )
+
     return parser
 
 
@@ -122,10 +128,18 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    output_dir = os.path.abspath(args.output)
+    log.debug(f"Output directory: {output_dir}")
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    log.debug(f"Temporary output directory: {temp_output}")
+
     if not os.path.isfile(args.run_file):
         raise FileNotFoundError(f"Run file not found: {args.run_file}")
 
     df = pd.read_json(args.run_file)
+
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
+    sys.argv = sys.argv[:1]
 
     NSB = df["NSB"].values
     runs_list = df["runs"].tolist()
@@ -133,9 +147,6 @@ def main():
 
     color = ["black", "red", "blue", "green", "yellow"]
     log.info("NSB Run FF", NSB, runs_list, ff_v_list)
-
-    # Drop arguments from the script after they are parsed, for the GUI to work properly
-    sys.argv = sys.argv[:1]
 
     ratio_lghg_nsb = []
     mean_resolution_nsb = []
@@ -150,10 +161,6 @@ def main():
 
         temperature = args.temperature
         nevents = args.evts
-
-        output_dir = os.path.abspath(args.output)
-
-        log.debug(f"Output directory: {output_dir}")
 
         charge = np.zeros((len(runlist), 2))
         std = np.zeros((len(runlist), 2))
@@ -232,6 +239,7 @@ def main():
 
             # charge with voltage
         plt.clf()
+        fig = plt.figure()
         plt.errorbar(
             ff_volt,
             np.transpose(charge)[0],
@@ -266,6 +274,10 @@ def main():
                 ),
             )
         )
+        if temp_output:
+            with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+                pickle.dump(fig, f)
+
         ratio_lghg_nsb.append(ratio_hglg)
 
         ff_volt = np.array(ff_volt)
@@ -336,6 +348,7 @@ def main():
         del x_i, y_i, x_i_err, y_i_err
 
     plt.clf()
+    fig = plt.figure()
     for iNSB in range(len(NSB)):
         plt.errorbar(
             mean_charge[iNSB],
@@ -352,12 +365,16 @@ def main():
     plt.tight_layout()
     # plt.ylim(1,600)
     plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_pe_T{temperature}.png"))
+    if temp_output:
+        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     charge_plot = np.linspace(20, 1000)
     stat_limit = 1 / np.sqrt(charge_plot)  # statistical limit
 
     # fig = plt.figure()
     plt.clf()
+    fig = plt.figure()
     plt.xscale("log")
     plt.yscale("log")
     plt.plot(
@@ -397,6 +414,9 @@ def main():
     plt.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, f"charge_resolution_T{temperature}.png"))
+    if temp_output:
+        with open(os.path.join(args.temp_output, "plot3.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     plt.clf()
     plt.close("all")
