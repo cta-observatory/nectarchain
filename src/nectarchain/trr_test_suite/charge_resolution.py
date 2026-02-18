@@ -331,7 +331,7 @@ def main():
         mean_resolution_nsb.append(y_i)
         mean_resolution_nsb_err.append(y_i_err)
         mean_charge.append(x_i)
-        mean_charge_err.append(y_i)
+        mean_charge_err.append(x_i_err)
         del x_i, y_i, x_i_err, y_i_err
 
     plt.clf()
