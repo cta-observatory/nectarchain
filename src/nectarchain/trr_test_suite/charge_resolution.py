@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import sys
 
@@ -15,6 +16,13 @@ from nectarchain.makers.calibration import (
 )
 from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
 from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 try:
     plt.style.use(
@@ -124,14 +132,14 @@ def main():
     ff_v_list = df["ff_v"].tolist()
 
     color = ["black", "red", "blue", "green", "yellow"]
-    print("NSB Run FF", NSB, runs_list, ff_v_list)
+    log.info("NSB Run FF", NSB, runs_list, ff_v_list)
 
     ratio_lghg_nsb = []
     mean_resolution_nsb = []
     mean_charge = []
     mean_resolution_nsb_err = []
     mean_charge_err = []
-    print("NSB", len(NSB), NSB)
+    log.info("NSB", len(NSB), NSB)
 
     for iNSB in range(len(NSB)):
         runlist = runs_list[iNSB]
@@ -142,7 +150,7 @@ def main():
 
         output_dir = os.path.abspath(args.output)
 
-        print(f"Output directory: {output_dir}")  # Debug print
+        log.debug(f"Output directory: {output_dir}")
 
         sys.argv = sys.argv[:1]
 
@@ -153,7 +161,7 @@ def main():
         ratio_hglg = np.zeros(len(runlist))
         index = 0
         for run in runlist:
-            print("PROCESSING RUN {}".format(run))
+            log.info(f"PROCESSING RUN {run}")
             pedestal_tool = PedestalNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run,
@@ -193,7 +201,7 @@ def main():
                 )
                 run_tool(gain_tool)
 
-            print("gain_file_name==========", gain_file_name)
+            log.info(f"gain_file_name: {gain_file_name}")
             tool = ChargeResolutionTestTool(
                 progress_bar=True,
                 run_number=run,
@@ -325,8 +333,6 @@ def main():
         mean_charge.append(x_i)
         mean_charge_err.append(y_i)
         del x_i, y_i, x_i_err, y_i_err
-    # print(mean_resolution,len(mean_resolution))
-    # print(hg_res,lg_res,npixels)
 
     plt.clf()
     for iNSB in range(len(NSB)):
@@ -392,9 +398,6 @@ def main():
     plt.savefig(os.path.join(output_dir, f"charge_resolution_T{temperature}.png"))
 
     plt.clf()
-
-    print("Std HG, LG", len(charge_hg), len(charge_lg), len(std_hg), len(std_lg))
-
     plt.close("all")
 
 
