@@ -2,7 +2,7 @@
 # Contact mail: julian.hamo@ijclab.in2p3.fr
 
 """
-Suit for test of the Bokeh interface of NectaRTA.
+Test command line for test of the Bokeh interface of NectaRTA.
 """
 
 # imports

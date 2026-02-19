@@ -15,9 +15,9 @@ from pathlib import Path
 from bokeh.io import curdoc
 
 # Bokeh RTA imports
-from utils.high_level_builders import build_ui
-from utils.data_fetch_helpers import _get_latest_file
-from utils.update_helpers import (
+from .utils.high_level_builders import build_ui
+from .utils.data_fetch_helpers import _get_latest_file
+from .utils.update_helpers import (
     periodic_update_display,
     start_periodic_updates
 )

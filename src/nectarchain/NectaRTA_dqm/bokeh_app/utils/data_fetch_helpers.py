@@ -11,7 +11,7 @@ import h5py
 from pathlib import Path
 
 # Bokeh imports
-from utils.utils_helpers import hdf5Proxy
+from .utils_helpers import hdf5Proxy
 
 
 __all__ = ["safe_close_file", "open_file_from_selection", "fetch_stream"]
