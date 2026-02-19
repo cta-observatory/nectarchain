@@ -22,7 +22,7 @@ from bokeh.layouts import (
 )
 
 # Bokeh RTA imports
-from utils.utils_helpers import get_hillas_parameters
+from ..utils_helpers import get_hillas_parameters
 
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame

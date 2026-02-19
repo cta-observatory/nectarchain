@@ -22,18 +22,18 @@ from bokeh.layouts import (
 from bokeh.plotting import curdoc
 
 # Bokeh RTA imports
-from utils.display.summary import make_summary_card
-from utils.display.camera_mapping import make_tab_camera_displays
-from utils.display.timeline import make_tab_timelines
-from utils.display.histogram import make_full_histogram_sections
-from utils.display.skymaps import make_tab_skymaps
-from utils.display.header import (
+from .display.summary import make_summary_card
+from .display.camera_mapping import make_tab_camera_displays
+from .display.timeline import make_tab_timelines
+from .display.histogram import make_full_histogram_sections
+from .display.skymaps import make_tab_skymaps
+from .display.header import (
     make_header_menu,
     _on_header_select_change,
     _set_status_text
 )
 
-from utils.data_fetch_helpers import open_file_from_selection
+from .data_fetch_helpers import open_file_from_selection
 
 
 __all__ = ["make_body", "buld_ui"]
