@@ -58,8 +58,8 @@ The script allows running only specific stages of the pipeline,
 e.g., only pedestal computation and plotting, by using the --mode argument.
 In this case, only the relevant stages will be executed and plotted,
 while the rest will be skipped.
-No temperature dependence plots will be made in these partial modes,
-but the computed parameters will still be saved to disk for later analysis.
+Temperature dependence plots can be made in these partial mode.
+The computed parameters will still be saved to disk for later analysis.
 
 It also includes robust path resolution logic to handle the various output locations
 used by the nectarchain tools.
