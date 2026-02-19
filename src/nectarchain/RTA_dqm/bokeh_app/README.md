@@ -11,7 +11,7 @@ To run the available pipeline:
 - Download the repository
 - Run the Bokeh webpage using:
 ```
-bokeh serve --show main.py
+bokeh serve main.py --show --dev
 ```
 
 **None**: Be careful to have all the dependencies installed in your environment.
