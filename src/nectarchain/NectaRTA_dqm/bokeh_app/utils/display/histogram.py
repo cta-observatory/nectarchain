@@ -6,6 +6,9 @@ This module stores the Bokeh webpage histogram maker for the RTA of NectarCAM.
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import time
 import numpy as np
 
@@ -482,7 +485,7 @@ def update_display_hist(disp, parentkey, childkey, file, label, n_runs, n_bins):
         except Exception:
             pass
     except Exception as e:
-        print(f"_recompute_display_hist: failed to update source: {e}")
+        logger.warning(f"_recompute_display_hist: failed to update source: {e}")
     figure.update()
 
 def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
@@ -540,7 +543,7 @@ def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
         except Exception:
             pass
     except Exception as e:
-        print(f"_recompute_display_hist: failed to update source: {e}")
+        logger.warning(f"_recompute_display_hist: failed to update source: {e}")
     figure.update()
 
 def make_histogram_sections(
@@ -692,7 +695,7 @@ def make_histogram_sections(
                 parentkeys_avg[key], childkeys_avg[key], file,
                 labels_avg[key], current_runs, n_bins
             )
-        print(f"Number of averaged runs changed to {current_runs}: {time.strftime('%H:%M:%S')}")
+        logger.info(f"Number of averaged runs changed to {current_runs}: {time.strftime('%H:%M:%S')}")
 
     slider_runs.on_change("value", _on_runs_change)
 
@@ -727,7 +730,7 @@ def make_histogram_sections(
                 labels_1d[key],
                 n_bins=current_bins
             )
-        print(f"Number of bins changed to {current_bins}: {time.strftime('%H:%M:%S')}")
+        logger.info(f"Number of bins changed to {current_bins}: {time.strftime('%H:%M:%S')}")
 
     slider_bins.on_change("value", _on_bins_change)
 
@@ -914,7 +917,7 @@ def update_annulus(disp, parentkey, childkey, current_file):
         arr = np.asarray(current_file[parentkey][childkey])
     except Exception as e:
         # dataset missing or unreadable => nothing to update
-        print(f"_recompute_annulus: failed read {parentkey}/{childkey}: {e}")
+        logger.warning(f"_recompute_annulus: failed read {parentkey}/{childkey}: {e}")
         return
 
     group, counts = np.unique(arr, return_counts=True)

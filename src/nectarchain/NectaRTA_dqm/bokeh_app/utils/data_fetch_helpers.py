@@ -6,6 +6,9 @@ This module stores data fetching helpers for the RTA of NectarCAM.
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 import h5py
 from pathlib import Path
@@ -52,7 +55,7 @@ def _get_latest_file(ressource_path, extension=".h5"):
         return h5py.File(filepath, "r")
     except Exception as e:
         # Return None if an error occured
-        print(f"_get_latest_file: failed reading {filepath}: {e}")
+        logger.warning(f"_get_latest_file: failed reading {filepath}: {e}")
         return None
         
 def safe_close_file(fobj):
@@ -131,7 +134,7 @@ def open_file_from_selection(
     try:
         filepath = (Path(ressource_path) / (sel_value + extension)).resolve()
     except Exception as e:
-        print(f"open_file_for_selection: failed file opening: {e}")
+        logger.warning(f"open_file_for_selection: failed file opening: {e}")
         return None, None
 
     try:
@@ -142,10 +145,10 @@ def open_file_from_selection(
                 fileproxy[time_parentkey].sort_from_key(time_childkey)
             return fileproxy, filepath
         else:
-            print(f"open_file_for_selection: failed file opening: {filepath} not found.")
+            logger.warning(f"open_file_for_selection: failed file opening: {filepath} not found.")
             return None, None
     except Exception as e:
-        print(f"open_file_for_selection: failed file opening: {e}")
+        logger.warning(f"open_file_for_selection: failed file opening: {e}")
         return None, None
     
 def fetch_stream():

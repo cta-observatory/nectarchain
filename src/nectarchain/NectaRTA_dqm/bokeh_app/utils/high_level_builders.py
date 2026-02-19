@@ -6,6 +6,9 @@ This module builds the high level builders for Bokeh webpage of the RTA of Necta
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 from functools import partial
 
 # Bokeh imports
@@ -211,7 +214,7 @@ def make_body(
             display_registry=display_registry
         )
     except Exception as e:
-        print("make_summary_card failed:", e)
+        logger.warning("make_summary_card failed:", e)
         summary_card = column(Div(text="Error building summary card"))
     
     # Camera displays
@@ -228,7 +231,7 @@ def make_body(
             labels_colorbar=labels_colorbar
         )
     except Exception as e:
-        print("make_tab_camera_displays failed:", e)
+        logger.warning("make_tab_camera_displays failed:", e)
         tab_camera_displays = TabPanel(
             child=column(Div(text="Error building camera display")),
             title="Camera displays"
@@ -257,7 +260,7 @@ def make_body(
             ylabels_step=ylabels_step,
         )
     except Exception as e:
-        print("make_tab_timelines failed:", e)
+        logger.warning("make_tab_timelines failed:", e)
         tab_timelines = TabPanel(
             child=column(Div(text="Error building timeline")),
             title="Timelines"
@@ -312,7 +315,7 @@ def make_body(
             xaxes_1d=ylabels_1d
         )
     except Exception as e:
-        print("make_full_histogram_sections failed:", e)
+        logger.warning("make_full_histogram_sections failed:", e)
         tab_histograms = TabPanel(
             child=column(Div(text="Error building histogram")),
             title="Histograms"
@@ -322,7 +325,7 @@ def make_body(
     try:
         tab_skymaps = make_tab_skymaps()
     except Exception as e:
-        print("make_tab_skymaps failed:", e)
+        logger.warning("make_tab_skymaps failed:", e)
         tab_skymaps = TabPanel(
             child=column(Div(text="Error building skymap")),
             title="Skymaps"
@@ -422,7 +425,7 @@ def build_ui(
             **body_kwargs
         )
     except Exception as e:
-        print("make_body failed:", e)
+        logger.warning("make_body failed:", e)
         body_ret = Div(text="Error building body")
 
     # assemble root layout

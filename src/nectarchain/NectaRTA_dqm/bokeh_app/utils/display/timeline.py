@@ -6,6 +6,9 @@ This module stores the Bokeh webpage timeline maker for the RTA of NectarCAM.
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 from inspect import isfunction
 from collections.abc import Iterable
@@ -619,7 +622,7 @@ def update_timelines(
         x_axis = x_axis[x_axis.argsort()]
         x_axis -= x_axis[-1]
     except Exception as e:
-        print("_recompute_timeline_display: read failed:", e)
+        logger.warning(f"_recompute_timeline_display: read failed: {e}")
         return
 
     # compute standard series if they are typical
@@ -629,7 +632,7 @@ def update_timelines(
         mx = np.nanmax(arr, axis=-1)
         mn = np.nanmin(arr, axis=-1)
     except Exception:
-        print("Could not compute any statistics: empty timelines")
+        logger.warning(f"Could not compute any statistics: {e}")
         mean = np.array([])
         median = np.array([])
         mx = np.array([])
@@ -654,6 +657,6 @@ def update_timelines(
         elif np.all(np.isin(list(data_keys), ["time", "y"])):
             update_dict |= {"y": arr}
         else:
-            print("No right data format found")
+            logger.warning("No right data format found")
             return
         src.data = update_dict

@@ -6,6 +6,9 @@ This module stores the Bokeh webpage summary card maker for the RTA of NectarCAM
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 
 # Bokeh imports
@@ -161,8 +164,8 @@ def update_summary_card(disp, file, parentkeys, childkeys, run_index=-1):
                     </div>
                 """
             else:
-                print("No .text attribute found.")
+                logger.warning("No .text attribute found.")
         else:
-            print("No .children attribute found.")
+            logger.warning("No .children attribute found.")
     except Exception as e:
-        print("Failed to update summary card:", e)
+        logger.warning(f"Failed to update summary card: {e}")
