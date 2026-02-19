@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import (
 )
 
 from nectarchain.trr_test_suite import (
+    charge_resolution,
     deadtime,
     linearity,
     pedestal,
@@ -62,6 +63,7 @@ class TestRunner(QWidget):
     """
 
     test_modules = {
+        "Charge Resolution Test": charge_resolution,
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
         "Pedestal Test": pedestal,
