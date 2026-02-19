@@ -5,23 +5,16 @@
 This module stores the Bokeh webpage utility helpers for the RTA of NectarCAM.
 """
 
-
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 import numpy as np
-
 
 __all__ = ["get_hillas_parameters", "hdf5Proxy", "hdf5GroupProxy"]
 
+logger = logging.getLogger(__name__)
 
-def get_hillas_parameters(
-    file,
-    parameterkeys,
-    parameter_parentkeys,
-    run_index=-1
-):
+
+def get_hillas_parameters(file, parameterkeys, parameter_parentkeys, run_index=-1):
     """Get the Hillas parameters from the file.
 
     Parameters
@@ -50,21 +43,26 @@ def get_hillas_parameters(
         Length of the Hillas ellipse.
     angle : float
         Angle between the mahor axis of the Hillas ellipse and the x axis.
-        
+
     """
 
     try:
-        x=file[parameter_parentkeys][parameterkeys["hillas_x_key"]][run_index]
-        y=file[parameter_parentkeys][parameterkeys["hillas_y_key"]][run_index]
-        width=file[parameter_parentkeys][parameterkeys["hillas_length_key"]][run_index]
-        height=file[parameter_parentkeys][parameterkeys["hillas_width_key"]][run_index]
-        angle=file[parameter_parentkeys][parameterkeys["hillas_phi_key"]][run_index]
+        x = file[parameter_parentkeys][parameterkeys["hillas_x_key"]][run_index]
+        y = file[parameter_parentkeys][parameterkeys["hillas_y_key"]][run_index]
+        width = file[parameter_parentkeys][parameterkeys["hillas_length_key"]][
+            run_index
+        ]
+        height = file[parameter_parentkeys][parameterkeys["hillas_width_key"]][
+            run_index
+        ]
+        angle = file[parameter_parentkeys][parameterkeys["hillas_phi_key"]][run_index]
         return x, y, width, height, angle
     except Exception as e:
         logger.warning("Failed to retrieve Hillas parameters:", e)
 
 
- # hdf5 file handling for time sorting
+# hdf5 file handling for time sorting
+
 
 def _leaf_paths_hdf5(file):
     """List unique leaf paths of the HDF5 tree.
@@ -84,13 +82,12 @@ def _leaf_paths_hdf5(file):
     paths = []
     file.visititems(lambda name, obj: paths.append(name))
     leaf_paths = [
-        p for p in paths
-        if not any(
-            other != p and other.startswith(p + "/")
-            for other in set(paths)
-        )
+        p
+        for p in paths
+        if not any(other != p and other.startswith(p + "/") for other in set(paths))
     ]
     return leaf_paths
+
 
 class hdf5GroupProxy(dict):
     """Proxy for an easier handling of the HDF5 group
@@ -135,11 +132,11 @@ class hdf5GroupProxy(dict):
         ----------
         input_data : HDF5 dataset
             HDF5 group to imitate.
-        
+
         Returns
         -------
         out : None
-        
+
         """
 
         self.ogroup = input_data
@@ -192,10 +189,11 @@ class hdf5GroupProxy(dict):
         out : None
 
         """
-            
+
         increase = 1 if increasing else -1
         indexes = np.argsort(self[key], axis=axis)[::increase]
         self.mask(indexes)
+
 
 class hdf5Proxy(dict):
     """Proxy for an easier handling of the HDF5 file
@@ -247,6 +245,6 @@ class hdf5Proxy(dict):
         self.filename = input_file.filename
         self.parentkeys = _leaf_paths_hdf5(input_file)
         self.shape = len(self.parentkeys)
-        
+
         for parentkey in self.parentkeys:
             self[parentkey] = hdf5GroupProxy(input_file[parentkey])

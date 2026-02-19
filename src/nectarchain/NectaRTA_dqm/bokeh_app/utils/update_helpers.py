@@ -7,8 +7,6 @@ This module stores Bokeh webpage update helpers for the RTA of NectarCAM.
 
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 import time
 from functools import partial
 
@@ -19,21 +17,18 @@ from bokeh.plotting import curdoc
 from .display.histogram import (
     update_display_hist,
     update_display_hist_for_1d,
-    update_annulus
+    update_annulus,
 )
 from .display.timeline import update_timelines
 from .display.camera_mapping import update_camera_display
 from .display.summary import update_summary_card
 
-
 __all__ = ["periodic_update_display", "start_periodic_updates", "stop_periodic_updates"]
 
+logger = logging.getLogger(__name__)
 
-def update_all_figures(
-        file,
-        display_registry,
-        widgets
-):
+
+def update_all_figures(file, display_registry, widgets):
     """Update all displays in display_registry according to their ._meta
     using data from file and widgets.
     Only figures are updated (widgets are left untouched).
@@ -50,7 +45,7 @@ def update_all_figures(
     Returns
     -------
     out : None
-    
+
     """
 
     for disp in display_registry:
@@ -63,19 +58,26 @@ def update_all_figures(
 
             if dtype == "summary_card":
                 run_widget = widgets.get("camera_run")
-                run_index = int(run_widget.value) if getattr(run_widget, "value", None) is not None else -1
+                run_index = (
+                    int(run_widget.value)
+                    if getattr(run_widget, "value", None) is not None
+                    else -1
+                )
                 parent = meta.get("parentkey")
                 child = meta.get("childkey")
-                update_summary_card(disp, file, parent, child, run_index = run_index)
+                update_summary_card(disp, file, parent, child, run_index=run_index)
 
-            
             if dtype == "hist_1d":
                 parent = meta.get("parentkey")
                 child = meta.get("childkey")
                 label = meta.get("label", meta.get("childkey", "value"))
                 # read widget values (fall back to meta defaults)
                 n_bins_widget = widgets.get("hist_bins")
-                n_bins = int(n_bins_widget.value) if getattr(n_bins_widget, "value", None) is not None else meta.get("n_bins", 50)
+                n_bins = (
+                    int(n_bins_widget.value)
+                    if getattr(n_bins_widget, "value", None) is not None
+                    else meta.get("n_bins", 50)
+                )
                 update_display_hist_for_1d(disp, parent, child, file, label, n_bins)
 
             elif dtype == "hist_avg":
@@ -85,8 +87,16 @@ def update_all_figures(
                 # read widget values (fall back to meta defaults)
                 n_runs_widget = widgets.get("hist_runs")
                 n_bins_widget = widgets.get("hist_bins")
-                n_runs = int(n_runs_widget.value) if getattr(n_runs_widget, "value", None) is not None else meta.get("n_runs", 1)
-                n_bins = int(n_bins_widget.value) if getattr(n_bins_widget, "value", None) is not None else meta.get("n_bins", 50)
+                n_runs = (
+                    int(n_runs_widget.value)
+                    if getattr(n_runs_widget, "value", None) is not None
+                    else meta.get("n_runs", 1)
+                )
+                n_bins = (
+                    int(n_bins_widget.value)
+                    if getattr(n_bins_widget, "value", None) is not None
+                    else meta.get("n_bins", 50)
+                )
                 update_display_hist(disp, parent, child, file, label, n_runs, n_bins)
 
             elif dtype == "annulus":
@@ -97,13 +107,23 @@ def update_all_figures(
             elif dtype == "camera":
                 # choose run index from widget if present
                 run_widget = widgets.get("camera_run")
-                run_index = int(run_widget.value) if getattr(run_widget, "value", None) is not None else -1
+                run_index = (
+                    int(run_widget.value)
+                    if getattr(run_widget, "value", None) is not None
+                    else -1
+                )
                 image_parent = meta.get("image_parentkey")
                 param_parent = meta.get("parameter_parentkeys")
                 child = meta.get("childkey")
                 param = meta.get("parameterkeys")
                 update_camera_display(
-                    disp, child, image_parent, param_parent, param, file, run_index = run_index
+                    disp,
+                    child,
+                    image_parent,
+                    param_parent,
+                    param,
+                    file,
+                    run_index=run_index,
                 )
 
             elif dtype.startswith("timeline"):
@@ -114,7 +134,10 @@ def update_all_figures(
                 update_timelines(disp, parent, child, time_parent, time_child, file)
 
         except Exception as e:
-            logger.warning("update_all_figures: update failed for display meta=", meta, "error=", e)
+            logger.warning(
+                "update_all_figures: update failed for display meta=", meta, "error=", e
+            )
+
 
 def update_timestamp(status_col):
     """Update the time of last update of the page.
@@ -130,9 +153,10 @@ def update_timestamp(status_col):
 
     """
 
-    ts = time.strftime('%H:%M:%S')
+    ts = time.strftime("%H:%M:%S")
     logger.info(f"Real time mode: updating figure - {ts}")
     status_col.children[1].text = f"Last update: {ts}"
+
 
 def periodic_update_display(file, display_registry, widgets, status_col):
     """Update all the figures of the webpage and the status divider.
@@ -157,9 +181,10 @@ def periodic_update_display(file, display_registry, widgets, status_col):
     update_all_figures(file, display_registry, widgets)
     update_timestamp(status_col)
 
+
 def start_periodic_updates(
-        file, display_registry, widgets, status_col, interval_ms=1000
-    ):
+    file, display_registry, widgets, status_col, interval_ms=1000
+):
     """Start the periodic update of the webpage every ``interval_ms`` milliseconds.
 
     Parameters
@@ -189,9 +214,9 @@ def start_periodic_updates(
             file=file,
             display_registry=display_registry,
             widgets=widgets,
-            status_col=status_col
+            status_col=status_col,
         ),
-        interval_ms
+        interval_ms,
     )
     widgets["PERIODIC_CB_ID"] = periodic_cb_id
     return periodic_cb_id

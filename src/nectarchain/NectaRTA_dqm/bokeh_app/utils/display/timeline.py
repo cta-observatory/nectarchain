@@ -7,33 +7,26 @@ This module stores the Bokeh webpage timeline maker for the RTA of NectarCAM.
 
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 import numpy as np
 from inspect import isfunction
 from collections.abc import Iterable
 
 # Bokeh imports
-from bokeh.models import (
-    HoverTool,
-    TabPanel,
-    ColumnDataSource,
-    Div,
-    Range1d
-)
-from bokeh.layouts import (
-    column,
-    gridplot
-)
+from bokeh.models import HoverTool, TabPanel, ColumnDataSource, Div, Range1d
+from bokeh.layouts import column, gridplot
 from bokeh.palettes import Inferno
 
 # ctapipe imports
 from ctapipe.visualization.bokeh import BokehPlot
 
-
 __all__ = [
-    "make_1d_timelines", "make_2d_timelines", "make_tab_timelines", "update_timelines"
+    "make_1d_timelines",
+    "make_2d_timelines",
+    "make_tab_timelines",
+    "update_timelines",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def make_2d_timeline(
@@ -45,7 +38,7 @@ def make_2d_timeline(
     display_registry,
     ylabel=None,
     labels=None,
-    funcs=None
+    funcs=None,
 ):
     """Create the statistics timelines
     based on the 2d-data from the input file.
@@ -80,7 +73,7 @@ def make_2d_timeline(
         Display of the 2d timelines.
 
     """
-    
+
     if funcs is None:
         funcs = {"func_key": np.mean}
     if labels is None:
@@ -94,15 +87,15 @@ def make_2d_timeline(
     x_axis = x_axis[x_axis.argsort()]
     x_axis -= x_axis[-1]
     if data.ndim != 2:
-        data = data.reshape((data.shape[0],1))
+        data = data.reshape((data.shape[0], 1))
     if ylabel is None:
         ylabel = childkey
-    
+
     display = BokehPlot(
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
         x_range=(x_axis.min(), x_axis.max()),
-        toolbar_location="above"
+        toolbar_location="above",
     )
     fig = display.figure
     fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
@@ -113,13 +106,10 @@ def make_2d_timeline(
         data={
             "time": x_axis,
         }
-        | {
-            labels[key]: funcs[key](data, axis=-1)
-            for key in labels.keys()
-        }
+        | {labels[key]: funcs[key](data, axis=-1) for key in labels.keys()}
     )
 
-    colors = Inferno[len(funcs)+2][1:-1]
+    colors = Inferno[len(funcs) + 2][1:-1]
     for index, key in enumerate(funcs):
         r = fig.line(
             source=computed_data,
@@ -129,12 +119,11 @@ def make_2d_timeline(
             name=labels[key],
             color=colors[index],
             alpha=1,
-            muted_alpha=.2,
-            legend_label=labels[key].capitalize()
+            muted_alpha=0.2,
+            legend_label=labels[key].capitalize(),
         )
         hover = HoverTool(
-            tooltips=[(labels[key], "@{}".format(labels[key]))],
-            renderers=[r]
+            tooltips=[(labels[key], "@{}".format(labels[key]))], renderers=[r]
         )
         fig.add_tools(hover)
 
@@ -144,18 +133,19 @@ def make_2d_timeline(
     display.update()
 
     display._meta = {
-        "type": "timeline_2d", 
+        "type": "timeline_2d",
         "parentkey": parentkey,
         "childkey": childkey,
         "time_childkey": time_childkey,
         "time_parentkey": time_parentkey,
-        "funcs": funcs,       
+        "funcs": funcs,
         "labels": labels,
-        "factory": "make_2d_timeline"
+        "factory": "make_2d_timeline",
     }
     display_registry.append(display)
 
     return display
+
 
 def make_2d_timelines(
     file,
@@ -167,7 +157,7 @@ def make_2d_timelines(
     ylabels=[None],
     labels=[None],
     funcs=[[np.mean]],
-    suptitle=None
+    suptitle=None,
 ):
     """Create the group of statistics timelines
     based on the 2d-data from the input file.
@@ -212,35 +202,25 @@ def make_2d_timelines(
         parentkeys = {key: parentkeys[0] for key in childkeys.keys()}
     if not isinstance(ylabels, dict):
         ylabels = childkeys
-    if (
-        isinstance(funcs, dict) 
-        and set(funcs.keys()) != set(childkeys.keys())
-    ):
-        funcs = {key:funcs for key in childkeys.keys()}
+    if isinstance(funcs, dict) and set(funcs.keys()) != set(childkeys.keys()):
+        funcs = {key: funcs for key in childkeys.keys()}
     elif isfunction(funcs):
-        {key:{"func_key": funcs} for key in childkeys.keys()}
+        {key: {"func_key": funcs} for key in childkeys.keys()}
     elif isinstance(funcs, Iterable):
         funcs = {
-            key:{
-                f"func{i}_key": funcs[i]
-                for i in range(len(funcs))
-            } for key in childkeys.keys()
+            key: {f"func{i}_key": funcs[i] for i in range(len(funcs))}
+            for key in childkeys.keys()
         }
-    if (
-        isinstance(labels, dict) 
-        and set(labels.keys()) != set(childkeys.keys())
-    ):
-        labels = {key:labels for key in childkeys.keys()}
+    if isinstance(labels, dict) and set(labels.keys()) != set(childkeys.keys()):
+        labels = {key: labels for key in childkeys.keys()}
     elif isinstance(labels, str):
-        {key:{"func_key": labels} for key in childkeys.keys()}
+        {key: {"func_key": labels} for key in childkeys.keys()}
     elif isinstance(labels, Iterable):
         labels = {
-            key:{
-                f"func{i}_key": labels[i]
-                for i in range(len(labels))
-            } for key in childkeys.keys()
+            key: {f"func{i}_key": labels[i] for i in range(len(labels))}
+            for key in childkeys.keys()
         }
-            
+
     displays = []
     for key in childkeys.keys():
         displays.append(
@@ -253,7 +233,7 @@ def make_2d_timelines(
                 display_registry,
                 ylabel=ylabels[key],
                 labels=labels[key],
-                funcs=funcs[key]
+                funcs=funcs[key],
             ).figure
         )
 
@@ -262,8 +242,9 @@ def make_2d_timelines(
     else:
         suptitle = "<strong>" + suptitle + "</strong>"
     name = Div(text=suptitle)
-    
+
     return column(name, gridplot(displays, ncols=2))
+
 
 def make_1d_timeline(
     file,
@@ -274,7 +255,7 @@ def make_1d_timeline(
     display_registry,
     ylabel=None,
     label=None,
-    step=False
+    step=False,
 ):
     """Create the timelines
     based on the data from the input file.
@@ -327,19 +308,14 @@ def make_1d_timeline(
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
         x_range=(x_axis.min(), x_axis.max()),
-        toolbar_location="above"
+        toolbar_location="above",
     )
     fig = display.figure
     fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
     fig.xaxis.axis_label = "Time [unit time]"
     fig.yaxis.axis_label = ylabel.capitalize()
 
-    column_data = ColumnDataSource(
-        data={
-            "time": x_axis,
-            "y": data
-        }
-    )
+    column_data = ColumnDataSource(data={"time": x_axis, "y": data})
 
     color = Inferno[3][1]
     if step:
@@ -351,8 +327,8 @@ def make_1d_timeline(
             name=label,
             color=color,
             alpha=1,
-            muted_alpha=.2,
-            legend_label=label.capitalize()
+            muted_alpha=0.2,
+            legend_label=label.capitalize(),
         )
     else:
         r = fig.line(
@@ -363,13 +339,10 @@ def make_1d_timeline(
             name=label,
             color=color,
             alpha=1,
-            muted_alpha=.2,
-            legend_label=label.capitalize()
+            muted_alpha=0.2,
+            legend_label=label.capitalize(),
         )
-    hover = HoverTool(
-        tooltips=[(label, "@y")],
-        renderers=[r]
-    )
+    hover = HoverTool(tooltips=[(label, "@y")], renderers=[r])
     fig.add_tools(hover)
 
     fig.legend.location = "bottom_left"
@@ -378,17 +351,18 @@ def make_1d_timeline(
     display.update()
 
     display._meta = {
-        "type": "timeline_1d",  
+        "type": "timeline_1d",
         "parentkey": parentkey,
         "childkey": childkey,
         "time_childkey": time_childkey,
         "time_parentkey": time_parentkey,
         "labels": label,
-        "factory": "make_1d_timeline"
+        "factory": "make_1d_timeline",
     }
     display_registry.append(display)
 
     return display
+
 
 def make_1d_timelines(
     file,
@@ -400,7 +374,7 @@ def make_1d_timelines(
     ylabels=[None],
     labels=[None],
     suptitle=None,
-    step=False
+    step=False,
 ):
     """Create the group of timelines
     based on the data from the input file.
@@ -447,7 +421,7 @@ def make_1d_timelines(
         ylabels = childkeys
     if not isinstance(labels, dict):
         labels = childkeys
-        
+
     displays = []
     for key in childkeys.keys():
         try:
@@ -461,17 +435,18 @@ def make_1d_timelines(
                     display_registry,
                     ylabel=ylabels[key],
                     label=labels[key],
-                    step=step
+                    step=step,
                 ).figure
             )
-        except:
+        except Exception:
             continue
     if suptitle is None:
         suptitle = "Subsection"
     suptitle = "<strong>" + suptitle + "</strong>"
     name = Div(text=suptitle)
-            
+
     return column(name, gridplot(displays, ncols=2))
+
 
 def make_tab_timelines(
     file,
@@ -558,7 +533,7 @@ def make_tab_timelines(
         ylabels=ylabels_2d,
         labels=labels_2d,
         funcs=funcs,
-        suptitle=suptitle_2d
+        suptitle=suptitle_2d,
     )
     timeline_1d_layout = make_1d_timelines(
         file,
@@ -570,7 +545,7 @@ def make_tab_timelines(
         ylabels=ylabels_1d,
         labels=labels_1d,
         suptitle=suptitle_1d,
-        step=False
+        step=False,
     )
     timeline_step_layout = make_1d_timelines(
         file,
@@ -582,14 +557,17 @@ def make_tab_timelines(
         ylabels=ylabels_step,
         labels=labels_step,
         suptitle=suptitle_step,
-        step=True
+        step=True,
     )
-    timeline_layout = column(timeline_2d_layout, timeline_1d_layout, timeline_step_layout)
+    timeline_layout = column(
+        timeline_2d_layout, timeline_1d_layout, timeline_step_layout
+    )
     return TabPanel(child=timeline_layout, title="Timelines")
 
+
 def update_timelines(
-        disp, parentkey, childkey, time_parentkey, time_childkey, current_file
-    ):
+    disp, parentkey, childkey, time_parentkey, time_childkey, current_file
+):
     """Recompute timeline series and
     update any ColumnDataSource found in the figure.
 
@@ -612,7 +590,7 @@ def update_timelines(
     Returns
     -------
     out: None
-        
+
     """
 
     try:
@@ -631,7 +609,7 @@ def update_timelines(
         median = np.nanmedian(arr, axis=-1)
         mx = np.nanmax(arr, axis=-1)
         mn = np.nanmin(arr, axis=-1)
-    except Exception:
+    except Exception as e:
         logger.warning(f"Could not compute any statistics: {e}")
         mean = np.array([])
         median = np.array([])
@@ -648,12 +626,7 @@ def update_timelines(
         data_keys = src.data.keys()
         update_dict = {"time": x_axis}
         if np.all(np.isin(list(data_keys), ["time", "Min", "Median", "Mean", "Max"])):
-            update_dict |= {
-                "Min": mn,
-                "Mean": mean,
-                "Median": median,
-                "Max": mx
-            }
+            update_dict |= {"Min": mn, "Mean": mean, "Median": median, "Max": mx}
         elif np.all(np.isin(list(data_keys), ["time", "y"])):
             update_dict |= {"y": arr}
         else:

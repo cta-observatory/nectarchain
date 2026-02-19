@@ -7,22 +7,12 @@ This module stores the Bokeh webpage camera mapping maker for the RTA of NectarC
 
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 import time
 import numpy as np
 
 # Bokeh imports
-from bokeh.models import (
-    Switch,
-    Ellipse,
-    HoverTool,
-    TabPanel
-)
-from bokeh.layouts import (
-    column,
-    gridplot
-)
+from bokeh.models import Switch, Ellipse, HoverTool, TabPanel
+from bokeh.layouts import column, gridplot
 
 # Bokeh RTA imports
 from ..utils_helpers import get_hillas_parameters
@@ -32,12 +22,13 @@ from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization.bokeh import CameraDisplay
 
-
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
 
 __all__ = ["make_tab_camera_displays", "update_camera_display"]
+
+logger = logging.getLogger(__name__)
 
 
 def _make_camera_display_params(show_hillas=False, label="Show Hillas ellipse:"):
@@ -55,13 +46,15 @@ def _make_camera_display_params(show_hillas=False, label="Show Hillas ellipse:")
     -------
     out : Switch
         Bokeh Switch to check the display of the Hillas ellipse.
-        
+
     """
 
     return Switch(active=show_hillas, label=label)
 
 
-def update_hillas_ellipse(ellipse, file, parameterkeys, parameter_parentkeys, run_index=-1):
+def update_hillas_ellipse(
+    ellipse, file, parameterkeys, parameter_parentkeys, run_index=-1
+):
     """Update the Hillas ellipse from new run.
 
     Parameters
@@ -85,8 +78,13 @@ def update_hillas_ellipse(ellipse, file, parameterkeys, parameter_parentkeys, ru
 
     """
 
-    ellipse.x, ellipse.y, ellipse.width, ellipse.height, ellipse.angle = get_hillas_parameters(
-        file, parameterkeys=parameterkeys, parameter_parentkeys=parameter_parentkeys, run_index=run_index
+    ellipse.x, ellipse.y, ellipse.width, ellipse.height, ellipse.angle = (
+        get_hillas_parameters(
+            file,
+            parameterkeys=parameterkeys,
+            parameter_parentkeys=parameter_parentkeys,
+            run_index=run_index,
+        )
     )
 
 
@@ -101,7 +99,7 @@ def _make_camera_display(
     run_index=-1,
     title=None,
     show_hillas=False,
-    label_colorbar=""
+    label_colorbar="",
 ):
     """Create the hexagonal camera display
     based on the data from the input file.
@@ -164,8 +162,10 @@ def _make_camera_display(
 
     # Hillas ellipse
     x, y, width, height, angle = get_hillas_parameters(
-        file, parameterkeys=parameterkeys,
-        parameter_parentkeys=parameter_parentkeys, run_index=run_index
+        file,
+        parameterkeys=parameterkeys,
+        parameter_parentkeys=parameter_parentkeys,
+        run_index=run_index,
     )
     ellipse = Ellipse(
         x=x,
@@ -176,12 +176,12 @@ def _make_camera_display(
         fill_color=None,
         line_color="#40E0D0",
         line_width=2,
-        line_alpha=1
+        line_alpha=1,
     )
     glyph = display.figure.add_glyph(ellipse)
     hovertool = [t for t in display.figure.tools if isinstance(t, HoverTool)][0]
     hovertool.renderers = [display.figure.renderers[0]]
-    
+
     # Hillas ellipse always computed but not necessarily shown
     if not show_hillas:
         glyph.visible = False
@@ -190,7 +190,7 @@ def _make_camera_display(
     display.add_colorbar()
     display._color_bar.title = label_colorbar
     display.figure.title = title
-    
+
     # To deal with using dict and not list?
     display._meta = {
         "type": "camera",
@@ -198,12 +198,12 @@ def _make_camera_display(
         "parameter_parentkeys": parameter_parentkeys,
         "childkey": childkey,
         "parameterkeys": parameterkeys,
-        "factory": "_make_camera_display"
+        "factory": "_make_camera_display",
     }
     display_registry.append(display)
-    
+
     return display
-    
+
 
 def make_tab_camera_displays(
     file,
@@ -218,7 +218,7 @@ def make_tab_camera_displays(
     titles=None,
     show_hillas=False,
     label_hillas="Show Hillas ellipse:",
-    labels_colorbar=None
+    labels_colorbar=None,
 ):
     """Create the tab of the hexagonal camera displays
     based on the data from the input file.
@@ -288,7 +288,7 @@ def make_tab_camera_displays(
             "run_index": run_index,
             "title": titles[key],
             "show_hillas": show_hillas,
-            "label_colorbar": labels_colorbar[key]
+            "label_colorbar": labels_colorbar[key],
         }
         displays.append(_make_camera_display(**args).figure)
 
@@ -296,7 +296,7 @@ def make_tab_camera_displays(
         show_hillas=show_hillas, label=label_hillas
     )
     widgets["hillas_switch"] = hillas_switch
-    
+
     def callback(attr, old, new):
         for display in displays:
             for r in display.renderers:
@@ -308,23 +308,24 @@ def make_tab_camera_displays(
             logger.info(f"Hillas ellipse displayed: {time.strftime('%H:%M:%S')}")
         else:
             logger.info(f"Hillas ellipse hidden: {time.strftime('%H:%M:%S')}")
+
     hillas_switch.on_change("active", callback)
     display_gridplot = gridplot(displays, ncols=2)
-    
+
     display_layout = column(hillas_switch, display_gridplot)
     tab_camera_displays = TabPanel(child=display_layout, title="Camera displays")
     return tab_camera_displays
 
 
 def update_camera_display(
-        disp,
-        childkey,
-        image_parentkey,
-        parameter_parentkeys,
-        parameterkeys,
-        current_file,
-        run_index=-1,
-    ):
+    disp,
+    childkey,
+    image_parentkey,
+    parameter_parentkeys,
+    parameterkeys,
+    current_file,
+    run_index=-1,
+):
     """Update camera display .image if available.
 
     Parameters
@@ -358,7 +359,7 @@ def update_camera_display(
             current_file,
             parameterkeys=parameterkeys,
             parameter_parentkeys=parameter_parentkeys,
-            run_index=run_index
+            run_index=run_index,
         )
         imgds = current_file[image_parentkey][childkey]
         # try to index safely

@@ -6,18 +6,17 @@ This module stores data fetching helpers for the RTA of NectarCAM.
 """
 
 # imports
-import logging
-logger = logging.getLogger(__name__)
-
 import os
-import h5py
+import logging
 from pathlib import Path
+import h5py
 
 # Bokeh imports
 from .utils_helpers import hdf5Proxy
 
-
 __all__ = ["safe_close_file", "open_file_from_selection", "fetch_stream"]
+
+logger = logging.getLogger(__name__)
 
 
 def _get_latest_file(ressource_path, extension=".h5"):
@@ -47,8 +46,7 @@ def _get_latest_file(ressource_path, extension=".h5"):
 
     # Find the latest file
     filepath = max(
-        Path(ressource_path).glob("*"+extension),
-        key=lambda f: f.stat().st_mtime
+        Path(ressource_path).glob("*" + extension), key=lambda f: f.stat().st_mtime
     )
     try:
         # Try to open .h5 file
@@ -57,7 +55,8 @@ def _get_latest_file(ressource_path, extension=".h5"):
         # Return None if an error occured
         logger.warning(f"_get_latest_file: failed reading {filepath}: {e}")
         return None
-        
+
+
 def safe_close_file(fobj):
     """Safely close ``fobj`` file. If ``fobj`` can not be closed, no nothing.
 
@@ -81,9 +80,13 @@ def safe_close_file(fobj):
 
 
 def open_file_from_selection(
-        sel_value, ressource_path, real_time_tag,
-        extension=".h5", time_parentkeys=None, time_childkeys=None
-    ):
+    sel_value,
+    ressource_path,
+    real_time_tag,
+    extension=".h5",
+    time_parentkeys=None,
+    time_childkeys=None,
+):
     """Return an open h5py.File-like object for selection.
     If ``sel_value == real_time_tag``, returns ``-get_latest_file(ressource_path)``.
     Else, expects ``sel_value`` to be a filename (without path and extension).
@@ -116,7 +119,7 @@ def open_file_from_selection(
         The resolved path to the file, otherwise ``None``.
 
     """
-    
+
     if sel_value is None:
         return None, None
 
@@ -145,11 +148,14 @@ def open_file_from_selection(
                 fileproxy[time_parentkey].sort_from_key(time_childkey)
             return fileproxy, filepath
         else:
-            logger.warning(f"open_file_for_selection: failed file opening: {filepath} not found.")
+            logger.warning(
+                f"open_file_for_selection: failed file opening: {filepath} not found."
+            )
             return None, None
     except Exception as e:
         logger.warning(f"open_file_for_selection: failed file opening: {e}")
         return None, None
-    
+
+
 def fetch_stream():
     pass
