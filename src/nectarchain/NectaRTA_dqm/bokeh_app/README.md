@@ -11,7 +11,13 @@ To run the available pipeline:
 - Download the repository
 - Run the Bokeh webpage using:
 ```
-bokeh serve main.py --show --dev
+bokeh serve bokeh_app --show --dev
+```
+
+The test suite is provided in ``tests/test.py``. It can be run as such and will use example DL1 stored in ``example_data``.
+If you want to run it from the ``bokeh`` command, use:
+```
+bokeh serve bokeh_app --show --dev --args test-interface
 ```
 
 **None**: Be careful to have all the dependencies installed in your environment.
