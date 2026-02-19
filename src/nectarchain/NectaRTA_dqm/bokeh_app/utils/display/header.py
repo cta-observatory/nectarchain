@@ -7,34 +7,28 @@ This module stores the Bokeh webpage header helpers for the RTA of NectarCAM.
 
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 import os
 import time
 
 # Bokeh imports
-from bokeh.models import (
-    Select,
-    Div
-)
-from bokeh.layouts import (
-    column
-)
+from bokeh.models import Select, Div
+from bokeh.layouts import column
 
 # Bokeh RTA imports
 from ..update_helpers import (
     start_periodic_updates,
     stop_periodic_updates,
-    update_all_figures
+    update_all_figures,
 )
 from ..data_fetch_helpers import (
     safe_close_file,
     open_file_from_selection,
-    _get_latest_file
+    _get_latest_file,
 )
 
+__all__ = ["make_select_run", "make_status_col", "make_header_menu"]
 
-__all__ = ["make_select_run", "make_status_div", "make_header_menu"]
+logger = logging.getLogger(__name__)
 
 
 def _list_runs(ressource_path, extension=".h5"):
@@ -67,7 +61,7 @@ def _list_runs(ressource_path, extension=".h5"):
 
     try:
         return [
-            item[:-len(extension)]
+            item[: -len(extension)]
             for item in os.listdir(ressource_path)
             if item.endswith(extension)
         ]
@@ -106,13 +100,20 @@ def _set_status_text(msgs, status_col=None):
 
 
 def _on_header_select_change(
-        attr, old, new,
-        fobj=None, fpath=None, ressource_path=None,
-        status_col=None,
-        real_time_tag=None, default_update_ms=None,
-        display_registry=None, widgets=None,
-        time_parentkeys=None, time_childkeys=None
-    ):
+    attr,
+    old,
+    new,
+    fobj=None,
+    fpath=None,
+    ressource_path=None,
+    status_col=None,
+    real_time_tag=None,
+    default_update_ms=None,
+    display_registry=None,
+    widgets=None,
+    time_parentkeys=None,
+    time_childkeys=None,
+):
     """Callback when header selector changes value.
     Select run to be displayed or real time mode.
 
@@ -172,32 +173,31 @@ def _on_header_select_change(
         try:
             # real time will have to be replaced by ...data_fetch_helpers.fetch_stream()
             fobj, fpath = open_file_from_selection(
-                sel, ressource_path=ressource_path, real_time_tag=real_time_tag,
+                sel,
+                ressource_path=ressource_path,
+                real_time_tag=real_time_tag,
             )
             # Update and start periodic updates
-            update_all_figures(
-                fobj, display_registry=display_registry, widgets=widgets
-            )
+            update_all_figures(fobj, display_registry=display_registry, widgets=widgets)
             widgets["PERIODIC_CB_ID"] = start_periodic_updates(
                 file=fobj,
                 display_registry=display_registry,
                 widgets=widgets,
                 status_col=status_col,
-                interval_ms=default_update_ms
+                interval_ms=default_update_ms,
             )
             # Display
             _set_status_text(
                 [
                     f"Loaded file: {fobj.filename}",
-                    f"Last update: {time.strftime('%H:%M:%S')}"
+                    f"Last update: {time.strftime('%H:%M:%S')}",
                 ],
-                status_col=status_col
+                status_col=status_col,
             )
             return fobj, fpath
         except Exception as e:
             _set_status_text(
-                [f"Failed to start real-time mode: {e}"] * 2,
-                status_col=status_col
+                [f"Failed to start real-time mode: {e}"] * 2, status_col=status_col
             )
             logger.warning(f"Failed to start real-time mode: {e}")
             return None, None
@@ -207,36 +207,36 @@ def _on_header_select_change(
         try:
             widgets["PERIODIC_CB_ID"] = stop_periodic_updates(widgets)
             fobj, fpath = open_file_from_selection(
-                sel, ressource_path=ressource_path, real_time_tag=real_time_tag,
-                time_parentkeys=time_parentkeys, time_childkeys=time_childkeys
+                sel,
+                ressource_path=ressource_path,
+                real_time_tag=real_time_tag,
+                time_parentkeys=time_parentkeys,
+                time_childkeys=time_childkeys,
             )
             # issue with opening the specific file
             if fobj is None:
                 _set_status_text(
-                    [f"Could not open selected file: {sel}"] * 2,
-                    status_col=status_col
+                    [f"Could not open selected file: {sel}"] * 2, status_col=status_col
                 )
                 return None, None
-            update_all_figures(
-                fobj, display_registry=display_registry, widgets=widgets
-            )
+            update_all_figures(fobj, display_registry=display_registry, widgets=widgets)
             _set_status_text(
                 [
                     f"Loaded file: {fobj.filename}",
-                    f"Last update: {time.strftime('%H:%M:%S')}"
+                    f"Last update: {time.strftime('%H:%M:%S')}",
                 ],
-                status_col=status_col
+                status_col=status_col,
             )
             return fobj, fpath
         # errors raised
         except Exception as e:
             _set_status_text(
                 [f"Could not open selected file: {sel} : {e}"] * 2,
-                status_col=status_col
+                status_col=status_col,
             )
             logger.warning(f"Could not open selected file: {e}")
             return None, None
-        
+
 
 def make_select_run(list_file, real_time_tag):
     """Create the Select widget for RTA modes.
@@ -244,7 +244,7 @@ def make_select_run(list_file, real_time_tag):
     Modes:
         - Real time: retrieve data from RTA stream to display.
         - Reading mode: retrieve data from selected file to display.
-    
+
     Parameters
     ----------
     list_file : array_like
@@ -263,7 +263,7 @@ def make_select_run(list_file, real_time_tag):
     return Select(
         title="Run selected:",
         value=real_time_tag,
-        options=list(list_file) + [real_time_tag]
+        options=list(list_file) + [real_time_tag],
     )
 
 
@@ -319,6 +319,6 @@ def make_header_menu(ressource_path, real_time_tag, file=None, extension=".h5"):
         file = _get_latest_file(ressource_path, extension=extension)
     list_file = _list_runs(ressource_path, extension=extension)
     run_choice_slidedown = make_select_run(list_file, real_time_tag)
-        
+
     status_col = make_status_col(file)
     return run_choice_slidedown, status_col

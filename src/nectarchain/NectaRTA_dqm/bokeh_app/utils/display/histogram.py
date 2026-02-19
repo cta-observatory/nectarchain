@@ -7,8 +7,6 @@ This module stores the Bokeh webpage histogram maker for the RTA of NectarCAM.
 
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 import time
 import numpy as np
 
@@ -23,23 +21,23 @@ from bokeh.models import (
     AnnularWedge,
     Legend,
     LegendItem,
-    TabPanel
+    TabPanel,
 )
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Inferno
-from bokeh.layouts import (
-    gridplot,
-    column
-)
+from bokeh.layouts import gridplot, column
 
 # ctapipe imports
 from ctapipe.visualization.bokeh import BokehPlot
 
-
 __all__ = [
     "make_full_histogram_sections",
-    "update_display_hist", "update_display_hist_for_1d", "update_annulus"
+    "update_display_hist",
+    "update_display_hist_for_1d",
+    "update_annulus",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def make_averaged_histogram(
@@ -51,10 +49,10 @@ def make_averaged_histogram(
     n_bins=20,
     title=None,
     label=None,
-    xaxis=None
+    xaxis=None,
 ):
     """Create the Bokeh histogram plot for 2d data.
-    This is the data for a specific event, n_runs accounts for 
+    This is the data for a specific event, n_runs accounts for
     the number of events to average on for the histogram.
 
     Parameters
@@ -98,8 +96,8 @@ def make_averaged_histogram(
         xaxis = label
     data = np.asarray(file[parentkey][childkey])
     if data.ndim != 2:
-        data = np.zeros((data.shape[0],1))
-    
+        data = np.zeros((data.shape[0], 1))
+
     data_to_average = data[-n_runs:]
     hist, edges = np.histogram(data_to_average, n_bins)
     hist //= n_runs
@@ -115,9 +113,9 @@ def make_averaged_histogram(
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
         x_range=(current_data.data["edges"].min(), current_data.data["edges"].max()),
-        toolbar_location="above"
+        toolbar_location="above",
     )
-    
+
     fig = display.figure
     fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
     fig.y_range.start = 0
@@ -128,18 +126,10 @@ def make_averaged_histogram(
         x="edges",
         width=0.9 * (edges[1] - edges[0]),
         top=label,
-        color=linear_cmap(
-            label,
-            "Inferno256",
-            -.1 * np.max(hist),
-            1.1 * np.max(hist)
-        )
+        color=linear_cmap(label, "Inferno256", -0.1 * np.max(hist), 1.1 * np.max(hist)),
     )
 
-    hover = HoverTool(
-        tooltips=[("Count", "@{}".format(label))],
-        renderers=[r]
-    )
+    hover = HoverTool(tooltips=[("Count", "@{}".format(label))], renderers=[r])
     fig.add_tools(hover)
 
     display._meta = {
@@ -147,11 +137,12 @@ def make_averaged_histogram(
         "parentkey": parentkey,
         "childkey": childkey,
         "label": label,
-        "factory": "make_averaged_histogram"
+        "factory": "make_averaged_histogram",
     }
     display_registry.append(display)
-    
+
     return display
+
 
 def make_section_averaged_histogram_runs_only(
     file,
@@ -162,7 +153,7 @@ def make_section_averaged_histogram_runs_only(
     n_bins=50,
     titles=None,
     labels=None,
-    xaxes=None
+    xaxes=None,
 ):
     """Create multiple Bokeh averaged-histogram plot for 2d data.
     A single slider controls the number of events to average.
@@ -197,7 +188,7 @@ def make_section_averaged_histogram_runs_only(
     -------
     display : gridplot
         Bokeh plots of the histograms.
-        
+
     """
 
     # normalize lists
@@ -221,20 +212,21 @@ def make_section_averaged_histogram_runs_only(
     for key in childkeys.keys():
         disp = make_averaged_histogram(
             file,
-            childkey = childkeys[key],
-            parentkey = parentkeys[key],
-            display_registry = display_registry,
-            n_runs = n_runs,
-            n_bins = n_bins,
-            title = titles[key],
-            label = labels[key],
-            xaxis = xaxes[key]
+            childkey=childkeys[key],
+            parentkey=parentkeys[key],
+            display_registry=display_registry,
+            n_runs=n_runs,
+            n_bins=n_bins,
+            title=titles[key],
+            label=labels[key],
+            xaxis=xaxes[key],
         )
         displays.append(disp)
 
     # layout: sliders above grid of figures
     display_gridplot = gridplot([d.figure for d in displays], ncols=2)
     return display_gridplot
+
 
 def make_histogram(
     file,
@@ -244,7 +236,7 @@ def make_histogram(
     n_bins=20,
     title=None,
     label=None,
-    xaxis=None
+    xaxis=None,
 ):
     """Create the Bokeh histogram plot for 1d data.
 
@@ -277,7 +269,7 @@ def make_histogram(
         Bokeh plot of the histogram.
 
     """
-    
+
     if title is None:
         title = childkey
     if label is None:
@@ -287,7 +279,7 @@ def make_histogram(
     data = np.asarray(file[parentkey][childkey])
     if data.ndim != 1:
         data = np.zeros((data.shape[0]))
-    
+
     hist, edges = np.histogram(data, n_bins)
     current_data = ColumnDataSource(
         data={
@@ -301,9 +293,9 @@ def make_histogram(
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
         x_range=(current_data.data["edges"].min(), current_data.data["edges"].max()),
-        toolbar_location="above"
+        toolbar_location="above",
     )
-    
+
     fig = display.figure
     fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
     fig.y_range.start = 0
@@ -314,18 +306,10 @@ def make_histogram(
         x="edges",
         width=0.9 * (edges[1] - edges[0]),
         top=label,
-        color=linear_cmap(
-            label,
-            "Inferno256",
-            -.1 * np.max(hist),
-            1.1 * np.max(hist)
-        )
+        color=linear_cmap(label, "Inferno256", -0.1 * np.max(hist), 1.1 * np.max(hist)),
     )
 
-    hover = HoverTool(
-        tooltips=[("Count", "@{}".format(label))],
-        renderers=[r]
-    )
+    hover = HoverTool(tooltips=[("Count", "@{}".format(label))], renderers=[r])
     fig.add_tools(hover)
 
     display._meta = {
@@ -333,11 +317,12 @@ def make_histogram(
         "parentkey": parentkey,
         "childkey": childkey,
         "label": label,
-        "factory": "make_histogram"
+        "factory": "make_histogram",
     }
     display_registry.append(display)
-    
+
     return display
+
 
 def make_histograms(
     file,
@@ -348,7 +333,7 @@ def make_histograms(
     titles=None,
     labels=None,
     xaxes=None,
-    suptitle=None
+    suptitle=None,
 ):
     """Create multiple Bokeh histogram plots for 1d data.
 
@@ -382,7 +367,7 @@ def make_histograms(
     -------
     display : column
         Bokeh plots of the histograms.
-        
+
     """
 
     if not isinstance(parentkeys, list):
@@ -404,13 +389,13 @@ def make_histograms(
     for key in childkeys.keys():
         disp = make_histogram(
             file,
-            childkey = childkeys[key],
-            parentkey = parentkeys[key],
-            display_registry = display_registry,
-            n_bins = n_bins,
-            title = titles[key],
-            label = labels[key],
-            xaxis=xaxes[key]
+            childkey=childkeys[key],
+            parentkey=parentkeys[key],
+            display_registry=display_registry,
+            n_bins=n_bins,
+            title=titles[key],
+            label=labels[key],
+            xaxis=xaxes[key],
         )
         displays.append(disp)
 
@@ -424,6 +409,7 @@ def make_histograms(
     display_gridplot = gridplot([d.figure for d in displays], ncols=2)
     display_layout = column(name, display_gridplot)
     return display_layout
+
 
 def update_display_hist(disp, parentkey, childkey, file, label, n_runs, n_bins):
     """Update histogram for one display by updating its 2d data source.
@@ -463,7 +449,7 @@ def update_display_hist(disp, parentkey, childkey, file, label, n_runs, n_bins):
         arr = np.zeros((arr.shape[0], 1))
 
     n_runs = max(1, int(n_runs))
-    n_bins  = max(1, int(n_bins))
+    n_bins = max(1, int(n_bins))
 
     sample = arr[-n_runs:].ravel()
     hist, edges = np.histogram(sample, bins=n_bins)
@@ -488,6 +474,7 @@ def update_display_hist(disp, parentkey, childkey, file, label, n_runs, n_bins):
         logger.warning(f"_recompute_display_hist: failed to update source: {e}")
     figure.update()
 
+
 def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
     """Update histogram for one display by updating its data source.
 
@@ -510,7 +497,7 @@ def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
     Returns
     -------
     out : None
-    
+
     """
 
     if hasattr(disp, "figure"):
@@ -523,7 +510,7 @@ def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
     if data.ndim != 1:
         data = np.zeros(data.shape[0])
 
-    n_bins  = max(1, int(n_bins))
+    n_bins = max(1, int(n_bins))
 
     hist, edges = np.histogram(data, bins=n_bins)
     centers = (edges[:-1] + edges[1:]) / 2.0
@@ -546,6 +533,7 @@ def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
         logger.warning(f"_recompute_display_hist: failed to update source: {e}")
     figure.update()
 
+
 def make_histogram_sections(
     file,
     display_registry,
@@ -563,7 +551,7 @@ def make_histogram_sections(
     titles_1d=None,
     labels_1d=None,
     xaxes_1d=None,
-    suptitle_1d=None
+    suptitle_1d=None,
 ):
     """Create the histogram section with both averaged- and single-histograms.
 
@@ -630,7 +618,7 @@ def make_histogram_sections(
         n_bins=n_bins,
         titles=titles_avg,
         labels=labels_avg,
-        xaxes=xaxes_avg
+        xaxes=xaxes_avg,
     )
     histogram_1d_layout = make_histograms(
         file,
@@ -641,7 +629,7 @@ def make_histogram_sections(
         titles=titles_1d,
         labels=labels_1d,
         xaxes=xaxes_1d,
-        suptitle=suptitle_1d
+        suptitle=suptitle_1d,
     )
 
     if not isinstance(parentkeys_avg, dict):
@@ -664,24 +652,25 @@ def make_histogram_sections(
     slider_runs = Slider(
         start=1,
         end=file[parentkey_for_run_slider][childkey_for_run_slider].shape[0],
-        value=max(1, int(n_runs)), step=1, title="Number of runs to average"
+        value=max(1, int(n_runs)),
+        step=1,
+        title="Number of runs to average",
     )
     widgets["hist_runs"] = slider_runs
     displays_avg = {
         key: child[0]
-        for key, child
-        in zip(childkeys_avg.keys(), histogram_avg_layout.children)
+        for key, child in zip(childkeys_avg.keys(), histogram_avg_layout.children)
     }
     displays_1d = {
         key: child[0]
-        for key, child
-        in zip(childkeys_1d.keys(), histogram_1d_layout.children[1].children)
+        for key, child in zip(
+            childkeys_1d.keys(), histogram_1d_layout.children[1].children
+        )
     }
 
     # Slider bin part
     slider_bins = Slider(
-        start=2, end=100,
-        value=max(2, int(n_bins)), step=1, title="Number of bins"
+        start=2, end=100, value=max(2, int(n_bins)), step=1, title="Number of bins"
     )
     widgets["hist_bins"] = slider_bins
 
@@ -692,10 +681,17 @@ def make_histogram_sections(
         for key in childkeys_avg.keys():
             update_display_hist(
                 displays_avg[key],
-                parentkeys_avg[key], childkeys_avg[key], file,
-                labels_avg[key], current_runs, n_bins
+                parentkeys_avg[key],
+                childkeys_avg[key],
+                file,
+                labels_avg[key],
+                current_runs,
+                n_bins,
             )
-        logger.info(f"Number of averaged runs changed to {current_runs}: {time.strftime('%H:%M:%S')}")
+        current_time = time.strftime("%H:%M:%S")
+        logger.info(
+            f"Number of averaged runs changed to {current_runs}: {current_time}"
+        )
 
     slider_runs.on_change("value", _on_runs_change)
 
@@ -718,35 +714,36 @@ def make_histogram_sections(
         for key in childkeys_avg.keys():
             update_display_hist(
                 displays_avg[key],
-                parentkeys_avg[key], childkeys_avg[key], file,
-                labels_avg[key], 
+                parentkeys_avg[key],
+                childkeys_avg[key],
+                file,
+                labels_avg[key],
                 n_runs=current_runs,
-                n_bins=current_bins
+                n_bins=current_bins,
             )
         for key in childkeys_1d.keys():
             update_display_hist_for_1d(
                 displays_1d[key],
-                parentkeys_1d[key], childkeys_1d[key], file,
+                parentkeys_1d[key],
+                childkeys_1d[key],
+                file,
                 labels_1d[key],
-                n_bins=current_bins
+                n_bins=current_bins,
             )
-        logger.info(f"Number of bins changed to {current_bins}: {time.strftime('%H:%M:%S')}")
+        logger.info(
+            f"Number of bins changed to {current_bins}: {time.strftime('%H:%M:%S')}"
+        )
 
     slider_bins.on_change("value", _on_bins_change)
 
     # initial recompute (ensures sources are consistent)
     _on_bins_change(None, None, None)
-    
+
     histogram_layout = column(slider_bins, display_layout, histogram_1d_layout)
     return histogram_layout
 
-def make_annulus(
-    file,
-    childkey,
-    parentkey,
-    display_registry,
-    title=None
-):
+
+def make_annulus(file, childkey, parentkey, display_registry, title=None):
     """Create the Bokeh pie chart plot for discrete data.
 
     Parameters
@@ -780,14 +777,14 @@ def make_annulus(
         title=title,
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
-        toolbar_location=None
+        toolbar_location=None,
     )
     xdr = Range1d(start=-2, end=2)
     ydr = Range1d(start=-2, end=2)
     display.figure = Plot(x_range=xdr, y_range=ydr)
     fig = display.figure
     fig.title.text = title
-        
+
     data = np.asarray(file[parentkey][childkey])
     group, counts = np.unique(data, return_counts=True)
     angles = np.concatenate(([0], 2 * np.pi * np.cumsum(counts) / np.sum(counts)))
@@ -795,23 +792,26 @@ def make_annulus(
         {
             "start": angles[:-1],
             "end": angles[1:],
-            "colors": Inferno[len(group)+2][1:-1],
-            "counts": counts
+            "colors": Inferno[len(group) + 2][1:-1],
+            "counts": counts,
         }
     )
     glyph = AnnularWedge(
-        x=0, y=0, inner_radius=0.9, outer_radius=1.8,
-        start_angle="start", end_angle="end",
-        line_color="white", line_width=3, fill_color="colors"
+        x=0,
+        y=0,
+        inner_radius=0.9,
+        outer_radius=1.8,
+        start_angle="start",
+        end_angle="end",
+        line_color="white",
+        line_width=3,
+        fill_color="colors",
     )
     r = fig.add_glyph(source, glyph)
 
-    hover = HoverTool(
-        tooltips=[("Count", "@{}".format("counts"))],
-        renderers=[r]
-    )
+    hover = HoverTool(tooltips=[("Count", "@{}".format("counts"))], renderers=[r])
     fig.add_tools(hover)
-    
+
     legend = Legend(location="center")
     for i, name in enumerate(group):
         legend.items.append(LegendItem(label=str(name), renderers=[r], index=i))
@@ -821,19 +821,15 @@ def make_annulus(
         "type": "annulus",
         "parentkey": parentkey,
         "childkey": childkey,
-        "factory": "make_annulus"
+        "factory": "make_annulus",
     }
     display_registry.append(display)
-    
+
     return display
 
+
 def make_annulii(
-    file,
-    childkeys,
-    parentkeys,
-    display_registry,
-    titles=None,
-    suptitle=None
+    file, childkeys, parentkeys, display_registry, titles=None, suptitle=None
 ):
     """Create multiple Bokeh pie charts plot for discrete data.
 
@@ -861,7 +857,7 @@ def make_annulii(
     -------
     display : column
         Bokeh plots of the pie charts.
-        
+
     """
 
     if not isinstance(parentkeys, dict):
@@ -875,11 +871,7 @@ def make_annulii(
     for key in childkeys.keys():
         displays.append(
             make_annulus(
-                file,
-                childkeys[key],
-                parentkeys[key],
-                display_registry,
-                titles[key]
+                file, childkeys[key], parentkeys[key], display_registry, titles[key]
             )
         )
 
@@ -925,7 +917,7 @@ def update_annulus(disp, parentkey, childkey, current_file):
     source = disp.figure.renderers[0].data_source
     source.data.start = angles[:-1]
     source.data.end = angles[1:]
-    source.data.colors = Inferno[len(group)+2][1:-1]
+    source.data.colors = Inferno[len(group) + 2][1:-1]
     source.data.counts = counts
 
 
@@ -950,7 +942,7 @@ def make_full_histogram_sections(
     xaxes_1d=None,
     suptitle_1d=None,
     titles_pie=None,
-    suptitle_pie=None
+    suptitle_pie=None,
 ):
     """Create the histogram TabPanel with averaged-, single-histograms and annulii.
 
@@ -1034,7 +1026,7 @@ def make_full_histogram_sections(
         titles_1d=titles_1d,
         labels_1d=labels_1d,
         xaxes_1d=xaxes_1d,
-        suptitle_1d=suptitle_1d
+        suptitle_1d=suptitle_1d,
     )
     annulii_layout = make_annulii(
         file,
@@ -1042,7 +1034,7 @@ def make_full_histogram_sections(
         parentkeys_pie,
         display_registry,
         titles=titles_pie,
-        suptitle=suptitle_pie
+        suptitle=suptitle_pie,
     )
     full_histogram_layout = column(histogram_layout, annulii_layout)
     return TabPanel(child=full_histogram_layout, title="Histograms")

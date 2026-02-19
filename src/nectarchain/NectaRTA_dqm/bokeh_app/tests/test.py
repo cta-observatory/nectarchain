@@ -12,7 +12,12 @@ from pathlib import Path
 # Tests
 path = Path(__file__).resolve().parent.parent.parent
 test_command_line = [
-    "bokeh", "serve", "bokeh_app", "--show", "--dev",
-    "--args", "test-interface"
+    "bokeh",
+    "serve",
+    "bokeh_app",
+    "--show",
+    "--dev",
+    "--args",
+    "test-interface",
 ]
 subprocess.run(test_command_line)

@@ -7,8 +7,6 @@ This module builds the high level builders for Bokeh webpage of the RTA of Necta
 
 # imports
 import logging
-logger = logging.getLogger(__name__)
-
 from functools import partial
 
 # Bokeh imports
@@ -18,11 +16,7 @@ from bokeh.models import (
     Tabs,
     Select,
 )
-from bokeh.layouts import (
-    row,
-    column
-)
-from bokeh.plotting import curdoc
+from bokeh.layouts import row, column
 
 # Bokeh RTA imports
 from .display.summary import make_summary_card
@@ -30,16 +24,13 @@ from .display.camera_mapping import make_tab_camera_displays
 from .display.timeline import make_tab_timelines
 from .display.histogram import make_full_histogram_sections
 from .display.skymaps import make_tab_skymaps
-from .display.header import (
-    make_header_menu,
-    _on_header_select_change,
-    _set_status_text
-)
+from .display.header import make_header_menu, _on_header_select_change, _set_status_text
 
 from .data_fetch_helpers import open_file_from_selection
 
+__all__ = ["make_body", "build_ui"]
 
-__all__ = ["make_body", "buld_ui"]
+logger = logging.getLogger(__name__)
 
 
 def make_body(
@@ -51,40 +42,34 @@ def make_body(
     time_parentkey="dl1/event/telescope/images/tel_001",
     time_childkey="trigger_time",
     parentkeys_camera="dl1/event/telescope/images/tel_001",
-    childkeys_camera={
-        "image_key": "image",
-        "peak_time_key": "peak_time"
-    },
+    childkeys_camera={"image_key": "image", "peak_time_key": "peak_time"},
     parentkeys_parameter="dl1/event/telescope/parameters/tel_001",
     childkeys_parameter={
         "hillas_x_key": "hillas_x",
         "hillas_y_key": "hillas_y",
         "hillas_length_key": "hillas_length",
         "hillas_width_key": "hillas_width",
-        "hillas_phi_key": "hillas_phi"
+        "hillas_phi_key": "hillas_phi",
     },
     parentkeys_monitoring="dl1/event/telescope/parameters/tel_001",
     childkeys_monitoring={
         "event_type_key": "event_type",
         "is_good_event_key": "is_good_event",
-        "event_quality_key": "event_quality"
+        "event_quality_key": "event_quality",
     },
     label_2d_timeline={
         "min_func_key": "Min",
         "mean_func_key": "Mean",
         "median_func_key": "Median",
-        "max_func_key": "Max"
+        "max_func_key": "Max",
     },
     func_timeline={
         "min_func_key": "min",
         "mean_func_key": "mean",
         "median_func_key": "median",
-        "max_func_key": "max"
+        "max_func_key": "max",
     },
-    ylabels_2d={
-        "image_key": "Image [p.e.]",
-        "peak_time_key": "Peak time [ns]"
-    },
+    ylabels_2d={"image_key": "Image [p.e.]", "peak_time_key": "Peak time [ns]"},
     ylabels_1d={
         "hillas_x_key": "Hillas: x [unit]",
         "hillas_y_key": "Hillas: y [unit]",
@@ -96,20 +81,13 @@ def make_body(
         "hillas_r_key": "Hillas: radius [unit]",
         "hillas_psi_key": "Hillas: psi [unit]",
         "hillas_skew_key": "Hillas: skewness [unit]",
-        "hillas_kurt_key": "Hillas: kurtosis [unit]"
+        "hillas_kurt_key": "Hillas: kurtosis [unit]",
     },
-    ylabels_step=[
-        "Event type",
-        "Is good event",
-        "Event quality"
-    ],
+    ylabels_step=["Event type", "Is good event", "Event quality"],
     suptitle_2d="Raw camera data",
     suptitle_1d="Hillas parameters",
     suptitle_step="Event monitoring",
-    labels_2d={
-        "image_key": "image",
-        "peak_time_key": "peak_time"
-    },
+    labels_2d={"image_key": "image", "peak_time_key": "peak_time"},
     labels_1d={
         "hillas_x_key": "hillas_x",
         "hillas_y_key": "hillas_y",
@@ -121,12 +99,9 @@ def make_body(
         "hillas_r_key": "hillas_r",
         "hillas_psi_key": "hillas_psi",
         "hillas_skew_key": "hillas_skewness",
-        "hillas_kurt_key": "hillas_kurtosis"
+        "hillas_kurt_key": "hillas_kurtosis",
     },
-    labels_colorbar={
-        "image_key": "p.e.",
-        "peak_time_key": "ns"
-    },
+    labels_colorbar={"image_key": "p.e.", "peak_time_key": "ns"},
     n_runs=1,
     n_bins=20,
     run_index=-1,
@@ -204,19 +179,19 @@ def make_body(
         Static initialization of the Bokeh webpage body.
 
     """
-    
+
     # Summary card
     try:
         summary_card = make_summary_card(
             file,
             parentkeys=summary_parentkeys,
             childkeys=summary_childkeys,
-            display_registry=display_registry
+            display_registry=display_registry,
         )
     except Exception as e:
         logger.warning("make_summary_card failed:", e)
         summary_card = column(Div(text="Error building summary card"))
-    
+
     # Camera displays
     try:
         tab_camera_displays = make_tab_camera_displays(
@@ -228,15 +203,15 @@ def make_body(
             display_registry=display_registry,
             widgets=widgets,
             run_index=run_index,
-            labels_colorbar=labels_colorbar
+            labels_colorbar=labels_colorbar,
         )
     except Exception as e:
         logger.warning("make_tab_camera_displays failed:", e)
         tab_camera_displays = TabPanel(
             child=column(Div(text="Error building camera display")),
-            title="Camera displays"
+            title="Camera displays",
         )
-    
+
     # Timelines
     try:
         tab_timelines = make_tab_timelines(
@@ -262,34 +237,33 @@ def make_body(
     except Exception as e:
         logger.warning("make_tab_timelines failed:", e)
         tab_timelines = TabPanel(
-            child=column(Div(text="Error building timeline")),
-            title="Timelines"
+            child=column(Div(text="Error building timeline")), title="Timelines"
         )
-    
+
     # Histograms
     tab_histograms = make_full_histogram_sections(
-            file,
-            display_registry=display_registry,
-            widgets=widgets,
-            childkeys_avg=childkeys_camera,
-            parentkeys_avg=parentkeys_camera,
-            childkeys_1d=childkeys_parameter,
-            parentkeys_1d=parentkeys_parameter,
-            childkeys_pie=childkeys_monitoring,
-            parentkeys_pie=parentkeys_monitoring,
-            n_runs=n_runs,
-            n_bins=n_bins,
-            suptitle_avg=suptitle_2d,
-            suptitle_1d=suptitle_1d,
-            suptitle_pie=suptitle_step,
-            titles_avg=ylabels_2d,
-            titles_1d=ylabels_1d,
-            titles_pie=ylabels_step,
-            labels_avg=labels_2d,
-            labels_1d=labels_1d,
-            xaxes_avg=ylabels_2d,
-            xaxes_1d=ylabels_1d
-        )
+        file,
+        display_registry=display_registry,
+        widgets=widgets,
+        childkeys_avg=childkeys_camera,
+        parentkeys_avg=parentkeys_camera,
+        childkeys_1d=childkeys_parameter,
+        parentkeys_1d=parentkeys_parameter,
+        childkeys_pie=childkeys_monitoring,
+        parentkeys_pie=parentkeys_monitoring,
+        n_runs=n_runs,
+        n_bins=n_bins,
+        suptitle_avg=suptitle_2d,
+        suptitle_1d=suptitle_1d,
+        suptitle_pie=suptitle_step,
+        titles_avg=ylabels_2d,
+        titles_1d=ylabels_1d,
+        titles_pie=ylabels_step,
+        labels_avg=labels_2d,
+        labels_1d=labels_1d,
+        xaxes_avg=ylabels_2d,
+        xaxes_1d=ylabels_1d,
+    )
     try:
         tab_histograms = make_full_histogram_sections(
             file,
@@ -312,46 +286,44 @@ def make_body(
             labels_avg=labels_2d,
             labels_1d=labels_1d,
             xaxes_avg=ylabels_2d,
-            xaxes_1d=ylabels_1d
+            xaxes_1d=ylabels_1d,
         )
     except Exception as e:
         logger.warning("make_full_histogram_sections failed:", e)
         tab_histograms = TabPanel(
-            child=column(Div(text="Error building histogram")),
-            title="Histograms"
+            child=column(Div(text="Error building histogram")), title="Histograms"
         )
-    
+
     # Skymaps
     try:
         tab_skymaps = make_tab_skymaps()
     except Exception as e:
         logger.warning("make_tab_skymaps failed:", e)
         tab_skymaps = TabPanel(
-            child=column(Div(text="Error building skymap")),
-            title="Skymaps"
+            child=column(Div(text="Error building skymap")), title="Skymaps"
         )
-    
+
     # Tabs
     tabs = Tabs(
         tabs=[tab_camera_displays, tab_timelines, tab_histograms, tab_skymaps],
     )
-    
+
     # Build layout
     return row(summary_card, tabs)
 
 
 def build_ui(
-        ressource_path,
-        file,
-        filepath,
-        display_registry,
-        widgets,
-        real_time_tag,
-        default_update_ms,
-        extension=".h5",
-        time_parentkeys=None,
-        time_childkeys=None,
-        **body_kwargs,      
+    ressource_path,
+    file,
+    filepath,
+    display_registry,
+    widgets,
+    real_time_tag,
+    default_update_ms,
+    extension=".h5",
+    time_parentkeys=None,
+    time_childkeys=None,
+    **body_kwargs,
 ):
     """Build the user interface of the Bokeh webpage.
 
@@ -394,12 +366,16 @@ def build_ui(
 
     # call make_header_menu; be defensive about its return signature
     header_select, status_col = None, None
-    header_ret = make_header_menu(ressource_path, real_time_tag, file, extension=extension)
+    header_ret = make_header_menu(
+        ressource_path, real_time_tag, file, extension=extension
+    )
     header_select, status_col = header_ret[0], header_ret[1]
 
     # If no select found, create a simple select as fallback
     if header_select is None:
-        header_select = Select(title="Run", value=real_time_tag, options=[real_time_tag])
+        header_select = Select(
+            title="Run", value=real_time_tag, options=[real_time_tag]
+        )
         status_col = column(Div(text="(no header provided)", width=600))
 
     # create initial file: either latest or nothing
@@ -409,20 +385,17 @@ def build_ui(
             ressource_path=ressource_path,
             real_time_tag=real_time_tag,
             time_parentkeys=time_parentkeys,
-            time_childkeys=time_childkeys
+            time_childkeys=time_childkeys,
         )
     except Exception:
         file, filepath = None, None
-    
+
     # Build body (try passing the file if make_body accepts it)
     body_ret = None
     try:
         # attempt call with file
         body_ret = make_body(
-            file=file, 
-            display_registry=display_registry,
-            widgets=widgets,
-            **body_kwargs
+            file=file, display_registry=display_registry, widgets=widgets, **body_kwargs
         )
     except Exception as e:
         logger.warning("make_body failed:", e)
@@ -430,10 +403,8 @@ def build_ui(
 
     # assemble root layout
     root_layout = column(
-        row(header_ret[0], header_ret[1]),
-        body_ret,
-        sizing_mode="scale_width"
-        )
+        row(header_ret[0], header_ret[1]), body_ret, sizing_mode="scale_width"
+    )
 
     # curdoc().add_root(root_layout)
 
@@ -453,7 +424,7 @@ def build_ui(
                 widgets=widgets,
                 time_parentkeys=time_parentkeys,
                 time_childkeys=time_childkeys,
-            )
+            ),
         )
     except Exception:
         pass

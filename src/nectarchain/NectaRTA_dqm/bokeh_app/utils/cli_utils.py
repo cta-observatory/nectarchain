@@ -2,9 +2,9 @@
 # Contact mail: julian.hamo@ijclab.in2p3.fr
 
 """
-This module handle argument parsing of the main() of the Bokeh webpage for the RTA of NectarCAM.
+This module handle argument parsing of the main()
+of the Bokeh webpage for the RTA of NectarCAM.
 """
-
 
 # imports
 import sys
@@ -14,20 +14,14 @@ from pathlib import Path
 
 import numpy as np
 
-
 # Bokeh imports
 from bokeh.io import curdoc
-
 
 # Bokeh RTA imports
 from .high_level_builders import build_ui
 from .data_fetch_helpers import _get_latest_file
-from .update_helpers import (
-    periodic_update_display,
-    start_periodic_updates
-)
+from .update_helpers import periodic_update_display, start_periodic_updates
 from .logging_config import setup_logging
-
 
 # ============================================================
 # Logging configuration
@@ -45,7 +39,7 @@ def create_app(doc):
     """
     Create the Bokeh document to be sent to the Bokeh server
     and add it to the existing Bokeh document ``doc``.
-    
+
     Parameters
     ----------
     doc: Bokeh Document
@@ -59,7 +53,7 @@ def create_app(doc):
     logger = setup_logging(
         log_dir=PROJECT_ROOT / "log_dir",
         log_file_name="bokeh_log.log",
-        level=logging.INFO
+        level=logging.INFO,
     )
 
     test_interface = "test-interface" in set(sys.argv[1:])
@@ -91,7 +85,9 @@ def create_app(doc):
 
     # make_body() default kwargs
     # Keep statistic functions for timelines only if in the Numpy module
-    with open(PROJECT_ROOT / "utils/static/make_body_default_kwargs.json") as make_body_default_kwargs_file:
+    with open(
+        PROJECT_ROOT / "utils/static/make_body_default_kwargs.json"
+    ) as make_body_default_kwargs_file:
         make_body_kwargs = json.load(make_body_default_kwargs_file)
         numpy_funcs = {}
         numpy_func_names = {}
@@ -99,7 +95,9 @@ def create_app(doc):
             try:
                 np_func = getattr(np, make_body_kwargs["func_timeline"][func_key])
                 numpy_funcs[func_key] = np_func
-                numpy_func_names[func_key] = make_body_kwargs["label_2d_timeline"][func_key]
+                numpy_func_names[func_key] = make_body_kwargs["label_2d_timeline"][
+                    func_key
+                ]
             except Exception as e:
                 logger.warning(f"Fail to get function from Numpy module: {e}")
         make_body_kwargs["func_timeline"] = numpy_funcs
@@ -107,17 +105,17 @@ def create_app(doc):
 
     # Build UI
     root_layout, header_ret = build_ui(
-        ressource_path = RESSOURCE_PATH,
-        file = file,
-        filepath = getattr(file, "filename", None),
-        display_registry = display_registry,
-        widgets = widgets,
-        real_time_tag = REAL_TIME_TAG,
-        default_update_ms = DEFAULT_UPDATE_MS,
-        extension = DEFAULT_EXTENSION,
+        ressource_path=RESSOURCE_PATH,
+        file=file,
+        filepath=getattr(file, "filename", None),
+        display_registry=display_registry,
+        widgets=widgets,
+        real_time_tag=REAL_TIME_TAG,
+        default_update_ms=DEFAULT_UPDATE_MS,
+        extension=DEFAULT_EXTENSION,
         time_parentkeys=time_parentkeys,
         time_childkeys=time_childkeys,
-        **make_body_kwargs
+        **make_body_kwargs,
     )
     doc.add_root(root_layout)
     header_ret = root_layout.children[0].children
@@ -130,10 +128,11 @@ def create_app(doc):
             display_registry=display_registry,
             widgets=widgets,
             status_col=header_ret[1],
-            interval_ms=DEFAULT_UPDATE_MS
+            interval_ms=DEFAULT_UPDATE_MS,
         )
     except Exception:
         pass
+
 
 def main():
     """Generate the Bokeh interface from an empty Bokeh document."""
