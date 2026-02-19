@@ -1,6 +1,7 @@
 {
     "REAL_TIME_TAG": "Real time",
     "DEFAULT_UPDATE_MS": 1000,
+    "EXAMPLE_RESSOURCE_PATH": "example_data",
     "RESSOURCE_PATH": "example_data",
     "NPIXELS": 1855,
     "DEFAULT_EXTENSION": ".h5",
