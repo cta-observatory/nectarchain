@@ -5,6 +5,11 @@
 This module stores the Bokeh webpage skymap maker for the RTA of NectarCAM.
 """
 
+
+# imports
+import logging
+logger = logging.getLogger(__name__)
+
 # Bokeh imports
 from bokeh.models import (
     Div,

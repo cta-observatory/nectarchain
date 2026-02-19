@@ -7,6 +7,9 @@ This module stores the Bokeh webpage utility helpers for the RTA of NectarCAM.
 
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 
 
@@ -58,7 +61,7 @@ def get_hillas_parameters(
         angle=file[parameter_parentkeys][parameterkeys["hillas_phi_key"]][run_index]
         return x, y, width, height, angle
     except Exception as e:
-        print("Failed to retrieve Hillas parameters:", e)
+        logger.warning("Failed to retrieve Hillas parameters:", e)
 
 
  # hdf5 file handling for time sorting

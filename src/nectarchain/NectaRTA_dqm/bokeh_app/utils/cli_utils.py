@@ -26,6 +26,7 @@ from .update_helpers import (
     periodic_update_display,
     start_periodic_updates
 )
+from .logging_config import setup_logging
 
 
 # ============================================================
@@ -42,7 +43,8 @@ logging.basicConfig(
 # ============================================================
 def create_app(doc):
     """
-    Docstring for create_app
+    Create the Bokeh document to be sent to the Bokeh server
+    and add it to the existing Bokeh document ``doc``.
     
     Parameters
     ----------
@@ -50,10 +52,19 @@ def create_app(doc):
         Document to send to the server for the interface.
     """
 
+    # Root of the project
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+    # Log directory initialization
+    logger = setup_logging(
+        log_dir=PROJECT_ROOT / "log_dir",
+        log_file_name="bokeh_log.log",
+        level=logging.INFO
+    )
+
     test_interface = "test-interface" in set(sys.argv[1:])
 
     # JSON constants
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
     with open(PROJECT_ROOT / "utils/static/constants.json") as constants_file:
         json_dict = json.load(constants_file)
     REAL_TIME_TAG = json_dict["REAL_TIME_TAG"]
@@ -64,10 +75,10 @@ def create_app(doc):
 
     # Path of data
     if test_interface:
-        print("Test interface - displaying example runs")
+        logger.info("Test interface - displaying example runs")
         RESSOURCE_PATH = PROJECT_ROOT / json_dict["EXAMPLE_RESSOURCE_PATH"]
     else:
-        print("Real interface - fetching data currently produced by RTA")
+        logger.info("Real interface - fetching data currently produced by RTA")
         RESSOURCE_PATH = PROJECT_ROOT / json_dict["RESSOURCE_PATH"]
 
     # Bokeh item storages
@@ -90,7 +101,7 @@ def create_app(doc):
                 numpy_funcs[func_key] = np_func
                 numpy_func_names[func_key] = make_body_kwargs["label_2d_timeline"][func_key]
             except Exception as e:
-                print("Fail to get function from Numpy module:", e)
+                logger.warning(f"Fail to get function from Numpy module: {e}")
         make_body_kwargs["func_timeline"] = numpy_funcs
         make_body_kwargs["label_2d_timeline"] = numpy_func_names
 
