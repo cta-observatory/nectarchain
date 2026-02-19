@@ -5,7 +5,6 @@
 This module handle the logging messages for the Bokeh webpage for the RTA of NectarCAM.
 """
 
-
 # imports
 import os
 import logging
@@ -46,17 +45,12 @@ def setup_logging(log_dir, log_file_name="bokeh_log.log", level=logging.INFO):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(level)
     console_format = logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(message)s",
-        "%H:%M:%S"
+        "%(asctime)s | %(levelname)-8s | %(message)s", "%H:%M:%S"
     )
     console_handler.setFormatter(console_format)
 
     # Rotating file handler
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=5_000_000,
-        backupCount=3
-    )
+    file_handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=3)
     file_handler.setLevel(level)
     file_format = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
