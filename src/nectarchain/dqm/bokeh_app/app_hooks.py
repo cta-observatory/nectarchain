@@ -281,20 +281,21 @@ def make_camera_display(source, parent_key, child_key):
         and displayed with the geometry from ctapipe.instrument.CameraGeometry
     """
 
-    image = source[parent_key][child_key]
-    image = np.nan_to_num(image, nan=0.0)
-    if "CAMERA-BADPIX-PED-PHY-OVEREVENTS" in parent_key:
+    image = np.nan_to_num(source[parent_key][child_key], nan=0.0)
+
+    if "BADPIX" in parent_key:
         image = set_bad_pixels_cap_value(image)
     else:
-        mask_high_gain, mask_low_gain = get_bad_pixels_position(source=source)
-        if "LOW-GAIN" in parent_key:
-            image[mask_low_gain] = 0.0
-            min_colorbar = np.min(image[~mask_low_gain])
-            max_colorbar = np.max(image[~mask_low_gain])
-        else:
-            image[mask_high_gain] = 0.0
-            min_colorbar = np.min(image[~mask_high_gain])
-            max_colorbar = np.max(image[~mask_high_gain])
+        mask_high_gain, mask_low_gain = get_bad_pixels_position(
+            source=source, image_shape=image.shape
+        )
+        min_colorbar = np.min(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        )
+        max_colorbar = np.max(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        )
+        image[mask_low_gain if "LOW-GAIN" in parent_key else mask_high_gain] = 0.0
 
     display = CameraDisplay(geometry=geom)
     try:
@@ -304,21 +305,20 @@ def make_camera_display(source, parent_key, child_key):
         display.image = image
         logger.error(
             f"Exception '{e}', filled camera plot"
-            + f"{parent_key}, {child_key} with zeros"
+            + f" {parent_key}, {child_key} with zeros"
         )
     except KeyError as e:
         image = np.zeros(shape=constants.N_PIXELS)
         display.image = image
         logger.error(
             f"Exception '{e}', filled camera plot"
-            + f"{parent_key}, {child_key} with zeros"
+            + f" {parent_key}, {child_key} with zeros"
         )
 
     fig = display.figure
-    # add axis labels
-    pix_x = geom.pix_x
-    pix_y = geom.pix_y
+    pix_x, pix_y = geom.pix_x, geom.pix_y
     cam_coords = SkyCoord(x=pix_x, y=pix_y, frame=geom.frame)
+    # add axis labels
     fig.xaxis.axis_label = f"x / {cam_coords.x.unit}"
     fig.yaxis.axis_label = f"y / {cam_coords.y.unit}"
     fig.xaxis.axis_label_text_font_size = "12pt"
@@ -326,14 +326,15 @@ def make_camera_display(source, parent_key, child_key):
     fig.yaxis.axis_label_text_font_size = "12pt"
     fig.yaxis.axis_label_text_font_style = "normal"
 
-    # add colorbar
-    if "CAMERA-BADPIX-PED-PHY-OVEREVENTS" not in parent_key:
+    if "BADPIX" not in parent_key:
         display._color_mapper.low = min_colorbar
         display._color_mapper.high = max_colorbar
-        # for pixels that are outside the colobar range, like bad pixels,
+        # for pixels that are outside the colorbar range, like bad pixels,
         # set displayed color to white
-        display._color_mapper.low_color = "white"
+        if not all(~mask_high_gain):
+            display._color_mapper.low_color = "white"
 
+    # add colorbar
     color_bar = ColorBar(
         color_mapper=display._color_mapper,
         padding=5,
@@ -378,7 +379,7 @@ def set_bad_pixels_cap_value(image):
     return image
 
 
-def get_bad_pixels_position(source):
+def get_bad_pixels_position(source, image_shape):
     """Get the positions of the bad pixels
        in the camera as boolean masks
 
@@ -386,6 +387,9 @@ def get_bad_pixels_position(source):
     ----------
     source : dict
         Dictionary returned by `get_rundata`
+    image_shape : tuple
+        Shape of the display image
+        for the quantity called in `make_camera_display`
 
     Returns
     -------
@@ -397,17 +401,38 @@ def get_bad_pixels_position(source):
         bad pixels in the camera for the Low gain channel
     """
 
-    image_high_gain = source["CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"][
-        "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"
-    ]
-    image_low_gain = source["CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"][
-        "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"
-    ]
+    try:
+        if "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN" in source.keys():
+            image_badpix_high_gain = source[
+                "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"
+            ]["CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"]
+            image_badpix_low_gain = source[
+                "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"
+            ]["CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"]
+        elif "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN" in source.keys():
+            image_badpix_high_gain = source["CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN"][
+                "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"
+            ]
+            image_badpix_low_gain = source["CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN"][
+                "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"
+            ]
 
-    mask_bad_pixels_high_gain = image_high_gain >= 1.0
-    # FIXME: bad pixels for High and Low gain may be the same
-    # (although it may depend on the definition of bad pixel),
-    # the mask defined below may be obsolete
-    mask_bad_pixels_low_gain = image_low_gain >= 1.0
+        mask_bad_pixels_high_gain = image_badpix_high_gain >= 1.0
+        # FIXME: bad pixels for High and Low gain may be the same
+        # (although it may depend on the definition of bad pixel),
+        # the mask defined below may be obsolete
+        mask_bad_pixels_low_gain = image_badpix_low_gain >= 1.0
+    except KeyError as e:
+        mask_bad_pixels_high_gain = np.zeros(shape=constants.N_PIXELS, dtype=bool)
+        mask_bad_pixels_low_gain = mask_bad_pixels_high_gain
+        logger.error(f"Exception '{e}'," + " bad pixels flag not found in the database")
+
+    if image_shape != mask_bad_pixels_high_gain.shape:
+        mask_bad_pixels_high_gain = np.zeros(shape=image_shape, dtype=bool)
+        mask_bad_pixels_low_gain = mask_bad_pixels_high_gain
+        logger.error(
+            "Some modules not available for the run,"
+            + " need to reset the shape of the bad pixels masks"
+        )
 
     return mask_bad_pixels_high_gain, mask_bad_pixels_low_gain
