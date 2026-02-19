@@ -432,7 +432,7 @@ def build_ui(
         sizing_mode="scale_width"
         )
 
-    curdoc().add_root(root_layout)
+    # curdoc().add_root(root_layout)
 
     # wire select callback
     try:
@@ -459,4 +459,4 @@ def build_ui(
     if status_col is not None:
         _set_status_text(f"Loaded: {filepath}")
 
-    return header_ret
+    return root_layout, header_ret

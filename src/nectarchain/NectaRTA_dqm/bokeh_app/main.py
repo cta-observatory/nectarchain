@@ -7,7 +7,12 @@ This module builds the Bokeh webpage for the RTA of NectarCAM.
 
 # imports
 import json
+import sys
 import numpy as np
+from pathlib import Path
+
+# Bokeh imports
+from bokeh.io import curdoc
 
 # Bokeh RTA imports
 from utils.high_level_builders import build_ui
@@ -18,64 +23,80 @@ from utils.update_helpers import (
 )
 
 
-# JSON constants
-with open("utils/static/constants.json") as constants_file:
-    json_dict = json.load(constants_file)
-REAL_TIME_TAG = json_dict["REAL_TIME_TAG"]
-DEFAULT_UPDATE_MS = json_dict["DEFAULT_UPDATE_MS"]
-RESSOURCE_PATH = json_dict["RESSOURCE_PATH"]
-DEFAULT_EXTENSION = json_dict["DEFAULT_EXTENSION"]
-time_parentkeys = json_dict["time_parentkeys"]
-time_childkeys = json_dict["time_childkeys"]
+def create_app(doc):
 
-# Bokeh item storages
-display_registry = []
-widgets = {"PERIODIC_CB_ID": None}
+    test_interface = "test-interface" in set(sys.argv[1:])
 
-# Retrieve latest file to simulate real time data
-# Will change when we add the stream listening part
-file = _get_latest_file(RESSOURCE_PATH)
+    # JSON constants
+    PROJECT_ROOT = Path(__file__).resolve().parent
+    with open(PROJECT_ROOT / "utils/static/constants.json") as constants_file:
+        json_dict = json.load(constants_file)
+    REAL_TIME_TAG = json_dict["REAL_TIME_TAG"]
+    DEFAULT_UPDATE_MS = json_dict["DEFAULT_UPDATE_MS"]
+    DEFAULT_EXTENSION = json_dict["DEFAULT_EXTENSION"]
+    time_parentkeys = json_dict["time_parentkeys"]
+    time_childkeys = json_dict["time_childkeys"]
 
-# make_body() default kwargs
-# Keep statistic functions for timelines only if in the Numpy module
-with open("utils/static/make_body_default_kwargs.json") as make_body_default_kwargs_file:
-    make_body_kwargs = json.load(make_body_default_kwargs_file)
-    numpy_funcs = {}
-    numpy_func_names = {}
-    for func_key in make_body_kwargs["func_timeline"].keys():
-        try:
-            np_func = getattr(np, make_body_kwargs["func_timeline"][func_key])
-            numpy_funcs[func_key] = np_func
-            numpy_func_names[func_key] = make_body_kwargs["label_2d_timeline"][func_key]
-        except Exception as e:
-            print("Fail to get function from Numpy module:", e)
-    make_body_kwargs["func_timeline"] = numpy_funcs
-    make_body_kwargs["label_2d_timeline"] = numpy_func_names
+    # Path of data
+    if test_interface:
+        print("Test interface - displaying example runs")
+        RESSOURCE_PATH = PROJECT_ROOT / json_dict["EXAMPLE_RESSOURCE_PATH"]
+    else:
+        print("Real interface - fetching data currently produced by RTA")
+        RESSOURCE_PATH = PROJECT_ROOT / json_dict["RESSOURCE_PATH"]
 
-# Build UI
-header_ret = build_ui(
-    ressource_path = RESSOURCE_PATH,
-    file = file,
-    filepath = getattr(file, "filename", None),
-    display_registry = display_registry,
-    widgets = widgets,
-    real_time_tag = REAL_TIME_TAG,
-    default_update_ms = DEFAULT_UPDATE_MS,
-    extension = DEFAULT_EXTENSION,
-    time_parentkeys=time_parentkeys,
-    time_childkeys=time_childkeys,
-    **make_body_kwargs
-)
+    # Bokeh item storages
+    display_registry = []
+    widgets = {"PERIODIC_CB_ID": None}
 
-# Start real-time at launch
-try:
-    periodic_update_display(file, display_registry, widgets, header_ret[1])
-    widgets["PERIODIC_CB_ID"] = start_periodic_updates(
-        file=file,
-        display_registry=display_registry,
-        widgets=widgets,
-        status_col=header_ret[1],
-        interval_ms=DEFAULT_UPDATE_MS
+    # Retrieve latest file to simulate real time data
+    # Will change when we add the stream listening part
+    file = _get_latest_file(RESSOURCE_PATH)
+
+    # make_body() default kwargs
+    # Keep statistic functions for timelines only if in the Numpy module
+    with open(PROJECT_ROOT / "utils/static/make_body_default_kwargs.json") as make_body_default_kwargs_file:
+        make_body_kwargs = json.load(make_body_default_kwargs_file)
+        numpy_funcs = {}
+        numpy_func_names = {}
+        for func_key in make_body_kwargs["func_timeline"].keys():
+            try:
+                np_func = getattr(np, make_body_kwargs["func_timeline"][func_key])
+                numpy_funcs[func_key] = np_func
+                numpy_func_names[func_key] = make_body_kwargs["label_2d_timeline"][func_key]
+            except Exception as e:
+                print("Fail to get function from Numpy module:", e)
+        make_body_kwargs["func_timeline"] = numpy_funcs
+        make_body_kwargs["label_2d_timeline"] = numpy_func_names
+
+    # Build UI
+    root_layout, header_ret = build_ui(
+        ressource_path = RESSOURCE_PATH,
+        file = file,
+        filepath = getattr(file, "filename", None),
+        display_registry = display_registry,
+        widgets = widgets,
+        real_time_tag = REAL_TIME_TAG,
+        default_update_ms = DEFAULT_UPDATE_MS,
+        extension = DEFAULT_EXTENSION,
+        time_parentkeys=time_parentkeys,
+        time_childkeys=time_childkeys,
+        **make_body_kwargs
     )
-except Exception:
-    pass
+    doc.add_root(root_layout)
+    header_ret = root_layout.children[0].children
+
+    # Start real-time at launch
+    try:
+        periodic_update_display(file, display_registry, widgets, header_ret[1])
+        widgets["PERIODIC_CB_ID"] = start_periodic_updates(
+            file=file,
+            display_registry=display_registry,
+            widgets=widgets,
+            status_col=header_ret[1],
+            interval_ms=DEFAULT_UPDATE_MS
+        )
+    except Exception:
+        pass
+
+create_app(curdoc())
