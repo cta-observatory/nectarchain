@@ -6,6 +6,9 @@ This module stores the Bokeh webpage camera mapping maker for the RTA of NectarC
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import time
 import numpy as np
 
@@ -149,12 +152,12 @@ def _make_camera_display(
         # try to map the image to the display
         display.image = image
     except ValueError:
-        print("ValueError")
+        logger.warning("Failed to make camera display: ValueError")
         # ValueError fail: map the image to 0s
         image = np.zeros(shape=display.image.shape)
         display.image = image
     except KeyError:
-        print("KeyError")
+        logger.warning("Failed to make camera display: KeyError")
         # KeyError fail: assumes the map is n_pixel long
         image = np.zeros(shape=n_pixels)
         display.image = image
@@ -302,9 +305,9 @@ def make_tab_camera_displays(
                     hillas_flag = r.visible
             display.update()
         if hillas_flag:
-            print(f"Hillas ellipse displayed: {time.strftime('%H:%M:%S')}")
+            logger.info(f"Hillas ellipse displayed: {time.strftime('%H:%M:%S')}")
         else:
-            print(f"Hillas ellipse hidden: {time.strftime('%H:%M:%S')}")
+            logger.info(f"Hillas ellipse hidden: {time.strftime('%H:%M:%S')}")
     hillas_switch.on_change("active", callback)
     display_gridplot = gridplot(displays, ncols=2)
     
@@ -370,6 +373,6 @@ def update_camera_display(
             # Some CameraDisplay objects require calling add_colorbar or refresh; ignore
             return
         except Exception as e:
-            print("update_camera_display: failed", e)
+            logger.warning(f"update_camera_display: failed {e}")
     except Exception as e:
-        print("update_camera_display: failed", e)
+        logger.warning(f"update_camera_display: failed {e}")

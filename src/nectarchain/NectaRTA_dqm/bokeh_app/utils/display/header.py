@@ -6,6 +6,9 @@ This module stores the Bokeh webpage header helpers for the RTA of NectarCAM.
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 import time
 
@@ -165,7 +168,7 @@ def _on_header_select_change(
 
     # open right file depending on the Select value
     if sel == real_time_tag:
-        print(f"Real-time mode: {time.strftime('%H:%M:%S')}")
+        logger.info(f"Real-time mode: {time.strftime('%H:%M:%S')}")
         try:
             # real time will have to be replaced by ...data_fetch_helpers.fetch_stream()
             fobj, fpath = open_file_from_selection(
@@ -196,10 +199,10 @@ def _on_header_select_change(
                 [f"Failed to start real-time mode: {e}"] * 2,
                 status_col=status_col
             )
-            print("Failed to start real-time mode:", e)
+            logger.warning(f"Failed to start real-time mode: {e}")
             return None, None
     else:
-        print(f"Reading mode (filename: {sel}): {time.strftime('%H:%M:%S')}")
+        logger.info(f"Reading mode (filename: {sel}): {time.strftime('%H:%M:%S')}")
         # open the selected file and update once (no periodic updates)'
         try:
             widgets["PERIODIC_CB_ID"] = stop_periodic_updates(widgets)
@@ -231,7 +234,7 @@ def _on_header_select_change(
                 [f"Could not open selected file: {sel} : {e}"] * 2,
                 status_col=status_col
             )
-            print("Could not open selected file:", e)
+            logger.warning(f"Could not open selected file: {e}")
             return None, None
         
 

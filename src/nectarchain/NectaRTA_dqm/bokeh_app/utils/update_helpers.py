@@ -6,6 +6,9 @@ This module stores Bokeh webpage update helpers for the RTA of NectarCAM.
 """
 
 # imports
+import logging
+logger = logging.getLogger(__name__)
+
 import time
 from functools import partial
 
@@ -111,7 +114,7 @@ def update_all_figures(
                 update_timelines(disp, parent, child, time_parent, time_child, file)
 
         except Exception as e:
-            print("update_all_figures: update failed for display meta=", meta, "error=", e)
+            logger.warning("update_all_figures: update failed for display meta=", meta, "error=", e)
 
 def update_timestamp(status_col):
     """Update the time of last update of the page.
@@ -128,7 +131,7 @@ def update_timestamp(status_col):
     """
 
     ts = time.strftime('%H:%M:%S')
-    print(f"Real time mode: updating figure - {ts}")
+    logger.info(f"Real time mode: updating figure - {ts}")
     status_col.children[1].text = f"Last update: {ts}"
 
 def periodic_update_display(file, display_registry, widgets, status_col):
@@ -191,7 +194,6 @@ def start_periodic_updates(
         interval_ms
     )
     widgets["PERIODIC_CB_ID"] = periodic_cb_id
-    # print(f"Periodic updates started (id={periodic_cb_id}, interval_ms={interval_ms})")
     return periodic_cb_id
 
 
@@ -214,5 +216,5 @@ def stop_periodic_updates(widgets):
     except Exception:
         pass
     widgets["PERIODIC_CB_ID"] = None
-    print(f"Periodic updates stopped (id={None})")
+    logger.info(f"Periodic updates stopped (id={None})")
     return None
