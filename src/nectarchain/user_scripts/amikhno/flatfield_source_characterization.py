@@ -40,7 +40,11 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-plt.style.use("../../utils/plot_style.mpltstyle")
+plt.style.use(
+    os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+    )
+)
 
 parser = argparse.ArgumentParser(
     description="Run NectarCAM photostatistics analysis",
