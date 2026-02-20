@@ -13,7 +13,7 @@ from pathlib import Path
 
 import h5py
 
-# Bokeh imports
+# Bokeh RTA imports
 from .utils_helpers import hdf5Proxy
 
 __all__ = ["safe_close_file", "open_file_from_selection", "fetch_stream"]
@@ -127,14 +127,11 @@ def open_file_from_selection(
 
     if sel_value == real_time_tag:
         file = _get_latest_file(ressource_path, extension=extension)
-        # Might not be useful to sort by time
-        # if the final goal is to listen to stream directly.
-        # fileproxy = hdf5Proxy(file)
-        # for time_parentkey, time_childkey in zip(time_parentkeys, time_childkeys):
-        #     fileproxy[time_parentkey].sort_from_key(time_childkey)
-        # path = getattr(fileproxy, "filename", None)
-        path = getattr(file, "filename", None)
-        return file, path
+        fileproxy = hdf5Proxy(file)
+        for time_parentkey, time_childkey in zip(time_parentkeys, time_childkeys):
+            fileproxy[time_parentkey].sort_from_key(time_childkey)
+        path = getattr(fileproxy, "filename", None)
+        return fileproxy, path
 
     try:
         filepath = (Path(ressource_path) / (sel_value + extension)).resolve()
