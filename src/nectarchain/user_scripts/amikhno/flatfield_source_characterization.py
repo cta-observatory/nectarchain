@@ -135,6 +135,25 @@ def pre_process_fits(filename, camera, pdf):
     # Find missing pixel IDs
     existing_pixels = container_dict["pixels_id"]
     missing_pixels = np.setdiff1d(expected_pixels, existing_pixels)
+    print(f"Missing pixels {missing_pixels}")
+
+    # pixels marked as broken (0)
+    is_valid_full = np.zeros(total_pixels, dtype=float)
+    existing_pixels = container_dict["pixels_id"]
+    is_valid_values = container_dict["is_valid"]
+
+    # Fill the correct positions
+    is_valid_full[existing_pixels] = is_valid_values
+
+    # Bad/missing pixels plot
+    fig00 = plt.figure(figsize=(5, 5))
+    disp = CameraDisplay(geometry=camera, show_frame=False)
+    disp.image = is_valid_full
+    disp.set_limits_minmax(0, 1)
+    disp.cmap = plt.cm.coolwarm
+    disp.add_colorbar()
+    fig00.suptitle("Broken / Missing pixels")
+    pdf.savefig(fig00)
 
     # Determine the shape of the 'high_gain' values
     hg_shape = (
@@ -908,26 +927,6 @@ def main(**kwargs):
     camera_tel = source.subarray.tel[
         source.subarray.tel_ids[0]
     ].camera.geometry.transform_to(EngineeringCameraFrame())
-
-    for event in source:
-        log.info(
-            f"Event 1: ID {event.index.event_id}, type"
-            f" {event.trigger.event_type}, "
-            f"time {event.trigger.time}"
-        )
-
-    # Looking for broken pixels
-    fig00 = plt.figure(13, figsize=(5, 5))
-    disp = CameraDisplay(geometry=camera_tel, show_frame=False)
-    chan = 0
-    disp.image = event.mon.tel[
-        source.subarray.tel_ids[0]
-    ].pixel_status.hardware_failing_pixels[chan]
-    disp.set_limits_minmax(0, 1)
-    disp.cmap = plt.cm.coolwarm
-    disp.add_colorbar()
-    fig00.suptitle("Broken/missing pixels")
-    pdf_file.savefig(fig00)
 
     (
         n_pe,
