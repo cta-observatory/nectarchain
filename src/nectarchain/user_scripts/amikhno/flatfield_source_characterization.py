@@ -880,7 +880,7 @@ def main(**kwargs):
         log.info("Running analysis without variance correction...")
 
     try:
-        filename_ps = DataManagement.find_photostat(
+        photostatistics_results_file = DataManagement.find_photostat(
             FF_run_number=run_number,
             ped_run_number=run_number,
             FF_method=method,
@@ -888,7 +888,7 @@ def main(**kwargs):
             str_extractor_kwargs=str_extractor_kwargs,
         )[0]
         log.info(
-            f"File {filename_ps} already exists, skipping photostatistics computation."
+            f"File {photostatistics_results_file} already exists, skipping photostatistics computation."
         )
     except FileNotFoundError:
         log.info(
@@ -910,7 +910,7 @@ def main(**kwargs):
             tool.setup()
             tool.start()
             tool.finish()
-            filename_ps = DataManagement.find_photostat(
+            photostatistics_results_file = DataManagement.find_photostat(
                 FF_run_number=run_number,
                 ped_run_number=run_number,
                 FF_method=method,
@@ -940,7 +940,7 @@ def main(**kwargs):
         high_gains,
         low_gains,
         charges,
-    ) = pre_process_fits(filename_ps, camera_tel, pdf_file)
+    ) = pre_process_fits(photostatistics_results_file, camera_tel, pdf_file)
 
     # First fit no variance
     data_1, fit_1, minuit_1, residuals_1 = optimize_with_outlier_rejection(
