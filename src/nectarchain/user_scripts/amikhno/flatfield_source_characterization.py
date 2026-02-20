@@ -135,7 +135,7 @@ def pre_process_fits(filename, camera, pdf):
     # Find missing pixel IDs
     existing_pixels = container_dict["pixels_id"]
     missing_pixels = np.setdiff1d(expected_pixels, existing_pixels)
-    print(f"Missing pixels {missing_pixels}")
+    log.info(f"Missing pixels {missing_pixels}")
 
     # pixels marked as broken (0)
     is_valid_full = np.zeros(total_pixels, dtype=float)
@@ -866,7 +866,7 @@ def main(**kwargs):
             method=method,
             extractor_kwargs=str_extractor_kwargs,
         )
-        print(f"THIS IS THE spe_filenames output {spe_filenames}")
+        log.info(f"THIS IS THE spe_filenames output {spe_filenames}")
 
     log.info(f"ADD_VARIANCE = {args.add_variance}")
 
