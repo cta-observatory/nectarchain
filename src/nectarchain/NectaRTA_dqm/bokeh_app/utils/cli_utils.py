@@ -6,10 +6,11 @@ This module handle argument parsing of the main()
 of the Bokeh webpage for the RTA of NectarCAM.
 """
 
-# imports
-import sys
 import json
 import logging
+
+# imports
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -17,11 +18,12 @@ import numpy as np
 # Bokeh imports
 from bokeh.io import curdoc
 
+from .data_fetch_helpers import _get_latest_file
+
 # Bokeh RTA imports
 from .high_level_builders import build_ui
-from .data_fetch_helpers import _get_latest_file
-from .update_helpers import periodic_update_display, start_periodic_updates
 from .logging_config import setup_logging
+from .update_helpers import periodic_update_display, start_periodic_updates
 
 # ============================================================
 # Logging configuration
@@ -56,6 +58,7 @@ def create_app(doc):
         level=logging.INFO,
     )
 
+    # Check CLI
     test_interface = "test-interface" in set(sys.argv[1:])
 
     # JSON constants

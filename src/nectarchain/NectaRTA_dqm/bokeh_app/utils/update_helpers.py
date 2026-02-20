@@ -13,15 +13,16 @@ from functools import partial
 # Bokeh imports
 from bokeh.plotting import curdoc
 
+from .display.camera_mapping import update_camera_display
+
 # Bokeh RTA imports
 from .display.histogram import (
+    update_annulus,
     update_display_hist,
     update_display_hist_for_1d,
-    update_annulus,
 )
-from .display.timeline import update_timelines
-from .display.camera_mapping import update_camera_display
 from .display.summary import update_summary_card
+from .display.timeline import update_timelines
 
 __all__ = ["periodic_update_display", "start_periodic_updates", "stop_periodic_updates"]
 

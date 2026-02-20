@@ -5,10 +5,12 @@
 This module stores data fetching helpers for the RTA of NectarCAM.
 """
 
+import logging
+
 # imports
 import os
-import logging
 from pathlib import Path
+
 import h5py
 
 # Bokeh imports

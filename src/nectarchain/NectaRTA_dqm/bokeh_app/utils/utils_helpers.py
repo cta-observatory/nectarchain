@@ -7,6 +7,7 @@ This module stores the Bokeh webpage utility helpers for the RTA of NectarCAM.
 
 # imports
 import logging
+
 import numpy as np
 
 __all__ = ["get_hillas_parameters", "hdf5Proxy", "hdf5GroupProxy"]

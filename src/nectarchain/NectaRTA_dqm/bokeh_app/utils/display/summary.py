@@ -7,11 +7,12 @@ This module stores the Bokeh webpage summary card maker for the RTA of NectarCAM
 
 # imports
 import logging
+
 import numpy as np
+from bokeh.layouts import column
 
 # Bokeh imports
 from bokeh.models import Div
-from bokeh.layouts import column
 
 __all__ = ["make_summary_card", "update_summary_card"]
 
@@ -142,7 +143,6 @@ def update_summary_card(disp, file, parentkeys, childkeys, run_index=-1):
     try:
         if hasattr(disp, "children") and len(disp.children) > 1:
             if hasattr(disp.children[1], "text"):
-
                 tel_id = file[parentkeys["parameter_parentkey"]][childkeys["tel_id"]][
                     run_index
                 ]
@@ -187,7 +187,9 @@ def update_summary_card(disp, file, parentkeys, childkeys, run_index=-1):
                     childkeys["is_good_event"]
                 ][run_index]
 
-                disp.children[1].text = f"""
+                disp.children[
+                    1
+                ].text = f"""
                     <div>
                     Telescope: {name} - id: {tel_id}<br>
                     Camera: {camera_type}<br>
