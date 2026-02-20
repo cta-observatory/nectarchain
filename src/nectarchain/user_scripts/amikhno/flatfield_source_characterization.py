@@ -299,11 +299,10 @@ def define_delete_out(sigma, data):
 def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     # least-squares score function = sum of data residuals squared
     def lsq(a0, a1, a2, a3):
-        a4 = (
-            a3  # This equality comes from assumption that the 2D-Gaussian is symmetric.
-        )
+        # We assume that the 2D-Gaussian is symmetric, thus the last two arguments of
+        # Gaussian_model are the same
         return np.sum(
-            (n_pe - Gaussian_model(camera, [a0, a1, a2, a3, a4])) ** 2
+            (n_pe - Gaussian_model(camera, [a0, a1, a2, a3, a3])) ** 2
             / (sigma_masked**2)
         )
 
