@@ -26,10 +26,47 @@ test_dict = {
             "mysubkey2": np.random.normal(size=geom.n_pixels),
             "FOOPIXTIMELINE-HIGH": np.random.normal(size=1000),
         },
+        # BADPIX keys for testing
+        "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN": {
+            "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN": np.array(
+                [0, 1, 2] + [0] * (geom.n_pixels - 3)
+            ),
+        },
+        "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN": {
+            "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN": np.array(
+                [0, 1, 2] + [0] * (geom.n_pixels - 3)
+            ),
+        },
     }
 }
 # Renders the second image incomplete
 test_dict["run1"]["mykey2"]["mysubkey2"][10:20] = np.nan
+
+
+def test_set_bad_pixels_cap_value():
+    from nectarchain.dqm.bokeh_app.app_hooks import set_bad_pixels_cap_value
+
+    arr = np.array([0.0, 1.2, 0.0, 2.0])
+    capped = set_bad_pixels_cap_value(arr.copy())
+    assert np.all(capped <= 1.0)
+    assert capped[1] == 1.0
+    assert capped[3] == 1.0
+
+
+def test_get_bad_pixels_position():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_bad_pixels_position
+
+    source = test_dict["run1"]
+    image_shape = (geom.n_pixels,)
+    mask_high, mask_low = get_bad_pixels_position(source, image_shape)
+    assert mask_high.shape == image_shape
+    assert mask_low.shape == image_shape
+    assert mask_high[1] == True
+    assert mask_high[2] == True
+    assert mask_high[0] == False
+    assert mask_low[1] == True
+    assert mask_low[2] == True
+    assert mask_low[0] == False
 
 
 def test_make_camera_displays():
