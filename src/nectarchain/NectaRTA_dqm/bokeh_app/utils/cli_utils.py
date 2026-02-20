@@ -19,11 +19,12 @@ import numpy as np
 from bokeh.io import curdoc
 
 from .data_fetch_helpers import _get_latest_file
-
-# Bokeh RTA imports
 from .high_level_builders import build_ui
 from .logging_config import setup_logging
 from .update_helpers import periodic_update_display, start_periodic_updates
+
+# Bokeh RTA imports
+from .utils_helpers import hdf5Proxy
 
 # ============================================================
 # Logging configuration
@@ -85,6 +86,7 @@ def create_app(doc):
     # Retrieve latest file to simulate real time data
     # Will change when we add the stream listening part
     file = _get_latest_file(RESSOURCE_PATH)
+    file = hdf5Proxy(file)
 
     # make_body() default kwargs
     # Keep statistic functions for timelines only if in the Numpy module
