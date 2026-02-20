@@ -157,6 +157,11 @@ def main():
     temperature = args.temperature
     nevents = args.evts
 
+    window_shift = 4
+    window_width = 16
+    max_events = 5000
+    method = "LocalPeakWindowSum"
+
     pkl_index = 0
 
     for iNSB in range(len(NSB)):
@@ -175,18 +180,13 @@ def main():
                 progress_bar=True,
                 run_number=run,
                 max_events=1000,
-                events_per_slice=5000,
+                events_per_slice=max_events,
                 log_level=20,
                 overwrite=True,
                 filter_method=None,
                 method="FullWaveformSum",  # charges over entire window
             )
             run_tool(pedestal_tool)
-
-            window_shift = 4
-            window_width = 16
-            max_events = 5000
-            method = "LocalPeakWindowSum"
 
             gain_run = int(get_gain_run(temperature))
             gain_file_name = (
@@ -200,12 +200,12 @@ def main():
                 gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=gain_run,
-                    max_events=5000,
+                    max_events=max_events,
                     method=method,
                     output_path=gain_file_name,
                     extractor_kwargs={
-                        "window_width": 16,
-                        "window_shift": 4,
+                        "window_width": window_width,
+                        "window_shift": window_shift,
                     },
                 )
                 run_tool(gain_tool)
@@ -215,8 +215,11 @@ def main():
                 progress_bar=True,
                 run_number=run,
                 max_events=nevents,
-                method="LocalPeakWindowSum",
-                extractor_kwargs={"window_width": 16, "window_shift": 4},
+                method=method,
+                extractor_kwargs={
+                    "window_width": window_width,
+                    "window_shift": window_shift,
+                },
                 pedestal_file=pedestal_tool.output_path,
                 overwrite=True,
             )
@@ -359,7 +362,6 @@ def main():
         )
     ax.set_xlabel("Charge (p.e.)")
     ax.set_ylabel("HG/LG ratio")
-    # ax.grid()
     ax.legend()
     plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_pe_T{temperature}.png"))
     if temp_output:
