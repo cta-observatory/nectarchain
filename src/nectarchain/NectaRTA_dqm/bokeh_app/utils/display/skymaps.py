@@ -9,10 +9,7 @@ This module stores the Bokeh webpage skymap maker for the RTA of NectarCAM.
 import logging
 
 # Bokeh imports
-from bokeh.models import (
-    Div,
-    TabPanel,
-)
+from bokeh.models import Div, TabPanel
 
 __all__ = ["make_tab_skymaps"]
 

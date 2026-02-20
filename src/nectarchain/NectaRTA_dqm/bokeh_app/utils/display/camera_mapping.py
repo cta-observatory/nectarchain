@@ -8,19 +8,20 @@ This module stores the Bokeh webpage camera mapping maker for the RTA of NectarC
 # imports
 import logging
 import time
-import numpy as np
 
-# Bokeh imports
-from bokeh.models import Switch, Ellipse, HoverTool, TabPanel
+import numpy as np
 from bokeh.layouts import column, gridplot
 
-# Bokeh RTA imports
-from ..utils_helpers import get_hillas_parameters
+# Bokeh imports
+from bokeh.models import Ellipse, HoverTool, Switch, TabPanel
 
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization.bokeh import CameraDisplay
+
+# Bokeh RTA imports
+from ..utils_helpers import get_hillas_parameters
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
@@ -78,13 +79,17 @@ def update_hillas_ellipse(
 
     """
 
-    ellipse.x, ellipse.y, ellipse.width, ellipse.height, ellipse.angle = (
-        get_hillas_parameters(
-            file,
-            parameterkeys=parameterkeys,
-            parameter_parentkeys=parameter_parentkeys,
-            run_index=run_index,
-        )
+    (
+        ellipse.x,
+        ellipse.y,
+        ellipse.width,
+        ellipse.height,
+        ellipse.angle,
+    ) = get_hillas_parameters(
+        file,
+        parameterkeys=parameterkeys,
+        parameter_parentkeys=parameter_parentkeys,
+        run_index=run_index,
     )
 
 
