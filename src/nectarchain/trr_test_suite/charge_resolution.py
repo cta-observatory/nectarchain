@@ -153,14 +153,15 @@ def main():
     mean_charge = []
     mean_resolution_nsb_err = []
     mean_charge_err = []
-    log.info("NSB", len(NSB), NSB)
+    log.info(f"NSB: length {len(NSB)}, NSB rate {NSB} MHz")
+    temperature = args.temperature
+    nevents = args.evts
+
+    pkl_index = 0
 
     for iNSB in range(len(NSB)):
         runlist = runs_list[iNSB]
         ff_volt = ff_v_list[iNSB]
-
-        temperature = args.temperature
-        nevents = args.evts
 
         charge = np.zeros((len(runlist), 2))
         std = np.zeros((len(runlist), 2))
@@ -238,9 +239,8 @@ def main():
             index += 1
 
             # charge with voltage
-        plt.clf()
-        fig = plt.figure()
-        plt.errorbar(
+        fig, ax = plt.subplots()
+        ax.errorbar(
             ff_volt,
             np.transpose(charge)[0],
             color=plot_parameters["High Gain"]["color"],
@@ -249,7 +249,7 @@ def main():
             label="HG",
             linestyle="",
         )
-        plt.errorbar(
+        ax.errorbar(
             ff_volt,
             np.transpose(charge)[1],
             color=plot_parameters["Low Gain"]["color"],
@@ -258,14 +258,11 @@ def main():
             label="LG",
             linestyle="",
         )
-        # plt.yscale('log')
-        # plt.xscale('log')
-        plt.xlabel("FF voltage (V)")
-        plt.ylabel("Average charge (p.e.)")
-        plt.grid()
-        plt.legend()
-        plt.ylim(-1, 600)
-        plt.tight_layout()
+        ax.set_xlabel("FF voltage (V)")
+        ax.set_ylabel("Average charge (p.e.)")
+        # ax.grid()
+        ax.legend()
+        ax.set_ylim(-1, 600)
         plt.savefig(
             os.path.join(
                 output_dir,
@@ -275,8 +272,11 @@ def main():
             )
         )
         if temp_output:
-            with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+            with open(
+                os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb"
+            ) as f:
                 pickle.dump(fig, f)
+                pkl_index += 1
 
         ratio_lghg_nsb.append(ratio_hglg)
 
@@ -347,10 +347,9 @@ def main():
         mean_charge_err.append(x_i_err)
         del x_i, y_i, x_i_err, y_i_err
 
-    plt.clf()
-    fig = plt.figure()
+    fig, ax = plt.subplots()
     for iNSB in range(len(NSB)):
-        plt.errorbar(
+        ax.errorbar(
             mean_charge[iNSB],
             ratio_lghg_nsb[iNSB],
             color=color[iNSB],
@@ -358,26 +357,23 @@ def main():
             linestyle="",
             label="NSB={} MHz".format(NSB[iNSB]),
         )
-    plt.xlabel("Charge (p.e.)")
-    plt.ylabel("HG/LG ratio")
-    plt.grid()
-    plt.legend()
-    plt.tight_layout()
-    # plt.ylim(1,600)
+    ax.set_xlabel("Charge (p.e.)")
+    ax.set_ylabel("HG/LG ratio")
+    # ax.grid()
+    ax.legend()
     plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_pe_T{temperature}.png"))
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb") as f:
             pickle.dump(fig, f)
+            pkl_index += 1
 
     charge_plot = np.linspace(20, 1000)
     stat_limit = 1 / np.sqrt(charge_plot)  # statistical limit
 
-    # fig = plt.figure()
-    plt.clf()
-    fig = plt.figure()
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.plot(
+    fig, ax = plt.subplots()
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.plot(
         charge_plot,
         stat_limit * 1.106,
         color="gray",
@@ -386,7 +382,7 @@ def main():
         alpha=0.8,
         label="Statistical limit x ENF ",
     )
-    plt.fill_between(
+    ax.fill_between(
         charge_plot,
         y1=stat_limit * 1.106 - 0.005,
         y2=stat_limit * 1.106 + 0.005,
@@ -396,7 +392,7 @@ def main():
     # mask = charge_hg < 2e2
 
     for iNSB in range(len(NSB)):
-        plt.errorbar(
+        ax.errorbar(
             mean_charge[iNSB],
             mean_resolution_nsb[iNSB],
             xerr=mean_charge_err[iNSB],
@@ -407,18 +403,17 @@ def main():
             color=color[iNSB],
         )
 
-    plt.xlabel(r"Charge $\overline{Q}$ [p.e.]")
-    plt.ylabel(r"Charge resolution $\frac{\sigma_{Q}}{\overline{Q}}$")
-    plt.title("T={} degrees".format(temperature))
-    plt.xlim(20, 1000)
-    plt.legend(frameon=False)
-    plt.tight_layout()
+    ax.set_xlabel(r"Charge $\overline{Q}$ [p.e.]")
+    ax.set_ylabel(r"Charge resolution $\frac{\sigma_{Q}}{\overline{Q}}$")
+    ax.set_title("T={} degrees".format(temperature))
+    ax.set_xlim(20, 1000)
+    ax.legend()
     plt.savefig(os.path.join(output_dir, f"charge_resolution_T{temperature}.png"))
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot3.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb") as f:
             pickle.dump(fig, f)
+            pkl_index += 1
 
-    plt.clf()
     plt.close("all")
 
 
