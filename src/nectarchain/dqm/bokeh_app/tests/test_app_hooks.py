@@ -61,12 +61,12 @@ def test_get_bad_pixels_position():
     mask_high, mask_low = get_bad_pixels_position(source, image_shape)
     assert mask_high.shape == image_shape
     assert mask_low.shape == image_shape
-    assert mask_high[1] == True
-    assert mask_high[2] == True
-    assert mask_high[0] == False
-    assert mask_low[1] == True
-    assert mask_low[2] == True
-    assert mask_low[0] == False
+    assert mask_high[1]
+    assert mask_high[2]
+    assert not mask_high[0]
+    assert mask_low[1]
+    assert mask_low[2]
+    assert not mask_low[0]
 
 
 def test_make_camera_displays():
