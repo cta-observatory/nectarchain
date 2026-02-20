@@ -8,24 +8,25 @@ This module stores the Bokeh webpage histogram maker for the RTA of NectarCAM.
 # imports
 import logging
 import time
+
 import numpy as np
+from bokeh.layouts import column, gridplot
 
 # Bokeh imports
 from bokeh.models import (
-    ColumnDataSource,
-    HoverTool,
-    Div,
-    Slider,
-    Range1d,
-    Plot,
     AnnularWedge,
+    ColumnDataSource,
+    Div,
+    HoverTool,
     Legend,
     LegendItem,
+    Plot,
+    Range1d,
+    Slider,
     TabPanel,
 )
-from bokeh.transform import linear_cmap
 from bokeh.palettes import Inferno
-from bokeh.layouts import gridplot, column
+from bokeh.transform import linear_cmap
 
 # ctapipe imports
 from ctapipe.visualization.bokeh import BokehPlot

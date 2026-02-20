@@ -10,20 +10,22 @@ import logging
 import os
 import time
 
-# Bokeh imports
-from bokeh.models import Select, Div
 from bokeh.layouts import column
+
+# Bokeh imports
+from bokeh.models import Div, Select
+
+from ..data_fetch_helpers import (
+    _get_latest_file,
+    open_file_from_selection,
+    safe_close_file,
+)
 
 # Bokeh RTA imports
 from ..update_helpers import (
     start_periodic_updates,
     stop_periodic_updates,
     update_all_figures,
-)
-from ..data_fetch_helpers import (
-    safe_close_file,
-    open_file_from_selection,
-    _get_latest_file,
 )
 
 __all__ = ["make_select_run", "make_status_col", "make_header_menu"]

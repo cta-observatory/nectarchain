@@ -7,13 +7,14 @@ This module stores the Bokeh webpage timeline maker for the RTA of NectarCAM.
 
 # imports
 import logging
-import numpy as np
-from inspect import isfunction
 from collections.abc import Iterable
+from inspect import isfunction
+
+import numpy as np
+from bokeh.layouts import column, gridplot
 
 # Bokeh imports
-from bokeh.models import HoverTool, TabPanel, ColumnDataSource, Div, Range1d
-from bokeh.layouts import column, gridplot
+from bokeh.models import ColumnDataSource, Div, HoverTool, Range1d, TabPanel
 from bokeh.palettes import Inferno
 
 # ctapipe imports

@@ -5,9 +5,10 @@
 This module handle the logging messages for the Bokeh webpage for the RTA of NectarCAM.
 """
 
+import logging
+
 # imports
 import os
-import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 

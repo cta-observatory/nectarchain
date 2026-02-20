@@ -9,24 +9,20 @@ This module builds the high level builders for Bokeh webpage of the RTA of Necta
 import logging
 from functools import partial
 
+from bokeh.layouts import column, row
+
 # Bokeh imports
-from bokeh.models import (
-    Div,
-    TabPanel,
-    Tabs,
-    Select,
-)
-from bokeh.layouts import row, column
+from bokeh.models import Div, Select, TabPanel, Tabs
+
+from .data_fetch_helpers import open_file_from_selection
+from .display.camera_mapping import make_tab_camera_displays
+from .display.header import _on_header_select_change, _set_status_text, make_header_menu
+from .display.histogram import make_full_histogram_sections
+from .display.skymaps import make_tab_skymaps
 
 # Bokeh RTA imports
 from .display.summary import make_summary_card
-from .display.camera_mapping import make_tab_camera_displays
 from .display.timeline import make_tab_timelines
-from .display.histogram import make_full_histogram_sections
-from .display.skymaps import make_tab_skymaps
-from .display.header import make_header_menu, _on_header_select_change, _set_status_text
-
-from .data_fetch_helpers import open_file_from_selection
 
 __all__ = ["make_body", "build_ui"]
 
