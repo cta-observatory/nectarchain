@@ -418,7 +418,7 @@ def propagate_scipy_compatible(model, params, cov, camera):
     return y, ycov
 
 
-def error_propagation_compute(data, minuit_resulting, camera, pdf, plot=True):
+def error_propagation_compute(data, minuit_resulting, camera, pdf):
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
 
     def model(params):
@@ -470,65 +470,175 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf, plot=True):
     sum_y_err, _ = np.histogram(theta, bins=bins, weights=yerr_prop)
     count, _ = np.histogram(theta, bins=bins)
 
-    binned_y = np.where(count > 0, sum_y / count, np.nan)
-    binned_y_err = np.where(count > 0, sum_y_err / count, np.nan)
+    binned_y = np.divide(
+        sum_y, count, out=np.full_like(sum_y, np.nan, dtype=float), where=count > 0
+    )
+    binned_y_err = np.divide(
+        sum_y_err,
+        count,
+        out=np.full_like(sum_y_err, np.nan, dtype=float),
+        where=count > 0,
+    )
     bin_centers = 0.5 * (bins[:-1] + bins[1:])
 
-    # --- Optional plotting
-    if plot:
-        fig_model = plt.figure(figsize=(6, 5))
-        ax = plt.subplot()
-        ax.scatter(theta, data, label="data", zorder=0, alpha=0.3)
-        ax.fill_between(
-            bin_centers,
-            binned_y - binned_y_err,
-            binned_y + binned_y_err,
-            facecolor="C1",
-            alpha=0.5,
-        )
-        ax.plot(bin_centers, binned_y, color="r", label="model")
+    # additional plot
+    # Sort data
+    sort_idx = np.argsort(theta)
+    theta_sorted = theta[sort_idx]
+    data_sorted = data[sort_idx]
 
-        x_fov = 4.0
-        idx = np.nanargmin(np.abs(bin_centers - x_fov))
-        y_center = binned_y[idx]
-        length = 0.02 * y_center
-        cap_width = 0.25
-        label = "2%"
+    min_per_bin = 20
+    min_bin_width = 0.1  # <- control smoothness here
 
-        # compute top & bottom
-        y_top = y_center + length / 2
-        y_bottom = y_center - length / 2
+    bins = [theta_sorted[0]]
+    start_idx = 0
 
-        # vertical line
-        plt.plot(
-            [x_fov + cap_width, x_fov + cap_width],
-            [y_bottom, y_top],
-            color="black",
-            lw=2,
-        )
+    while start_idx < len(theta_sorted):
+        end_idx = start_idx + min_per_bin
 
-        plt.plot([x_fov, x_fov + cap_width], [y_top, y_top], color="black", lw=2)
+        if end_idx >= len(theta_sorted):
+            bins.append(theta_sorted[-1])
+            break
 
-        plt.plot([x_fov, x_fov + cap_width], [y_bottom, y_bottom], color="black", lw=2)
+        # ensure minimum width condition
+        while (
+            end_idx < len(theta_sorted)
+            and theta_sorted[end_idx] - theta_sorted[start_idx] < min_bin_width
+        ):
+            end_idx += 1
 
-        plt.text(
-            x_fov + cap_width + 0.05,
-            y_center,
-            label,
-            va="center",
-            ha="left",
-            fontsize=14,
-            color="black",
-        )
+        bins.append(theta_sorted[end_idx])
+        start_idx = end_idx
 
-        plt.axvline(
-            x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
-        )
+    bins = np.array(bins)
 
-        plt.ylabel("Number of photoelectrons")
-        plt.xlabel("θ [deg]")
-        plt.legend()
-        pdf.savefig(fig_model)
+    bin_indices = np.digitize(theta, bins) - 1
+
+    binned_data = []
+    binned_std = []
+    bin_centers_data = []
+
+    for i in range(len(bins) - 1):
+        mask_data = bin_indices == i
+        values_data = data[mask_data]
+
+        if len(values_data) >= min_per_bin:
+            binned_data.append(np.mean(values_data))
+            binned_std.append(np.std(values_data, ddof=1))
+            bin_centers_data.append(0.5 * (bins[i] + bins[i + 1]))
+
+    binned_data = np.array(binned_data)
+    binned_std = np.array(binned_std)
+    bin_centers_data = np.array(bin_centers_data)
+
+    # --- plotting
+
+    fig_model = plt.figure(figsize=(6, 5))
+    ax = plt.subplot()
+    ax.scatter(theta, data, label="data", zorder=0, alpha=0.3)
+    ax.fill_between(
+        bin_centers,
+        binned_y - binned_y_err,
+        binned_y + binned_y_err,
+        facecolor="C1",
+        alpha=0.5,
+        label="error on the model",
+        zorder=3,
+    )
+    ax.plot(bin_centers, binned_y, color="r", label="model", zorder=4)
+
+    x_fov = 4.0
+    # idx = np.nanargmin(np.abs(bin_centers - x_fov))
+    # y_center = binned_y[idx]
+    # length = 0.02 * y_center
+    # cap_width = 0.25
+    # label = "2%"
+    #
+    # # compute top & bottom
+    # y_top = y_center + length / 2
+    # y_bottom = y_center - length / 2
+    #
+    # # vertical line
+    # plt.plot(
+    #     [x_fov + cap_width, x_fov + cap_width],
+    #     [y_bottom, y_top],
+    #     color="black",
+    #     lw=2,
+    # )
+    #
+    # plt.plot([x_fov, x_fov + cap_width], [y_top, y_top], color="black", lw=2)
+    #
+    # plt.plot([x_fov, x_fov + cap_width], [y_bottom, y_bottom], color="black", lw=2)
+    #
+    # plt.text(
+    #     x_fov + cap_width + 0.05,
+    #     y_center,
+    #     label,
+    #     va="center",
+    #     ha="left",
+    #     fontsize=14,
+    #     color="black",
+    # )
+    plt.axvline(
+        x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
+    )
+
+    ax.fill_between(
+        bin_centers,
+        binned_y * 0.98,
+        binned_y * 1.02,
+        facecolor="blue",
+        alpha=0.5,
+        label="2% requirenment",
+        zorder=1,
+    )
+
+    plt.ylabel("Number of photoelectrons")
+    plt.xlabel("θ [deg]")
+    plt.legend(fontsize=10)
+    pdf.savefig(fig_model)
+
+    # plot with binned data
+    fig_binned = plt.figure(figsize=(6, 5))
+    ax = plt.subplot()
+    ax.errorbar(
+        bin_centers_data,
+        binned_data,
+        yerr=binned_std,
+        fmt="o",
+        label="data",
+        zorder=1,
+    )
+    ax.fill_between(
+        bin_centers,
+        binned_y - binned_y_err,
+        binned_y + binned_y_err,
+        facecolor="C1",
+        alpha=0.5,
+        label="error on the model",
+        zorder=3,
+    )
+    ax.plot(bin_centers, binned_y, color="r", label="model", zorder=4)
+
+    x_fov = 4.0
+    plt.axvline(
+        x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
+    )
+
+    ax.fill_between(
+        bin_centers,
+        binned_y * 0.98,
+        binned_y * 1.02,
+        facecolor="blue",
+        alpha=0.5,
+        label="2% requirenment",
+        zorder=2,
+    )
+
+    plt.ylabel("Number of photoelectrons")
+    plt.xlabel("θ [deg]")
+    plt.legend(fontsize=10)
+    pdf.savefig(fig_binned)
 
     return {
         "params": values,
@@ -1002,7 +1112,10 @@ def main(**kwargs):
         plt.close()
 
         dict_error_var = error_propagation_compute(
-            data_varinace, minuit_variance_result, camera_tel, pdf_file, plot=True
+            data_varinace,
+            minuit_variance_result,
+            camera_tel,
+            pdf_file,
         )
 
         (
