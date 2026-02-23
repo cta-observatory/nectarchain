@@ -314,7 +314,7 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     minuit.migrad()
 
     if not minuit.fmin.is_valid:
-        log.info("Warning: Fit did not converge! Stopping iteration.")
+        log.info("Warning: Fit did not converge!")
     log.info(
         f"""Covariance matrix:
     
@@ -1027,7 +1027,7 @@ def main(**kwargs):
         log.info(minuit_values_variance[1])
         log.info(minuit_values_variance[2])
 
-        characterize_peak(minuit_values_variance, fit_variance)
+        characterize_peak(minuit_values_variance, camera_tel)
 
     # compute flat field coef
     simple_ff_coefs = compute_ff_coefs(charges, high_gains, pdf_file)
