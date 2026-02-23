@@ -213,51 +213,36 @@ def _read_container(path, container_class, table_name=None, index_component=0):
 def _load_pedestal(path):
     """Return (hg, lg) mean pedestal arrays, shape (n_pixels,).
 
-    Group names to search are driven by GROUP_NAMES_PEDESTAL from
-    nectarchain.utils.constants. A dynamic walk also catches any group name
-    not yet listed there.
+    Uses NectarCAMPedestalContainer.from_hdf5(), the built-in nectarchain
+    reader, which knows exactly where the data is stored regardless of which
+    group name (data, data_1, data_combined, …) was used when writing.
     """
-    import tables
-
-    static_candidates = [
-        f"/{group}/NectarCAMPedestalContainer_0" for group in GROUP_NAMES_PEDESTAL
-    ]
-    with tables.open_file(str(path), mode="r") as h5:
-        dynamic_candidates = [
-            n._v_pathname
-            for n in h5.walk_nodes("/", "Table")
-            if "NectarCAMPedestalContainer" in n._v_pathname
-        ]
-    seen = set(static_candidates)
-    all_candidates = static_candidates + [
-        p for p in dynamic_candidates if p not in seen
-    ]
-
-    for table in all_candidates:
-        try:
-            container = next(_read_container(path, NectarCAMPedestalContainer, table))
-            hg = np.mean(container.pedestal_mean_hg, axis=1)
-            lg = np.mean(container.pedestal_mean_lg, axis=1)
-            return hg, lg
-        except Exception:
-            continue
-    raise RuntimeError(f"Cannot read NectarCAMPedestalContainer from {path}")
+    container = next(NectarCAMPedestalContainer.from_hdf5(str(path)))
+    hg = np.mean(container["pedestal_mean_hg"], axis=1)
+    lg = np.mean(container["pedestal_mean_lg"], axis=1)
+    return hg, lg
 
 
 def _load_gain(path):
-    """Return (hg, lg) SPE gain arrays, shape (n_pixels,)."""
-    container = next(_read_container(path, SPEfitContainer))
-    hg = np.asarray(container.high_gain)
-    lg = np.asarray(container.low_gain)
+    """Return (hg, lg) SPE gain arrays, shape (n_pixels,).
+
+    Uses SPEfitContainer.from_hdf5(), the built-in nectarchain reader.
+    """
+    container = next(SPEfitContainer.from_hdf5(str(path)))
+    hg = np.asarray(container["high_gain"])
+    lg = np.asarray(container["low_gain"])
     if hg.ndim == 2:
         hg, lg = hg[:, 0], lg[:, 0]
     return hg, lg
 
 
 def _load_flatfield(path):
-    """Return (hg, lg) flat-field coefficient arrays, shape (n_pixels,)."""
-    container = next(_read_container(path, FlatFieldContainer))
-    ff = np.asarray(container.FF_coef)
+    """Return (hg, lg) flat-field coefficient arrays, shape (n_pixels,).
+
+    Uses FlatFieldContainer.from_hdf5(), the built-in nectarchain reader.
+    """
+    container = next(FlatFieldContainer.from_hdf5(str(path)))
+    ff = np.asarray(container["FF_coef"])
     if ff.ndim == 3:
         ff = np.mean(ff, axis=0)
     ff_hg = np.where(np.isfinite(ff[0]), ff[0], FLATFIELD_DEFAULT)
@@ -359,12 +344,21 @@ class NectarCAMObsTempPipeline:
 
     def _resolve_existing_output(self, tool_instance, kind, run_number, results_dict):
         """
-        Call setup() on an already-constructed tool to let it resolve its output
-        path, then check if that file already exists on disk.
+        Call setup() on an already-constructed tool to resolve its output path,
+        then check if that file already exists on disk.
 
-        Returns the Path if found (and recompute is NOT requested), else None.
-        The tool is ready to call .start() if None is returned.
+        To avoid setup() opening/truncating the existing file, we temporarily
+        set overwrite=False on the tool before calling setup(), then restore
+        it afterward if we still need to run the tool.
+
+        Returns the Path if the file exists and recompute is not requested,
+        else None (caller must proceed to start()/finish()).
         """
+        try:
+            tool_instance.overwrite = False
+        except Exception:
+            pass
+
         tool_instance.setup()
         candidate = self._tool_output_path(tool_instance)
 
@@ -373,17 +367,29 @@ class NectarCAMObsTempPipeline:
                 f"  ✓ Found existing {kind} file for run {run_number}: {candidate}"
             )
             results_dict[run_number] = candidate
-            # Close any file handles opened by setup() before we read the file
-            try:
-                tool_instance.finalize()
-            except Exception:
-                pass
+            # DEBUG: check whether setup() left any handles open on this file
+            import tables as _tables
+
+            _open = list(_tables.file._open_files.get_handlers_by_name(str(candidate)))
+            self.log.debug(
+                f"[DEBUG] open handles on {candidate.name} after setup(): "
+                f"{[h.filename + ' mode=' + h.mode for h in _open] or 'none'}"
+            )
+            for _fh in _open:
+                self.log.debug(f"[DEBUG] force-closing handle: {_fh.filename}")
+                _fh.close()
             return candidate
 
         if candidate.exists() and self._should_recompute(kind):
             self.log.info(
                 f"  Recompute requested – overwriting {kind} for run {run_number}"
             )
+
+        # Restore overwrite so start()/finish() can write the file
+        try:
+            tool_instance.overwrite = True
+        except Exception:
+            pass
 
         return None  # caller must proceed to .start() / .finish()
 
@@ -1043,9 +1049,11 @@ def main():
         filename=str(log_file),
     )
     log = logging.getLogger(__name__)
-    log.setLevel(args.verbosity)
+    # Force DEBUG so all [DEBUG] diagnostic lines are visible.
+    # Revert to args.verbosity once the file-handle issue is resolved.
+    log.setLevel(logging.DEBUG)
     h = logging.StreamHandler(sys.stdout)
-    h.setLevel(args.verbosity)
+    h.setLevel(logging.DEBUG)
     h.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
