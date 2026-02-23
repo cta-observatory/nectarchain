@@ -1,12 +1,27 @@
 import argparse
+import logging
 import os
 import pickle
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.core import run_tool
+from ctapipe.utils import get_dataset_path
 
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
+
+TRANSIT_TIME_CORRECTIONS = get_dataset_path(
+    filename=(
+        "hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod" ".csv"
+    ),
+    url="http://cccta-dataserver.in2p3.fr/data/ctapipe-test-data/v1.1.0",
+)
 
 
 def get_args():
@@ -50,22 +65,21 @@ def get_args():
         default=100,
     )
     parser.add_argument(
-        "-t",
-        "--pmt_transit_time",
-        type=str,
-        help=".csv file with pmt transit time corrections",
-        required=False,
-        default="../transit_time/"
-        "hv_pmt_tom_correction_laser_measurement_per_pixel_fit"
-        "sqrt_hv_newmethod.csv",
-    )
-    parser.add_argument(
         "-o",
         "--output",
         type=str,
         help="Output directory. If none, plot will be saved in current directory",
         required=False,
         default="./",
+    )
+    parser.add_argument(
+        "-t",
+        "--mean_charge_threshold",
+        type=float,
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge",
+        required=False,
+        default=10,
     )
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
@@ -93,17 +107,14 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
-    tt_path = "/Users/dm277349/nectarchain_data/transit_time/\
-        hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod.csv"
-
     runlist = args.runlist
     nevents = args.evts
-    tt_path = args.pmt_transit_time
+    tt_path = TRANSIT_TIME_CORRECTIONS
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
     tom = []
@@ -117,16 +128,34 @@ def main():
     pixel_pairs = []
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
+        # Old runs do not have interleaved pedestals
+        pedestal_tool = PedestalNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=run,
+            max_events=12000,
+            events_per_slice=5000,
+            log_level=20,
+            overwrite=True,
+            filter_method=None,
+            method="FullWaveformSum",  # charges over entire window
+        )
+        try:
+            run_tool(pedestal_tool)
+        except Exception as e:
+            log.warning(e)
         tool = ToMPairsTool(
             progress_bar=True,
             run_number=run,
             events_per_slice=501,
             max_events=nevents,
             log_level=20,
-            peak_height=10,
-            window_width=16,
+            method="LocalPeakWindowSum",
+            extractor_kwargs={"window_width": 16, "window_shift": 6},
             overwrite=True,
+            pedestal_file=pedestal_tool.output_path,
+            use_default_pedestal=True,  # only done if pedestal_file cannot be loaded
+            mean_charge_threshold=args.mean_charge_threshold,
         )
         tool.initialize()
         tool.setup()

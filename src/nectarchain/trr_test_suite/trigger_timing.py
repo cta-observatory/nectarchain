@@ -1,15 +1,22 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.core import run_tool
 
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import TriggerTimingTestTool
 from nectarchain.trr_test_suite.utils import pe2photons
+
+logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+log.handlers = logging.getLogger("__main__").handlers
 
 
 def get_args():
@@ -57,6 +64,15 @@ def get_args():
         default="./",
     )
     parser.add_argument(
+        "-t",
+        "--mean_charge_threshold",
+        type=float,
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge",
+        required=False,
+        default=10,
+    )
+    parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
     )
 
@@ -91,8 +107,8 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
 
@@ -112,16 +128,33 @@ def main():
     nevents = 1000
 
     for i, run in enumerate(runlist):
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
+        pedestal_tool = PedestalNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=run,
+            max_events=12000,
+            events_per_slice=5000,
+            log_level=20,
+            overwrite=True,
+            filter_method=None,
+            method="FullWaveformSum",  # charges over entire window
+        )
+        try:
+            run_tool(pedestal_tool)
+        except Exception as e:
+            log.warning(e)
         tool = TriggerTimingTestTool(
             progress_bar=True,
             run_number=run,
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
-            peak_height=10,
-            window_width=16,
+            method="LocalPeakWindowSum",
+            extractor_kwargs={"window_width": 16, "window_shift": 6},
             overwrite=True,
+            pedestal_file=pedestal_tool.output_path,
+            use_default_pedestal=True,
+            mean_charge_threshold=args.mean_charge_threshold,
         )
         tool.initialize()
         tool.setup()
@@ -136,6 +169,7 @@ def main():
     rms = np.array(rms)
     err = np.array(err)
     charge = np.array(charge)
+    print(rms, err, charge)
 
     fig, ax = plt.subplots()
 
