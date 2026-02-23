@@ -556,5 +556,5 @@ def nPEPDF(x, pp, res, mu2, n, muped, sigped, nph, size_charge):
     # ~ plt.plot(allrange,npe)
     # ~ plt.show()
     fff = interpolate.UnivariateSpline(allrange, npe, ext=1, k=3, s=0)
-    norm = np.trapz(fff(allrange), allrange)
+    norm = np.trapezoid(fff(allrange), allrange)
     return fff(x - muped) / norm

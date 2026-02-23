@@ -3,11 +3,14 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from astropy import units as u
 from lmfit.models import Model
 from scipy.interpolate import interp1d
 from scipy.stats import expon, poisson
 from traitlets.config import Config
+
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -198,7 +201,7 @@ optical_density_390ns = np.array(
     ]
 )
 
-adc_to_pe = 58.0
+adc_to_pe = GAIN_DEFAULT
 
 plot_parameters = {
     "High Gain": {
@@ -244,6 +247,42 @@ deadtime_labels = {
     1: {"source": "NSB", "color": "blue"},
     2: {"source": "Laser", "color": "purple"},
 }
+
+
+def get_bad_pixels_list():
+    # List of modules and pixels to be rejected
+    try:
+        df = pd.read_json("resources/bad_pix_module.json")
+        modules_list = np.array(df.bad_module[0])
+        pix_list = np.array(df.bad_pixel[0])
+
+        pix_nos = np.arange(7)
+
+        # print("module_to_pix ", modules_list)
+        module_to_pix = modules_list[:, None] * 7 + pix_nos
+        combined = np.concatenate([pix_list, module_to_pix.ravel()])
+
+        bad_pix_list = np.unique(combined)
+
+    except (IOError, OSError):
+        bad_pix_list = None
+
+    return bad_pix_list
+
+
+def get_gain_run(temperature):
+    # Searches for the run number corresponding to the temperature
+    # If no runs are taken at that temperature, it will return
+    # the run corresponding to closest temperature
+    temp = np.array([-10, -5, 0, 5, 10, 14, 20, 25])
+    runs = np.array([6853, 6775, 6718, 6589, 7191, 7000, 7123, 7066])
+
+    idx = np.argmin(np.abs(temp - temperature))
+    run_no = runs[idx]
+
+    # print(gain_file_name)
+
+    return run_no
 
 
 def pe_from_intensity_percentage(
