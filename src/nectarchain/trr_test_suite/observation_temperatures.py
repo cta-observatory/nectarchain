@@ -11,6 +11,28 @@ import numpy as np
 from ctapipe.io import HDF5TableReader
 from ctapipe_io_nectarcam import constants
 
+try:
+    from ..utils.constants import (
+        FLATFIELD_DEFAULT,
+        GAIN_DEFAULT,
+        GROUP_NAMES_PEDESTAL,
+        HILO_DEFAULT,
+        PEDESTAL_DEFAULT,
+    )
+except ImportError:
+    import importlib.util as _ilu
+    from pathlib import Path as _Path
+
+    _constants_path = _Path(__file__).resolve().parent.parent / "utils" / "constants.py"
+    _spec = _ilu.spec_from_file_location("constants", _constants_path)
+    _mod = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    FLATFIELD_DEFAULT = _mod.FLATFIELD_DEFAULT
+    GAIN_DEFAULT = _mod.GAIN_DEFAULT
+    GROUP_NAMES_PEDESTAL = _mod.GROUP_NAMES_PEDESTAL
+    HILO_DEFAULT = _mod.HILO_DEFAULT
+    PEDESTAL_DEFAULT = _mod.PEDESTAL_DEFAULT
+
 # nectarchain containers – read back from HDF5 via ctapipe's HDF5TableReader,
 # exactly as nectarchain's own calibration_pipeline.py does.
 from nectarchain.data.container import (
@@ -189,12 +211,29 @@ def _read_container(path, container_class, table_name=None, index_component=0):
 
 
 def _load_pedestal(path):
-    """Return (hg, lg) mean pedestal arrays, shape (n_pixels,)."""
-    for table in [
-        "/data_combined/NectarCAMPedestalContainer_0",
-        "/data_1/NectarCAMPedestalContainer_0",
-        "/data/NectarCAMPedestalContainer_0",
-    ]:
+    """Return (hg, lg) mean pedestal arrays, shape (n_pixels,).
+
+    Group names to search are driven by GROUP_NAMES_PEDESTAL from
+    nectarchain.utils.constants. A dynamic walk also catches any group name
+    not yet listed there.
+    """
+    import tables
+
+    static_candidates = [
+        f"/{group}/NectarCAMPedestalContainer_0" for group in GROUP_NAMES_PEDESTAL
+    ]
+    with tables.open_file(str(path), mode="r") as h5:
+        dynamic_candidates = [
+            n._v_pathname
+            for n in h5.walk_nodes("/", "Table")
+            if "NectarCAMPedestalContainer" in n._v_pathname
+        ]
+    seen = set(static_candidates)
+    all_candidates = static_candidates + [
+        p for p in dynamic_candidates if p not in seen
+    ]
+
+    for table in all_candidates:
         try:
             container = next(_read_container(path, NectarCAMPedestalContainer, table))
             hg = np.mean(container.pedestal_mean_hg, axis=1)
@@ -221,8 +260,8 @@ def _load_flatfield(path):
     ff = np.asarray(container.FF_coef)
     if ff.ndim == 3:
         ff = np.mean(ff, axis=0)
-    ff_hg = np.where(np.isfinite(ff[0]), ff[0], 1.0)
-    ff_lg = np.where(np.isfinite(ff[1]), ff[1], 1.0)
+    ff_hg = np.where(np.isfinite(ff[0]), ff[0], FLATFIELD_DEFAULT)
+    ff_lg = np.where(np.isfinite(ff[1]), ff[1], FLATFIELD_DEFAULT)
     return ff_hg, ff_lg
 
 
@@ -318,18 +357,44 @@ class NectarCAMObsTempPipeline:
             f"{type(tool).__name__} did not expose output_path after setup()."
         )
 
+    def _resolve_existing_output(self, tool_instance, kind, run_number, results_dict):
+        """
+        Call setup() on an already-constructed tool to let it resolve its output
+        path, then check if that file already exists on disk.
+
+        Returns the Path if found (and recompute is NOT requested), else None.
+        The tool is ready to call .start() if None is returned.
+        """
+        tool_instance.setup()
+        candidate = self._tool_output_path(tool_instance)
+
+        if candidate.exists() and not self._should_recompute(kind):
+            self.log.info(
+                f"  ✓ Found existing {kind} file for run {run_number}: {candidate}"
+            )
+            results_dict[run_number] = candidate
+            # Close any file handles opened by setup() before we read the file
+            try:
+                tool_instance.finalize()
+            except Exception:
+                pass
+            return candidate
+
+        if candidate.exists() and self._should_recompute(kind):
+            self.log.info(
+                f"  Recompute requested – overwriting {kind} for run {run_number}"
+            )
+
+        return None  # caller must proceed to .start() / .finish()
+
     # ------------------------------------------------------------------
     # Computation
     # ------------------------------------------------------------------
 
     def compute_pedestal(self, run_number):
         """Compute (or reuse) pedestal for *run_number*. Returns output Path."""
-        cached = self._cached_path(self.pedestal_results, run_number)
-        if cached and not self._should_recompute("pedestal"):
-            self.log.info(f"Pedestal run {run_number}: reusing {cached}")
-            return cached
+        self.log.info(f"Pedestal run {run_number}: checking for existing output…")
 
-        self.log.info(f"Computing pedestal for run {run_number}…")
         tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run_number,
@@ -340,11 +405,17 @@ class NectarCAMObsTempPipeline:
             filter_method=self.args.filter_method,
             wfs_std_threshold=self.args.wfs_std_threshold,
         )
-        # tool.initialize()
-        tool.setup()
-        output_path = self._tool_output_path(tool)
+
+        existing = self._resolve_existing_output(
+            tool, "pedestal", run_number, self.pedestal_results
+        )
+        if existing:
+            return existing
+
+        self.log.info(f"Computing pedestal for run {run_number}…")
         tool.start()
         tool.finish(return_output_component=True)
+        output_path = self._tool_output_path(tool)
 
         self.pedestal_results[run_number] = output_path
         self.log.info(f"Pedestal saved to {output_path}")
@@ -352,12 +423,7 @@ class NectarCAMObsTempPipeline:
 
     def compute_gain(self, run_number):
         """Compute (or reuse) SPE gain for *run_number*. Returns output Path."""
-        cached = self._cached_path(self.gain_results, run_number)
-        if cached and not self._should_recompute("gain"):
-            self.log.info(f"Gain run {run_number}: reusing {cached}")
-            return cached
-
-        self.log.info(f"Computing gain (SPE fit) for run {run_number}…")
+        self.log.info(f"Gain run {run_number}: checking for existing output…")
 
         if self.args.HHV:
             tool_class = (
@@ -396,10 +462,14 @@ class NectarCAMObsTempPipeline:
             max_events=self.args.max_events_gain,
             **kwargs,
         )
-        # tool.initialize()
-        tool.setup()
-        output_path = self._tool_output_path(tool)
 
+        existing = self._resolve_existing_output(
+            tool, "gain", run_number, self.gain_results
+        )
+        if existing:
+            return existing
+
+        self.log.info(f"Computing gain (SPE fit) for run {run_number}…")
         extractor_str = CtapipeExtractor.get_extractor_kwargs_str(
             tool.method, tool.extractor_kwargs
         )
@@ -409,6 +479,7 @@ class NectarCAMObsTempPipeline:
         )
         tool.start(figpath=figpath)
         tool.finish(figpath=figpath)
+        output_path = self._tool_output_path(tool)
 
         self.gain_results[run_number] = output_path
         self.log.info(f"Gain saved to {output_path}")
@@ -416,16 +487,11 @@ class NectarCAMObsTempPipeline:
 
     def compute_flatfield(self, run_number):
         """Compute (or reuse) flatfield for *run_number* (two-pass). Returns Path."""
-        cached = self._cached_path(self.flatfield_results, run_number)
-        if cached and not self._should_recompute("flatfield"):
-            self.log.info(f"Flatfield run {run_number}: reusing {cached}")
-            return cached
-
-        self.log.info(f"Computing flatfield for run {run_number} (two-pass)…")
+        self.log.info(f"Flatfield run {run_number}: checking for existing output…")
 
         gain_array = np.ones((constants.N_GAINS, constants.N_PIXELS))
-        gain_array[0] *= 58.0
-        gain_array[1] *= 58.0 / 13.0
+        gain_array[0] *= GAIN_DEFAULT
+        gain_array[1] *= GAIN_DEFAULT / HILO_DEFAULT
 
         common = dict(
             progress_bar=True,
@@ -441,13 +507,23 @@ class NectarCAMObsTempPipeline:
             bad_pix=[],
         )
 
-        # --- Pass 1: default gain values ---
+        # Use a pass-1 tool only to resolve the output path and check existence.
+        # Pass-2 will write to the same path (same run + same common kwargs).
+        probe_tool = FlatfieldNectarCAMCalibrationTool(
+            gain=gain_array.tolist(), **common
+        )
+        existing = self._resolve_existing_output(
+            probe_tool, "flatfield", run_number, self.flatfield_results
+        )
+        if existing:
+            return existing
+
+        self.log.info(f"Computing flatfield for run {run_number} (two-pass)…")
+
+        # --- Pass 1: default gain values (probe_tool already set up) ---
         self.log.info("  First pass…")
-        tool1 = FlatfieldNectarCAMCalibrationTool(gain=gain_array.tolist(), **common)
-        # tool1.initialize()
-        tool1.setup()
-        tool1.start()
-        ff_out_1 = tool1.finish(return_output_component=True)[0]
+        probe_tool.start()
+        ff_out_1 = probe_tool.finish(return_output_component=True)[0]
 
         # Estimate gain from Var(amp)/Mean(amp) on the pass-1 amplitudes
         amp = ff_out_1.amp_int_per_pix_per_event  # (n_events, n_gains, n_pixels)
@@ -461,7 +537,6 @@ class NectarCAMObsTempPipeline:
         # --- Pass 2: updated gain values ---
         self.log.info("  Second pass…")
         tool2 = FlatfieldNectarCAMCalibrationTool(gain=updated_gain.tolist(), **common)
-        # tool2.initialize()
         tool2.setup()
         output_path = self._tool_output_path(tool2)
         tool2.start()
@@ -473,29 +548,11 @@ class NectarCAMObsTempPipeline:
 
     def compute_charge(self, run_number):
         """Compute (or reuse) charges for *run_number*. Returns output Path."""
-        cached = self._cached_path(self.charge_results, run_number)
-        if cached and not self._should_recompute("charge"):
-            self.log.info(f"Charges run {run_number}: reusing {cached}")
-            return cached
+        self.log.info(f"Charge run {run_number}: checking for existing output…")
 
-        self.log.info(f"Computing charges for run {run_number}…")
-
-        # Step 1 – waveforms
-        wfs = WaveformsNectarCAMCalibrationTool(
-            progress_bar=True,
-            camera=self.args.camera,
-            run_number=run_number,
-            max_events=self.args.max_events_charge,
-            log_level=logging.getLevelName(self.log.level),
-            overwrite=self._should_recompute("charge"),
-        )
-        # wfs.initialize()
-        wfs.setup()
-        wfs.start()
-        wfs.finish()
-
-        # Step 2 – charge extraction
-        chg = ChargesNectarCAMCalibrationTool(
+        # We probe with the ChargesNectarCAMCalibrationTool because that is
+        # the tool that produces the final charge HDF5 file we care about.
+        chg_probe = ChargesNectarCAMCalibrationTool(
             progress_bar=True,
             camera=self.args.camera,
             run_number=run_number,
@@ -506,11 +563,31 @@ class NectarCAMObsTempPipeline:
             log_level=logging.getLevelName(self.log.level),
             overwrite=True,
         )
-        # chg.initialize()
-        chg.setup()
-        output_path = self._tool_output_path(chg)
-        chg.start()
-        chg.finish()
+        existing = self._resolve_existing_output(
+            chg_probe, "charge", run_number, self.charge_results
+        )
+        if existing:
+            return existing
+
+        self.log.info(f"Computing charges for run {run_number}…")
+
+        # Step 1 – waveforms (needed before charge extraction)
+        wfs = WaveformsNectarCAMCalibrationTool(
+            progress_bar=True,
+            camera=self.args.camera,
+            run_number=run_number,
+            max_events=self.args.max_events_charge,
+            log_level=logging.getLevelName(self.log.level),
+            overwrite=self._should_recompute("charge"),
+        )
+        wfs.setup()
+        wfs.start()
+        wfs.finish()
+
+        # Step 2 – charge extraction (chg_probe is already set up)
+        output_path = self._tool_output_path(chg_probe)
+        chg_probe.start()
+        chg_probe.finish()
 
         self.charge_results[run_number] = output_path
         self.log.info(f"Charges saved to {output_path}")
@@ -524,9 +601,9 @@ class NectarCAMObsTempPipeline:
         """Load (hg, lg) arrays; return defaults on any failure."""
         n = constants.N_PIXELS
         defaults = {
-            "pedestal": (np.full(n, 250.0), np.full(n, 250.0)),
-            "gain": (np.full(n, 58.0), np.full(n, 58.0 / 13.0)),
-            "flatfield": (np.full(n, 1.0), np.full(n, 1.0)),
+            "pedestal": (np.full(n, PEDESTAL_DEFAULT), np.full(n, PEDESTAL_DEFAULT)),
+            "gain": (np.full(n, GAIN_DEFAULT), np.full(n, GAIN_DEFAULT / HILO_DEFAULT)),
+            "flatfield": (np.full(n, FLATFIELD_DEFAULT), np.full(n, FLATFIELD_DEFAULT)),
         }
         loaders = {
             "pedestal": (_load_pedestal, self.pedestal_results),
@@ -552,18 +629,27 @@ class NectarCAMObsTempPipeline:
     def compute_calibrated_charge(
         self, charge_run, pedestal_run, gain_run, flatfield_run
     ):
-        """Pedestal sub + gain corr + FF correction → calibrated p.e. charges."""
+        """Pedestal sub + gain corr + FF correction → calibrated p.e. charges.
+
+        If a pre-computed charge file exists on disk (and --recompute_charge is
+        not set) the calibration step is still performed using the on-disk data
+        so that calibrated_charge_results is always populated.
+        """
         self.log.info(f"Computing calibrated charge for run {charge_run}…")
 
-        if not self._cached_path(self.charge_results, charge_run):
+        # ------------------------------------------------------------------
+        # 1. Ensure charge file is available (compute if missing)
+        # ------------------------------------------------------------------
+        charge_path = self._cached_path(self.charge_results, charge_run)
+        if charge_path is None:
+            # Try to compute (or locate) the charge file.
             try:
-                self.compute_charge(charge_run)
+                charge_path = self.compute_charge(charge_run)
             except Exception as e:
-                self.log.error(f"Cannot compute charge run {charge_run}: {e}")
+                self.log.error(f"Cannot obtain charge for run {charge_run}: {e}")
                 return None
 
-        charge_path = self._cached_path(self.charge_results, charge_run)
-        if not charge_path:
+        if charge_path is None or not charge_path.exists():
             self.log.error(f"Charge file missing for run {charge_run}")
             return None
 
@@ -579,7 +665,9 @@ class NectarCAMObsTempPipeline:
         charges = np.stack([charges_hg, charges_lg], axis=1)
         self.log.info(f"  Charge shape : {charges.shape}")
 
-        # Best-effort calibration data; defaults used when unavailable
+        # ------------------------------------------------------------------
+        # 2. Ensure calibration files are available (compute / locate each)
+        # ------------------------------------------------------------------
         for run, kind, fn in [
             (pedestal_run, "pedestal", self.compute_pedestal),
             (gain_run, "gain", self.compute_gain),
@@ -599,6 +687,9 @@ class NectarCAMObsTempPipeline:
         gains = np.stack([gain_hg, gain_lg], axis=0)
         ff_coef = np.stack([ff_hg, ff_lg], axis=0)
 
+        # ------------------------------------------------------------------
+        # 3. Apply calibration
+        # ------------------------------------------------------------------
         ped_sub = charges - pedestals[np.newaxis, :, :]
         gain_corr = np.divide(
             ped_sub,
