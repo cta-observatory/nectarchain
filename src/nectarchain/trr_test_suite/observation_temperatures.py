@@ -105,7 +105,7 @@ Set $NECTARCAMDATA and $NECTARCHAIN_FIGURES before running.
         help="Temperatures (°C) in the same order as --charge_runs",
     )
 
-    parser.add_argument("-c", "--camera", default="NectarCAM", type=str)
+    parser.add_argument("-c", "--camera", default="NectarCAMQM", type=str)
 
     parser.add_argument("--max_events_pedestal", default=1000, type=int)
     parser.add_argument(
