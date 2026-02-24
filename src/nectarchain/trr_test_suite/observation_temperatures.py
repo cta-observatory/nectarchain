@@ -9,7 +9,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from ctapipe.containers import EventType
-from ctapipe.io import HDF5TableReader
 from ctapipe_io_nectarcam import constants
 
 try:
@@ -201,14 +200,6 @@ Set $NECTARCAMDATA and $NECTARCHAIN_FIGURES before running.
 # ---------------------------------------------------------------------------
 
 
-def _read_container(path, container_class, table_name=None, index_component=0):
-    """Yield containers from an HDF5 file using ctapipe's HDF5TableReader."""
-    if table_name is None:
-        table_name = f"/data/{container_class.__name__}_{index_component}"
-    with HDF5TableReader(path) as reader:
-        yield from reader.read(table_name=table_name, containers=container_class)
-
-
 def _load_pedestal(path):
     """Return (hg, lg) mean pedestal arrays, shape (n_pixels,).
 
@@ -317,66 +308,6 @@ class NectarCAMObsTempPipeline:
         if p is not None and Path(p).exists():
             return Path(p)
         return None
-
-    def _tool_output_path(self, tool):
-        """Return the path the tool resolved for its output after setup()."""
-        p = getattr(tool, "output_path", None)
-        if p:
-            return Path(p)
-        raise RuntimeError(
-            f"{type(tool).__name__} did not expose output_path after setup()."
-        )
-
-    def _resolve_existing_output(self, tool_instance, kind, run_number, results_dict):
-        """
-        Call setup() on an already-constructed tool to resolve its output path,
-        then check if that file already exists on disk.
-
-        To avoid setup() opening/truncating the existing file, we temporarily
-        set overwrite=False on the tool before calling setup(), then restore
-        it afterward if we still need to run the tool.
-
-        Returns the Path if the file exists and recompute is not requested,
-        else None (caller must proceed to start()/finish()).
-        """
-        try:
-            tool_instance.overwrite = False
-        except Exception:
-            pass
-
-        tool_instance.setup()
-        candidate = self._tool_output_path(tool_instance)
-
-        if candidate.exists() and not self._should_recompute(kind):
-            self.log.info(
-                f"  ✓ Found existing {kind} file for run {run_number}: {candidate}"
-            )
-            results_dict[run_number] = candidate
-            # DEBUG: check whether setup() left any handles open on this file
-            import tables as _tables
-
-            _open = list(_tables.file._open_files.get_handlers_by_name(str(candidate)))
-            self.log.debug(
-                f"[DEBUG] open handles on {candidate.name} after setup(): "
-                f"{[h.filename + ' mode=' + h.mode for h in _open] or 'none'}"
-            )
-            for _fh in _open:
-                self.log.debug(f"[DEBUG] force-closing handle: {_fh.filename}")
-                _fh.close()
-            return candidate
-
-        if candidate.exists() and self._should_recompute(kind):
-            self.log.info(
-                f"  Recompute requested – overwriting {kind} for run {run_number}"
-            )
-
-        # Restore overwrite so start()/finish() can write the file
-        try:
-            tool_instance.overwrite = True
-        except Exception:
-            pass
-
-        return None  # caller must proceed to .start() / .finish()
 
     # ------------------------------------------------------------------
     # Computation
