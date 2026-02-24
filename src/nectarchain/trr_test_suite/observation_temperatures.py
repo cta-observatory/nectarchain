@@ -423,20 +423,20 @@ class NectarCAMObsTempPipeline:
             wfs_std_threshold=self.args.wfs_std_threshold,
         )
 
-        existing = self._resolve_existing_output(
-            tool, "pedestal", run_number, self.pedestal_results
-        )
-        if existing:
-            return existing
+        if os.path.exists(tool.output_path):
+            self.log.info(
+                f"Pedestal already computed! Found output file: {tool.output_path}..."
+            )
+        else:
+            self.log.info(f"No output found, computing pedestal for run {run_number}…")
+            tool.setup()
+            tool.start()
+            tool.finish()
+            self.log.info(f"Pedestal saved to {tool.output_path}")
 
-        self.log.info(f"Computing pedestal for run {run_number}…")
-        tool.start()
-        tool.finish(return_output_component=True)
-        output_path = self._tool_output_path(tool)
+        self.pedestal_results[run_number] = tool.output_path
 
-        self.pedestal_results[run_number] = output_path
-        self.log.info(f"Pedestal saved to {output_path}")
-        return output_path
+        return tool.output_path
 
     def compute_gain(self, run_number):
         """Compute (or reuse) SPE gain for *run_number*. Returns output Path."""
@@ -480,27 +480,29 @@ class NectarCAMObsTempPipeline:
             **kwargs,
         )
 
-        existing = self._resolve_existing_output(
-            tool, "gain", run_number, self.gain_results
-        )
-        if existing:
-            return existing
+        if os.path.exists(tool.output_path):
+            self.log.info(
+                f"Gain already computed! Found output file: {tool.output_path}..."
+            )
+        else:
+            self.log.info(
+                f"No output found, computing gain (SPE fit) for run {run_number}…"
+            )
+            tool.setup()
+            extractor_str = CtapipeExtractor.get_extractor_kwargs_str(
+                tool.method, tool.extractor_kwargs
+            )
+            figpath = (
+                f"{self.figure_dir}/{tool.name}"
+                f"_run{tool.run_number}_{tool.method}_{extractor_str}"
+            )
+            tool.start(figpath=figpath)
+            tool.finish(figpath=figpath)
+            self.log.info(f"Gain saved to {tool.output_path}")
 
-        self.log.info(f"Computing gain (SPE fit) for run {run_number}…")
-        extractor_str = CtapipeExtractor.get_extractor_kwargs_str(
-            tool.method, tool.extractor_kwargs
-        )
-        figpath = (
-            f"{self.figure_dir}/{tool.name}"
-            f"_run{tool.run_number}_{tool.method}_{extractor_str}"
-        )
-        tool.start(figpath=figpath)
-        tool.finish(figpath=figpath)
-        output_path = self._tool_output_path(tool)
+        self.gain_results[run_number] = tool.output_path
 
-        self.gain_results[run_number] = output_path
-        self.log.info(f"Gain saved to {output_path}")
-        return output_path
+        return tool.output_path
 
     def compute_flatfield(self, run_number):
         """Compute (or reuse) flatfield for *run_number* (two-pass). Returns Path."""
@@ -526,42 +528,45 @@ class NectarCAMObsTempPipeline:
 
         # Use a pass-1 tool only to resolve the output path and check existence.
         # Pass-2 will write to the same path (same run + same common kwargs).
-        probe_tool = FlatfieldNectarCAMCalibrationTool(
-            gain=gain_array.tolist(), **common
-        )
-        existing = self._resolve_existing_output(
-            probe_tool, "flatfield", run_number, self.flatfield_results
-        )
-        if existing:
-            return existing
+        tool1 = FlatfieldNectarCAMCalibrationTool(gain=gain_array.tolist(), **common)
 
-        self.log.info(f"Computing flatfield for run {run_number} (two-pass)…")
+        if os.path.exists(tool1.output_path):
+            self.log.info(
+                f"Flatfield already computed! Found output file: {tool1.output_path}..."
+            )
+        else:
+            self.log.info(
+                f"No output found, computing flatfield for run {run_number} (two-pass)…"
+            )
 
-        # --- Pass 1: default gain values (probe_tool already set up) ---
-        self.log.info("  First pass…")
-        probe_tool.start()
-        ff_out_1 = probe_tool.finish(return_output_component=True)[0]
+            # --- Pass 1: default gain values ---
+            self.log.info("  First pass…")
+            tool1.setup()
+            tool1.start()
+            ff_out_1 = tool1.finish(return_output_component=True)[0]
 
-        # Estimate gain from Var(amp)/Mean(amp) on the pass-1 amplitudes
-        amp = ff_out_1.amp_int_per_pix_per_event  # (n_events, n_gains, n_pixels)
-        updated_gain = np.divide(
-            np.var(amp, axis=0),
-            np.mean(amp, axis=0),
-            where=np.mean(amp, axis=0) != 0.0,
-            out=np.ones((constants.N_GAINS, constants.N_PIXELS)),
-        )
+            # Estimate gain from Var(amp)/Mean(amp) on the pass-1 amplitudes
+            amp = ff_out_1.amp_int_per_pix_per_event  # (n_events, n_gains, n_pixels)
+            updated_gain = np.divide(
+                np.var(amp, axis=0),
+                np.mean(amp, axis=0),
+                where=np.mean(amp, axis=0) != 0.0,
+                out=np.ones((constants.N_GAINS, constants.N_PIXELS)),
+            )
 
-        # --- Pass 2: updated gain values ---
-        self.log.info("  Second pass…")
-        tool2 = FlatfieldNectarCAMCalibrationTool(gain=updated_gain.tolist(), **common)
-        tool2.setup()
-        output_path = self._tool_output_path(tool2)
-        tool2.start()
-        tool2.finish(return_output_component=True)
+            # --- Pass 2: updated gain values ---
+            self.log.info("  Second pass…")
+            tool2 = FlatfieldNectarCAMCalibrationTool(
+                gain=updated_gain.tolist(), **common
+            )
+            tool2.setup()
+            tool2.start()
+            tool2.finish(return_output_component=True)
+            self.log.info(f"Flatfield saved to {tool2.output_path}")
 
-        self.flatfield_results[run_number] = output_path
-        self.log.info(f"Flatfield saved to {output_path}")
-        return output_path
+        self.flatfield_results[run_number] = tool1.output_path
+
+        return tool1.output_path
 
     def compute_charge(self, run_number):
         """Compute (or reuse) charges for *run_number*. Returns output Path."""
