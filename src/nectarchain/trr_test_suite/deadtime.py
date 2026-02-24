@@ -32,6 +32,8 @@ plt.style.use(
     )
 )
 
+figures_output_path = os.environ.get("NECTARCHAIN_FIGURES", "./")
+
 
 def plot_deadtime_vs_collected_trigger_rate(
     ids,
@@ -419,6 +421,8 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         The deadtime values computed as the deltaT between recorded events
     deadtime_pc : list
         The deadtime percentage value computed with the counters for each run
+    camera_numbers : list
+        The camera number for each run
     """
 
     ucts_timestamps, ucts_deltat = [], []
@@ -426,6 +430,7 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
     collected_trigger_rates = []
     time_tot = []
     deadtime_us, deadtime_pc = [], []
+    camera_numbers = []
 
     for run, id in zip(runlist, ids):
         log.info("Processing `DeadtimeTestTool` on run {}".format(run))
@@ -457,6 +462,8 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         deadtime_pc.append(output[6])
         deadtime_us.append((output[1] * u.ns).to(u.us))
 
+        camera_numbers.append(output[7])
+
     return (
         ucts_timestamps,
         ucts_deltat,
@@ -466,6 +473,103 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         time_tot,
         deadtime_us,
         deadtime_pc,
+        camera_numbers,
+    )
+
+
+def run(nevents, runlist, ids, output_dir=None, temp_output=None):
+    (
+        _,
+        _,
+        event_counter,
+        busy_counter,
+        collected_trigger_rates,
+        time_tot,
+        deadtime_us,
+        deadtime_pc,
+        camera_numbers,
+    ) = run_deadtime_test_tool_process(runlist=runlist, nevents=nevents, ids=ids)
+
+    camera_numbers = np.unique(camera_numbers)
+    if len(camera_numbers) > 1:
+        log.warning(
+            f"Multiple camera numbers found in the runs: {camera_numbers}."
+            + "The plots will not be saved."
+        )
+    else:
+        if output_dir:
+            output_dir = os.path.join(
+                output_dir, f"trr_camera_{camera_numbers[0]}/deadtime"
+            )
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            log.info(f"The plots will be saved at: {output_dir}")
+
+    results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
+
+    log.info(f"Output directory: {output_dir}")
+    log.info(f"Temporary output file: {temp_output}")
+    log.info(f"N max events to be considered: {nevents}")
+    log.info("-" * 40)
+    for ii, (key, values) in enumerate(results.items()):
+        log.info(f"For run {key}, source: {ids[ii]},")
+        log.info(
+            "Dead-Time extracted from the tool process: "
+            f"{np.min(deadtime_us[ii]):.3f}"
+        )
+        log.info(f"Dead-Time from the fit: {values[0]:.3f} +- " f"{values[1]:.3f} µs")
+        log.info(f"Rate from the fit: {values[2]:.2f} +- " f"{values[3]:.2f} Hz")
+        log.info("Expected run duration from the fit: " f"{values[4]:.2f} s")
+        log.info("-" * 40)
+
+    ids = np.array(ids)
+    runlist = np.array(runlist)
+
+    error_deadtime_pc = []
+    for run_id in range(np.array(busy_counter).shape[0]):
+        error_deadtime_pc.append(
+            np.sqrt(
+                (busy_counter[run_id][-1] * event_counter[run_id][-1])
+                / ((busy_counter[run_id][-1] + event_counter[run_id][-1]) ** 3)
+            )
+        )
+    error_deadtime_pc = np.array(error_deadtime_pc)
+
+    deadtime, fitted_trigger_rates, fitted_trigger_rates_err = [], [], []
+
+    for ii, run_num in enumerate(runlist):
+        results = plot_deadtime_and_expo_fit(
+            total_delta_t_for_busy_time=time_tot[ii],
+            deadtime_us=np.array(deadtime_us[ii].value),
+            run=run_num,
+            output_plot=output_dir,
+        )
+        deadtime.append(results[0])
+        fitted_trigger_rates.append(((-1 * results[6]) * (1 / u.us)).to(u.kHz).value)
+        fitted_trigger_rates_err.append(((results[8]) * (1 / u.us)).to(u.kHz).value)
+        plt.close()
+
+    deadtime = np.array(deadtime)
+    fitted_trigger_rates = np.array(fitted_trigger_rates)
+    fitted_trigger_rates_err = np.array(fitted_trigger_rates_err)
+
+    deadtime_pc_fit = np.array(
+        [
+            # the parameter_lambda is a rate value in kHz,
+            # so one needs to compare the deadtime in mus with the rate in kHz
+            # and finally make it a percentage value
+            deadtime[ii] * rate * 1e2 * 1e-3
+            for ii, rate in enumerate(fitted_trigger_rates)
+        ]
+    )
+
+    return (
+        collected_trigger_rates,
+        fitted_trigger_rates,
+        fitted_trigger_rates_err,
+        deadtime_pc,
+        error_deadtime_pc,
+        deadtime_pc_fit,
     )
 
 
@@ -526,7 +630,7 @@ def get_args():
         help="Output directory. "
         "If none, plot will be saved in the deadtime_results directory",
         required=False,
-        default="./deadtime_results/",
+        default=figures_output_path,
     )
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
@@ -577,72 +681,18 @@ def main():
     labels = deadtime_labels
 
     (
-        _,
-        _,
-        event_counter,
-        busy_counter,
         collected_trigger_rates,
-        time_tot,
-        deadtime_us,
+        fitted_trigger_rates,
+        fitted_trigger_rates_err,
         deadtime_pc,
-    ) = run_deadtime_test_tool_process(runlist=runlist, nevents=nevents, ids=ids)
-
-    results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
-
-    log.info(f"Output directory: {output_dir}")
-    log.info(f"Temporary output file: {temp_output}")
-    log.info(f"N max events to be considered: {nevents}")
-    log.info("-" * 40)
-    for ii, (key, values) in enumerate(results.items()):
-        log.info(f"For run {key}, source: {ids[ii]},")
-        log.info(
-            "Dead-Time extracted from the tool process: "
-            f"{np.min(deadtime_us[ii]):.3f}"
-        )
-        log.info(f"Dead-Time from the fit: {values[0]:.3f} +- " f"{values[1]:.3f} µs")
-        log.info(f"Rate from the fit: {values[2]:.2f} +- " f"{values[3]:.2f} Hz")
-        log.info("Expected run duration from the fit: " f"{values[4]:.2f} s")
-        log.info("-" * 40)
-
-    ids = np.array(ids)
-    runlist = np.array(runlist)
-
-    error_deadtime_pc = []
-    for run_id in range(np.array(busy_counter).shape[0]):
-        error_deadtime_pc.append(
-            np.sqrt(
-                (busy_counter[run_id][-1] * event_counter[run_id][-1])
-                / ((busy_counter[run_id][-1] + event_counter[run_id][-1]) ** 3)
-            )
-        )
-    error_deadtime_pc = np.array(error_deadtime_pc)
-
-    deadtime, fitted_trigger_rates, fitted_trigger_rates_err = [], [], []
-
-    for ii, run_num in enumerate(runlist):
-        results = plot_deadtime_and_expo_fit(
-            total_delta_t_for_busy_time=time_tot[ii],
-            deadtime_us=np.array(deadtime_us[ii].value),
-            run=run_num,
-            output_plot=output_dir,
-        )
-        deadtime.append(results[0])
-        fitted_trigger_rates.append(((-1 * results[6]) * (1 / u.us)).to(u.kHz).value)
-        fitted_trigger_rates_err.append(((results[8]) * (1 / u.us)).to(u.kHz).value)
-        plt.close()
-
-    deadtime = np.array(deadtime)
-    fitted_trigger_rates = np.array(fitted_trigger_rates)
-    fitted_trigger_rates_err = np.array(fitted_trigger_rates_err)
-
-    deadtime_pc_fit = np.array(
-        [
-            # the parameter_lambda is a rate value in kHz,
-            # so one needs to compare the deadtime in mus with the rate in kHz
-            # and finally make it a percentage value
-            deadtime[ii] * rate * 1e2 * 1e-3
-            for ii, rate in enumerate(fitted_trigger_rates)
-        ]
+        error_deadtime_pc,
+        deadtime_pc_fit,
+    ) = run(
+        nevents=nevents,
+        runlist=runlist,
+        ids=ids,
+        output_dir=output_dir,
+        temp_output=temp_output,
     )
 
     plot_deadtime_vs_collected_trigger_rate(

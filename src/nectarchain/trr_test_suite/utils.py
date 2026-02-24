@@ -575,6 +575,7 @@ def plot_deadtime_and_expo_fit(
         Whether to print the fit results or not.
     output_plot : str, optional
         The path to save the output plot.
+        If `None`, plot will not be produced.
 
     Returns
     -------
