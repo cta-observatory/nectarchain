@@ -589,7 +589,7 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
         binned_y * 1.02,
         facecolor="blue",
         alpha=0.5,
-        label="2% requirenment",
+        label="2% requirement",
         zorder=1,
     )
 
