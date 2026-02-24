@@ -8,6 +8,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.containers import EventType
 from ctapipe.io import HDF5TableReader
 from ctapipe_io_nectarcam import constants
 
@@ -36,7 +37,7 @@ except ImportError:
 # nectarchain containers – read back from HDF5 via ctapipe's HDF5TableReader,
 # exactly as nectarchain's own calibration_pipeline.py does.
 from nectarchain.data.container import (
-    ChargesContainer,
+    ChargesContainers,
     FlatFieldContainer,
     NectarCAMPedestalContainer,
     SPEfitContainer,
@@ -258,41 +259,17 @@ def _load_flatfield(path):
     return ff_hg, ff_lg
 
 
-def _load_charges(path):
+def _load_charges(path, event_type=EventType.FLATFIELD):
     """Return (hg, lg) per-event charge arrays, shape (n_events, n_pixels)."""
-    import tables
 
-    with tables.open_file(str(path), mode="r") as h5:
-        if "/data/ChargesContainer_0" not in h5:
-            raise RuntimeError(f"No /data/ChargesContainer_0 in {path}")
-        parent = h5.get_node("/data/ChargesContainer_0")
-        child_names = [c._v_name for c in parent._f_iter_nodes("Table")]
+    # NOTE: Assumes that `events_per_slice = None` or `events_per_slice < max_events`
+    charges_containers = next(ChargesContainers.from_hdf5(path))
+    charge_container = charges_containers.containers[event_type]
 
-    preferred_hg, preferred_lg = [], []
-    fallback_hg, fallback_lg = [], []
+    hg = charge_container["charges_hg"]
+    lg = charge_container["charges_lg"]
 
-    for name in child_names:
-        table_path = f"/data/ChargesContainer_0/{name}"
-        try:
-            container = next(_read_container(path, ChargesContainer, table_path))
-        except Exception:
-            continue
-        hg = np.atleast_2d(container.charges_hg)
-        lg = np.atleast_2d(container.charges_lg)
-        if "FLATFIELD" in name.upper():
-            preferred_hg.append(hg)
-            preferred_lg.append(lg)
-        else:
-            fallback_hg.append(hg)
-            fallback_lg.append(lg)
-
-    hg_parts = preferred_hg if preferred_hg else fallback_hg
-    lg_parts = preferred_lg if preferred_lg else fallback_lg
-
-    if not hg_parts:
-        raise RuntimeError(f"No charge data found in {path}")
-
-    return np.concatenate(hg_parts, axis=0), np.concatenate(lg_parts, axis=0)
+    return hg, lg
 
 
 # ---------------------------------------------------------------------------
@@ -1050,7 +1027,7 @@ def main():
     log = logging.getLogger(__name__)
     # Force DEBUG so all [DEBUG] diagnostic lines are visible.
     # Revert to args.verbosity once the file-handle issue is resolved.
-    log.setLevel(logging.DEBUG)
+    log.setLevel(args.verbosity)
     h = logging.StreamHandler(sys.stdout)
     h.setLevel(logging.DEBUG)
     h.setFormatter(
