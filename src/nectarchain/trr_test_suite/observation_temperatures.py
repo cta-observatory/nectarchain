@@ -56,6 +56,7 @@ from nectarchain.makers.calibration import (
     PedestalNectarCAMCalibrationTool,
 )
 from nectarchain.makers.extractor.utils import CtapipeExtractor
+from nectarchain.utils import ContainerUtils
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -217,7 +218,11 @@ def _load_pedestal(path):
     reader, which knows exactly where the data is stored regardless of which
     group name (data, data_1, data_combined, …) was used when writing.
     """
-    container = next(NectarCAMPedestalContainer.from_hdf5(str(path)))
+    container = ContainerUtils.get_container_from_hdf5(
+        path,
+        NectarCAMPedestalContainer,
+        group_names=GROUP_NAMES_PEDESTAL,
+    )
     hg = np.mean(container["pedestal_mean_hg"], axis=1)
     lg = np.mean(container["pedestal_mean_lg"], axis=1)
     return hg, lg
@@ -228,7 +233,10 @@ def _load_gain(path):
 
     Uses SPEfitContainer.from_hdf5(), the built-in nectarchain reader.
     """
-    container = next(SPEfitContainer.from_hdf5(str(path)))
+    container = ContainerUtils.get_container_from_hdf5(
+        path,
+        SPEfitContainer,
+    )
     hg = np.asarray(container["high_gain"])
     lg = np.asarray(container["low_gain"])
     if hg.ndim == 2:
@@ -241,7 +249,10 @@ def _load_flatfield(path):
 
     Uses FlatFieldContainer.from_hdf5(), the built-in nectarchain reader.
     """
-    container = next(FlatFieldContainer.from_hdf5(str(path)))
+    container = ContainerUtils.get_container_from_hdf5(
+        path,
+        FlatFieldContainer,
+    )
     ff = np.asarray(container["FF_coef"])
     if ff.ndim == 3:
         ff = np.mean(ff, axis=0)
