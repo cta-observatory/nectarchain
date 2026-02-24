@@ -43,10 +43,7 @@ from nectarchain.data.container import (
 )
 
 # nectarchain makers
-from nectarchain.makers import (
-    ChargesNectarCAMCalibrationTool,
-    WaveformsNectarCAMCalibrationTool,
-)
+from nectarchain.makers import ChargesNectarCAMCalibrationTool
 from nectarchain.makers.calibration import (
     FlatfieldNectarCAMCalibrationTool,
     FlatFieldSPEHHVNectarCAMCalibrationTool,
@@ -574,7 +571,7 @@ class NectarCAMObsTempPipeline:
 
         # We probe with the ChargesNectarCAMCalibrationTool because that is
         # the tool that produces the final charge HDF5 file we care about.
-        chg_probe = ChargesNectarCAMCalibrationTool(
+        tool = ChargesNectarCAMCalibrationTool(
             progress_bar=True,
             camera=self.args.camera,
             run_number=run_number,
@@ -585,35 +582,21 @@ class NectarCAMObsTempPipeline:
             log_level=logging.getLevelName(self.log.level),
             overwrite=True,
         )
-        existing = self._resolve_existing_output(
-            chg_probe, "charge", run_number, self.charge_results
-        )
-        if existing:
-            return existing
 
-        self.log.info(f"Computing charges for run {run_number}…")
+        if os.path.exists(tool.output_path):
+            self.log.info(
+                f"Charges already computed! Found output file: {tool.output_path}..."
+            )
+        else:
+            self.log.info(f"No output found, computing charges for run {run_number}…")
+            tool.setup()
+            tool.start()
+            tool.finish()
+            self.log.info(f"Charges saved to {tool.output_path}")
 
-        # Step 1 – waveforms (needed before charge extraction)
-        wfs = WaveformsNectarCAMCalibrationTool(
-            progress_bar=True,
-            camera=self.args.camera,
-            run_number=run_number,
-            max_events=self.args.max_events_charge,
-            log_level=logging.getLevelName(self.log.level),
-            overwrite=self._should_recompute("charge"),
-        )
-        wfs.setup()
-        wfs.start()
-        wfs.finish()
+        self.pedestal_results[run_number] = tool.output_path
 
-        # Step 2 – charge extraction (chg_probe is already set up)
-        output_path = self._tool_output_path(chg_probe)
-        chg_probe.start()
-        chg_probe.finish()
-
-        self.charge_results[run_number] = output_path
-        self.log.info(f"Charges saved to {output_path}")
-        return output_path
+        return tool.output_path
 
     # ------------------------------------------------------------------
     # Loading with physics-motivated defaults
