@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ctapipe.containers import EventType, Field
 from ctapipe.core.traits import ComponentNameList
+from ctapipe_io_nectarcam import N_SAMPLES
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from scipy.optimize import curve_fit
 
@@ -17,6 +18,7 @@ from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import DelimiterLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_test_suite.utils import get_bad_pixels_list, linear_fit_function
+from nectarchain.utils.constants import GAIN_DEFAULT
 
 
 def get_args():
@@ -247,7 +249,10 @@ def main():
 
     Dark_std = pow(pedestal_std[0], 2)
 
-    NSB_rate = (pow(pedestal_std, 2) - Dark_std) / (pow(58, 2) * 58.0 * pow(10, -9))
+    T_0 = 2.0  # Offset to be substracted from N_SAMPLES
+    NSB_rate = (pow(pedestal_std, 2) - Dark_std) / (
+        pow(GAIN_DEFAULT, 2) * (N_SAMPLES - T_0) * pow(10, -9)
+    )
     # print("NSB_rate",NSB_rate[0], np.nanmean(NSB_rate[0]))
 
     NSB_rate_mean = (np.nanmean(NSB_rate, axis=1)) * pow(10, -9)
