@@ -94,10 +94,7 @@ class NSBRateContainer(NectarCAMContainer):
         type=np.uint16,
         description="run number associated to the waveforms",
     )
-    slice_no = Field(
-        type=np.uint16,
-        description="slice of the dataset",
-    )
+
     pedestal_std = Field(
         type=np.ndarray,
         dtype=np.float64,
@@ -122,7 +119,6 @@ class NSBRateComponent(NectarCAMComponent):
         # interesting quantity during the event loop process
         print("initialize")
         self.__run_number__ = []
-        self.__slice_no__ = []
         self.__pedestal_std__ = []
         self.__pedestal_mean__ = []
         self.__wf_sum__ = []
@@ -141,10 +137,8 @@ class NSBRateComponent(NectarCAMComponent):
             self.__wf_sum__ = []
 
     def finish(self):
-        slice_no = 1
         output = NSBRateContainer(
             run_number=NSBRateContainer.fields["run_number"].type(self._run_number),
-            slice_no=NSBRateContainer.fields["slice_no"].type(slice_no),
             pedestal_std=NSBRateContainer.fields["pedestal_std"].dtype.type(
                 self.__pedestal_std__
             ),
