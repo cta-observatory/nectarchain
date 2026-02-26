@@ -54,8 +54,10 @@ eff = table["eff_coef"]
 pixels_id = table["pixels_id"]
 bad_pix = table["bad_pixels"]
 gain_channels = ["HG", "LG"]
+amp_int_per_pix_per_event = table["amp_int_per_pix_per_event"]
 
-for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
+# for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
+for G in [0]:
     # Histogramm of FF coef for one pixel, per gain chanel
     pix = 0
     eff_pix = eff[:, G, pix]
@@ -84,10 +86,11 @@ for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
 
     # Histogramm of the mean FF coef for all pixels of the camera, per gain chanel
     eff_pix = eff[:, G, :]
+    amp = amp_int_per_pix_per_event[:, G, :]
     mean_eff_pix = np.mean(eff_pix, axis=0, where=np.isinf(eff_pix) == False)
     mean_FF_pix = np.ma.array(1.0 / mean_eff_pix, mask=mean_eff_pix == 0)
-    mean_FF_cam = np.mean(mean_FF_pix, axis=0)
-    std_FF_cam = np.std(mean_FF_pix, axis=0)
+    mean_FF_cam = np.mean(mean_FF_pix, axis=0)  # , where=np.isnan(mean_FF_pix)==False)
+    std_FF_cam = np.std(mean_FF_pix, axis=0)  # , mask=mean_eff_pix == 0)
 
     fig = plt.figure(figsize=(5, 4))
     plt.hist(

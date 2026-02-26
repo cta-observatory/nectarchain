@@ -132,8 +132,6 @@ def get_bad_pixels(output_from_FlatFieldComponent):
             # pixels with unstable flat-field coefficient
             eff_coef = FlatFieldOutput.eff_coef[:, G, p]
             FF_coef = np.ma.array(1.0 / eff_coef, mask=eff_coef == 0)
-
-            # FF_coef = output_from_FlatFieldComponent.FF_coef[:, G, p]
             mean_FF_per_pix = np.mean(FF_coef, axis=0)
             std_FF_per_pix = np.std(FF_coef, axis=0)
 
@@ -179,22 +177,23 @@ def get_bad_pixels(output_from_FlatFieldComponent):
 log.info("\n *** First pass with default gain and hi/lo values *** \n")
 
 # default gain array
-gain_default = 58.0
-hi_lo_ratio_default = 13.0
-gain_array = list(np.ones(shape=(constants.N_GAINS, constants.N_PIXELS)))
-gain_array[0] = gain_array[0] * gain_default
-gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
+# gain_default = constants.GAIN_DEFAULT
+# hi_lo_ratio_default = constants.HILO_DEFAULT
+# gain_array = list(np.ones(shape=(constants.N_GAINS, constants.N_PIXELS)))
+# gain_array[0] = gain_array[0] * gain_default
+# gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
 
 # empty list of bad pixels
 bad_pixels_array = list([])
 
 # other parameters
 run_number = args.run
-max_events = 10000
+max_events = 1000
 window_width = 12
 window_shift = 5
 window_pedestal = 10
 outfile = Path(os.environ.get("NECTARCAMDATA"), f"FlatFieldOutput/1FF_{run_number}.h5")
+pedestal_file = Path(os.environ.get("NECTARCAMDATA"), f"runs/pedestal_{run_number}.h5")
 
 # Initial call
 tool = FlatfieldNectarCAMCalibrationTool(
@@ -208,8 +207,10 @@ tool = FlatfieldNectarCAMCalibrationTool(
     window_width=window_width,
     window_shift=window_shift,
     window_pedestal=window_pedestal,
+    pedestal_file=None,  # pedestal_file,
+    gain_file=None,  # gain_file
+    gain=None,
     overwrite=True,
-    gain=gain_array,
     bad_pix=bad_pixels_array,
     output_path=outfile,
 )
@@ -231,6 +232,13 @@ log.info(
 taking into account bad pixels *** \n"
 )
 
+if len(FlatFieldOutput.amp_int_per_pix_per_event) == 0:
+    log.error(
+        f"There are no events after the first pass - maybe check the number \
+of discarded events"
+    )
+    sys.exit(1)
+
 outfile = Path(os.environ.get("NECTARCAMDATA"), f"FlatFieldOutput/2FF_{run_number}.h5")
 
 # Second call with updated gain aray and bad pixels
@@ -245,8 +253,10 @@ tool = FlatfieldNectarCAMCalibrationTool(
     window_width=window_width,
     window_shift=window_shift,
     window_pedestal=window_pedestal,
-    overwrite=True,
+    pedestal_file=None,  # pedestal_file,
+    gain_file=None,  # gain_file
     gain=get_gain(FlatFieldOutput),
+    overwrite=True,
     bad_pix=get_bad_pixels(FlatFieldOutput),
     output_path=outfile,
 )

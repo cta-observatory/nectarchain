@@ -129,9 +129,9 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__event_id = []
         self.__amp_int_per_pix_per_event = []
         self.__eff_coef = []
-        self.__bad_pixels = []
         self.__bad_pixels_number = []
         self.__bad_pixels_mask = []
+        self.__bad_events = 0
 
         # mask bad pixels
         self.__bad_pixels = np.array(self.bad_pix)
@@ -156,6 +156,7 @@ class FlatFieldComponent(NectarCAMComponent):
         self.__pedestal_container = None
 
         if self.pedestal_file is not None:
+            log.warning("Using pedestal from file")
             try:
                 self.__pedestal_container = ContainerUtils.get_container_from_hdf5(
                     self.pedestal_file,
@@ -171,7 +172,8 @@ class FlatFieldComponent(NectarCAMComponent):
 
         if self.__pedestal_container is None:
             log.warning(
-                "Computing pedestal as mean of first 20 samples of the waveform"
+                f"Computing pedestal as mean of first {self.window_pedestal} samples \
+of the waveform"
             )
 
     def _init_gain_container(self):
@@ -205,11 +207,14 @@ class FlatFieldComponent(NectarCAMComponent):
                 f"Using GAIN_DEFAULT = {GAIN_DEFAULT} ADC/pe and "
                 f"HILO_DEFAULT = {HILO_DEFAULT}"
             )
-            gain = np.full(
-                shape=(constants.N_GAINS, constants.N_PIXELS), fill_value=GAIN_DEFAULT
+            gain = list(
+                np.full(
+                    shape=(constants.N_GAINS, constants.N_PIXELS),
+                    fill_value=GAIN_DEFAULT,
+                )
             )
             gain[constants.LOW_GAIN] = gain[constants.HIGH_GAIN] / HILO_DEFAULT
-            self.gain = gain.tolist()
+            self.gain = gain  # .tolist()
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
         log.debug(
@@ -233,7 +238,7 @@ class FlatFieldComponent(NectarCAMComponent):
             else:
                 # check location of the peak
                 toms = np.argmax(wfs, axis=-1)
-                tom = toms[0]  # np.argmax(wvfs,axis=-1)
+                tom = toms[0]
                 tom_mean = np.mean(tom)
                 tom_std = np.std(tom, ddof=1)
 
@@ -244,6 +249,7 @@ class FlatFieldComponent(NectarCAMComponent):
                         wfs, window=self.window_pedestal
                     )
                 else:
+                    self.__bad_events += 1
                     return
 
             if self.charge_extraction_method is None:
@@ -252,17 +258,21 @@ class FlatFieldComponent(NectarCAMComponent):
                 masked_wfs = self.make_masked_array(
                     t_peak, self.window_shift, self.window_width
                 )
+
                 # mask bad pixels
                 masked_wfs[:, self.__bad_pixels_number, :] = False
+
                 # get integrated amplitude for each pixel per event
                 amp_int_per_pix_per_event = np.sum(
                     wfs_pedsub, axis=-1, where=masked_wfs
                 )
-                # Safety measure:
+
+                # Safety measure
                 amp_int_per_pix_per_event[self.__bad_pixels_mask] = 0.0
                 amp_int_per_pix_per_event = np.ma.array(
                     amp_int_per_pix_per_event, mask=self.__bad_pixels_mask
                 )
+
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
                 amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event / self.gain
 
@@ -303,7 +313,7 @@ class FlatFieldComponent(NectarCAMComponent):
                 amp_int_per_pix_per_event_pe,
                 np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
             )
-            eff_coef = np.ma.array(eff_coef, mask=np.invert(self.__bad_pixels_mask))
+            # eff_coef = np.ma.array(eff_coef, mask=np.invert(self.__bad_pixels_mask))
             self.__eff_coef.append(eff_coef)
 
     def subtract_pedestal_from_container(self, wfs):
@@ -394,6 +404,13 @@ class FlatFieldComponent(NectarCAMComponent):
         return badpix_mask
 
     def finish(self):
+        log.info(f"number of events of type FLATFIELD: {len(self.__event_id)}")
+        log.warning(
+            f"number of discarded events: {self.__bad_events} ~ \
+{round(100*self.__bad_events/len(self.__event_id),2)} % (not possible to get \
+the pedestal from the first {self.window_pedestal} samples)"
+        )
+
         output = FlatFieldContainer(
             run_number=FlatFieldContainer.fields["run_number"].type(self._run_number),
             npixels=FlatFieldContainer.fields["npixels"].type(self._npixels),
