@@ -876,7 +876,7 @@ def main():
         f"/runs/NectarCAM.Run{str(run_number).zfill(4)}.0000.fits.fz",
     )
     spe_run_number = args.SPE_run_number
-    method = "GlobalPeakWindowSum"
+    method = "LocalPeakWindowSum"
     extractor_kwargs = json.loads('{"window_width": 8, "window_shift": 4}')
     camera = args.camera
     add_variance = True
