@@ -60,17 +60,20 @@ def get_args():
         description="Flat-field source characterization test B-TEL-1350.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--FF_run_number", required=True, help="Run number", type=int)
     parser.add_argument(
-        "--SPE_run_number", required=True, help="SPE run number", type=int
+        "--FF_run_number",
+        required=True,
+        default=6729,
+        help="Flat-field run number",
+        type=int,
     )
     parser.add_argument(
-        "-p",
-        "--run-path",
-        default=f'{os.environ.get("NECTARCAMDATA", "").strip()}',
-        help="Path to run file",
+        "--SPE_run_number",
+        required=True,
+        default=6774,
+        help="SPE run number",
+        type=int,
     )
-
     parser.add_argument(
         "-c",
         "--camera",
@@ -81,12 +84,6 @@ def get_args():
     )
 
     # Accept True/False as string
-    parser.add_argument(
-        "-w",
-        "--add-variance",
-        action="store_true",
-        help="Enable variance correction (False by default)",
-    )
     parser.add_argument(
         "--SPE_config",
         choices=[
@@ -897,15 +894,15 @@ def main():
 
     # --- Assign other variables ---
     run_number = args.FF_run_number
-    run_path = args.run_path + (
-        f"/runs/NectarCAM.Run" f"{str(run_number).zfill(4)}.0000.fits.fz"
+    run_path = os.path.join(
+        os.environ.get("NECTARCAMDATA", "/tmp"),
+        f"/runs/NectarCAM.Run{str(run_number).zfill(4)}.0000.fits.fz",
     )
     spe_run_number = args.SPE_run_number
     method = args.method
     extractor = args.extractor_kwargs
     camera = args.camera
-    # only one run file is loaded as it is used only to retrieve camera geometry and
-    # bad pixels
+    add_variance = True
 
     log.info(
         f"Method is {method}, the extractor kwargs are: {extractor['window_shift']}, "
@@ -957,9 +954,9 @@ def main():
         )
         log.info(f"THIS IS THE spe_filenames output {spe_filenames}")
 
-    log.info(f"ADD_VARIANCE = {args.add_variance}")
+    log.info(f"ADD_VARIANCE = {add_variance}")
 
-    if args.add_variance:
+    if add_variance:
         log.info("Running analysis with variance correction...")
     else:
         log.info("Running analysis without variance correction...")
@@ -1049,7 +1046,7 @@ def main():
     log.info(minuit_1.values)
 
     # Second fit with variance
-    if args.add_variance:
+    if add_variance:
         (
             data_varinace,
             fit_variance,
@@ -1136,7 +1133,7 @@ def main():
         y0_1_err = np.arctan(minuit_vals_errors_1[2] / 12)
         width_1_err = np.arctan(minuit_vals_errors_1[3] / 12)
 
-        if args.add_variance:
+        if add_variance:
             x0_v = np.arctan(minuit_values_variance[1] / 12)
             y0_v = np.arctan(minuit_values_variance[2] / 12)
             width_v = np.arctan(minuit_values_variance[3] / 12)
@@ -1151,7 +1148,7 @@ def main():
             f"{minuit_vals_errors_1[0]},{x0_1_err},"
             f"{y0_1_err},{width_1_err},{np.mean(yerr_prop_1/y_1)*100}\n"
         )
-        if args.add_variance:
+        if add_variance:
             f.write(
                 f"{run_number},With_v_int,{minuit_values_variance[0]},"
                 f"{x0_v},{y0_v},{width_v},"
