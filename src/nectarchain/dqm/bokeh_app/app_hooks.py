@@ -1,4 +1,5 @@
 import collections
+import datetime
 import json
 import os
 import re
@@ -64,6 +65,47 @@ def get_rundata(src, runid):
     logger.info(f"Successfully extracted data for run {runid}")
 
     return run_data
+
+
+def get_run_times(source):
+    """Extract important time stamps for the provided run data
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata`
+
+    Returns
+    -------
+    run_start_time_dt : datetime.datetime
+        Time of the start of the run in %Y-%m-%d %H:%M:%S format
+    first_event_time_dt : datetime.datetime
+        Time when the first event was recorded in %Y-%m-%d %H:%M:%S format
+    last_event_time_dt : datetime.datetime
+        Time when the last event was recorded in %Y-%m-%d %H:%M:%S format
+    """
+
+    run_start_time = int(source["START-TIMES"]["Run start time"].flatten()[0])
+    run_start_time_dt = datetime.utcfromtimestamp(run_start_time).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    first_event_time = int(source["START-TIMES"]["First event"].flatten()[0])
+    first_event_time_dt = datetime.utcfromtimestamp(first_event_time).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    last_event_time = int(source["START-TIMES"]["Last event"].flatten()[0])
+    last_event_time_dt = datetime.utcfromtimestamp(last_event_time).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    logger.info(
+        f"Successfully extracted run times: "
+        f"run start time {run_start_time_dt}, "
+        f"first event time {first_event_time_dt}, "
+        f"last event time {last_event_time_dt}"
+    )
+
+    return run_start_time_dt, first_event_time_dt, last_event_time_dt
 
 
 def make_timelines(source, runid=None):
