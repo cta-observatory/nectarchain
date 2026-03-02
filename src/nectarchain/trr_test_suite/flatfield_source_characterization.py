@@ -17,8 +17,6 @@ from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image.toymodel import Gaussian
 from ctapipe.io import EventSource
 from ctapipe.io.hdf5tableio import HDF5TableReader
-
-# ctapipe imports
 from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam.constants import N_PIXELS
 from iminuit import Minuit
