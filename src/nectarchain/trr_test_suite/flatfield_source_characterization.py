@@ -870,7 +870,7 @@ def main():
     run_number = args.FF_run_number
     run_path = os.path.join(
         os.environ.get("NECTARCAMDATA", "/tmp"),
-        f"/runs/NectarCAM.Run{str(run_number).zfill(4)}.0000.fits.fz",
+        f"runs/NectarCAM.Run{str(run_number).zfill(4)}.0000.fits.fz",
     )
     spe_run_number = args.SPE_run_number
     method = "LocalPeakWindowSum"
