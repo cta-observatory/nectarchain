@@ -65,11 +65,30 @@ def update(attr, old, new):
 
     tab_camera_displays = update_camera_displays(source, displays, runid)
     tab_timelines = update_timelines(source, timelines, runid)
+    run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
+
+    run_times_string = Div(
+        text=f"""
+        <div style="
+            background-color: #f0f8ff;
+            border-radius: 10px;
+            padding: 10px;
+            width: fit-content;
+            font-size: 14px;
+        ">
+            <p>Run start time: {run_start_time_dt}</p>
+            <p>First event recorded at: {first_event_time_dt}</p>
+            <p>Last event recorded at: {last_event_time_dt}</p>
+        </div>
+        """
+    )
 
     # Combine panels into tabs
     tabs = Tabs(tabs=[tab_camera_displays, tab_timelines], sizing_mode="scale_width")
 
     page_layout.children[1] = tabs
+    page_layout.children[0].children[1] = run_times_string
+
     logger.info("Updated layouts and TabPanel objects for tabs.")
 
 
