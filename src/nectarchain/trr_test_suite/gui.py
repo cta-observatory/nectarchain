@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import (
 from nectarchain.trr_test_suite import (
     charge_resolution,
     deadtime,
+    flatfield_source_characterization,
     linearity,
     pedestal,
     pix_couple_tim_uncertainty,
@@ -67,6 +68,7 @@ class TestRunner(QWidget):
         "Charge Resolution Test": charge_resolution,
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
+        "Flat-field source characterization test": flatfield_source_characterization,
         "Pedestal Test": pedestal,
         "Pixel Time Uncertainty Test": pix_tim_uncertainty,
         "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty,
