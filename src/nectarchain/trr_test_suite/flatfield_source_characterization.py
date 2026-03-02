@@ -352,14 +352,14 @@ def optimize_with_outlier_rejection(
 
     # Set colorbar label for subplot 1
     cbar1 = fig.axes[-1]
-    cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90, labelpad=15, fontsize=14)
+    cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90)
 
-    ax1.set_xlabel("x (m)", fontsize=14)
-    ax1.set_ylabel("y (m)", fontsize=14)
+    ax1.set_xlabel("x (m)")
+    ax1.set_ylabel("y (m)")
 
-    ax1.tick_params(axis="both", which="major", labelsize=11)
+    ax1.tick_params(axis="both", which="major")
     # Title
-    ax1.set_title("Model", fontsize=16)
+    ax1.set_title("Model")
 
     # --- Subplot 2 ---
     ax2 = plt.subplot(2, 2, 2)
@@ -370,13 +370,13 @@ def optimize_with_outlier_rejection(
 
     # Set colorbar label for subplot 2
     cbar2 = fig.axes[-1]  # Again, the last axis should be the second colorbar
-    cbar2.set_ylabel(r"%", rotation=90, labelpad=15, fontsize=14)
+    cbar2.set_ylabel(r"%", rotation=90)
 
-    ax2.set_xlabel("x (m)", fontsize=14)
-    ax2.set_ylabel("y (m)", fontsize=14)
-    ax2.tick_params(axis="both", which="major", labelsize=11)
+    ax2.set_xlabel("x (m)")
+    ax2.set_ylabel("y (m)")
+    ax2.tick_params(axis="both", which="major")
     # Title
-    ax2.set_title("Residuals", fontsize=16)
+    ax2.set_title("Residuals")
 
     fig_name = "camera_displays"
     plot_path = os.path.join(output_dir, f"{fig_name}.png")
@@ -612,7 +612,7 @@ def error_propagation_compute(
 
     plt.ylabel("Number of photoelectrons")
     plt.xlabel("θ [deg]")
-    plt.legend(fontsize=10)
+    plt.legend()
     fig_name = "flatfield_source_model_binned"
     plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
@@ -744,14 +744,11 @@ def compute_ff_coefs(charges, gains, output_dir=None, temp_output=None):
         label=f"±1σ = {std:.2f}",
     )
     ax.axvline(mean + std, color="red", linestyle="dashed", linewidth=1.5)
-    ax.set_title(
-        "Distribution of FF coefficient, model independent",
-        fontsize=16,
-    )
-    ax.set_xlabel("FF coefficient", fontsize=16)
-    ax.set_ylabel("Count", fontsize=16)
-    ax.tick_params(axis="both", labelsize=16)
-    ax.legend(fontsize=16)
+    ax.set_title("Distribution of FF coefficient, model independent")
+    ax.set_xlabel("FF coefficient")
+    ax.set_ylabel("Count")
+    ax.tick_params(axis="both")
+    ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
     fig_name = "flatfield_coefficients_distribution"
     plot_path = os.path.join(output_dir, f"{fig_name}.png")
@@ -792,11 +789,11 @@ def compute_ff_coefs_model(
         label=f"±1σ = {std:.2f}",
     )
     ax.axvline(mean + std, color="red", linestyle="dashed", linewidth=1.5)
-    ax.set_title("Distribution of FF coefficient, model-based", fontsize=16)
-    ax.set_xlabel("FF coefficient", fontsize=16)
-    ax.set_ylabel("Count", fontsize=16)
-    ax.tick_params(axis="both", labelsize=16)
-    ax.legend(fontsize=16)
+    ax.set_title("Distribution of FF coefficient, model-based")
+    ax.set_xlabel("FF coefficient")
+    ax.set_ylabel("Count")
+    ax.tick_params(axis="both")
+    ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
     fig_name = "flatfield_coefficients_distribution_with_model"
     plot_path = os.path.join(output_dir, f"{fig_name}.png")
@@ -1042,7 +1039,7 @@ def main():
 
         plt.figure()
         plt.hist(residuals_variance_result, bins=50)
-        plt.title("Residuals binned", fontsize=16)
+        plt.title("Residuals binned")
         plt.close()
 
         dict_error_var = error_propagation_compute(
