@@ -23,7 +23,6 @@ from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam.constants import N_PIXELS
 from iminuit import Minuit
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize._numdiff import approx_derivative
 
 # nectarchain imports
@@ -183,11 +182,12 @@ def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
     disp.cmap = plt.cm.coolwarm
     disp.add_colorbar()
     fig.suptitle("Broken / Missing pixels")
-    plot_path = os.path.join(output_dir, "camera_broken_pixels.png")
+    fig_name = "camera_broken_pixels"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     # Determine the shape of the 'high_gain' values
@@ -277,11 +277,12 @@ def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
     ax.set_ylabel("y (m)")
     ax.tick_params(axis="both", which="major")
     plt.title("Data")
-    plot_path = os.path.join(output_dir, "camera_data.png")
+    fig_name = "camera_data"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     dict_missing_pix = {
@@ -321,7 +322,9 @@ def define_delete_out(sigma, data):
     return data, sigma, outliers
 
 
-def optimize_with_outlier_rejection(sigma, data, camera, pdf):
+def optimize_with_outlier_rejection(
+    sigma, data, camera, output_dir=None, temp_output=None
+):
     # least-squares score function = sum of data residuals squared
     def lsq(a0, a1, a2, a3):
         # We assume that the 2D-Gaussian is symmetric, thus the last two arguments of
@@ -369,7 +372,7 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
 
     # Visualization
     log.info(f" number of masked elements for outliers{sigma_masked.count()}")
-    fig2 = plt.figure(figsize=(12, 9))
+    fig = plt.figure(figsize=(12, 9))
 
     # --- Subplot 1 ---
     ax1 = plt.subplot(2, 2, 1)
@@ -379,7 +382,7 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     # disp1.set_limits_minmax(140, 165)
 
     # Set colorbar label for subplot 1
-    cbar1 = fig2.axes[-1]
+    cbar1 = fig.axes[-1]
     cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90, labelpad=15, fontsize=14)
 
     ax1.set_xlabel("x (m)", fontsize=14)
@@ -397,7 +400,7 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     disp2.add_colorbar()
 
     # Set colorbar label for subplot 2
-    cbar2 = fig2.axes[-1]  # Again, the last axis should be the second colorbar
+    cbar2 = fig.axes[-1]  # Again, the last axis should be the second colorbar
     cbar2.set_ylabel(r"%", rotation=90, labelpad=15, fontsize=14)
 
     ax2.set_xlabel("x (m)", fontsize=14)
@@ -406,9 +409,14 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     # Title
     ax2.set_title("Residuals", fontsize=16)
 
-    # Save and close
-    pdf.savefig(fig2)
-    plt.close(fig2)
+    fig_name = "camera_displays"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
+
     return n_pe, model, minuit, residuals
 
 
@@ -443,7 +451,9 @@ def propagate_scipy_compatible(model, params, cov, camera):
     return y, ycov
 
 
-def error_propagation_compute(data, minuit_resulting, camera, pdf):
+def error_propagation_compute(
+    data, minuit_resulting, camera, output_dir=None, temp_output=None
+):
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
 
     def model(params):
@@ -557,8 +567,7 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
 
     # --- plotting
 
-    fig_model = plt.figure(figsize=(6, 5))
-    ax = plt.subplot()
+    fig, ax = plt.subplots()
     ax.scatter(theta, data, label="data", zorder=0, alpha=0.3)
     ax.fill_between(
         bin_centers,
@@ -572,37 +581,6 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
     ax.plot(bin_centers, binned_y, color="r", label="model", zorder=4)
 
     x_fov = 4.0
-    # idx = np.nanargmin(np.abs(bin_centers - x_fov))
-    # y_center = binned_y[idx]
-    # length = 0.02 * y_center
-    # cap_width = 0.25
-    # label = "2%"
-    #
-    # # compute top & bottom
-    # y_top = y_center + length / 2
-    # y_bottom = y_center - length / 2
-    #
-    # # vertical line
-    # plt.plot(
-    #     [x_fov + cap_width, x_fov + cap_width],
-    #     [y_bottom, y_top],
-    #     color="black",
-    #     lw=2,
-    # )
-    #
-    # plt.plot([x_fov, x_fov + cap_width], [y_top, y_top], color="black", lw=2)
-    #
-    # plt.plot([x_fov, x_fov + cap_width], [y_bottom, y_bottom], color="black", lw=2)
-    #
-    # plt.text(
-    #     x_fov + cap_width + 0.05,
-    #     y_center,
-    #     label,
-    #     va="center",
-    #     ha="left",
-    #     fontsize=14,
-    #     color="black",
-    # )
     plt.axvline(
         x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
     )
@@ -619,12 +597,17 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
 
     plt.ylabel("Number of photoelectrons")
     plt.xlabel("θ [deg]")
-    plt.legend(fontsize=10)
-    pdf.savefig(fig_model)
+    plt.legend()
+    fig_name = "flatfield_source_model"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     # plot with binned data
-    fig_binned = plt.figure(figsize=(6, 5))
-    ax = plt.subplot()
+    fig, ax = plt.subplots()
     ax.errorbar(
         bin_centers_data,
         binned_data,
@@ -644,7 +627,6 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
     )
     ax.plot(bin_centers, binned_y, color="r", label="model", zorder=4)
 
-    x_fov = 4.0
     plt.axvline(
         x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
     )
@@ -655,14 +637,20 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
         binned_y * 1.02,
         facecolor="blue",
         alpha=0.5,
-        label="2% requirenment",
+        label="2% requirement",
         zorder=2,
     )
 
     plt.ylabel("Number of photoelectrons")
     plt.xlabel("θ [deg]")
     plt.legend(fontsize=10)
-    pdf.savefig(fig_binned)
+    fig_name = "flatfield_source_model_binned"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     return {
         "params": values,
@@ -691,7 +679,7 @@ def characterize_peak(minuit, camera):
     log.info(f"Closest pixel ID: {closest_pixel_id}")
     log.info(f"Coordinates: ({closest_x}, {closest_y})")
     log.info(
-        f"The distance between the centre of the camera "
+        "The distance between the centre of the camera "
         f"and the peak of the fitted 2D gaussian: {distance:.3f} meters"
     )
     return distance
@@ -700,19 +688,8 @@ def characterize_peak(minuit, camera):
 # Same fit procedure but taking into account V_int
 
 
-# values for minuit are taken from the firs fit without any
-def optimize_with_outlier_rejection_variance(
-    sigma, data, dict_missing_pix, minuit, camera, pdf
-):
-    def define_delete_out(sigma, data):
-        mean = np.mean(data)
-        std = np.std(data)
-        outliers = [np.abs(data - mean) > 3 * std]
-
-        sigma_var = ma.masked_array(sigma, mask=outliers)
-        data_var = ma.masked_array(data, mask=outliers)
-        return data_var, sigma_var, outliers
-
+# values for minuit are taken from the first fit without any
+def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
     # Update data, sigma, and mask
     n_pe_var, sigma_masked_var, mask_upd = define_delete_out(sigma, data)
 
@@ -761,60 +738,10 @@ def optimize_with_outlier_rejection_variance(
     max_residual = np.max(np.abs(residuals))
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
-    dict_missing_pix["rejected_outliers"] = (
-        N_PIXELS
-        - sigma_masked_var.count()
-        - dict_missing_pix["Missing pixels"]
-        - dict_missing_pix["high_gain = 0"]
-    )
-
-    labels = [
-        f'Missing pixels, #{dict_missing_pix["Missing pixels"]}',
-        f'high gain = 0, # {dict_missing_pix["high_gain = 0"]}',
-        f'rejected outliers, # {dict_missing_pix["rejected_outliers"]}',
-    ]
-
-    fig_pie_3, ax = plt.subplots()
-    ax.pie(dict_missing_pix.values(), labels=labels, autopct="%.0f%%")
-    fig_pie_3.suptitle("Piechart of masked pixels")
-    pdf.savefig(fig_pie_3)
-
-    # Visualization
-
-    fig4 = plt.figure(figsize=(16, 8))
-    # --- Subplot 1 ---
-    ax1 = plt.subplot(2, 2, 1)
-    disp1 = CameraDisplay(camera, show_frame=False, ax=ax1)
-    disp1.image = model
-    disp1.add_colorbar()
-
-    # Set colorbar label for subplot 1
-    cbar1 = fig4.axes[-1]
-    cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90, labelpad=15, fontsize=14)
-    ax1.set_xlabel("x (m)", fontsize=14)
-    ax1.set_ylabel("y (m)", fontsize=14)
-    ax1.tick_params(axis="both", which="major", labelsize=11)
-    ax1.set_title("Model", fontsize=16)
-
-    # --- Subplot 2 ---
-    ax2 = plt.subplot(2, 2, 2)
-    disp2 = CameraDisplay(camera, show_frame=False, ax=ax2)
-    disp2.image = residuals * 100
-    disp2.cmap = plt.cm.coolwarm
-    disp2.add_colorbar()
-    cbar2 = fig4.axes[-1]
-    cbar2.set_ylabel(r"%", rotation=90, labelpad=15, fontsize=14)
-    ax2.set_xlabel("x (m)", fontsize=14)
-    ax2.set_ylabel("y (m)", fontsize=14)
-    ax2.tick_params(axis="both", which="major", labelsize=11)
-    ax2.set_title("Residuals", fontsize=16)
-    pdf.savefig(fig4)
-    plt.close(fig4)
-
     return n_pe_var, model, minuit_new, residuals
 
 
-def compute_ff_coefs(charges, gains, pdf):
+def compute_ff_coefs(charges, gains, output_dir=None, temp_output=None):
     log.info(f"SHAPE {gains.shape}")
     masked_charges = np.ma.masked_where(np.ma.getmask(charges), charges)
     masked_gains = np.ma.masked_where(np.ma.getmask(charges), gains)
@@ -826,10 +753,10 @@ def compute_ff_coefs(charges, gains, pdf):
     mean = np.mean(eff)
     std = np.std(eff)
 
-    fig_ff_1, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots()
 
     # Plot histogram
-    n, bins, patches = ax.hist(
+    ax.hist(
         eff,
         bins=50,
         edgecolor="black",
@@ -857,21 +784,28 @@ def compute_ff_coefs(charges, gains, pdf):
     ax.tick_params(axis="both", labelsize=16)
     ax.legend(fontsize=16)
     ax.grid(True, linestyle="--", alpha=0.5)
-    fig_ff_1.tight_layout()
-    pdf.savefig(fig_ff_1)
+    fig_name = "flatfield_coefficients_distribution"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     return eff
 
 
-def compute_ff_coefs_model(data, data_std, model, model_std, pdf):
+def compute_ff_coefs_model(
+    data, data_std, model, model_std, output_dir=None, temp_output=None
+):
     FF_coefs = np.divide(data, model, where=model != 0)
     mean = np.mean(FF_coefs)
     std = np.std(FF_coefs)
     std_FF = np.sqrt((data_std / model) ** 2 + (data * model_std / model**2) ** 2)
-    fig_ff, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots()
 
     # Plot histogram
-    n, bins, patches = ax.hist(
+    ax.hist(
         FF_coefs,
         bins=50,
         edgecolor="black",
@@ -895,8 +829,14 @@ def compute_ff_coefs_model(data, data_std, model, model_std, pdf):
     ax.tick_params(axis="both", labelsize=16)
     ax.legend(fontsize=16)
     ax.grid(True, linestyle="--", alpha=0.5)
-    fig_ff.tight_layout()
-    pdf.savefig(fig_ff)
+    fig_name = "flatfield_coefficients_distribution_with_model"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
+
     return FF_coefs, std_FF
 
 
@@ -1072,8 +1012,6 @@ def main():
         log.info("Photostatistics results file was found, beginning the analysis")
 
     log.info("SPE fit was found, begin the analysis")
-    # Create PdfPages object
-    pdf_file = PdfPages(f"Plots_analysis_run{run_number}.pdf")
 
     source = EventSource.from_url(input_url=run_path, max_events=1)
     camera_tel = source.subarray.tel[
@@ -1097,9 +1035,11 @@ def main():
 
     # First fit no variance
     data_1, fit_1, minuit_1, residuals_1 = optimize_with_outlier_rejection(
-        sigma_masked, n_pe, camera_tel, pdf_file
+        sigma_masked, n_pe, camera_tel, output_dir=args.output, temp_output=temp_output
     )
-    dict_errors = error_propagation_compute(data_1, minuit_1, camera_tel, pdf_file)
+    dict_errors = error_propagation_compute(
+        data_1, minuit_1, camera_tel, output_dir=args.output, temp_output=temp_output
+    )
     y_1, yerr_prop_1, minuit_vals_1, minuit_vals_errors_1 = (
         dict_errors["model_values"],
         dict_errors["model_errors"],
@@ -1109,24 +1049,6 @@ def main():
     log.info(f"Resulting error for the model is {np.mean(yerr_prop_1/y_1)*100:.2f}%")
     characterize_peak(minuit_vals_1, camera_tel)
     log.info(minuit_1.values)
-
-    # Visualize how many pixels were masked
-    dict_missing_pix["rejected_outliers"] = (
-        N_PIXELS
-        - sigma_masked.count()
-        - dict_missing_pix["Missing pixels"]
-        - dict_missing_pix["high_gain = 0"]
-    )
-
-    labels = [
-        f'Missing pixels, #{dict_missing_pix["Missing pixels"]}',
-        f'high gain = 0, # {dict_missing_pix["high_gain = 0"]}',
-        f'rejected outliers, # {dict_missing_pix["rejected_outliers"]}',
-    ]
-    fig_pie, ax = plt.subplots()
-    ax.pie(dict_missing_pix.values(), labels=labels, autopct="%.0f%%")
-    fig_pie.suptitle("Piechart of masked pixels")
-    pdf_file.savefig(fig_pie)
 
     # Second fit with variance
     if args.add_variance:
@@ -1138,7 +1060,6 @@ def main():
         ) = optimize_with_outlier_rejection_variance(
             sigma_masked,
             n_pe,
-            dict_missing_pix,
             [
                 minuit_1.values["a0"],
                 minuit_1.values["a1"],
@@ -1147,7 +1068,6 @@ def main():
                 0.0,
             ],
             camera_tel,
-            pdf_file,
         )
 
         plt.figure()
@@ -1159,7 +1079,8 @@ def main():
             data_varinace,
             minuit_variance_result,
             camera_tel,
-            pdf_file,
+            output_dir=args.output,
+            temp_output=temp_output,
         )
 
         (
@@ -1187,9 +1108,16 @@ def main():
         characterize_peak(minuit_values_variance, camera_tel)
 
     # compute flat field coef
-    simple_ff_coefs = compute_ff_coefs(charges, high_gains, pdf_file)
+    simple_ff_coefs = compute_ff_coefs(
+        charges, high_gains, output_dir=args.output, temp_output=temp_output
+    )
     ff_coefs_model, ff_coefs_model_err = compute_ff_coefs_model(
-        n_pe, std_n_pe, y_1, yerr_prop_1, pdf_file
+        n_pe,
+        std_n_pe,
+        y_1,
+        yerr_prop_1,
+        output_dir=args.output,
+        temp_output=temp_output,
     )
 
     with open(f"Log_info_run_{run_number}_fixed.txt", "a") as f:
@@ -1250,7 +1178,7 @@ def main():
     data["N_photoelectrons_std_init"] = std_n_pe
     ascii.write(data, f"FF_calibration_run{run_number}.dat", overwrite=True)
 
-    pdf_file.close()
+    plt.close("all")
 
 
 if __name__ == "__main__":
