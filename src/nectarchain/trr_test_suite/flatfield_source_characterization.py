@@ -62,14 +62,12 @@ def get_args():
     )
     parser.add_argument(
         "--FF_run_number",
-        required=True,
         default=6729,
         help="Flat-field run number",
         type=int,
     )
     parser.add_argument(
         "--SPE_run_number",
-        required=True,
         default=6774,
         help="SPE run number",
         type=int,
@@ -99,7 +97,6 @@ def get_args():
         "--output",
         type=str,
         help="Output directory",
-        required=False,
         default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
