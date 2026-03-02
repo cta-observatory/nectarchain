@@ -82,8 +82,6 @@ def get_args():
         help="Process data for a specific NectarCAM camera.",
         type=str,
     )
-
-    # Accept True/False as string
     parser.add_argument(
         "--SPE_config",
         choices=[
@@ -97,31 +95,10 @@ def get_args():
         "the SPE fit.",
     )
     parser.add_argument(
-        "--method",
-        choices=[
-            "FullWaveformSum",
-            "FixedWindowSum",
-            "GlobalPeakWindowSum",
-            "LocalPeakWindowSum",
-            "SlidingWindowMaxSum",
-            "TwoPassWindowSum",
-        ],
-        default="GlobalPeakWindowSum",
-        help="charge extractor method",
-        type=str,
-    )
-    parser.add_argument(
-        "--extractor_kwargs",
-        default={"window_width": 8, "window_shift": 4},
-        help="charge extractor parameters",
-        type=json.loads,
-    )
-    parser.add_argument(
         "-o",
         "--output",
         type=str,
-        help="Output directory. "
-        "If none, plot will be saved in the deadtime_results directory",
+        help="Output directory",
         required=False,
         default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
@@ -899,18 +876,19 @@ def main():
         f"/runs/NectarCAM.Run{str(run_number).zfill(4)}.0000.fits.fz",
     )
     spe_run_number = args.SPE_run_number
-    method = args.method
-    extractor = args.extractor_kwargs
+    method = "GlobalPeakWindowSum"
+    extractor_kwargs = json.loads('{"window_width": 8, "window_shift": 4}')
     camera = args.camera
     add_variance = True
 
     log.info(
-        f"Method is {method}, the extractor kwargs are: {extractor['window_shift']}, "
-        f"{extractor['window_width']}"
+        f"Method is {method}, the extractor kwargs are: "
+        f"{extractor_kwargs['window_shift']}, "
+        f"{extractor_kwargs['window_width']}"
     )
 
     str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-        method=args.method, extractor_kwargs=args.extractor_kwargs
+        method=method, extractor_kwargs=extractor_kwargs
     )
 
     if not args.SPE_config:
@@ -939,8 +917,8 @@ def main():
             max_events=None,
             method=method,
             extractor_kwargs={
-                "window_width": extractor["window_width"],
-                "window_shift": extractor["window_shift"],
+                "window_width": extractor_kwargs["window_width"],
+                "window_shift": extractor_kwargs["window_shift"],
             },
         )
         gain_tool.setup()
