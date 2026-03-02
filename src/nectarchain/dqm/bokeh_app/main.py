@@ -1,4 +1,5 @@
 from app_hooks import (
+    get_run_times,
     get_rundata,
     make_camera_displays,
     make_timelines,
@@ -8,7 +9,7 @@ from app_hooks import (
 
 # bokeh imports
 from bokeh.layouts import column, gridplot, row
-from bokeh.models import Select, TabPanel, Tabs
+from bokeh.models import Div, Select, TabPanel, Tabs
 from bokeh.plotting import curdoc
 
 # ctapipe imports
@@ -97,7 +98,24 @@ source = get_rundata(db, run_select.value)
 displays = make_camera_displays(source, runid)
 timelines = make_timelines(source, runid)
 
-controls = row(run_select)
+run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
+run_times_string = Div(
+    text=f"""
+    <div style="
+        background-color: #f0f8ff;
+        border-radius: 10px;
+        padding: 10px;
+        width: fit-content;
+        font-size: 14px;
+    ">
+        <p>Run start time: {run_start_time_dt}</p>
+        <p>First event recorded at: {first_event_time_dt}</p>
+        <p>Last event recorded at: {last_event_time_dt}</p>
+    </div>
+    """
+)
+
+controls = row(run_select, run_times_string)
 
 # # TEST:
 # attr = 'value'
