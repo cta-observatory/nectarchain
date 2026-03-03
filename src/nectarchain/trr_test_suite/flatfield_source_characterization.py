@@ -855,9 +855,16 @@ def main():
         exist_ok=True,
     )
 
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
     kwargs = copy.deepcopy(vars(args))
     kwargs.pop("camera")
+    camera = args.camera
+
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
     # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
@@ -871,7 +878,6 @@ def main():
     spe_run_number = args.SPE_run_number
     method = "LocalPeakWindowSum"
     extractor_kwargs = json.loads('{"window_width": 8, "window_shift": 4}')
-    camera = args.camera
     add_variance = True
 
     log.info(
