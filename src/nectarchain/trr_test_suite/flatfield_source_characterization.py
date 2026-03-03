@@ -10,7 +10,6 @@ from pathlib import Path
 import astropy.units as u
 import numpy as np
 import numpy.ma as ma
-import tabulate as tab
 from astropy.io import ascii
 from astropy.table import Table
 from ctapipe.coordinates import EngineeringCameraFrame
@@ -315,7 +314,7 @@ def optimize_with_outlier_rejection(
     log.info(
         f"""Covariance matrix:
 
-{tab.tabulate(*minuit.covariance.to_table())}
+{minuit.covariance}
 
 """
     )
@@ -682,7 +681,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
     log.info(
         f"""Covariance matrix:
 
-{tab.tabulate(*minuit_new.covariance.to_table())}
+{minuit_new.covariance}
 
 """
     )
