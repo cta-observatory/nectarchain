@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pathlib
 import sys
@@ -20,9 +21,15 @@ from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_test_suite.utils import get_bad_pixels_list, linear_fit_function
 from nectarchain.utils.constants import GAIN_DEFAULT
 
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
+
 
 def get_args():
-    print("getting arguments")
     """Parses command-line arguments for the linearity test script.
 
     Returns:
@@ -115,21 +122,16 @@ class NSBRateComponent(NectarCAMComponent):
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
-        # If you want you can add here members of MyComp, they will contain
-        # interesting quantity during the event loop process
-        print("initialize")
         self.__run_number__ = []
         self.__pedestal_std__ = []
         self.__pedestal_mean__ = []
         self.__wf_sum__ = []
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        # print(event.trigger.event_type)
         if event.trigger.event_type == EventType.SKY_PEDESTAL:
             self.__wf_sum__.append(event.r0.tel[self.tel_id].waveform[0].T.sum(axis=0))
 
         elif event.trigger.event_type == EventType.UNKNOWN:
-            # print("here break")
             self.__wf_sum__ = np.array(self.__wf_sum__)
 
             self.__pedestal_mean__.append(np.mean(self.__wf_sum__, axis=0))
@@ -158,13 +160,9 @@ class NSBRateTestTool(DelimiterLoopNectarCAMCalibrationTool):
 
     def finish(self, *args, **kwargs):
         # super().finish(return_output_component=False, *args, **kwargs)
-        # print(self.output_path)
         output_file = h5py.File(self.output_path)
-        # print(output_file.keys())
 
         pedestal_std = []
-
-        # for i in range(2,10):
 
         for i in range(1, len(output_file.keys()) + 1):
             group_name = f"data_{i}"
@@ -174,19 +172,13 @@ class NSBRateTestTool(DelimiterLoopNectarCAMCalibrationTool):
             dataset = group["NSBRateContainer_0"]
             data = dataset[:]
 
-            # print(group_name,data)
-
             pedestal_std.append(data[0][2][0])
-
-        # for tup in data:
-        # pedestal_std.append(tup[2])
 
         output_file.close()
         return pedestal_std
 
 
 def main():
-    print("In main")
     """
     The `main()` function is the entry point of the NSB calibration code. It parses \
             the command-line arguments, processes the calibration run,\
@@ -209,14 +201,14 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
 
     # runlist = [3441]
 
-    print("PROCESSING RUN {}".format(run))
+    log.info(f"PROCESSING RUN {run}")
     output_file_name = pathlib.Path(
         f"{output_dir}" f"/NSBRateTestTool_run{str(run)}.h5"
     )
@@ -235,11 +227,8 @@ def main():
 
     pedestal_std = np.array(pedestal_std)
 
-    # print("pedestal std", np.shape(pedestal_std))
     bad_pix = get_bad_pixels_list()
     pedestal_std[:, bad_pix] = np.nan
-
-    # print(np.nanmean(pedestal_std[0]),np.nanmean(pedestal_std[1]))
 
     Dark_std = pow(pedestal_std[0], 2)
 
@@ -247,10 +236,8 @@ def main():
     NSB_rate = (pow(pedestal_std, 2) - Dark_std) / (
         pow(GAIN_DEFAULT, 2) * (N_SAMPLES - T_0) * pow(10, -9)
     )
-    # print("NSB_rate",NSB_rate[0], np.nanmean(NSB_rate[0]))
 
     NSB_rate_mean = (np.nanmean(NSB_rate, axis=1)) * pow(10, -9)
-    # print(len(pedestal_std),len(NSB_rate_mean),NSB_rate_mean)
 
     I_ma = step_current * np.arange(0, len(NSB_rate_mean))
 
@@ -292,7 +279,6 @@ def main():
         "\n"
         rf"$c = ({c_rounded} \pm {c_err_rounded})\times 10^{{{exp_c}}}$"
     )
-    # print(s)
     plt.text(
         0.05,
         0.98,
@@ -306,7 +292,6 @@ def main():
     plt.ylabel("NSB rate (GHz)")
 
     plt.savefig(f"NSB_rate_calibration_{run}.png")
-    # print(m,c)
 
 
 if __name__ == "__main__":
