@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import pathlib
+import pickle
 import sys
 
 import h5py
@@ -240,7 +241,9 @@ def main():
 
     I_ma = step_current * np.arange(0, len(NSB_rate_mean))
 
-    plt.plot(I_ma, np.abs(NSB_rate_mean), marker="o")
+    fig, ax = plt.subplots()
+
+    ax.plot(I_ma, np.abs(NSB_rate_mean), marker="o")
 
     params, covariance = curve_fit(
         linear_fit_function, I_ma, NSB_rate_mean, p0=[pow(10, 7), pow(10, 5)]
@@ -252,7 +255,7 @@ def main():
 
     fit_pts = m * I_ma + c
 
-    plt.plot(I_ma, fit_pts, color="red")
+    ax.plot(I_ma, fit_pts, color="red")
 
     # Text for plot
     exp_m = int(np.floor(np.log10(abs(m)))) if m != 0 else 0
@@ -278,7 +281,7 @@ def main():
         "\n"
         rf"$c = ({c_rounded} \pm {c_err_rounded})\times 10^{{{exp_c}}}$"
     )
-    plt.text(
+    ax.text(
         0.05,
         0.98,
         s,
@@ -287,10 +290,17 @@ def main():
         va="top",
         bbox=dict(boxstyle="round", facecolor="white", edgecolor="black", alpha=0.9),
     )
-    plt.xlabel("I (mA)")
-    plt.ylabel("NSB rate (GHz)")
+    ax.set_xlabel("I (mA)")
+    ax.set_ylabel("NSB rate (GHz)")
 
-    plt.savefig(f"NSB_rate_calibration_{run}.png")
+    fig_name = f"NSB_rate_calibration_{run}"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
+
     plt.close("all")
 
 
