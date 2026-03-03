@@ -6,6 +6,7 @@ import os
 import pathlib
 import pickle
 import sys
+from pathlib import Path
 
 import h5py
 import matplotlib.pyplot as plt
@@ -83,9 +84,9 @@ def get_args():
         "-o",
         "--output",
         type=str,
-        help="Output directory. If none, plot will be saved in current directory",
+        help="Output base directory",
         required=False,
-        default="./",
+        default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
@@ -206,7 +207,11 @@ def main():
 
     step_current = args.step_current
 
-    output_dir = os.path.abspath(args.output)
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
     log.debug(f"Output directory: {output_dir}")
@@ -214,12 +219,8 @@ def main():
 
     sys.argv = sys.argv[:1]
 
-    # runlist = [3441]
-
     log.info(f"PROCESSING RUN {run}")
-    output_file_name = pathlib.Path(
-        f"{output_dir}" f"/NSBRateTestTool_run{str(run)}.h5"
-    )
+    output_file_name = pathlib.Path(f"{output_dir}/NSBRateTestTool_run{str(run)}.h5")
 
     tool = NSBRateTestTool(
         progress_bar=True,
