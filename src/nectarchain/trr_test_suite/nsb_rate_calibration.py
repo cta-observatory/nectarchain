@@ -179,8 +179,6 @@ class NSBRateTestTool(DelimiterLoopNectarCAMCalibrationTool):
             dataset = group["NSBRateContainer_0"]
             data = dataset[:]
 
-            # print(group_name,data)
-
             pedestal_std.append(data[0][1][0])
 
         output_file.close()
@@ -247,8 +245,6 @@ def main():
     NSB_rate = (pow(pedestal_std, 2) - Dark_std) / (
         pow(GAIN_DEFAULT, 2) * (N_SAMPLES - T_0) * pow(10, -9)
     )
-
-    # print("NSB_rate",NSB_rate[0], np.nanmean(NSB_rate[0]))
 
     NSB_rate_mean = (np.nanmean(NSB_rate, axis=1)) * pow(10, -9)
 
