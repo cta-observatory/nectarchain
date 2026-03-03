@@ -20,7 +20,7 @@ from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import DelimiterLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_test_suite.utils import get_bad_pixels_list, linear_fit_function
-from nectarchain.utils.constants import GAIN_DEFAULT
+from nectarchain.utils.constants import ALLOWED_CAMERAS, GAIN_DEFAULT
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -55,13 +55,20 @@ def get_args():
     )
     parser.add_argument(
         "-r",
-        "--run_no",
+        "--run",
         type=int,
         help="run number",
         required=False,
         default=6189,
     )
-
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
     parser.add_argument(
         "-s",
         "--step_current",
@@ -194,7 +201,8 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
-    run = args.run_no
+    run = args.run
+    camera = args.camera
 
     step_current = args.step_current
 
@@ -216,6 +224,7 @@ def main():
     tool = NSBRateTestTool(
         progress_bar=True,
         run_number=run,
+        camera=camera,
         log_level=20,
         overwrite=True,
         output_path=output_file_name,
