@@ -229,14 +229,14 @@ def main():
     bad_pix = get_bad_pixels_list()
     pedestal_std[:, bad_pix] = np.nan
 
-    Dark_std = pow(pedestal_std[0], 2)
+    Dark_std = pedestal_std[0] ** 2
 
-    T_0 = 2.0  # Offset to be substracted from N_SAMPLES
-    NSB_rate = (pow(pedestal_std, 2) - Dark_std) / (
-        pow(GAIN_DEFAULT, 2) * (N_SAMPLES - T_0) * pow(10, -9)
+    T_0 = 2.0  # Offset to be subtracted from N_SAMPLES
+    NSB_rate = (pedestal_std**2 - Dark_std) / (
+        GAIN_DEFAULT**2 * (N_SAMPLES - T_0) * 1.0e-9
     )
 
-    NSB_rate_mean = (np.nanmean(NSB_rate, axis=1)) * pow(10, -9)
+    NSB_rate_mean = (np.nanmean(NSB_rate, axis=1)) * 1.0e-9
 
     I_ma = step_current * np.arange(0, len(NSB_rate_mean))
 
