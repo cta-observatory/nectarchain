@@ -28,6 +28,12 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+plt.style.use(
+    os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+    )
+)
+
 
 def get_args():
     """Parses command-line arguments for the linearity test script.
