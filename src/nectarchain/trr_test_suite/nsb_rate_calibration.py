@@ -106,14 +106,14 @@ class NSBRateContainer(NectarCAMContainer):
         type=np.ndarray,
         dtype=np.float64,
         ndim=2,
-        description="High gain pedestal per event",
+        description="Standard deviation of pedestal per event",
     )
 
     pedestal_mean = Field(
         type=np.ndarray,
         dtype=np.float64,
         ndim=2,
-        description="Low gain pedestal per event",
+        description="Mean pedestal per event",
     )
 
 
@@ -292,6 +292,7 @@ def main():
     plt.ylabel("NSB rate (GHz)")
 
     plt.savefig(f"NSB_rate_calibration_{run}.png")
+    plt.close("all")
 
 
 if __name__ == "__main__":
