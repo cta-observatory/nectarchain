@@ -86,15 +86,8 @@ class NSBRateContainer(NectarCAMContainer):
 
     Attributes:
         run_number (np.uint16): The run number associated with the waveforms.
-        npixels (np.uint16): The number of effective pixels.
-        pixels_id (np.ndarray[np.uint16]): The IDs of the pixels.
-        ucts_timestamp (np.ndarray[np.uint64]): The UCTS timestamp of the events.
-        event_type (np.ndarray[np.uint8]): The trigger event type.
-        event_id (np.ndarray[np.uint32]): The event IDs.
-        pedestal_hg (np.ndarray[np.float64]): The high gain pedestal per event.
-        pedestal_lg (np.ndarray[np.float64]): The low gain pedestal per event.
-        rms_ped_hg (np.ndarray[np.float64]): The high gain pedestal RMS per event.
-        rms_ped_lg (np.ndarray[np.float64]): The low gain pedestal RMS per event.
+        pedestal_std (np.ndarray[np.float64]): Standard deviation of pedestal per event.
+        pedestal_mean (np.ndarray[np.float64]): Mean pedestal per event.
     """
 
     run_number = Field(
