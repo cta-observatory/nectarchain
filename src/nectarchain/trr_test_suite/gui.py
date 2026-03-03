@@ -79,6 +79,9 @@ class TestRunner(QWidget):
         super().__init__()
         self.params = {}
         self.process = None
+        # Generate temporary output path
+        self.temp_output = tempfile.gettempdir()
+        # print(f"Temporary output dir: {self.temp_output}")  # Debug print
         self.plot_files = []  # Store the list of plot files
         self.current_plot_index = 0  # Index to track which plot is being displayed
         self.figure = Figure(figsize=(8, 6))
@@ -327,10 +330,6 @@ class TestRunner(QWidget):
             self.update()
             self.repaint()
 
-            # Generate temporary output path
-            self.temp_output = tempfile.gettempdir()
-            # print(f"Temporary output dir: {self.temp_output}")  # Debug print
-
             for param, _ in self.params.items():
                 widget_list = self.param_widgets.findChildren(QLineEdit, param)
                 if widget_list:
@@ -372,8 +371,6 @@ class TestRunner(QWidget):
                 self, "Error", "No parameters found for the selected test"
             )
 
-        self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
-
     def read_process_output(self):
         """Reads and displays the process output in real-time."""
         if self.process:
@@ -394,6 +391,7 @@ class TestRunner(QWidget):
             )
 
     def check_and_display_plot(self):
+        self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
         self.display_plot([f for f in self.plot_files if os.path.exists(f)])
 
     def display_plot(self, plot_files):
@@ -475,6 +473,7 @@ class TestRunner(QWidget):
 
     def cleanup_tempdir(self):
         """Remove old plot files in temp directory."""
+        self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
         for plot_file in self.plot_files:
             if os.path.exists(plot_file):
                 os.remove(plot_file)
