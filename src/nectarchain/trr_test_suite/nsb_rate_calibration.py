@@ -3,7 +3,6 @@
 import argparse
 import logging
 import os
-import pathlib
 import pickle
 import sys
 from pathlib import Path
@@ -220,7 +219,7 @@ def main():
     sys.argv = sys.argv[:1]
 
     log.info(f"PROCESSING RUN {run}")
-    output_file_name = pathlib.Path(f"{output_dir}/NSBRateTestTool_run{str(run)}.h5")
+    output_file_name = Path(f"{output_dir}/NSBRateTestTool_run{str(run)}.h5")
 
     tool = NSBRateTestTool(
         progress_bar=True,
