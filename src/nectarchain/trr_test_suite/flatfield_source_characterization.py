@@ -1001,16 +1001,16 @@ def main():
     ) = pre_process_fits(
         photostatistics_results_file,
         camera_tel,
-        output_dir=args.output,
+        output_dir=output_dir,
         temp_output=temp_output,
     )
 
     # First fit no variance
     data_1, fit_1, minuit_1, residuals_1 = optimize_with_outlier_rejection(
-        sigma_masked, n_pe, camera_tel, output_dir=args.output, temp_output=temp_output
+        sigma_masked, n_pe, camera_tel, output_dir=output_dir, temp_output=temp_output
     )
     dict_errors = error_propagation_compute(
-        data_1, minuit_1, camera_tel, output_dir=args.output, temp_output=temp_output
+        data_1, minuit_1, camera_tel, output_dir=output_dir, temp_output=temp_output
     )
     y_1, yerr_prop_1, minuit_vals_1, minuit_vals_errors_1 = (
         dict_errors["model_values"],
@@ -1051,7 +1051,7 @@ def main():
             data_varinace,
             minuit_variance_result,
             camera_tel,
-            output_dir=args.output,
+            output_dir=output_dir,
             temp_output=temp_output,
         )
 
@@ -1081,14 +1081,14 @@ def main():
 
     # compute flat field coef
     simple_ff_coefs = compute_ff_coefs(
-        charges, high_gains, output_dir=args.output, temp_output=temp_output
+        charges, high_gains, output_dir=output_dir, temp_output=temp_output
     )
     ff_coefs_model, ff_coefs_model_err = compute_ff_coefs_model(
         n_pe,
         std_n_pe,
         y_1,
         yerr_prop_1,
-        output_dir=args.output,
+        output_dir=output_dir,
         temp_output=temp_output,
     )
 
