@@ -9,6 +9,7 @@ dependencies:
   - jinja2
   - jupyterlab
   - jupytext
+  - numpy
   - pre-commit
   - pytest-runner
   - pip

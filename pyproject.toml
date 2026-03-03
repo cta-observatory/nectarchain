@@ -25,6 +25,7 @@ dependencies = [
     "bokeh",
     "iminuit",
     "matplotlib",
+    "numpy",
     "pandas",
     "persistent<6.2",
     "scipy",
