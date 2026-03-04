@@ -213,6 +213,7 @@ class TestRunner(QWidget):
                         "default": arg.default,
                         "help": arg.help,  # Store the help text
                     }
+            print(f"DEBUG JPL: got params {params} for module {module}")
             return params
         else:
             raise RuntimeError("No get_args function found in module.")
@@ -324,9 +325,14 @@ class TestRunner(QWidget):
 
         # Drop index 0, which corresponds to our placeholder "Select test"
         for index in range(1, self.test_selector.count()):
-            # TODO: Not yest there: the list of module parameters are not updated from
+            # TODO: Not yet there: the list of module parameters are not updated from
             #  one test to the other, to be fixed !
             self.test_selector.setCurrentIndex(index)
+            self.update_parameters()
+            print(
+                "DEBUG JPL: Currently processing test"
+                f" {self.test_selector.currentText()}"
+            )
             self.run_test()
 
     def run_test(self):
@@ -373,12 +379,13 @@ class TestRunner(QWidget):
                 self.process.readyReadStandardOutput.connect(self.read_process_output)
                 self.process.finished.connect(self.process_finished)
 
-                QTimer.singleShot(
-                    0,
-                    lambda: self.process.start(
-                        sys.executable, [test_script_path] + params
-                    ),
-                )
+                self.process.start(sys.executable, [test_script_path] + params)
+                # wait for the process to get started
+                # self.process.waitForStarted()
+                self.process.waitForFinished(-1)
+                # process application events while waiting for it to finish
+                # while self.process.state() == QProcess.Running:
+                #    QApplication.processEvents(self)
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to run the test: {e}")
