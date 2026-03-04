@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import json
 import logging
 import os
 import pickle
@@ -16,7 +17,6 @@ from nectarchain.trr_test_suite.utils import (
     ExponentialFitter,
     deadtime_labels,
     plot_deadtime_and_expo_fit,
-    source_ids_deadtime,
 )
 
 logging.basicConfig(
@@ -477,7 +477,7 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
     )
 
 
-def run(nevents, runlist, ids, output_dir=None, temp_output=None):
+def run_deadtime(nevents, runlist, ids, output_dir=None, temp_output=None):
     (
         _,
         _,
@@ -597,24 +597,23 @@ def get_args():
     )
     parser.add_argument(
         "-r",
-        "--runlist",
-        type=int,
-        nargs="+",
-        help="List of runs (numbers separated by space)",
+        "--run_file",
+        type=str,
+        help="File path to the runlist including run numbers and sources ids.",
         required=False,
-        default=[i for i in range(3332, 3351)] + [i for i in range(3552, 3563)],
+        default="resources/deadtime_run_list.json",
     )
-    parser.add_argument(
-        "-s",
-        "--source",
-        type=int,
-        choices=[0, 1, 2],
-        nargs="+",
-        help="List of corresponding source for each run: 0 for random generator,\
-            1 for nsb source, 2 for laser",
-        required=False,
-        default=source_ids_deadtime,
-    )
+    # parser.add_argument(
+    #     "-s",
+    #     "--source",
+    #     type=int,
+    #     choices=[0, 1, 2],
+    #     nargs="+",
+    #     help="List of corresponding source for each run: 0 for random generator,\
+    #         1 for nsb source, 2 for laser",
+    #     required=False,
+    #     default=source_ids_deadtime,
+    # )
     parser.add_argument(
         "-e",
         "--evts",
@@ -644,9 +643,10 @@ def main():
     """Runs the deadtime test script, which performs deadtime tests B-TEL-1260 and
     B-TEL-1270, and event rate test B-MST-1280.
 
-    The script takes command-line arguments to specify the list of runs, corresponding\
-        sources, number of events to process, and output directory. It then processes\
-            the data for each run, performs an exponential fit to the deadtime\
+    The script takes command-line arguments to specify the path to the file\
+        with the list of runs, corresponding source ids, number of events to \
+            process, and output directory. It then processes the data \
+                for each run, performs an exponential fit to the deadtime\
                 distribution, and generates three plots:
 
     1. A plot of the exponential function fit on the deadtime\
@@ -665,8 +665,13 @@ def main():
     args = parser.parse_args()
     log.setLevel(args.log.upper())
 
-    runlist = args.runlist
-    ids = args.source
+    path_to_run_file = args.run_file
+    if not os.path.isfile(args.run_file):
+        raise FileNotFoundError(f"Run file not found: {args.run_file}")
+    with open(path_to_run_file, "r") as f:
+        data = json.load(f)
+    runlist = data["runs"]
+    ids = data["source_ids"]
 
     nevents = args.evts
 
@@ -687,7 +692,7 @@ def main():
         deadtime_pc,
         error_deadtime_pc,
         deadtime_pc_fit,
-    ) = run(
+    ) = run_deadtime(
         nevents=nevents,
         runlist=runlist,
         ids=ids,

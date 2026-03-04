@@ -235,13 +235,6 @@ intensity_to_charge = np.array(
     ]
 )
 
-
-source_ids_deadtime = (
-    [0 for i in range(3332, 3342)]
-    + [1 for i in range(3342, 3351)]
-    + [2 for i in range(3552, 3563)]
-)
-
 deadtime_labels = {
     0: {"source": "FFCLS", "color": "red"},
     1: {"source": "NSB", "color": "blue"},
