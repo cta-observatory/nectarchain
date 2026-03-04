@@ -42,6 +42,28 @@ class GainContainer(NectarCAMContainer):
     low_gain = Field(type=np.ndarray, dtype=np.float64, ndim=2, description="low gain")
     pixels_id = Field(type=np.ndarray, dtype=np.uint16, ndim=1, description="pixel ids")
 
+
+class PhotostatContainer(GainContainer):
+    """Class representing a PhotoStatistic container.
+
+    This class inherits from the GainContainer class, providing additional fields
+    needed for Flat Field calibration.
+
+    Attributes:
+        charge_hg (np.ndarray): Array of high-gain charges values.
+        charge_hg_std (np.ndarray): Array of standard deviations of high-gain charges.
+    """
+
+    charge_hg = Field(
+        type=np.ndarray, dtype=np.float64, ndim=1, description="high-gain charge"
+    )
+    charge_hg_std = Field(
+        type=np.ndarray,
+        dtype=np.float64,
+        ndim=1,
+        description="standard " "deviation of high-gain " "charge",
+    )
+
     @classmethod
     def from_hdf5(cls, path, group_name="data"):
         """Class method to read a GainContainer from an HDF5 file.

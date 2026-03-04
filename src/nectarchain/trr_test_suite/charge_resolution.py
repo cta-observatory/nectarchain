@@ -140,6 +140,9 @@ def main():
     # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
 
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
+    sys.argv = sys.argv[:1]
+
     NSB = df["NSB"].values
     runs_list = df["runs"].tolist()
     ff_v_list = df["ff_v"].tolist()
