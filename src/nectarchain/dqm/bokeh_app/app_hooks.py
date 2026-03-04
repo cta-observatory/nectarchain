@@ -2,7 +2,7 @@ import collections
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -86,17 +86,17 @@ def get_run_times(source):
     """
 
     run_start_time = int(source["START-TIMES"]["Run start time"].flatten()[0])
-    run_start_time_dt = datetime.fromtimestamp(run_start_time).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    run_start_time_dt = datetime.fromtimestamp(
+        run_start_time, tz=timezone.utc
+    ).strftime("%Y-%m-%d %H:%M:%S")
     first_event_time = int(source["START-TIMES"]["First event"].flatten()[0])
-    first_event_time_dt = datetime.fromtimestamp(first_event_time).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    first_event_time_dt = datetime.fromtimestamp(
+        first_event_time, tz=timezone.utc
+    ).strftime("%Y-%m-%d %H:%M:%S")
     last_event_time = int(source["START-TIMES"]["Last event"].flatten()[0])
-    last_event_time_dt = datetime.fromtimestamp(last_event_time).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    last_event_time_dt = datetime.fromtimestamp(
+        last_event_time, tz=timezone.utc
+    ).strftime("%Y-%m-%d %H:%M:%S")
 
     logger.info(
         f"Successfully extracted run times: "
