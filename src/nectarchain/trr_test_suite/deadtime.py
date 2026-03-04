@@ -26,11 +26,16 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-plt.style.use(
-    os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
     )
-)
+except Exception as e:
+    log.warning(
+        f"Could not load custom plot style: {e}. Using default matplotlib style."
+    )
 
 figures_output_path = os.environ.get("NECTARCHAIN_FIGURES", "./")
 
@@ -535,7 +540,8 @@ def run_deadtime(nevents, runlist, ids, output_dir=None, temp_output=None):
         )
     error_deadtime_pc = np.array(error_deadtime_pc)
 
-    deadtime, fitted_trigger_rates, fitted_trigger_rates_err = [], [], []
+    deadtime, deadtime_err = [], []
+    fitted_trigger_rates, fitted_trigger_rates_err = [], []
 
     for ii, run_num in enumerate(runlist):
         results = plot_deadtime_and_expo_fit(
@@ -545,6 +551,7 @@ def run_deadtime(nevents, runlist, ids, output_dir=None, temp_output=None):
             output_plot=output_dir,
         )
         deadtime.append(results[0])
+        deadtime_err.append(np.abs(results[2]) * 1e-3)
         fitted_trigger_rates.append(((-1 * results[6]) * (1 / u.us)).to(u.kHz).value)
         fitted_trigger_rates_err.append(((results[8]) * (1 / u.us)).to(u.kHz).value)
         plt.close()
@@ -567,9 +574,12 @@ def run_deadtime(nevents, runlist, ids, output_dir=None, temp_output=None):
         collected_trigger_rates,
         fitted_trigger_rates,
         fitted_trigger_rates_err,
+        deadtime,
+        deadtime_err,
         deadtime_pc,
         error_deadtime_pc,
         deadtime_pc_fit,
+        camera_numbers,
     )
 
 
@@ -603,17 +613,6 @@ def get_args():
         required=False,
         default="resources/deadtime_run_list.json",
     )
-    # parser.add_argument(
-    #     "-s",
-    #     "--source",
-    #     type=int,
-    #     choices=[0, 1, 2],
-    #     nargs="+",
-    #     help="List of corresponding source for each run: 0 for random generator,\
-    #         1 for nsb source, 2 for laser",
-    #     required=False,
-    #     default=source_ids_deadtime,
-    # )
     parser.add_argument(
         "-e",
         "--evts",
@@ -689,9 +688,12 @@ def main():
         collected_trigger_rates,
         fitted_trigger_rates,
         fitted_trigger_rates_err,
+        _,
+        _,
         deadtime_pc,
         error_deadtime_pc,
         deadtime_pc_fit,
+        _,
     ) = run_deadtime(
         nevents=nevents,
         runlist=runlist,
