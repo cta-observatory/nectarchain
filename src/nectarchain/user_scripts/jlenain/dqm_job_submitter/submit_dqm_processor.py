@@ -202,6 +202,7 @@ for run in runlist:
             "LCG.FRASCATI.it",
             "ARC.CSCS.ch",
             "ARC.CEA.fr",
+            "LCG.LANCASTER.uk",
         ]
     )
     sandboxlist = [f"{executable_wrapper}"]
