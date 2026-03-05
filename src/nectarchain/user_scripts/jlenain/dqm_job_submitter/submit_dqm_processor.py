@@ -156,12 +156,12 @@ if args.run is not None:
 
 logger.info(f"Found runs {runlist} in {dfcDir}")
 
-if len(sqlfilelist) == 0:
-    logger.critical(
-        f"Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, aborting..."
+if not sqlfilelist:
+    logger.warning(
+        f"Could not find any SQLite file in {dfcDir} nor in {dfcDirTomorrow}, launching a DIRAC job without them..."
     )
-    sys.exit(1)
-logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
+else:
+    logger.info(f"Found SQLite files {sqlfilelist} in {dfcDir} and {dfcDirTomorrow}")
 
 # Check already existing DQM outputs
 dfcOutDir = f"/ctao/user/j/jlenain/nectarcam/dqm/{args.camera}"
@@ -193,8 +193,8 @@ for run in runlist:
     # j.setDestination(["LCG.GRIF.fr", "ARC.CEA.fr"])
     # j.setDestination(["LCG.GRIF.fr"])
     # j.setTag(["16GBMemory"])
-    j.setName(f"NectarCAM DQM run {run}")
-    j.setJobGroup("NectarCAM DQM")
+    j.setName(f"{args.camera} DQM run {run}")
+    j.setJobGroup(f"{args.camera} DQM")
     j.setBannedSites(
         [
             "LCG.DESY-ZEUTHEN.de",
@@ -202,14 +202,16 @@ for run in runlist:
             "LCG.FRASCATI.it",
             "ARC.CSCS.ch",
             "ARC.CEA.fr",
+            "LCG.LANCASTER.uk",
         ]
     )
     sandboxlist = [f"{executable_wrapper}"]
     for f in meta["Files"]:
         if f.endswith(".fits.fz") and f"NectarCAM.Run{run}" in f:
             sandboxlist.append(f"LFN:{f}")
-    for s in sqlfilelist:
-        sandboxlist.append(f"LFN:{s}")
+    if sqlfilelist:
+        for s in sqlfilelist:
+            sandboxlist.append(f"LFN:{s}")
     if len(sandboxlist) < 2:
         logger.critical(
             f"""Misformed sandboxlist, actual data .fits.fz files missing:

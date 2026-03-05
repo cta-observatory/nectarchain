@@ -4,7 +4,7 @@
 # This script is to be used as a cronjob on the nectarcam-dqm-rw VM on the LPNHE OpenStack cloud platform, in order to feed the ZODB database from DQM run on DIRAC.
 
 # Log everything to $LOGFILE
-LOGFILE=${0%".sh"}_$(date +%F).log
+LOGFILE=${0%".sh"}_$(date +%F)_$$.log
 LOGFILE=$HOME/log/$(basename $LOGFILE)
 exec 1>"$LOGFILE" 2>&1
 
