@@ -76,21 +76,34 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_hg = charge_container["charges_hg"]
         charge_lg = charge_container["charges_lg"]
         npixels = charge_container["npixels"]
+        tom = charge_container["peak_hg"]
+
+        # tom cut=========
+        tom_mean = np.nanmean(tom, axis=0)
+        diff = np.abs(tom - tom_mean)
+        # mask events shifted by more than 6 ns
+        charge_hg[np.where(diff > 6)] = np.nan
+        charge_lg[np.where(diff > 6)] = np.nan
+
+        bad_pix = get_bad_pixels_list()
+        if bad_pix is not None:
+            charge_lg[:, bad_pix] = np.nan
+            charge_hg[:, bad_pix] = np.nan
 
         charge_pe_hg = np.array(charge_hg) / GAIN_DEFAULT
         charge_pe_lg = np.array(charge_lg) / GAIN_DEFAULT
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
-            pix_mean_charge = np.mean(charge, axis=0)  # in pe
+            pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
 
-            pix_std_charge = np.std(charge, axis=0)
+            pix_std_charge = np.nanstd(charge, axis=0)
 
             # average of all pixels
-            mean_charge[channel] = np.mean(pix_mean_charge)
+            mean_charge[channel] = np.nanmean(pix_mean_charge)
 
-            std_charge[channel] = np.mean(pix_std_charge)
+            std_charge[channel] = np.nanmean(pix_std_charge)
             # for the charge resolution
-            std_err[channel] = np.std(pix_std_charge)
+            std_err[channel] = np.nanstd(pix_std_charge)
 
         return mean_charge, std_charge, std_err, npixels
 
