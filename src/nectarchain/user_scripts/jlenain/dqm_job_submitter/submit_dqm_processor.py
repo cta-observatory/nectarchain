@@ -177,11 +177,12 @@ metaOutDir = infos["Value"]["Successful"][dfcOutDir]
 # for run in ['2721']:
 for run in runlist:
     logger.debug(metaOutDir["Files"].keys())
-    if f"{dfcOutDir}/NectarCAM_DQM_Run{run}.tar.gz" in metaOutDir["Files"].keys():
+    if f"{dfcOutDir}/{args.camera}_DQM_Run{run}.tar.gz" in metaOutDir["Files"].keys():
         logger.warning(
             f"Run {run} already processed and present in {dfcOutDir}. If you really "
             f"want to re-run the DQM on this run, consider deleting "
-            f"{dfcOutDir}/NectarCAM_DQM_Run{run}.tar.gz before executing this script. "
+            f"{dfcOutDir}/{args.camera}_DQM_Run{run}.tar.gz before executing "
+            f"this script. "
             f"Skipping run {run} for now..."
         )
         continue
