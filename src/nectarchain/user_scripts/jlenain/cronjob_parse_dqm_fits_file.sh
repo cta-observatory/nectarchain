@@ -21,7 +21,7 @@ function help ()
     usage
     cat <<EOF
 
-This script parse DQM results and feed them into the ZODB data base for visualization through Bokeh.
+This script parses DQM results and feeds them into the ZODB data base for visualization through Bokeh.
 
 OPTIONS:
      -h                       This help message.
