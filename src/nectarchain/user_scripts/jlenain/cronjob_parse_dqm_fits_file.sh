@@ -55,6 +55,8 @@ if ! dirac-proxy-init -M -g ctao_nectarcam --pwstdin < ~/.dirac.pwd; then
     exit 1
 fi
 
+cd /mnt/data/nectarcam/dqm || exit 1
+
 remoteParentDir="/ctao/user/j/jlenain/nectarcam/dqm/${camera}"
 nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
 
