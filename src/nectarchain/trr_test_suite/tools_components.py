@@ -453,7 +453,8 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
                 returns the UCTS timestamps, the time differences between consecutive\
                     UCTS timestamps, the event counters, the busy counters,\
                         the collected\
-                        trigger rate, the total time, and the deadtime percentage.
+                        trigger rate, the total time, the deadtime percentage,\
+                        and the camera number.
     """
 
     name = "DeadtimeTestTool"
@@ -483,6 +484,8 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
         event_counter = charge_container["ucts_event_counter"]
         busy_counter = charge_container["ucts_busy_counter"]
 
+        camera_num = int(charge_container["camera"].split("NectarCam-")[1])
+
         ucts_deltat = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
@@ -500,6 +503,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
             collected_trigger_rate,
             time_tot,
             deadtime_pc,
+            camera_num,
         )
 
 

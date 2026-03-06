@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -19,6 +20,13 @@ from nectarchain.trr_test_suite.utils import (
     plot_parameters,
     trasmission_390ns,
 )
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 def get_args():
@@ -120,14 +128,18 @@ def main():
     nevents = args.evts
 
     output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.info(f"Output directory: {output_dir}")  # Debug print
+    # print(f"Temporary output file: {temp_output}")  # Debug print
 
     sys.argv = sys.argv[:1]
 
     # runlist = [3441]
+    run_linearity(runlist, transmission, nevents, output_dir, args.temp_output)
+
+
+def run_linearity(runlist, transmission, nevents, output_dir, temp_output_args):
+    temp_output = os.path.abspath(temp_output_args) if temp_output_args else None
 
     charge = np.zeros((len(runlist), 2))
     std = np.zeros((len(runlist), 2))
@@ -408,9 +420,11 @@ def main():
     )
 
     plt.savefig(os.path.join(output_dir, "linearity_test.png"))
+    """
     if temp_output:
         with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
             pickle.dump(fig, f)
+    """
 
     # charge resolution
     charge_hg = charge[:, 0]
@@ -472,7 +486,7 @@ def main():
     plt.legend(frameon=False)
     plt.savefig(os.path.join(output_dir, "charge_resolution.png"))
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(temp_output_args, "plot2.pkl"), "wb") as f:
             pickle.dump(fig, f)
     plt.close("all")
 
