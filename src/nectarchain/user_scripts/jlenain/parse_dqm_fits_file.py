@@ -20,9 +20,12 @@ from DIRAC.Interfaces.API.Dirac import Dirac
 from nectarchain.dqm.db_utils import DQMDB
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
-logging.basicConfig(format="[%(levelname)s] %(message)s")
-logger = logging.getLogger(__name__)
-
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 # Option and argument parser
 parser = argparse.ArgumentParser(
@@ -61,7 +64,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.runs is None:
-    logger.critical("At least one run number should be provided.")
+    log.critical("At least one run number should be provided.")
     sys.exit(1)
 
 db_read = DQMDB(read_only=True)
@@ -70,7 +73,7 @@ db_read.abort_and_close()
 
 for run in args.runs:
     if not args.force and f"{args.camera}_Run{run}" in db_read_keys:
-        logger.warning(
+        log.warning(
             f'The run {run} is already present in the DB for the camera {args.camera}, will not parse this DQM run, or consider forcing it with the "--force" option.'
         )
         continue
@@ -92,7 +95,7 @@ for run in args.runs:
         with tarfile.open(os.path.basename(lfn), "r") as tar:
             tar.extractall(".")
     except FileNotFoundError as e:
-        logger.warning(
+        log.warning(
             f"Could not fetch DQM results from DIRAC for run {args.camera} {run}, received error {e}, skipping this run..."
         )
         continue
@@ -121,13 +124,13 @@ for run in args.runs:
         db.insert(f"{args.camera}_Run{run}", outdict)
         db.commit_and_close()
     except ZEO.Exceptions.ClientDisconnected as e:
-        logger.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
+        log.critical(f"Impossible to feed the ZODB data base. Received error: {e}")
 
     # Remove DQM archive file and directory
     try:
         os.remove(f"{args.camera}_DQM_Run{run}.tar.gz")
     except OSError:
-        logger.warning(
+        log.warning(
             f"Could not remove {args.camera}_DQM_Run{run}.tar.gz or it does not exist"
         )
 
