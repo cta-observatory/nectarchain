@@ -72,6 +72,7 @@ db_read_keys = list(db_read.root.keys())
 db_read.abort_and_close()
 
 for run in args.runs:
+    log.info(f"Processing {args.camera} run ${run}")
     if not args.force and f"{args.camera}_Run{run}" in db_read_keys:
         log.warning(
             f'The run {run} is already present in the DB for the camera {args.camera}, will not parse this DQM run, or consider forcing it with the "--force" option.'
