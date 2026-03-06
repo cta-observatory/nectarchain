@@ -98,9 +98,10 @@ def get_bad_pixels(output_from_FlatFieldComponent):
         all_bad_pix: list of bad pixels
     """
 
+    pix_id = FlatFieldOutput.pixels_id
     bad_pix = []
 
-    n_event = len(output_from_FlatFieldComponent.FF_coef[:, 0, 0])
+    n_event = len(output_from_FlatFieldComponent.eff_coef[:, 0, 0])
     step = 100
     n_step = round(n_event / step)
 
@@ -116,7 +117,7 @@ def get_bad_pixels(output_from_FlatFieldComponent):
         if (hi_lo[p] < np.mean(hi_lo) - (5 * np.std(hi_lo))) or (
             hi_lo[p] > np.mean(hi_lo) + (5 * np.std(hi_lo))
         ):
-            bad_pix.append(p)
+            bad_pix.append(pix_id[p])
 
         amp_int_per_pix_per_event = (
             output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, :, p]
@@ -126,32 +127,46 @@ def get_bad_pixels(output_from_FlatFieldComponent):
         for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
             # pixels with too low amplitude
             if mean_amp_int_per_pix[G] < (mean_amp[G] - 10 * std_amp[G]):
-                bad_pix.append(p)
+                bad_pix.append(pix_id[p])
 
             # pixels with unstable flat-field coefficient
-            FF_coef = output_from_FlatFieldComponent.FF_coef[:, G, p]
+            eff_coef = FlatFieldOutput.eff_coef[:, G, p]
+            FF_coef = np.ma.array(1.0 / eff_coef, mask=eff_coef == 0)
             mean_FF_per_pix = np.mean(FF_coef, axis=0)
             std_FF_per_pix = np.std(FF_coef, axis=0)
 
             for e in range(0, round(n_step)):
                 x_block = np.linspace(e * step, (e + 1) * step, step)
                 FF_coef_mean_per_block = np.mean(
-                    output_from_FlatFieldComponent.FF_coef[
-                        e * step : (e + 1) * step, G, p
-                    ],
+                    FF_coef[e * step : (e + 1) * step],
                     axis=0,
                 )
                 FF_coef_std_per_block = np.std(
-                    output_from_FlatFieldComponent.FF_coef[
-                        e * step : (e + 1) * step, G, p
-                    ],
+                    FF_coef[e * step : (e + 1) * step],
                     axis=0,
                 )
-
                 if (
                     FF_coef_mean_per_block < mean_FF_per_pix - FF_coef_std_per_block
                 ) or (FF_coef_mean_per_block > mean_FF_per_pix + FF_coef_std_per_block):
-                    bad_pix.append(p)
+                    bad_pix.append(pix_id[p])
+
+            ## pixel with significant deviation to the "pull distribution"
+            charge_per_pix_per_event = (
+                output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, p] / 58
+            )
+            mean_charge_cam_per_event = (
+                np.mean(
+                    output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, :],
+                    axis=-1,
+                )
+                / 58
+            )
+
+            err_eff = np.sqrt(charge_per_pix_per_event) / mean_charge_cam_per_event
+            dev_from_mean_over_std = (FF_coef - mean_FF_per_pix) / err_eff
+
+            if np.std(dev_from_mean_over_std) > 3:
+                bad_pix.append(pix_id[p])
 
     all_bad_pix = list(set(bad_pix))
     all_bad_pix.sort()
@@ -162,19 +177,23 @@ def get_bad_pixels(output_from_FlatFieldComponent):
 log.info("\n *** First pass with default gain and hi/lo values *** \n")
 
 # default gain array
-gain_default = 58.0
-hi_lo_ratio_default = 13.0
-gain_array = list(np.ones(shape=(constants.N_GAINS, constants.N_PIXELS)))
-gain_array[0] = gain_array[0] * gain_default
-gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
+# gain_default = constants.GAIN_DEFAULT
+# hi_lo_ratio_default = constants.HILO_DEFAULT
+# gain_array = list(np.ones(shape=(constants.N_GAINS, constants.N_PIXELS)))
+# gain_array[0] = gain_array[0] * gain_default
+# gain_array[1] = gain_array[1] * gain_default / hi_lo_ratio_default
 
 # empty list of bad pixels
 bad_pixels_array = list([])
+
+# other parameters
 run_number = args.run
-max_events = 10000
+max_events = 1000
 window_width = 12
 window_shift = 5
+window_pedestal = 10
 outfile = Path(os.environ.get("NECTARCAMDATA"), f"FlatFieldOutput/1FF_{run_number}.h5")
+pedestal_file = Path(os.environ.get("NECTARCAMDATA"), f"runs/pedestal_{run_number}.h5")
 
 # Initial call
 tool = FlatfieldNectarCAMCalibrationTool(
@@ -187,8 +206,11 @@ tool = FlatfieldNectarCAMCalibrationTool(
     charge_integration_correction=False,
     window_width=window_width,
     window_shift=window_shift,
+    window_pedestal=window_pedestal,
+    pedestal_file=None,  # pedestal_file,
+    gain_file=None,  # gain_file
+    gain=None,
     overwrite=True,
-    gain=gain_array,
     bad_pix=bad_pixels_array,
     output_path=outfile,
 )
@@ -206,9 +228,16 @@ if len(FlatFieldOutput.event_id) == 0:
 log.debug("\n\tIntermediate output file %s" % outfile)
 
 log.info(
-    "\n *** Second pass with updates gain and hi/lo values and \
+    "\n *** Second pass with updated gain and hi/lo values and \
 taking into account bad pixels *** \n"
 )
+
+if len(FlatFieldOutput.amp_int_per_pix_per_event) == 0:
+    log.error(
+        f"There are no events after the first pass - maybe check the number \
+of discarded events"
+    )
+    sys.exit(1)
 
 outfile = Path(os.environ.get("NECTARCAMDATA"), f"FlatFieldOutput/2FF_{run_number}.h5")
 
@@ -219,12 +248,15 @@ tool = FlatfieldNectarCAMCalibrationTool(
     run_number=run_number,
     max_events=max_events,
     log_level=args.log.upper(),
-    charge_extraction_method=None,  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
+    charge_extraction_method="LocalPeakWindowSum",  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
     charge_integration_correction=False,
     window_width=window_width,
     window_shift=window_shift,
-    overwrite=True,
+    window_pedestal=window_pedestal,
+    pedestal_file=None,  # pedestal_file,
+    gain_file=None,  # gain_file
     gain=get_gain(FlatFieldOutput),
+    overwrite=True,
     bad_pix=get_bad_pixels(FlatFieldOutput),
     output_path=outfile,
 )
