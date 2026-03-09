@@ -177,7 +177,10 @@ metaOutDir = infos["Value"]["Successful"][dfcOutDir]
 # for run in ['2721']:
 for run in runlist:
     logger.debug(metaOutDir["Files"].keys())
-    if f"{dfcOutDir}/{args.camera}_DQM_Run{str(run).zfill(4)}.tar.gz" in metaOutDir["Files"].keys():
+    if (
+        f"{dfcOutDir}/{args.camera}_DQM_Run{str(run).zfill(4)}.tar.gz"
+        in metaOutDir["Files"].keys()
+    ):
         logger.warning(
             f"Run {run} already processed and present in {dfcOutDir}. If you really "
             f"want to re-run the DQM on this run, consider deleting "
