@@ -231,9 +231,8 @@ def main():
     ratio_hglg = np.zeros(len(runlist))
 
     log.info("runlist ==", runlist)
-    index = 0
 
-    for run in runlist:
+    for index, run in enumerate(runlist):
         log.info("PROCESSING RUN {}".format(run))
         output_file_name = Path(f"{output_dir}/NSBRateTestTool_run{str(run)}.h5")
         pedestal_tool = PedestalNectarCAMCalibrationTool(
@@ -269,8 +268,6 @@ def main():
         output = tool.finish()
 
         charge[index], std[index], std_err[index], npixels, ratio_hglg[index] = output
-
-        index += 1
 
     plt.clf()
     fig = plt.figure()
