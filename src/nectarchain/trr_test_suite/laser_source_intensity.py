@@ -216,7 +216,7 @@ tion performs the following key steps:
 
     nevents = args.evts
 
-    output_dir = output_dir = os.path.join(
+    output_dir = os.path.join(
         os.path.abspath(args.output),
         f"trr_camera_{camera}/{Path(__file__).stem}",
     )
