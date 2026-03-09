@@ -37,7 +37,6 @@ except FileNotFoundError as e:
 
 
 def get_args():
-    print("getting arguments")
     """Parses command-line arguments for the linearity test script.
 
     Returns:
@@ -172,7 +171,6 @@ class LaserIntensityCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         ratio_hglg_pix = charge_pe_hg / charge_pe_lg
         ratio_hglg_pix[np.where(charge_pe_lg == 0.0)] = np.nan
         ratio_hglg = np.nanmean(np.nanmean(ratio_hglg_pix, axis=0))
-        print("ratio ", ratio_hglg)
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
             pix_mean_charge = np.mean(charge, axis=0)  # in pe
@@ -190,7 +188,6 @@ class LaserIntensityCalibrationTool(EventsLoopNectarCAMCalibrationTool):
 
 
 def main():
-    print("In main")
     """
     The `main()` function is the entry point of the \
         Laser calibration code. It parses \
@@ -227,12 +224,10 @@ tion performs the following key steps:
 
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output file: {temp_output}")
 
     sys.argv = sys.argv[:1]
-
-    # runlist = [3441]
 
     charge = np.zeros((len(runlist), 2))
     std = np.zeros((len(runlist), 2))
@@ -243,7 +238,7 @@ tion performs the following key steps:
     index = 0
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info("PROCESSING RUN {}".format(run))
         output_file_name = Path(f"{output_dir}/NSBRateTestTool_run{str(run)}.h5")
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
@@ -281,7 +276,6 @@ tion performs the following key steps:
 
         index += 1
 
-    # print(charge, ratio_hglg)
     plt.clf()
     fig = plt.figure()
     plt.errorbar(
