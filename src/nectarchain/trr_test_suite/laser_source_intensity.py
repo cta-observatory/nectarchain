@@ -288,8 +288,8 @@ def main():
         linestyle="",
         label="LG",
     )
-    ax.set_xlabel("Intensity (%)", fontsize=20)
-    ax.set_ylabel("Average charge (p.e.)", fontsize=20)
+    ax.set_xlabel("Intensity (%)")
+    ax.set_ylabel("Average charge (p.e.)")
     ax.legend()
     ax.grid()
     # plt.ylim(pow(10,-1),5.*pow(10,4))
