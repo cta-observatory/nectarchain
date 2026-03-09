@@ -880,6 +880,9 @@ def main():
     extractor_kwargs = json.loads('{"window_width": 8, "window_shift": 4}')
     add_variance = True
 
+    # TODO: add `method` and `extractor_kwargs` back into `kwargs`, to be properly
+    #  passed `PhotoStatisticNectarCAMCalibrationTool`
+
     log.info(
         f"Method is {method}, the extractor kwargs are: "
         f"{extractor_kwargs['window_shift']}, "
@@ -964,6 +967,11 @@ def main():
                 max_events=None,
                 camera=camera,
                 Ped_run_number=run_number,
+                method=method,
+                extractor_kwargs={
+                    "window_width": extractor_kwargs["window_width"],
+                    "window_shift": extractor_kwargs["window_shift"],
+                },
                 SPE_result=spe_filenames[0],
                 **kwargs,
             )
