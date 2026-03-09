@@ -269,9 +269,8 @@ def main():
 
         charge[index], std[index], std_err[index], npixels, ratio_hglg[index] = output
 
-    plt.clf()
-    fig = plt.figure()
-    plt.errorbar(
+    fig, ax = plt.subplots()
+    ax.errorbar(
         intensity,
         charge[:, 0],
         color="green",
@@ -280,7 +279,7 @@ def main():
         linestyle="",
         label="HG",
     )
-    plt.errorbar(
+    ax.errorbar(
         intensity,
         charge[:, 1] * ratio_hglg[5],
         color="blue",
@@ -289,16 +288,14 @@ def main():
         linestyle="",
         label="LG",
     )
-    # plt.yscale('log')
-    # plt.xscale('log')
-    plt.xlabel("Intensity (%)", fontsize=20)
-    plt.ylabel("Average charge (p.e.)", fontsize=20)
-    plt.legend()
-    plt.grid()
+    ax.set_xlabel("Intensity (%)", fontsize=20)
+    ax.set_ylabel("Average charge (p.e.)", fontsize=20)
+    ax.legend()
+    ax.grid()
     # plt.ylim(pow(10,-1),5.*pow(10,4))
     fig_name = f"Laser_calibration_{runlist[0]}_{runlist[len(runlist)-1]}"
     plot_path = os.path.join(output_dir, f"{fig_name}.png")
-    plt.savefig(plot_path)
+    fig.savefig(plot_path)
 
     if temp_output:
         with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
