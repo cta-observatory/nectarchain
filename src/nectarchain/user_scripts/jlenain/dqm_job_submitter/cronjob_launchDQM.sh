@@ -69,7 +69,7 @@ for run in $(find ${localParentDir} -type f -name "NectarCAM*.fits.fz" | awk -F.
     if [ ${nbLocalFiles} -eq ${nbRemoteFiles} ]; then
         echo "  Run $run: number of local and remote files matching, will attempt to submit a DQM job"
         # Has this DQM run already been submitted ?
-        if [ $(dstat | grep --count -e "NectarCAM${camera} DQM run ${run}") -eq 0 ]; then
+        if [ $(dstat | grep --count -e "${camera} DQM run ${run}") -eq 0 ]; then
             yyyymmdd=$(find ${localParentDir} -type f -name "NectarCAM.Run${run}.????.fits.fz" | head -n 1 | awk -F/ '{print $7}')
             yyyy=${yyyymmdd:0:4}
             mm=${yyyymmdd:4:2}
