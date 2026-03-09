@@ -189,22 +189,18 @@ class LaserIntensityCalibrationTool(EventsLoopNectarCAMCalibrationTool):
 
 def main():
     """
-    The `main()` function is the entry point of the \
-        Laser calibration code. It parses \
-            the command-line arguments, processes the specified runs,\
-                  and generates plots\
-            to visualize the linearity and charge resolution of the detector. The\
-            func
-tion performs the following key steps:
-    1. Parses the command-line arguments using the\
-          `get_args()` function, which sets up\
-            the argument parser and handles the input parameters. \
-    2. Iterates through the specified run list, processing each run using the\
-            `LinearityTestTool` class. This tool returns\
-                  the "ChargeComp" in tool_components and \
-            computes average charge \
-    3. Plots : avg p.e. over events and over \
-        the camera as a function of Laser intensity.
+    The `main()` function is the entry point of the laser calibration code. It parses
+    the command-line arguments, processes the specified runs, and generates plots to
+    visualize the linearity and charge resolution of the detector. The function performs
+    the following key steps:
+
+    1. Parses the command-line arguments using the `get_args()` function, which sets
+    up the argument parser and handles the input parameters.
+    2. Iterates through the specified run list, processing each run using the
+    `LinearityTestTool` class. This tool returns the "ChargeComp" in tool_components
+    and computes average charge.
+    3. Plots : avg p.e. over events and over the camera as a function of laser
+    intensity.
     """
     parser = get_args()
     args = parser.parse_args()
