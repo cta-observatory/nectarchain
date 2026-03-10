@@ -44,19 +44,22 @@ def get_args():
     """
 
     parser = argparse.ArgumentParser(
-        description="Source calibration for Laser source \n"
-        + "According to the nectarchain component interface, \
-            you have to set a NECTARCAMDATA environment variable\
-                in the folder where you have the data from your runs\
-                    or where you want them to be downloaded.\n"
-        + "You have to give a list of runs (run numbers with spaces inbetween), a\
-            corresponding intensity list and an output directory to save the \
-                final plot.\n"
-        + "If the data is not in NECTARCAMDATA, the files will be downloaded through\
-            DIRAC.\n For the purposes of testing this script, default data is from the\
-                runs used for this test in the TRR document.\n"
-        + "You can optionally specify the number of events to be processed\
-            (default 500) and the number of pixels used.\n"
+        description="""Source calibration for Laser source.
+
+According to the nectarchain component interface, you have to set a $NECTARCAMDATA
+environment variable in the folder where you have the data from your runs or where you
+want them to be downloaded.
+
+You have to give a list of runs (run numbers with spaces inbetween), a corresponding
+intensity list and an output directory to save the final plot.
+
+If the data is not in NECTARCAMDATA, the files will be downloaded through DIRAC.
+
+For the purposes of testing this script, default data is from the runs used for this
+test in the TRR document.
+
+You can optionally specify the number of events to be processed and the number of
+pixels used."""
     )
     parser.add_argument(
         "-r",
@@ -201,6 +204,7 @@ def main():
     and computes average charge.
     3. Plots : avg p.e. over events and over the camera as a function of laser
     intensity.
+
     """
     parser = get_args()
     args = parser.parse_args()
