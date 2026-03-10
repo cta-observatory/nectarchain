@@ -66,7 +66,7 @@ def update_hillas_ellipse(
         Parent keys of the file to retrieve data.
     parameter_parentkeys : string
         Parent key for the parameters in the dictionary.
-    index : int, optional
+    run_index : int, optional
         A file is constituted of multiple events,
         select an event in the stored file.
         Default is -1, resulting in the latest event of the run.
