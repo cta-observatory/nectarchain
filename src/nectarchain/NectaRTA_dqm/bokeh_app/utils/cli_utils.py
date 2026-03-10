@@ -151,7 +151,7 @@ def create_app(doc):
         periodic_update_display(
             RESSOURCE_PATH, display_registry, widgets, header_ret[1]
         )
-        widgets["PERIODIC_CB_ID"] = start_periodic_updates(
+        start_periodic_updates(
             ressource_path=RESSOURCE_PATH,
             display_registry=display_registry,
             widgets=widgets,

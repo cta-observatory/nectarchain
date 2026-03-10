@@ -219,7 +219,7 @@ def start_periodic_updates(
         interval_ms,
     )
     widgets["PERIODIC_CB_ID"] = periodic_cb_id
-    return periodic_cb_id
+    return
 
 
 def stop_periodic_updates(widgets):
@@ -242,4 +242,4 @@ def stop_periodic_updates(widgets):
         pass
     widgets["PERIODIC_CB_ID"] = None
     logger.info(f"Periodic updates stopped (id={None})")
-    return None
+    return
