@@ -10,14 +10,15 @@ import subprocess
 from pathlib import Path
 
 # Tests
-path = Path(__file__).resolve().parent.parent.parent
+path = Path(__file__).resolve().parent.parent
+print(path)
 test_command_line = [
     "bokeh",
     "serve",
-    "bokeh_app",
+    path,
     "--show",
     "--dev",
     "--args",
-    "test-interface",
+    "--test-interface",
 ]
 subprocess.run(test_command_line)
