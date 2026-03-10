@@ -18,6 +18,7 @@ from nectarchain.trr_test_suite.utils import (
     deadtime_labels,
     plot_deadtime_and_expo_fit,
 )
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -38,6 +39,7 @@ except Exception as e:
     )
 
 figures_output_path = os.environ.get("NECTARCHAIN_FIGURES", "./")
+default_camera = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0]
 
 
 def plot_deadtime_vs_collected_trigger_rate(
@@ -396,7 +398,12 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
     )
 
 
-def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray):
+def run_deadtime_test_tool_process(
+    runlist: list,
+    nevents: int,
+    ids: np.ndarray,
+    camera=default_camera,
+):
     """Run `DeadtimeTestTool` from `utils.py` over the provided run list
 
     Parameters
@@ -407,6 +414,8 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         max number of events
     ids : np.ndarray
         Source ids for all the runs.
+    camera : str
+        camera for which the data should be processed.
 
     Returns
     -------
@@ -442,6 +451,7 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         tool = DeadtimeTestTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
@@ -482,7 +492,14 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
     )
 
 
-def run_deadtime(nevents, runlist, ids, output_dir=None, temp_output=None):
+def run_deadtime(
+    nevents,
+    runlist,
+    ids,
+    camera=default_camera,
+    output_dir=None,
+    temp_output=None,
+):
     (
         _,
         _,
@@ -493,7 +510,12 @@ def run_deadtime(nevents, runlist, ids, output_dir=None, temp_output=None):
         deadtime_us,
         deadtime_pc,
         camera_numbers,
-    ) = run_deadtime_test_tool_process(runlist=runlist, nevents=nevents, ids=ids)
+    ) = run_deadtime_test_tool_process(
+        runlist=runlist,
+        nevents=nevents,
+        ids=ids,
+        camera=camera,
+    )
 
     camera_numbers = np.unique(camera_numbers)
     if len(camera_numbers) > 1:
@@ -622,6 +644,14 @@ def get_args():
         default=8000,
     )
     parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=default_camera,
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
+    parser.add_argument(
         "-o",
         "--output",
         type=str,
@@ -673,6 +703,7 @@ def main():
     ids = data["source_ids"]
 
     nevents = args.evts
+    camera = args.camera
 
     output_dir = os.path.abspath(args.output)
     if not os.path.exists(output_dir):
@@ -698,6 +729,7 @@ def main():
         nevents=nevents,
         runlist=runlist,
         ids=ids,
+        camera=camera,
         output_dir=output_dir,
         temp_output=temp_output,
     )
