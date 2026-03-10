@@ -26,8 +26,4 @@ bokeh serve bokeh_app --show --dev --args test-interface
 
 ## Report issue
 
-Please use `GitHub
-Issues <https://github.com/cta-observatory/nectarchain/issues>`__ to
-report issues or `GitHub
-Discussions <https://github.com/cta-observatory/nectarchain/discussions>`__
-for questions and discussions.
+Please use [GitHub Issues] (https://github.com/cta-observatory/nectarchain/issues) to report issues or [GitHub Discussions] (https://github.com/cta-observatory/nectarchain/discussions) for questions and discussions.
