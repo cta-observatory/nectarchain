@@ -11,7 +11,6 @@ from pathlib import Path
 
 # Tests
 path = Path(__file__).resolve().parent.parent
-print(path)
 test_command_line = [
     "bokeh",
     "serve",
