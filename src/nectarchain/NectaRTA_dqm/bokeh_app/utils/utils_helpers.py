@@ -191,6 +191,7 @@ class hdf5GroupProxy(dict):
         increase = 1 if increasing else -1
         indexes = np.argsort(self[key], axis=axis)[::increase]
         self.mask(indexes)
+        return indexes
 
 
 class hdf5Proxy(dict):

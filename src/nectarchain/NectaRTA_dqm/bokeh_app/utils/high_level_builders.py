@@ -314,8 +314,9 @@ def build_ui(
     real_time_tag,
     default_update_ms,
     extension=".h5",
-    time_parentkeys=None,
-    time_childkeys=None,
+    sort_time_parentkey=None,
+    sort_time_childkey=None,
+    group_parentkeys=None,
     **body_kwargs,
 ):
     """Build the user interface of the Bokeh webpage.
@@ -343,10 +344,15 @@ def build_ui(
     extension : string, optional
         Extension of the format for files.
         Default is .h5.
-    time_parentkeys : list of strings, optional
-        Parentkeys of data that can be time ordered.
-    time_childkeys : list of strings, optional
-        Childkeys of data that can be time ordered.
+    sort_time_parentkey : string, optional
+        Parentkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    sort_time_childkey : string, optional
+        Childkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    group_parentkeys : list of strings, optional
+        Parentkeys of data to be time ordered.
+        Default is ``None``, meaning nothing to be sorted.
     body_kwargs : dict
         Arguments to pass to ``make_body``.
 
@@ -377,8 +383,9 @@ def build_ui(
             header_select.value if hasattr(header_select, "value") else real_time_tag,
             ressource_path=ressource_path,
             real_time_tag=real_time_tag,
-            time_parentkeys=time_parentkeys,
-            time_childkeys=time_childkeys,
+            time_parentkey=sort_time_parentkey,
+            time_childkey=sort_time_childkey,
+            group_parentkeys=group_parentkeys,
         )
     except Exception:
         file, filepath = None, None
@@ -415,8 +422,9 @@ def build_ui(
                 default_update_ms=default_update_ms,
                 display_registry=display_registry,
                 widgets=widgets,
-                time_parentkeys=time_parentkeys,
-                time_childkeys=time_childkeys,
+                time_parentkey=sort_time_parentkey,
+                time_childkey=sort_time_childkey,
+                group_parentkeys=group_parentkeys,
             ),
         )
     except Exception:

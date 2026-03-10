@@ -368,8 +368,9 @@ def update_camera_display(
         # try to index safely
         try:
             img = np.nan_to_num(np.asarray(imgds[run_index]), nan=0.0)
-        except Exception:
+        except Exception as e:
             # fallback to last event
+            logger.warning(f"update_camera_display for run_index: failed {e}")
             img = np.nan_to_num(np.asarray(imgds[-1]), nan=0.0)
         # if disp has attribute image, set it
         try:
