@@ -652,7 +652,7 @@ def make_histogram_sections(
         end=file[parentkey_for_run_slider][childkey_for_run_slider].shape[0],
         value=max(1, int(n_runs)),
         step=1,
-        title="Number of runs to average",
+        title="Number of events to average",
     )
     widgets["hist_runs"] = slider_runs
     displays_avg = {
