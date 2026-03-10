@@ -23,6 +23,8 @@ def make_summary_card(file, display_registry, parentkeys, childkeys, run_index=-
     ----------
     file : dict_like
         Data of the considered run.
+    display_registry : list
+        Storage of all the displays for later update.
     parentkeys : dict
         Parent keys of the file to retrieve data.
     childkeys : dict
