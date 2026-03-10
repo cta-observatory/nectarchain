@@ -754,9 +754,6 @@ def make_annulus(file, childkey, parentkey, display_registry, title=None):
         Parent key of the file to retrieve data.
     display_registry : list
         Storage of all the displays for later update.
-    n_bins : int, optional
-        Number of bins of the pie chart.
-        Default is 20.
     title : string, optional
         Title of the pie chart.
         Default is ``None``, meaning it is set as ``childkey``.
