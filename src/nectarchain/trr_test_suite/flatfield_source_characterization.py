@@ -339,7 +339,7 @@ def optimize_with_outlier_rejection(
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
     # Visualization
-    log.info(f"Number of masked elements for outliers{sigma_masked.count()}")
+    log.info(f"Number of masked elements for outliers: {sigma_masked.count()}")
     fig = plt.figure(figsize=(12, 9))
 
     # --- Subplot 1 ---
