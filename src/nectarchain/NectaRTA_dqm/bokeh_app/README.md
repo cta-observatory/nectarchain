@@ -26,4 +26,8 @@ bokeh serve bokeh_app --show --dev --args test-interface
 
 ## Report issue
 
-For any issue, please contact directly the developer at julian.hamo@ijclab.in2p3.fr.
+Please use `GitHub
+Issues <https://github.com/cta-observatory/nectarchain/issues>`__ to
+report issues or `GitHub
+Discussions <https://github.com/cta-observatory/nectarchain/discussions>`__
+for questions and discussions.
