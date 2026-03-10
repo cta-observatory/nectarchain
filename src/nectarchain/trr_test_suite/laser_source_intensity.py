@@ -59,7 +59,8 @@ For the purposes of testing this script, default data is from the runs used for 
 test in the TRR document.
 
 You can optionally specify the number of events to be processed and the number of
-pixels used."""
+pixels used.""",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "-r",
