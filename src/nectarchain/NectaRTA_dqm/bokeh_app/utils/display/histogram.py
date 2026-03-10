@@ -838,9 +838,6 @@ def make_annulii(
         Parent keys of the file to retrieve discrete data.
     display_registry : list
         Storage of all the displays for later update.
-    n_bins : int, optional
-        Number of bins of the pie charts.
-        Default is 20.
     titles : list of string, optional
         Titles of the pie charts.
         Default is ``None``, meaning it is set as ``childkeys``.
