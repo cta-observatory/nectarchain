@@ -6,6 +6,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +39,6 @@ except Exception as e:
         f"Could not load custom plot style: {e}. Using default matplotlib style."
     )
 
-figures_output_path = os.environ.get("NECTARCHAIN_FIGURES", "./")
 default_camera = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0]
 
 
@@ -658,7 +658,7 @@ def get_args():
         help="Output directory. "
         "If none, plot will be saved in the deadtime_results directory",
         required=False,
-        default=figures_output_path,
+        default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
@@ -702,9 +702,11 @@ def main():
     nevents = args.evts
     camera = args.camera
 
-    output_dir = os.path.abspath(args.output)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
     # Drop arguments from the script after they are parsed, for the GUI to work properly
