@@ -110,8 +110,9 @@ def _on_header_select_change(
     default_update_ms=None,
     display_registry=None,
     widgets=None,
-    time_parentkeys=None,
-    time_childkeys=None,
+    time_parentkey=None,
+    time_childkey=None,
+    group_parentkeys=None,
 ):
     """Callback when header selector changes value.
     Select run to be displayed or real time mode.
@@ -141,11 +142,14 @@ def _on_header_select_change(
         Storage of all the displays for later update.
     widgets : dict
         Storage of all the widgets for later use and update.
-    time_parentkeys : list of strings, optional
-        Parentkeys of data that can be time ordered.
-        Default is ``None``, meaning nothing to be sorted.
-    time_childkeys : list of strings, optional
-        Childkeys of data that can be time ordered.
+    time_parentkey : string, optional
+        Parentkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    time_childkey : string, optional
+        Childkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    group_parentkeys : list of strings, optional
+        Parentkeys of data to be time ordered.
         Default is ``None``, meaning nothing to be sorted.
 
     Returns
@@ -175,8 +179,9 @@ def _on_header_select_change(
                 sel,
                 ressource_path=ressource_path,
                 real_time_tag=real_time_tag,
-                time_parentkeys=time_parentkeys,
-                time_childkeys=time_childkeys,
+                time_parentkey=time_parentkey,
+                time_childkey=time_childkey,
+                group_parentkeys=group_parentkeys,
             )
         except Exception as e:
             logger.warning(f"Failed to open file for real-time mode: {e}")
@@ -219,8 +224,9 @@ def _on_header_select_change(
                 sel,
                 ressource_path=ressource_path,
                 real_time_tag=real_time_tag,
-                time_parentkeys=time_parentkeys,
-                time_childkeys=time_childkeys,
+                time_parentkey=time_parentkey,
+                time_childkey=time_childkey,
+                group_parentkeys=group_parentkeys,
             )
             # issue with opening the specific file
             if fobj is None:

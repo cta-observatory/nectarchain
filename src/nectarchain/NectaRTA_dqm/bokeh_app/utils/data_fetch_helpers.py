@@ -83,8 +83,9 @@ def open_file_from_selection(
     ressource_path,
     real_time_tag,
     extension=".h5",
-    time_parentkeys=None,
-    time_childkeys=None,
+    time_parentkey=None,
+    time_childkey=None,
+    group_parentkeys=None,
 ):
     """Return an open h5py.File-like object for selection.
     If ``sel_value == real_time_tag``, returns ``-get_latest_file(ressource_path)``.
@@ -103,11 +104,14 @@ def open_file_from_selection(
     extension : string, optional
         Extension of the format for files.
         Default is .h5.
-    time_parentkeys : list of strings, optional
-        Parentkeys of data that can be time ordered.
-        Default is ``None``, meaning nothing to be sorted.
-    time_childkeys : list of strings, optional
-        Childkeys of data that can be time ordered.
+    time_parentkey : string, optional
+        Parentkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    time_childkey : string, optional
+        Childkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    group_parentkeys : list of strings, optional
+        Parentkeys of data to be time ordered.
         Default is ``None``, meaning nothing to be sorted.
 
     Returns
@@ -125,8 +129,15 @@ def open_file_from_selection(
     if sel_value == real_time_tag:
         file = _get_latest_file(ressource_path, extension=extension)
         fileproxy = hdf5Proxy(file)
-        for time_parentkey, time_childkey in zip(time_parentkeys, time_childkeys):
-            fileproxy[time_parentkey].sort_from_key(time_childkey)
+        if time_parentkey is not None and time_childkey is not None:
+            try:
+                sort_indexes = fileproxy[time_parentkey].sort_from_key(time_childkey)
+                for group_parentkey in group_parentkeys:
+                    fileproxy[group_parentkey].mask(sort_indexes)
+            except Exception as e:
+                logger.warning(
+                    f"open_file_for_selection: failed data time sorting: {e}"
+                )
         path = getattr(fileproxy, "filename", None)
         return fileproxy, path
 
@@ -140,8 +151,17 @@ def open_file_from_selection(
         if os.path.exists(filepath):
             file = h5py.File(filepath, "r")
             fileproxy = hdf5Proxy(file)
-            for time_parentkey, time_childkey in zip(time_parentkeys, time_childkeys):
-                fileproxy[time_parentkey].sort_from_key(time_childkey)
+            if time_parentkey is not None and time_childkey is not None:
+                try:
+                    sort_indexes = fileproxy[time_parentkey].sort_from_key(
+                        time_childkey
+                    )
+                    for group_parentkey in group_parentkeys:
+                        fileproxy[group_parentkey].mask(sort_indexes)
+                except Exception as e:
+                    logger.warning(
+                        f"open_file_for_selection: failed data time sorting: {e}"
+                    )
             return fileproxy, filepath
         else:
             logger.warning(

@@ -89,8 +89,9 @@ def create_app(doc):
     REAL_TIME_TAG = json_dict["REAL_TIME_TAG"]
     DEFAULT_UPDATE_MS = json_dict["DEFAULT_UPDATE_MS"]
     DEFAULT_EXTENSION = json_dict["DEFAULT_EXTENSION"]
-    time_parentkeys = json_dict["time_parentkeys"]
-    time_childkeys = json_dict["time_childkeys"]
+    time_parentkey = json_dict["time_parentkey"]
+    time_childkey = json_dict["time_childkey"]
+    group_parentkeys = json_dict["group_parentkeys"]
 
     # Path of data
     if SERVER_CONFIG.test_interface:
@@ -139,8 +140,9 @@ def create_app(doc):
         real_time_tag=REAL_TIME_TAG,
         default_update_ms=DEFAULT_UPDATE_MS,
         extension=DEFAULT_EXTENSION,
-        time_parentkeys=time_parentkeys,
-        time_childkeys=time_childkeys,
+        sort_time_parentkey=time_parentkey,
+        sort_time_childkey=time_childkey,
+        group_parentkeys=group_parentkeys,
         **make_body_kwargs,
     )
     doc.add_root(root_layout)
