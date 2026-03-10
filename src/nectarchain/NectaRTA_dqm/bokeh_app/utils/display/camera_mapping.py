@@ -19,6 +19,7 @@ from bokeh.models import Ellipse, HoverTool, Switch, TabPanel
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ctapipe.visualization.bokeh import CameraDisplay
+from ctapipe_io_nectarcam.constants import N_PIXELS
 
 # Bokeh RTA imports
 from ..utils_helpers import get_hillas_parameters
@@ -100,7 +101,7 @@ def _make_camera_display(
     parameter_parentkeys,
     parameterkeys,
     display_registry,
-    n_pixels=1855,
+    n_pixels=N_PIXELS,
     run_index=-1,
     title=None,
     show_hillas=False,
@@ -125,7 +126,7 @@ def _make_camera_display(
         Storage of all the displays for later update.
     n_pixels : int, optional
         Number of pixel on the camera.
-        Default is 1855.
+        Default is ``N_PIXELS``.
     run_index : int, optional
         A file is constituted of multiple events,
         select an event in the stored file.
@@ -218,7 +219,7 @@ def make_tab_camera_displays(
     parameterkeys,
     display_registry,
     widgets,
-    n_pixels=1855,
+    n_pixels=N_PIXELS,
     run_index=None,
     titles=None,
     show_hillas=False,
@@ -246,7 +247,7 @@ def make_tab_camera_displays(
         Storage of all interactive widgets for manual update.
     n_pixels : int, optional
         Number of pixel on the camera.
-        Default is 1855.
+        Default is ``N_PIXELS``.
     run_index : int, optional
         A file is constituted of multiple events,
         select an event in the stored file.
