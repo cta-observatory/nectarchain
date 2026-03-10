@@ -17,7 +17,7 @@ bokeh serve bokeh_app --show --dev
 The test suite is provided in ``tests/test.py``. It can be run as such and will use example DL1 stored in ``example_data``.
 If you want to run it from the ``bokeh`` command, use:
 ```
-bokeh serve bokeh_app --show --dev --args test-interface
+bokeh serve bokeh_app --show --dev --args --test-interface
 ```
 
 **Note**: Be careful to have all the dependencies installed in your environment.
