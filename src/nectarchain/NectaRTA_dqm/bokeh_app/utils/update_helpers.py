@@ -13,9 +13,8 @@ from functools import partial
 # Bokeh imports
 from bokeh.plotting import curdoc
 
+from .data_fetch_helpers import _get_latest_file
 from .display.camera_mapping import update_camera_display
-
-# Bokeh RTA imports
 from .display.histogram import (
     update_annulus,
     update_display_hist,
@@ -23,6 +22,9 @@ from .display.histogram import (
 )
 from .display.summary import update_summary_card
 from .display.timeline import update_timelines
+
+# Bokeh RTA imports
+from .utils_helpers import hdf5Proxy
 
 __all__ = ["periodic_update_display", "start_periodic_updates", "stop_periodic_updates"]
 
@@ -159,7 +161,7 @@ def update_timestamp(status_col):
     status_col.children[1].text = f"Last update: {ts}"
 
 
-def periodic_update_display(file, display_registry, widgets, status_col):
+def periodic_update_display(ressource_path, display_registry, widgets, status_col):
     """Update all the figures of the webpage and the status divider.
 
     Parameters
@@ -178,13 +180,13 @@ def periodic_update_display(file, display_registry, widgets, status_col):
     out : None
 
     """
-
+    file = hdf5Proxy(_get_latest_file(ressource_path))
     update_all_figures(file, display_registry, widgets)
     update_timestamp(status_col)
 
 
 def start_periodic_updates(
-    file, display_registry, widgets, status_col, interval_ms=1000
+    ressource_path, display_registry, widgets, status_col, interval_ms=1000
 ):
     """Start the periodic update of the webpage every ``interval_ms`` milliseconds.
 
@@ -212,7 +214,7 @@ def start_periodic_updates(
     periodic_cb_id = curdoc().add_periodic_callback(
         partial(
             periodic_update_display,
-            file=file,
+            ressource_path=ressource_path,
             display_registry=display_registry,
             widgets=widgets,
             status_col=status_col,

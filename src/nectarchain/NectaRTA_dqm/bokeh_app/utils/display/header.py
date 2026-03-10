@@ -178,17 +178,27 @@ def _on_header_select_change(
                 sel,
                 ressource_path=ressource_path,
                 real_time_tag=real_time_tag,
+                time_parentkeys=time_parentkeys,
+                time_childkeys=time_childkeys,
             )
+        except Exception as e:
+            logger.warning(f"Failed to open file for real-time mode: {e}")
+
+        try:
             # Update and start periodic updates
             update_all_figures(fobj, display_registry=display_registry, widgets=widgets)
             widgets["PERIODIC_CB_ID"] = start_periodic_updates(
-                file=fobj,
+                ressource_path=ressource_path,
                 display_registry=display_registry,
                 widgets=widgets,
                 status_col=status_col,
                 interval_ms=default_update_ms,
             )
-            # Display
+        except Exception as e:
+            logger.warning(f"Failed to update figures: {e}")
+
+        # Display
+        try:
             _set_status_text(
                 [
                     f"Loaded file: {fobj.filename}",

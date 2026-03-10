@@ -6,6 +6,7 @@ This module handle argument parsing of the main()
 of the Bokeh webpage for the RTA of NectarCAM.
 """
 
+import argparse
 import json
 import logging
 
@@ -36,7 +37,30 @@ logging.basicConfig(
 
 
 # ============================================================
-# Main function (with CLI argument parsing)
+# CLI argument parser
+# ============================================================
+def parse_server_cli():
+    parser = argparse.ArgumentParser(
+        prog="bokeh_app", description="RTA NectarCAM Bokeh interface"
+    )
+
+    parser.add_argument(
+        "--test-interface",
+        action="store_true",
+        help="Run the app using example resource path instead of real-time data",
+    )
+
+    # parser.add_argument(
+    #     "--debug",
+    #     action="store_true",
+    #     help="Enable debug logging"
+    # )
+
+    return parser.parse_args(sys.argv[1:])
+
+
+# ============================================================
+# Main function (with CLI argument parsing call)
 # ============================================================
 def create_app(doc):
     """
@@ -60,7 +84,7 @@ def create_app(doc):
     )
 
     # Check CLI
-    test_interface = "test-interface" in set(sys.argv[1:])
+    SERVER_CONFIG = parse_server_cli()
 
     # JSON constants
     with open(PROJECT_ROOT / "utils/static/constants.json") as constants_file:
@@ -72,7 +96,7 @@ def create_app(doc):
     time_childkeys = json_dict["time_childkeys"]
 
     # Path of data
-    if test_interface:
+    if SERVER_CONFIG.test_interface:
         logger.info("Test interface - displaying example runs")
         RESSOURCE_PATH = PROJECT_ROOT / json_dict["EXAMPLE_RESSOURCE_PATH"]
     else:
@@ -127,9 +151,11 @@ def create_app(doc):
 
     # Start real-time at launch
     try:
-        periodic_update_display(file, display_registry, widgets, header_ret[1])
+        periodic_update_display(
+            RESSOURCE_PATH, display_registry, widgets, header_ret[1]
+        )
         widgets["PERIODIC_CB_ID"] = start_periodic_updates(
-            file=file,
+            ressource_path=RESSOURCE_PATH,
             display_registry=display_registry,
             widgets=widgets,
             status_col=header_ret[1],
