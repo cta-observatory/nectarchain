@@ -672,22 +672,19 @@ def main():
     """Runs the deadtime test script, which performs deadtime tests B-TEL-1260 and
     B-TEL-1270, and event rate test B-MST-1280.
 
-    The script takes command-line arguments to specify the path to the file\
-        with the list of runs, corresponding source ids, number of events to \
-            process, and output directory. It then processes the data \
-                for each run, performs an exponential fit to the deadtime\
-                distribution, and generates three plots:
+    The script takes command-line arguments to specify the path to the file with the
+    list of runs, corresponding source ids, number of events to process, and output
+    directory. It then processes the data for each run, performs an exponential fit
+    to the deadtime distribution, and generates three plots:
 
-    1. A plot of the exponential function fit on the deadtime\
-        distribution for each run.
-    2. A plot of deadtime percentage vs. collected trigger rate, with the CTA\
+    1. A plot of the exponential function fit on the deadtime distribution for each run.
+    2. A plot of deadtime percentage vs. collected trigger rate, with the CTA
         requirement indicated.
-    3. A plot of the rate from the fit vs. the collected trigger rate, with the\
+    3. A plot of the rate from the fit vs. the collected trigger rate, with the
         relative difference shown in the bottom panel.
 
-    The script also saves the generated plots to the specified output directory, and\
-        optionally saves the last two to a temporary output directory for use\
-            in a GUI.
+    The script also saves the generated plots to the specified output directory,
+    and optionally saves the last two to a temporary output directory for use in a GUI.
     """
 
     parser = get_args()
