@@ -310,6 +310,9 @@ def make_header_menu(ressource_path, real_time_tag, file=None, extension=".h5"):
         Path of the directory where to find the files to list.
         Can be relative or absolute (careful if it is relative,
         might be an issue for portability).
+    real_time_tag : string
+        Tag representing the real-time mode.
+        Stored in static.constants.json.
     file : hdf5 file, optional
         File of data to display.
         Default is None, meaning last file of the storage directory is taken.
