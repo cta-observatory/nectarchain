@@ -950,10 +950,10 @@ def make_full_histogram_sections(
         Child keys of the file to retrieve 2d data.
     parentkeys_avg : list of string
         Parent keys of the file to retrieve 2d data.
-    parentkey_1d : string
-        Parent key of the file to retrieve data.
-    childkey_1d : string
-        Child key of the file to retrieve data.
+    parentkeys_1d : list of string
+        Parent keys of the file to retrieve data.
+    childkeys_1d : list of string
+        Child keys of the file to retrieve data.
     childkeys_pie : list of string
         Child keys of the file to retrieve discrete data.
     parentkeys_pie : list of string
