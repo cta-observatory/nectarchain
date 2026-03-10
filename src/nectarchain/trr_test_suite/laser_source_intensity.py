@@ -131,7 +131,6 @@ pixels used.""",
             56.4,
         ],
     )
-
     parser.add_argument(
         "-o",
         "--output",
@@ -141,6 +140,13 @@ pixels used.""",
     )
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
+    )
+    parser.add_argument(
+        "-l",
+        "--log",
+        help="log level",
+        default="info",
+        type=str,
     )
 
     return parser
