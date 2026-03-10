@@ -1,6 +1,3 @@
-# Author: Julian Hamo
-# Contact mail: julian.hamo@ijclab.in2p3.fr
-
 """
 This module handle argument parsing of the main()
 of the Bokeh webpage for the RTA of NectarCAM.

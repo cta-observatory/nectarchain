@@ -1,6 +1,3 @@
-# Author: Julian Hamo
-# Contact mail: julian.hamo@ijclab.in2p3.fr
-
 """
 This module builds the high level builders for Bokeh webpage of the RTA of NectarCAM.
 """
