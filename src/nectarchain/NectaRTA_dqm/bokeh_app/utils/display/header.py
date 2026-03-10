@@ -184,7 +184,7 @@ def _on_header_select_change(
         try:
             # Update and start periodic updates
             update_all_figures(fobj, display_registry=display_registry, widgets=widgets)
-            widgets["PERIODIC_CB_ID"] = start_periodic_updates(
+            start_periodic_updates(
                 ressource_path=ressource_path,
                 display_registry=display_registry,
                 widgets=widgets,
@@ -214,7 +214,7 @@ def _on_header_select_change(
         logger.info(f"Reading mode (filename: {sel}): {time.strftime('%H:%M:%S')}")
         # open the selected file and update once (no periodic updates)'
         try:
-            widgets["PERIODIC_CB_ID"] = stop_periodic_updates(widgets)
+            stop_periodic_updates(widgets)
             fobj, fpath = open_file_from_selection(
                 sel,
                 ressource_path=ressource_path,
