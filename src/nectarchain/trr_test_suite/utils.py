@@ -35,6 +35,8 @@ config = Config(
 
 # (filter, optical density, transmission)
 # configurations with the same order as in the document
+ENF = 1.12
+
 filters = np.array(
     [
         [

@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import (
 from nectarchain.trr_test_suite import (
     charge_resolution,
     deadtime,
+    laser_source_intensity,
     linearity,
     nsb_rate_calibration,
     pedestal,
@@ -68,6 +69,7 @@ class TestRunner(QWidget):
         "Charge Resolution Test": charge_resolution,
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
+        "Laser Source Intensity Test": laser_source_intensity,
         "NSB Rate Calibration Test": nsb_rate_calibration,
         "Pedestal Test": pedestal,
         "Pixel Time Uncertainty Test": pix_tim_uncertainty,
