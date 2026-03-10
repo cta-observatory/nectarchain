@@ -1097,7 +1097,7 @@ def main():
         temp_output=temp_output,
     )
 
-    with open(f"Log_info_run_{run_number}_fixed.txt", "a") as f:
+    with open(f"{output_dir}/log_info_run_{run_number}_fixed.txt", "a") as f:
         # Write a header if file is empty (i.e. first time writing)
         if f.tell() == 0:
             f.write(
@@ -1153,7 +1153,11 @@ def main():
     data["Charge_init"] = charges
     data["N_photoelectrons_init"] = n_pe
     data["N_photoelectrons_std_init"] = std_n_pe
-    ascii.write(data, f"FF_calibration_run{run_number}.dat", overwrite=True)
+    ascii.write(
+        data,
+        f"{output_dir}/FF_calibration_run{run_number}.dat",
+        overwrite=True,
+    )
 
     plt.close("all")
 
