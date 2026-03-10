@@ -257,8 +257,8 @@ def make_tab_camera_displays(
         Default is ``False``.
     label_hillas : str
         Label to display over the Hillas widget.
-    label_colorbar : str, optional
-        Label to display for the colorbar, default is empty.
+    labels_colorbar : list of strings, optional
+        Labels to display for the colorbar, default is empty.
 
     Returns
     -------
