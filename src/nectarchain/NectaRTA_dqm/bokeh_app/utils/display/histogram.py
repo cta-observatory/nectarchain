@@ -1,6 +1,3 @@
-# Author: Julian Hamo
-# Contact mail: julian.hamo@ijclab.in2p3.fr
-
 """
 This module stores the Bokeh webpage histogram maker for the RTA of NectarCAM.
 """

@@ -1,6 +1,3 @@
-# Author: Julian Hamo
-# Contact mail: julian.hamo@ijclab.in2p3.fr
-
 """
 Test command line for test of the Bokeh interface of NectaRTA.
 """
