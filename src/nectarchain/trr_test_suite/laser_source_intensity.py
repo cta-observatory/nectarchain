@@ -240,10 +240,10 @@ def main():
     std_err = np.zeros((len(runlist), 2))
     ratio_hglg = np.zeros(len(runlist))
 
-    log.info("runlist ==", runlist)
+    log.debug("runlist ==", runlist)
 
     for index, run in enumerate(runlist):
-        log.info("PROCESSING RUN {}".format(run))
+        log.info(f"Processing run {run}")
         output_file_name = Path(f"{output_dir}/NSBRateTestTool_run{str(run)}.h5")
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
