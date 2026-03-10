@@ -20,7 +20,7 @@ If you want to run it from the ``bokeh`` command, use:
 bokeh serve bokeh_app --show --dev --args test-interface
 ```
 
-**None**: Be careful to have all the dependencies installed in your environment.
+**Note**: Be careful to have all the dependencies installed in your environment.
 
 **Note**: This is an *alpha* version of the webpage that still needs to be modified. It might not be 100% stable.
 
