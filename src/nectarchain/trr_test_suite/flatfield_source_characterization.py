@@ -118,7 +118,7 @@ def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
         for container in h5_table.read(
             "/data/PhotostatContainer_0", PhotostatContainer
         ):
-            log.info(container.as_dict())
+            log.debug(container.as_dict())
             break
     h5_table.close()
 
@@ -127,12 +127,12 @@ def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
     # Generate the full expected pixel ID list
     expected_pixels = np.arange(total_pixels)
     container_dict = container.as_dict()
-    log.info(f"number of valid pixels : {len(container_dict['is_valid'])}")
+    log.info(f"Number of valid pixels : {len(container_dict['is_valid'])}")
 
     # Find missing pixel IDs
     existing_pixels = container_dict["pixels_id"]
     missing_pixels = np.setdiff1d(expected_pixels, existing_pixels)
-    log.info(f"Missing pixels {missing_pixels}")
+    log.debug(f"Missing pixels {missing_pixels}")
 
     # pixels marked as broken (0)
     is_valid_full = np.zeros(total_pixels, dtype=float)
@@ -310,7 +310,7 @@ def optimize_with_outlier_rejection(
     minuit.migrad()
 
     if not minuit.fmin.is_valid:
-        log.info("Warning: Fit did not converge!")
+        log.warning("Fit did not converge !")
     log.info(
         f"""Covariance matrix:
 
@@ -319,7 +319,7 @@ def optimize_with_outlier_rejection(
 """
     )
     log.info(
-        f"Fit new parameters: amplitude = {minuit.values['a0']}, "
+        f"Fitted parameters: amplitude = {minuit.values['a0']}, "
         f"x = {minuit.values['a1']}, y = {minuit.values['a2']}, "
         f"length = {minuit.values['a3']}"
     )
@@ -339,7 +339,7 @@ def optimize_with_outlier_rejection(
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
     # Visualization
-    log.info(f" number of masked elements for outliers{sigma_masked.count()}")
+    log.info(f"Number of masked elements for outliers{sigma_masked.count()}")
     fig = plt.figure(figsize=(12, 9))
 
     # --- Subplot 1 ---
@@ -395,7 +395,7 @@ def propagate_scipy_compatible(model, params, cov, camera):
 
     def model_(parameters):
         # params = [A, mu_x, mu_y, sigma]
-        log.info(f" PARAMETERS = {parameters}")
+        log.debug(f"Model parameters: {parameters}")
         sigma_y = parameters[3]  # enforce sigma_x = sigma_y
         return parameters[0] * (
             Gaussian(
@@ -686,7 +686,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
 """
     )
     log.info(
-        f"Fit new parameters: amplitude = {minuit_new.values['x0']},"
+        f"Fitted parameters: amplitude = {minuit_new.values['x0']},"
         f" x = {minuit_new.values['x1']}, y = {minuit_new.values['x2']},"
         f" length = {minuit_new.values['x3']}, "
         f" intrinsic variance = {minuit_new.values['x4']}"
@@ -710,7 +710,7 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
 
 
 def compute_ff_coefs(charges, gains, output_dir=None, temp_output=None):
-    log.info(f"SHAPE {gains.shape}")
+    log.debug(f"gains shape: {gains.shape}")
     masked_charges = np.ma.masked_where(np.ma.getmask(charges), charges)
     masked_gains = np.ma.masked_where(np.ma.getmask(charges), gains)
 
@@ -880,9 +880,6 @@ def main():
     extractor_kwargs = json.loads('{"window_width": 8, "window_shift": 4}')
     add_variance = True
 
-    # TODO: add `method` and `extractor_kwargs` back into `kwargs`, to be properly
-    #  passed `PhotoStatisticNectarCAMCalibrationTool`
-
     log.info(
         f"Method is {method}, the extractor kwargs are: "
         f"{extractor_kwargs['window_shift']}, "
@@ -906,9 +903,9 @@ def main():
             method=method,
             extractor_kwargs=str_extractor_kwargs,
         )
-        log.info(f"File {spe_filenames} already exists, skipping spe fit computation.")
+        log.info(f"File {spe_filenames} already exists, skipping SPE fit computation.")
     except FileNotFoundError:
-        log.info("SPE fit results file not found, running ")
+        log.info("SPE fit results file not found, running SPE fit")
         spe_filenames = None
 
     if not spe_filenames:
@@ -932,9 +929,9 @@ def main():
             method=method,
             extractor_kwargs=str_extractor_kwargs,
         )
-        log.info(f"THIS IS THE spe_filenames output {spe_filenames}")
+        log.debug(f"This is the spe_filenames output {spe_filenames}")
 
-    log.info(f"ADD_VARIANCE = {add_variance}")
+    log.debug(f"Add variance option is set to {add_variance}")
 
     if add_variance:
         log.info("Running analysis with variance correction...")
@@ -960,7 +957,7 @@ def main():
         )
 
         try:
-            log.info(f"Using SPE results file {spe_filenames[0]}")
+            log.debug(f"Using SPE results file {spe_filenames[0]}")
             tool = PhotoStatisticNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run_number,
@@ -989,9 +986,9 @@ def main():
             log.critical(e, exc_info=True)
             raise e
 
-        log.info("Photostatistics results file was found, beginning the analysis")
-
-    log.info("SPE fit was found, begin the analysis")
+        log.info(
+            "Photostatistics results file was found: " f"{photostatistics_results_file}"
+        )
 
     source = EventSource.from_url(input_url=run_path, max_events=1)
     camera_tel = source.subarray.tel[
@@ -1028,7 +1025,7 @@ def main():
     )
     log.info(f"Resulting error for the model is {np.mean(yerr_prop_1/y_1)*100:.2f}%")
     characterize_peak(minuit_vals_1, camera_tel)
-    log.info(minuit_1.values)
+    log.debug(minuit_1.values)
 
     # Second fit with variance
     if add_variance:
@@ -1079,11 +1076,11 @@ def main():
             f"Resulting error for the model is "
             f"{np.mean(yerr_prop_variance / y_variance) * 100:.2f}%"
         )
-        log.info(np.min(camera_tel.pix_x.value))
-        log.info(np.min(camera_tel.pix_y.value))
-        log.info(np.mean(camera_tel.pix_x.value))
-        log.info(minuit_values_variance[1])
-        log.info(minuit_values_variance[2])
+        log.debug(np.min(camera_tel.pix_x.value))
+        log.debug(np.min(camera_tel.pix_y.value))
+        log.debug(np.mean(camera_tel.pix_x.value))
+        log.debug(minuit_values_variance[1])
+        log.debug(minuit_values_variance[2])
 
         characterize_peak(minuit_values_variance, camera_tel)
 
