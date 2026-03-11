@@ -193,7 +193,7 @@ def run_charge_resolution(
         runlist = runs_list[iNSB]
         ff_volt = ff_v_list[iNSB]
 
-        print("====runlist ============", runlist, ff_volt)
+        log.info(f"runlist: {runlist}, ff_volt: {ff_volt}")
 
         charge = np.zeros((len(runlist), 2))
         std = np.zeros((len(runlist), 2))
@@ -202,7 +202,7 @@ def run_charge_resolution(
         ratio_hglg = np.zeros(len(runlist))
         index = 0
         for run in runlist:
-            print(f"=================PROCESSING RUN {run} for {iNSB}================")
+            log.info(f"PROCESSING RUN {run} for {iNSB}")
             pedestal_tool = PedestalNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run,
@@ -214,16 +214,15 @@ def run_charge_resolution(
                 method="FullWaveformSum",  # charges over entire window
             )
             run_tool(pedestal_tool)
-            print("=====Gain file============")
             gain_run = int(get_gain_run(temperature))
-            print(gain_run)
+            log.info(f"Gain for the run: {gain_run}")
             gain_file_name = (
                 "resources/FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
                 "{}_window_shift_{}_window_width_{}.h5".format(
                     gain_run, max_events, method, window_shift, window_width
                 )
             )
-            print(gain_file_name)
+            log.info(f"Gain file name: {gain_file_name}")
 
             if not os.path.exists(gain_file_name):
                 gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
@@ -240,8 +239,8 @@ def run_charge_resolution(
                 run_tool(gain_tool)
 
             log.info(f"gain_file_name: {gain_file_name}")
-            print(
-                "charge resolution run ========",
+            log.info(
+                "charge resolution run: ",
                 run,
                 nevents,
                 window_shift,
@@ -260,9 +259,9 @@ def run_charge_resolution(
                 pedestal_file=pedestal_tool.output_path,
                 overwrite=True,
             )
-            print("initialize ", tool.run_number)
+            log.info(f"initialize: {tool.run_number}")
             tool.initialize()
-            print("initialize2 ", tool.run_number)
+            log.info(f"initialize2: {tool.run_number}")
             tool.setup()
             tool.start()
             output = tool.finish(gain_file=gain_file_name)
