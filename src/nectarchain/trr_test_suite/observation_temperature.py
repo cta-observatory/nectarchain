@@ -6,11 +6,11 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from charge_resolution import run_charge_resolution
-from deadtime import run_deadtime
-from linearity import run_linearity
 from lmfit.models import Model
 
+from nectarchain.trr_test_suite.charge_resolution import run_charge_resolution
+from nectarchain.trr_test_suite.deadtime import run_deadtime
+from nectarchain.trr_test_suite.linearity import run_linearity
 from nectarchain.trr_test_suite.utils import linear_fit_function
 
 logging.basicConfig(
