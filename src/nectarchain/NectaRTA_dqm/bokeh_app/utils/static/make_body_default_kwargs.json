@@ -1,0 +1,104 @@
+{
+    "summary_parentkeys": {
+        "parameter_parentkey": "dl1/event/telescope/parameters/tel_001",
+        "layout_parentkey": "configuration/instrument/subarray/layout",
+        "trigger_parentkey": "dl1/event/subarray/trigger",
+        "image_parentkey": "dl1/event/telescope/images/tel_001"
+    },
+    "summary_childkeys": {
+        "tel_id": "tel_id",
+        "event_id": "event_id",
+        "name": "name",
+        "camera_type": "camera_type",
+        "time": "time",
+        "timestamp_qns": "timestamp_qns",
+        "alt_tel": "alt_tel",
+        "az_tel": "az_tel",
+        "obs_id": "obs_id",
+        "event_type": "event_type",
+        "event_quality": "event_quality",
+        "is_good_event": "is_good_event"
+    },
+    "time_parentkey": "dl1/event/telescope/images/tel_001",
+    "time_childkey": "trigger_time",
+    "parentkeys_camera": "dl1/event/telescope/images/tel_001",
+    "childkeys_camera": {
+        "image_key": "image",
+        "peak_time_key": "peak_time"
+    },
+    "parentkeys_parameter": "dl1/event/telescope/parameters/tel_001",
+    "childkeys_parameter": {
+        "hillas_x_key": "hillas_x",
+        "hillas_y_key": "hillas_y",
+        "hillas_length_key": "hillas_length",
+        "hillas_width_key": "hillas_width",
+        "hillas_phi_key": "hillas_phi"
+    },
+    "parentkeys_monitoring": "dl1/event/telescope/parameters/tel_001",
+    "childkeys_monitoring": {
+        "event_type_key": "event_type",
+        "is_good_event_key": "is_good_event",
+        "event_quality_key": "event_quality"
+    },
+    "label_2d_timeline": {
+        "min_func_key": "Min",
+        "mean_func_key": "Mean",
+        "median_func_key": "Median",
+        "max_func_key": "Max"
+    },
+    "func_timeline": {
+        "min_func_key": "min",
+        "mean_func_key": "mean",
+        "median_func_key": "median",
+        "max_func_key": "max"
+    },
+    "ylabels_2d": {
+        "image_key": "Image [p.e.]",
+        "peak_time_key": "Peak time [ns]"
+    },
+    "ylabels_1d": {
+        "hillas_x_key": "Hillas: x [unit]",
+        "hillas_y_key": "Hillas: y [unit]",
+        "hillas_phi_key": "Hillas: phi [unit]",
+        "hillas_width_key": "Hillas: width [unit]",
+        "hillas_length_key": "Hillas: length [unit]",
+        "hillas_max_int_key": "Hillas: maximum intensity [unit]",
+        "hillas_total_int_key": "Hillas: total intensity [unit]",
+        "hillas_r_key": "Hillas: radius [unit]",
+        "hillas_psi_key": "Hillas: psi [unit]",
+        "hillas_skew_key": "Hillas: skewness [unit]",
+        "hillas_kurt_key": "Hillas: kurtosis [unit]"
+    },
+    "ylabels_step": {
+        "event_type_key": "Event type",
+        "is_good_event_key": "Is good event",
+        "event_quality_key": "Event quality"
+    },
+    "suptitle_2d": "Raw camera data",
+    "suptitle_1d": "Hillas parameters",
+    "suptitle_step": "Event monitoring",
+    "labels_2d": {
+        "image_key": "image",
+        "peak_time_key": "peak_time"
+    },
+    "labels_1d": {
+        "hillas_x_key": "hillas_x",
+        "hillas_y_key": "hillas_y",
+        "hillas_phi_key": "hillas_phi",
+        "hillas_width_key": "hillas_width",
+        "hillas_length_key": "hillas_length",
+        "hillas_max_int_key": "hillas_intensity",
+        "hillas_total_int_key": "total_intensity",
+        "hillas_r_key": "hillas_r",
+        "hillas_psi_key": "hillas_psi",
+        "hillas_skew_key": "hillas_skewness",
+        "hillas_kurt_key": "hillas_kurtosis"
+    },
+    "labels_colorbar": {
+        "image_key": "p.e.",
+        "peak_time_key": "ns"
+    },
+    "n_runs": 1,
+    "n_bins": 20,
+    "run_index": -1
+}
