@@ -76,21 +76,34 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_hg = charge_container["charges_hg"]
         charge_lg = charge_container["charges_lg"]
         npixels = charge_container["npixels"]
+        tom = charge_container["peak_hg"]
+
+        # tom cut=========
+        tom_mean = np.nanmean(tom, axis=0)
+        diff = np.abs(tom - tom_mean)
+        # mask events shifted by more than 6 ns
+        charge_hg[np.where(diff > 6)] = np.nan
+        charge_lg[np.where(diff > 6)] = np.nan
+
+        bad_pix = get_bad_pixels_list()
+        if bad_pix is not None:
+            charge_lg[:, bad_pix] = np.nan
+            charge_hg[:, bad_pix] = np.nan
 
         charge_pe_hg = np.array(charge_hg) / GAIN_DEFAULT
         charge_pe_lg = np.array(charge_lg) / GAIN_DEFAULT
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
-            pix_mean_charge = np.mean(charge, axis=0)  # in pe
+            pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
 
-            pix_std_charge = np.std(charge, axis=0)
+            pix_std_charge = np.nanstd(charge, axis=0)
 
             # average of all pixels
-            mean_charge[channel] = np.mean(pix_mean_charge)
+            mean_charge[channel] = np.nanmean(pix_mean_charge)
 
-            std_charge[channel] = np.mean(pix_std_charge)
+            std_charge[channel] = np.nanmean(pix_std_charge)
             # for the charge resolution
-            std_err[channel] = np.std(pix_std_charge)
+            std_err[channel] = np.nanstd(pix_std_charge)
 
         return mean_charge, std_charge, std_err, npixels
 
@@ -453,7 +466,8 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
                 returns the UCTS timestamps, the time differences between consecutive\
                     UCTS timestamps, the event counters, the busy counters,\
                         the collected\
-                        trigger rate, the total time, and the deadtime percentage.
+                        trigger rate, the total time, the deadtime percentage,\
+                        and the camera number.
     """
 
     name = "DeadtimeTestTool"
@@ -483,6 +497,8 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
         event_counter = charge_container["ucts_event_counter"]
         busy_counter = charge_container["ucts_busy_counter"]
 
+        camera_num = int(charge_container["camera"].split("NectarCam-")[1])
+
         ucts_deltat = [
             ucts_timestamps[i] - ucts_timestamps[i - 1]
             for i in range(1, len(ucts_timestamps))
@@ -500,6 +516,7 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
             collected_trigger_rate,
             time_tot,
             deadtime_pc,
+            camera_num,
         )
 
 
