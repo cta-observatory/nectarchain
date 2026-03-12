@@ -144,8 +144,8 @@ class PhotoStatisticAlgorithm(Component):
         ).T
         self._results.is_valid = mask
         log.info("Trying to write charges")
-        self._results.charge_hg = self.meanChargeHG
-        self._results.charge_hg_std = self.sigmaChargeHG
+        self._results.charge_hg = np.float64(self.meanChargeHG)
+        self._results.charge_hg_std = np.float64(self.sigmaChargeHG)
 
         figpath = kwargs.get("figpath", False)
         if figpath:
