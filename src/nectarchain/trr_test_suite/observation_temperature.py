@@ -24,7 +24,7 @@ try:
     plt.style.use(
         os.path.join(
             os.path.abspath(os.path.dirname(__file__)),
-            "../utils/plot_style_new.mpltstyle",
+            "../utils/plot_style.mpltstyle",
         )
     )
 except FileNotFoundError as e:
