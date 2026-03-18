@@ -268,10 +268,10 @@ of the waveform"
                 )
 
                 # Safety measure
-                amp_int_per_pix_per_event[self.__bad_pixels_mask] = 0.0
-                amp_int_per_pix_per_event = np.ma.array(
-                    amp_int_per_pix_per_event, mask=self.__bad_pixels_mask
-                )
+                amp_int_per_pix_per_event[self.__bad_pixels_mask] = np.nan
+                # amp_int_per_pix_per_event = np.ma.array(
+                #    amp_int_per_pix_per_event, mask=self.__bad_pixels_mask
+                # )
 
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
                 amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event / self.gain
@@ -293,19 +293,25 @@ of the waveform"
                 amp_int_per_pix_per_event = integrator(
                     wfs_pedsub, self.tel_id, None, self.__bad_pixels_mask
                 )
+                # note: self.__bad_pixels_mask does not seem to mask anything
+
                 amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = False
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
+
                 amp_int_per_pix_per_event_pe = (
                     amp_int_per_pix_per_event.image[:] / self.gain[:]
                 )
 
-            amp_int_per_pix_per_event_pe = np.ma.masked_array(
+            # amp_int_per_pix_per_event_pe = np.ma.masked_array(
+            #    amp_int_per_pix_per_event_pe,
+            #    mask=(self.__bad_pixels_mask)
+            #    | (~np.isfinite(amp_int_per_pix_per_event_pe)),
+            # )
+
+            mean_amp_cam_per_event_pe = np.mean(
                 amp_int_per_pix_per_event_pe,
-                mask=(self.__bad_pixels_mask)
-                | (~np.isfinite(amp_int_per_pix_per_event_pe)),
-            )
-            mean_amp_cam_per_event_pe = np.ma.mean(
-                amp_int_per_pix_per_event_pe, axis=-1
+                axis=-1,
+                where=np.invert(self.__bad_pixels_mask),
             )
 
             # efficiency coefficients
@@ -313,6 +319,7 @@ of the waveform"
                 amp_int_per_pix_per_event_pe,
                 np.expand_dims(mean_amp_cam_per_event_pe, axis=-1),
             )
+
             # eff_coef = np.ma.array(eff_coef, mask=np.invert(self.__bad_pixels_mask))
             self.__eff_coef.append(eff_coef)
 
