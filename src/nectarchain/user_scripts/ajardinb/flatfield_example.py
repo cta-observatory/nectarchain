@@ -36,6 +36,13 @@ parser.add_argument(
     help="Flatfield run number",
     type=int,
 )
+parser.add_argument(
+    "-me",
+    "--max_events",
+    default=1000,
+    help="Maximum number of events",
+    type=int,
+)
 parser.add_argument("--log", default="info", help="output verbosity", type=str)
 
 args = parser.parse_args()
@@ -101,7 +108,7 @@ def get_bad_pixels(output_from_FlatFieldComponent):
     pix_id = FlatFieldOutput.pixels_id
     bad_pix = []
 
-    n_event = len(output_from_FlatFieldComponent.eff_coef[:, 0, 0])
+    n_event = len(output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, 0, 0])
     step = 100
     n_step = round(n_event / step)
 
@@ -188,7 +195,7 @@ bad_pixels_array = list([])
 
 # other parameters
 run_number = args.run
-max_events = 1000
+max_events = args.max_events
 window_width = 12
 window_shift = 5
 window_pedestal = 10
@@ -248,7 +255,7 @@ tool = FlatfieldNectarCAMCalibrationTool(
     run_number=run_number,
     max_events=max_events,
     log_level=args.log.upper(),
-    charge_extraction_method="LocalPeakWindowSum",  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
+    charge_extraction_method=None,  # None, "LocalPeakWindowSum", "GlobalPeakWindowSum"
     charge_integration_correction=False,
     window_width=window_width,
     window_shift=window_shift,
