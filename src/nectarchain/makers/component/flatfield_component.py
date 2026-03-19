@@ -267,7 +267,6 @@ of the waveform"
                     wfs_pedsub, axis=-1, where=masked_wfs
                 )
 
-                # Safety measure
                 amp_int_per_pix_per_event[self.__bad_pixels_mask] = np.nan
                 # amp_int_per_pix_per_event = np.ma.array(
                 #    amp_int_per_pix_per_event, mask=self.__bad_pixels_mask
@@ -295,7 +294,7 @@ of the waveform"
                 )
                 # note: self.__bad_pixels_mask does not seem to mask anything
 
-                amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = False
+                amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = np.nan
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
 
                 amp_int_per_pix_per_event_pe = (
