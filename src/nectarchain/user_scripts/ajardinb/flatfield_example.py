@@ -10,7 +10,7 @@ import numpy as np
 from ctapipe_io_nectarcam import constants
 
 from nectarchain.makers.calibration import FlatfieldNectarCAMCalibrationTool
-from nectarchain.utils.constants import ALLOWED_CAMERAS
+from nectarchain.utils.constants import ALLOWED_CAMERAS, GAIN_DEFAULT
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -159,14 +159,15 @@ def get_bad_pixels(output_from_FlatFieldComponent):
 
             ## pixel with significant deviation to the "pull distribution"
             charge_per_pix_per_event = (
-                output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, p] / 58
+                output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, p]
+                / GAIN_DEFAULT
             )
             mean_charge_cam_per_event = (
                 np.mean(
                     output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, G, :],
                     axis=-1,
                 )
-                / 58
+                / GAIN_DEFAULT
             )
 
             err_eff = np.sqrt(charge_per_pix_per_event) / mean_charge_cam_per_event
