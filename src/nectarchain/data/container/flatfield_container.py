@@ -61,20 +61,6 @@ class FlatFieldContainer(NectarCAMContainer):
         " event (adc)",
     )
 
-    # t_peak_per_pix_per_event = Field(
-    #    type=np.ndarray,
-    #    dtype=np.float32,
-    #    ndim=3,
-    #    description="sample containing the pulse maximum, per pixel and per event",
-    # )
-
-    # FF_coef = Field(
-    #    type=np.ndarray,
-    #    dtype=np.float32,
-    #    ndim=3,
-    #    description="the flat field coefficients, per event",
-    # )
-
     eff_coef = Field(
         type=np.ndarray,
         dtype=np.float32,
