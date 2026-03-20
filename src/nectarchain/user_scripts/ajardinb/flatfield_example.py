@@ -37,7 +37,7 @@ parser.add_argument(
     type=int,
 )
 parser.add_argument(
-    "-me",
+    "-m",
     "--max_events",
     default=1000,
     help="Maximum number of events",
