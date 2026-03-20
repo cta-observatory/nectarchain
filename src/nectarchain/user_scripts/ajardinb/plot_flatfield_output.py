@@ -79,9 +79,9 @@ for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
     )
     plt.legend()
     plt.subplots_adjust(left=0.15, right=0.95, top=0.92, bottom=0.12)
+    fig_name = f"run{run_number}_{gain_channels[G]}_FF_pix{pix}_hist.png"
     plt.savefig(
-        os.environ["NECTARCAMDATA"]
-        + "/run{}_{}_FF_pix{}_hist.png".format(run_number, gain_channels[G], pix)
+        f"{os.environ.get('NECTARCHAIN_FIGURES', os.environ['NECTARCAMDATA'])}/{fig_name}"
     )
 
     # Histogramm of the mean FF coef for all pixels of the camera, per gain chanel
@@ -107,9 +107,9 @@ for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
     plt.xlabel("mean FF coefficients for all pixels (%s)" % gain_channels[G])
     plt.legend()
     plt.subplots_adjust(left=0.15, right=0.95, top=0.92, bottom=0.12)
+    fig_name = f"run{run_number}_{gain_channels[G]}_FFcam_hist.png"
     plt.savefig(
-        os.environ["NECTARCAMDATA"]
-        + "/run{}_{}_FFcam_hist.png".format(run_number, gain_channels[G])
+        f"{os.environ.get('NECTARCHAIN_FIGURES', os.environ['NECTARCAMDATA'])}/{fig_name}"
     )
 
     # Camera visualisation
@@ -124,7 +124,7 @@ for G in [constants.HIGH_GAIN, constants.LOW_GAIN]:
     disp.set_limits_minmax(0.5, 1.5)
     disp.add_colorbar()
     plt.subplots_adjust(left=0.15, right=0.95, top=0.92, bottom=0.12)
+    fig_name = f"run{run_number}_{gain_channels[G]}_FFcam.png"
     plt.savefig(
-        os.environ["NECTARCAMDATA"]
-        + "/run{}_{}_FFcam.png".format(run_number, gain_channels[G])
+        f"{os.environ.get('NECTARCHAIN_FIGURES', os.environ['NECTARCAMDATA'])}/{fig_name}"
     )
