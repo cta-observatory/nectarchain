@@ -240,13 +240,20 @@ class ArrayDataComponent(NectarCAMComponent):
         self._broken_pixels_lg[f"{name}"].append(broken_pixels_lg)
 
         if kwargs.get("return_wfs", False):
-            get_wfs_hg = event.r0.tel[self.tel_id].waveform[constants.HIGH_GAIN][
-                self.pixels_id
-            ]
-            get_wfs_lg = event.r0.tel[self.tel_id].waveform[constants.LOW_GAIN][
-                self.pixels_id
-            ]
-            return get_wfs_hg, get_wfs_lg
+            if event.r0.tel[self.tel_id].waveform is not None:
+                get_wfs_hg = event.r0.tel[self.tel_id].waveform[constants.HIGH_GAIN][
+                    self.pixels_id
+                ]
+                get_wfs_lg = event.r0.tel[self.tel_id].waveform[constants.LOW_GAIN][
+                    self.pixels_id
+                ]
+                return get_wfs_hg, get_wfs_lg
+            else:
+                log.warning(
+                    "R0CameraContainer does not have waveform, taking R1 data instead"
+                )
+                get_wfs = event.r1.tel[self.tel_id].waveform[self.pixels_id]
+                return get_wfs, np.full(get_wfs.shape, np.nan)
 
     @abstractmethod
     def finish(self):
