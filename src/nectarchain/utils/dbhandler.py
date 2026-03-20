@@ -94,10 +94,15 @@ class CameraArray(np.ndarray):
     def __init__(self, a, mod_axis=None):
         """
         init function
-        Parameters:
-        - a : An input numpy array that contains information on the module level
-        - mod_axis : Axis position (int or list of int) of the module info.
-                    If None, it will take all axis that has a 265 size.
+
+        Parameters
+        ----------
+
+        a : np.array
+            An input numpy array that contains information on the module level
+        mod_axis : int or list
+            Axis position (int or list of int) of the module info.
+            If None, it will take all axis that has a 265 size.
         """
         if self._info_axis is None:
             self._info_axis = list()
@@ -142,10 +147,15 @@ class ModuleArray(CameraArray):
     def __init__(self, a, mod_axis=None):
         """
         init function
-        Parameters:
-        - a : An input numpy array that contains information on the module level
-        - mod_axis : Axis position (int or list of int) of the module info.
-                     If None, it will take all axis that has a 265 size.
+
+        Parameters
+        ----------
+
+        a : np.array
+            An input numpy array that contains information on the module level
+        mod_axis : int or list
+            Axis position (int or list of int) of the module info.
+            If None, it will take all axis that has a 265 size.
         """
         super().__init__(a=a, mod_axis=mod_axis)
 
@@ -167,10 +177,15 @@ class PixelArray(CameraArray):
     def __init__(self, a, mod_axis=None):
         """
         init function
-        Parameters:
-        - a : An input numpy array that contains information on the module level
-        - mod_axis : Axis position (int or list of int) of the module info.
-                    If None, it will take all axis that has a 265 size.
+
+        Parameters
+        ----------
+
+        a : np.array
+            An input numpy array that contains information on the module level
+        mod_axis : int or list
+            Axis position (int or list of int) of the module info.
+            If None, it will take all axis that has a 265 size.
         """
         super().__init__(a=a, mod_axis=mod_axis)
 
