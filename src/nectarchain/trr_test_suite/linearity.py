@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -19,6 +20,13 @@ from nectarchain.trr_test_suite.utils import (
     plot_parameters,
     trasmission_390ns,
 )
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 def get_args():
@@ -120,14 +128,25 @@ def main():
     nevents = args.evts
 
     output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.info(f"Output directory: {output_dir}")  # Debug print
+    # print(f"Temporary output file: {temp_output}")  # Debug print
 
     sys.argv = sys.argv[:1]
 
     # runlist = [3441]
+    run_linearity(runlist, transmission, nevents, output_dir, args.temp_output)
+
+
+def run_linearity(
+    runlist,
+    transmission,
+    temperature=14,
+    nevents=500,
+    output_dir="./",
+    temp_output_args=None,
+):
+    temp_output = os.path.abspath(temp_output_args) if temp_output_args else None
 
     charge = np.zeros((len(runlist), 2))
     std = np.zeros((len(runlist), 2))
@@ -139,7 +158,7 @@ def main():
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
-            max_events=12000,
+            max_events=nevents,
             events_per_slice=5000,
             log_level=20,
             output_path=output_dir + f"/pedestal_{run}.h5",
@@ -151,11 +170,11 @@ def main():
         tool = LinearityTestTool(
             progress_bar=True,
             run_number=run,
-            events_per_slice=999,
+            events_per_slice=5000,
             max_events=nevents,
             log_level=20,
             method="LocalPeakWindowSum",
-            extractor_kwargs={"window_width": 14, "window_shift": 6},
+            extractor_kwargs={"window_width": 16, "window_shift": 4},
             pedestal_file=output_dir + f"/pedestal_{run}.h5",
             overwrite=True,
         )
@@ -214,6 +233,7 @@ def main():
     axs[2].axvspan(10, 1000, alpha=0.2, color="orange")
     axs[2].set_xlabel("Illumination charge [p.e.]")
 
+    fit_parameters = []
     for _, (channel_charge, channel_std, name) in enumerate(
         zip(
             [charge_norm_hg, charge_norm_lg],
@@ -230,32 +250,24 @@ def main():
 
         # linearity
         model = Model(linear_fit_function)
-        params = model.make_params(a=100, b=0)
+        params = model.make_params(a=1, b=0)
         true = ch_sorted[:, 0]
 
         ch_charge = ch_sorted[:, 1] * norm_factor_hg[0]
         ch_std = ch_sorted[:, 2] * norm_factor_hg[0]
         ch_err = ch_std / np.sqrt(npixels)
 
-        ch_fit = model.fit(
-            ch_charge[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            params,
-            weights=1
-            / ch_err[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            x=true[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-        )
+        if str(plot_parameters[name]["initials"]) == "HG":
+            ch_charge_inp = ch_charge[2:6]
+            true_inp = true[2:6]
+            ch_err_inp = ch_err[2:6]
+
+        else:
+            ch_charge_inp = ch_charge[3:7]
+            true_inp = true[3:7]
+            ch_err_inp = ch_err[3:7]
+
+        ch_fit = model.fit(ch_charge_inp, params, x=true_inp, weights=1.0 / ch_err_inp)
 
         # print(ch_fit.fit_report())
 
@@ -264,6 +276,7 @@ def main():
         a_err = ch_fit.params["a"].stderr
         b_err = ch_fit.params["b"].stderr
 
+        fit_parameters.append((a, b, a_err, b_err))
         axs[0].errorbar(
             true,
             ch_charge,
@@ -273,21 +286,11 @@ def main():
             marker="o",
             color=plot_parameters[name]["color"],
         )
+
+        # print("after fit : ",true_inp, a*true_inp + b)
         axs[0].plot(
-            true[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            linear_fit_function(
-                true[
-                    plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                        "linearity_range"
-                    ][1]
-                ],
-                a,
-                b,
-            ),
+            true_inp,
+            linear_fit_function(true_inp, a, b),
             color=plot_parameters[name]["color"],
         )
 
@@ -362,19 +365,24 @@ def main():
     ratio = ratio_sorted[:, 1]
     ratio_std = ratio_sorted[:, 2]
 
-    model = model = Model(linear_fit_function)
-    params = model.make_params(a=100, b=0)
-    ratio_fit = model.fit(
-        ratio[10:-4], params, weights=1 / ratio_std[10:-4], x=true[10:-4]
-    )
+    model = Model(linear_fit_function)
+    params = model.make_params(a=10, b=0)
+    ratio_fit = model.fit(ratio[3:6], params, weights=1 / ratio_std[3:6], x=true[3:6])
 
     axs[2].set_ylabel("hg/lg")
     axs[2].set_xlabel("charge(p.e.)")
     axs[2].errorbar(true, ratio, yerr=ratio_std, ls="", color="C1", marker="o")
-    axs[2].plot(
-        true[10:-4],
+    print(
+        "true === ",
+        true[3:6],
         linear_fit_function(
-            true[10:-4], ratio_fit.params["a"].value, ratio_fit.params["b"].value
+            true[3:6], ratio_fit.params["a"].value, ratio_fit.params["b"].value
+        ),
+    )
+    axs[2].plot(
+        true[3:6],
+        linear_fit_function(
+            true[3:6], ratio_fit.params["a"].value, ratio_fit.params["b"].value
         ),
         ls="-",
         color="C1",
@@ -407,10 +415,12 @@ def main():
         alpha=0.9,
     )
 
-    plt.savefig(os.path.join(output_dir, "linearity_test.png"))
+    plt.savefig(os.path.join(output_dir, f"linearity_test_T{temperature}.png"))
+    """
     if temp_output:
         with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
             pickle.dump(fig, f)
+    """
 
     # charge resolution
     charge_hg = charge[:, 0]
@@ -472,9 +482,11 @@ def main():
     plt.legend(frameon=False)
     plt.savefig(os.path.join(output_dir, "charge_resolution.png"))
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(temp_output_args, "plot2.pkl"), "wb") as f:
             pickle.dump(fig, f)
     plt.close("all")
+
+    return fit_parameters, ratio, ratio_std
 
 
 if __name__ == "__main__":
