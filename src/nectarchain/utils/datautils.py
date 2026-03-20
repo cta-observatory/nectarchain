@@ -1,17 +1,24 @@
-try:
-    import os
-    import re
-    from glob import glob
-    import numpy as np
-    import datetime
-    from astropy.time import Time
-    import astropy
-    import protozfits
-    from collections.abc import Iterable
-    from tqdm import tqdm
-except ImportError as err:
-    print(err)
-    raise SystemExit
+import datetime
+import logging
+import os
+import re
+from collections.abc import Iterable
+from glob import glob
+from pathlib import Path
+
+import astropy
+import numpy as np
+import protozfits
+from astropy.time import Time
+from tqdm import tqdm
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/"
+    f"{Path(__file__).stem}_{os.getpid()}.log",
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 def to_datetime(t):
@@ -26,7 +33,6 @@ def to_datetime(t):
     elif isinstance(t, astropy.time.core.Time):
         t_corr = t.utc.to_datetime(timezone=datetime.timezone.utc)
     elif isinstance(t, Iterable):
-        # print(f"t is iterable: {t}")
         t_corr = list(map(to_datetime, t))
     else:
         raise ValueError(
@@ -77,19 +83,18 @@ def GetFirstLastEventTime(run, path=None):
                                     Time(t_s, t_qns * 1.0e-9 / 4.0, format="unix_tai")
                                 )
                                 break
-            print(len(evt_times))
+            log.info(len(evt_times))
             evt_times.sort()
             return evt_times[0], evt_times[-1]
         else:
-            print(f"Can't find files for run {run}")
+            log.error(f"Can't find files for run {run}")
     except Exception as err:
-        print(err)
+        log.error(err)
 
 
 def FindFile(filename, path):
     for dirpath, _, filenames in os.walk(path):
         if filename in filenames:
-            # print(dirpath,filename)
             return os.path.join(dirpath, filename)
 
 
@@ -114,7 +119,7 @@ def FindFiles(filename, path, recursive=True, remove_hidden_files=True):
 
 def GetDAQTimeFromTime(t):
     if isinstance(t, astropy.time.core.Time):
-        print("GetDAQTimeFromTime> converting to datetime")
+        log.info("GetDAQTimeFromTime> converting to datetime")
         t = t.to_datetime()
     if t.hour >= 12:
         daq_time = datetime.datetime(year=t.year, month=t.month, day=t.day, hour=12)
