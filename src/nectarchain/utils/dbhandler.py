@@ -1,24 +1,32 @@
-try:
-    import os
-    import sqlite3
-    import numpy as np
-    import datetime
-    import pandas as pd
-    from enum import Flag, auto
-    from tqdm import tqdm
-    from scipy import interpolate
-    from datautils import (
-        to_datetime,
-        GetFirstLastEventTime,
-        GetDefaultDataPath,
-        GetDAQTimeFromTime,
-        FindFiles,
-        FindFile,
-        GetDBNameFromTime,
-    )
-except ImportError as e:
-    print(e)
-    raise SystemExit
+import datetime
+import logging
+import os
+import sqlite3
+from enum import Flag, auto
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from scipy import interpolate
+from tqdm import tqdm
+
+from .datautils import (
+    FindFile,
+    FindFiles,
+    GetDAQTimeFromTime,
+    GetDBNameFromTime,
+    GetDefaultDataPath,
+    GetFirstLastEventTime,
+    to_datetime,
+)
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/"
+    f"{Path(__file__).stem}_{os.getpid()}.log",
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 class DBInfosFlag(Flag):
@@ -34,23 +42,19 @@ class DictInfos:
         self.infos = dict()
 
     def __setitem__(self, key, value):
-        # print(f"{self.__class__.__name__}> __setitem__: {key = } {value = }")
         self.infos[key] = value
         setattr(self, key, value)
 
     def __getitem__(self, key):
-        # print(f"{self.__class__.__name__}> __getitem__: {key = }")
         try:
             return self.infos[key]
         except Exception:
             raise AttributeError
 
     def __contains__(self, key):
-        # print(f"{self.__class__.__name__}> __contains__: {key = }")
         return key in self.infos
 
     def set_time(self, t):
-        # print(f"{self.__class__.__name__}> set_time: {t}")
         for v in self.infos.values():
             try:
                 v.set_time(t)
@@ -80,7 +84,6 @@ class DBColumnInfos(DictInfos):
 
 
 class CameraArray(np.ndarray):
-
     _info_axis = None
     _nElements = -1
 
@@ -133,7 +136,6 @@ class CameraArray(np.ndarray):
 
 
 class ModuleArray(CameraArray):
-
     # _info_axis = list()
     _nElements = 265
 
@@ -159,7 +161,6 @@ class ModuleArray(CameraArray):
 
 
 class PixelArray(CameraArray):
-
     # _info_axis = list()
     _nElements = 1855
 
@@ -208,7 +209,7 @@ class DBCameraElementInfos:
         Don't do the interpolation if not needed
         """
         if not self.interpolation_done:
-            print(f"DBCameraElementInfos> {self.time = }")
+            log.info(f"{__class__.__name__} {self.time = }")
             self._current_data = self._interpolate_data(self.time)
             self.interpolation_done = True
         return self._current_data
@@ -219,14 +220,11 @@ class DBCameraElementInfos:
 
     @time.setter
     def time(self, t):
-        # print(f"time.setter: {t = }")
-        # print(f"time.setter: {self._current_time = }")
         if self._current_time != t:
             self._current_time = t
             self.interpolation_done = False
 
     def set_time(self, t):
-        # print(f"set_time> {t = }")
         self.time = t
 
     @property
@@ -235,7 +233,6 @@ class DBCameraElementInfos:
 
     @property
     def datas(self):
-        # print("DBCameraElementInfos> datas")
         return self.df.to_numpy().T
 
     def _create_interpolator(self):
@@ -339,7 +336,6 @@ class DBPixelInfos(DBCameraElementInfos):
 
     def _get_pandas_element_id(self, row):
         val = 7 * row["drawer"] + row["channel"]
-        # print(f'DBPixelInfos._get_pandas_element_id> {type(val) = }')
         return int(val)
 
     def at(self, t):
@@ -435,7 +431,6 @@ class SQLiteDB:
         Add one or multiple db to the class
         Accept str, list, set ,tuple of string as input
         """
-        # print(f'add_db: {dbfilename}')
         if isinstance(dbfilename, str):
             self.dbfilenames.add(dbfilename)
         elif (
@@ -484,7 +479,10 @@ class SQLiteDB:
         except sqlite3.Error as error:
             db = None
             if self.verbose:
-                print(f"Can't open the sqlite for file [{dbfilename}] (error: {error})")
+                log.error(
+                    f"Can't open the sqlite for file [{dbfilename}] (error:"
+                    f" {error})"
+                )
         return db
 
     def _load_infos(self):
@@ -502,7 +500,7 @@ class SQLiteDB:
                 self._merge_dict(self.table_infos, current_table_infos)
             except Exception as err:
                 if self.verbose:
-                    print(err)
+                    log.error(err)
 
     def _aggregate_dataframes(self, df, df_list):
         if df is None:
@@ -529,7 +527,7 @@ class SQLiteDB:
 
         dfs = list()
         df = None
-        print(f"Loading sqlite file for table [{table_name}]")
+        log.info(f"Loading sqlite file for table [{table_name}]")
         for entry, (dbname, db) in enumerate(tqdm(sorted(self.dbs.items()))):
             if db is None:
                 db = self._get_sqlfile_connection(dbname)
@@ -558,7 +556,7 @@ class SQLiteDB:
             if has_time:
                 condition += f" ORDER BY {time_name} ASC "
             if self.verbose:
-                print(f"condition: [{condition}]")
+                log.info(f"condition: [{condition}]")
             parse_dates = time_name if has_time else None
             d = pd.read_sql(condition, db, parse_dates=parse_dates)
             if "id" in d.columns:
@@ -582,9 +580,9 @@ class SQLiteDB:
 
     def show_available_infos(self):
         for table_name, table_info in sorted(self.table_infos.items()):
-            print(f"Table [{table_name}]:")
+            log.info(f"Table [{table_name}]:")
             for info in sorted(table_info):
-                print(f"\t- {info}")
+                log.info(f"\t- {info}")
 
 
 class DBInfos(DictInfos):
@@ -640,13 +638,13 @@ class DBInfos(DictInfos):
             if db_file and os.path.exists(db_file):
                 db_files.append(db_file)
                 if verbose:
-                    print(f"Adding [{db_file}] to the list")
+                    log.info(f"Adding [{db_file}] to the list")
             else:
                 if verbose:
-                    print(f"Can't find file [{dbname}]")
+                    log.error(f"Can't find file [{dbname}]")
             t = t + datetime.timedelta(seconds=86400)
 
-        print(f"There is {len(db_files)} files to be read")
+        log.info(f"There is {len(db_files)} files to be read")
         db_infos = DBInfos(
             dbfilename=db_files, tmin=begin_time, tmax=end_time, verbose=verbose
         )
@@ -668,23 +666,23 @@ class DBInfos(DictInfos):
                 pass
 
     def show_available_tables(self):
-        print("Available tables:")
+        log.info("Available tables:")
         for t in self.get_available_tables():
-            print(f"\t{t}")
+            log.info(f"\t{t}")
 
     def show_loaded_infos(self):
-        print("Loaded infos:")
+        log.info("Loaded infos:")
         for k, v in self.infos.items():
-            print(f"\t{k}")
-            print(f"{v = }")
+            log.info(f"\t{k}")
+            log.info(f"{v = }")
             for e in v:
-                print(f"\t\t-{v}")
+                log.info(f"\t\t-{v}")
         for tel, info in self.tel.items():
-            print(f"Camera: {tel}")
+            log.info(f"Camera: {tel}")
             for table, elements in info.infos.items():
-                print(f"\t{table}:")
+                log.info(f"\t{table}:")
                 for elem in elements.infos.keys():
-                    print(f"\t\t- {elem}")
+                    log.info(f"\t\t- {elem}")
 
     def _fix_specific_colname(self, df, table_name):
         if table_name == "monitoring_dtc_channels":
@@ -728,14 +726,14 @@ class DBInfos(DictInfos):
                 if a in available_tables:
                     tables_to_load.add(a)
                 else:
-                    print(f"Don't know table [{a}] --> Skip !")
+                    log.warning(f"Don't know table [{a}] --> Skip !")
 
         # Now for each tables, load information
         # for table_name in tqdm(tables_to_load):
         for table_name in tables_to_load:
             # for table_name in (pbar := tqdm(tables_to_load)):
             #    pbar.set_description(f"Processing {table_name}")
-            print(f"Loading information from table [{table_name}]")
+            log.info(f"Loading information from table [{table_name}]")
             df = self.db.get_table(table_name)
             self._fix_specific_colname(df, table_name)
             self._fixcolname(df)
@@ -778,11 +776,11 @@ class DBInfos(DictInfos):
                                 # self.tel[camera][table_name][col_name] = DBInfos()
                                 # print("Implement me")
                         except Exception as err:
-                            print(
+                            log.error(
                                 f"Reading column [{col_name}] from table [{table_name}]"
                                 f"yield exception [{err}]"  # pffff flake8.............!
                             )
-                            print(
+                            log.error(
                                 "\t==> Consider specializing the function for those"
                                 "data"
                             )
@@ -805,4 +803,6 @@ class DBInfos(DictInfos):
 
 
 if __name__ == "__main__":
-    print("DBHandler is not meant to be run ==> You have likely done something wrong !")
+    log.error(
+        "DBHandler is not meant to be run ==> You have likely done something " "wrong !"
+    )
