@@ -2,7 +2,8 @@
 
 import argparse
 import logging
-import math
+
+# import math
 import os
 
 # import pickle
@@ -14,7 +15,8 @@ import numpy as np
 
 # import pandas as pd
 import tables
-from astropy import units as u
+
+# from astropy import units as u
 from ctapipe.core import run_tool
 from ctapipe_io_nectarcam.constants import N_PIXELS, PIXEL_INDEX
 from dateutil.parser import ParserError, parse
@@ -27,14 +29,22 @@ from nectarchain.makers.calibration import (
 )
 
 # from nectarchain.makers.extractor.utils import CtapipeExtractor
-from nectarchain.trr_test_suite.tools_components import (  # ToMPairsTool,
-    ChargeResolutionTestTool,
-    DeadtimeTestTool,
-    TimingResolutionTestTool,
-    TriggerTimingTestTool,
+from nectarchain.trr_test_suite.tools_components import (
+    TempLongRunTestTool,
 )
-from nectarchain.trr_test_suite.utils import source_ids_deadtime, trasmission_390ns
+from nectarchain.trr_test_suite.utils import (
+    get_bad_pixels_list,
+    source_ids_deadtime,
+    trasmission_390ns,
+)
 from nectarchain.utils.constants import ALLOWED_CAMERAS
+
+# import pandas as pd
+
+
+# from nectarchain.trr_test_suite.test_long_run_tool
+# import TempLongRunTestTool
+
 
 # from matplotlib import dates
 # from tqdm import tqdm
@@ -49,7 +59,7 @@ I copy-pasted them in the trr folder, as in Vincent's folder they are not recogn
 #  import CalibrationCameraDisplay
 # from nectarchain.trr_test_suite.DataUtils
 # import GetFirstLastEventTime
-from nectarchain.trr_test_suite.DBHandler2 import DBInfos, to_datetime
+from nectarchain.trr_test_suite.dbhandler import DBInfos, to_datetime
 
 # from nectarchain.trr_test_suite.Utils_DB import GetCamera, GetDefaultDataPath
 
@@ -95,10 +105,7 @@ def run_ped_tool(
     run_number: list,
     max_events: int,
     events_per_slice: int,
-    bad_pix_all_flat,
     output_plot,
-    nsamples: int,
-    lenpix: int,
 ):
     outfile = os.environ["NECTARCAMDATA"] + "/tests/pedestal_{}.h5".format(run_number)
     ped_tool = PedestalNectarCAMCalibrationTool(
@@ -122,19 +129,13 @@ def run_ped_tool(
     ped_file = tables.open_file(outfile)
     print(type(ped_file.root.__members__))
     print(ped_file.root.__members__)
-    if events_per_slice is not None:
-        pedestals = np.zeros([len(ped_file.root.__members__) - 1, N_PIXELS])
-        pedestals_std = np.zeros(
-            [len(ped_file.root.__members__) - 1, N_PIXELS]
-        )  # ne fonctionne pas pour une slice
-        pedestals_w = np.zeros([len(ped_file.root.__members__) - 1, N_PIXELS])
-        events = np.zeros([len(ped_file.root.__members__) - 1, N_PIXELS])
-    else:
-        pedestals = np.array([])
-        pedestals_w = np.array([])
-        pedestals_std = np.array([])
-        events = np.array([])
-
+    pedestals = np.zeros([len(ped_file.root.__members__) - 1, N_PIXELS])
+    pedestals_std = np.zeros(
+        [len(ped_file.root.__members__) - 1, N_PIXELS]
+    )  # ne fonctionne pas pour une slice
+    pedestals_w = np.zeros([len(ped_file.root.__members__) - 1, N_PIXELS])
+    events = np.zeros([len(ped_file.root.__members__) - 1, N_PIXELS])
+    print(f"{pedestals=}")
     # essayer np.array([]) et append pour une et plusieurs slices
     tmin = np.array([])
     tmax = np.array([])
@@ -145,10 +146,13 @@ def run_ped_tool(
         wf = table["pedestal_mean_hg"]
         wf_std = table["pedestal_std_hg"]
         events_slice = table["nevents"]
-        print(f"wf: {wf}")
+        t_min = table["ucts_timestamp_min"]
+        t_max = table["ucts_timestamp_max"]
+        print(f"wf: {wf=}")
 
         print(f"{wf_std = }")
         ped_w = table["pedestal_charge_std_hg"]
+        print(i)
         if result == "data_combined":
             continue
             # pedestal_combined = wf
@@ -158,20 +162,15 @@ def run_ped_tool(
             # PLOT for continued (? not really necessary for long runs)
         else:  # VOIR LE PEDESTAL COMBINED
             print(f"{pedestals.shape =}")
+            print("c'est censé fonctionner")
             pedestals[i] = np.mean(wf, axis=1)
             print(pedestals)
             pedestals_w[i] = ped_w
             pedestals_std[i] = np.mean(wf_std, axis=1) / np.sqrt(events_slice)
             events[i] = events_slice
             print(f"{events=}")
-            tmin = np.append(tmin, table["ucts_timestamp_min"])
-            tmax = np.append(tmax, table["ucts_timestamp_max"])
-            print(
-                f'the tmin is {tmin}, the table contains {table["ucts_timestamp_min"]}'
-            )
-            print(
-                f'the tmax is {tmax}, the table contains {table["ucts_timestamp_max"]}'
-            )
+            tmin = np.append(tmin, t_min)
+            tmax = np.append(tmax, t_max)
             i += 1
             print(
                 f'the tmin is {tmin}, the table contains {table["ucts_timestamp_min"]}'
@@ -179,24 +178,37 @@ def run_ped_tool(
             print(
                 f'the tmax is {tmax}, the table contains {table["ucts_timestamp_max"]}'
             )
+
+        # IT SEEMS I IS GOING OUT OF THE RESULTS BOUNDS
+
+        # pedestal_combined = wf
+        # pedestal_std_combined = wf_std
+        # pedestal_width_combined = ped_w
+        # events_combined = events_slice
+        # PLOT for continued (? not really necessary for long runs)
+
     print(f"the pedestals are {np.shape(pedestals)}, {pedestals}")
     print(f"the pedestal_width is {np.shape(pedestals_w)}, {pedestals_w}")
     print(f"tmin is now{tmin}, and tmax is now {tmax}")
     print(f"shape of minimum time array is:{np.shape(tmin)},and the values are {tmin}")
+    tmin = list(dict.fromkeys(tmin))
+    tmax = list(dict.fromkeys(tmax))
     tmean = 0.5 * (tmin + tmax)
     print(f"t_mean_shape:{np.shape(tmean)}, {tmean}")
     ped_pix = pedestals
     ped_pix_std = pedestals_std
+    bad_pix = get_bad_pixels_list()
+    lenpix = N_PIXELS - len(bad_pix)
 
     print(f"{ped_pix_std=}")
     print(np.shape(ped_pix))
     print(ped_pix)
     print(np.shape(ped_pix))
 
-    ped_pix[:, bad_pix_all_flat] = np.nan
-    ped_pix_std[:, bad_pix_all_flat] = np.nan
+    ped_pix[:, bad_pix] = np.nan
+    ped_pix_std[:, bad_pix] = np.nan
     print(f"{ped_pix_std=}")
-    pedestals_w[:, bad_pix_all_flat] = np.nan
+    pedestals_w[:, bad_pix] = np.nan
 
     ped_cam = np.nanmean(ped_pix, axis=1)
     ped_cam = np.array([x for _, x in sorted(zip(tmean, ped_cam))])
@@ -217,11 +229,11 @@ def run_ped_tool(
     print(f"{ped_cam_std=}")
 
     # HERE IS A TIME DEPENDENT PLOT, MIGHT REMOVE LATER
-    ax1 = plt.figure()
-    ax1.set_title(f"Camera Pedestal through time for run {run_number}")
-    ax1.set_xlabel("UCTS timestamp")
-    ax1.set_ylabel("pedestal (ADC counts)")
-    ax1.errorbar(
+    plt.figure()
+    plt.title(f"Camera Pedestal through time for run {run_number}")
+    plt.xlabel("UCTS timestamp")
+    plt.ylabel("pedestal (ADC counts)")
+    plt.errorbar(
         tmean,
         ped_cam,
         xerr=[tmean - tmin, tmax - tmean],
@@ -232,11 +244,11 @@ def run_ped_tool(
     )
     plt.savefig(os.path.join(output_plot, f"avg_cam_ped_{run_number}.png"))
 
-    ax2 = plt.figure()
-    ax2.set_title(f"Camera Pedestal width through time for run {run_number}")
-    ax2.set_xlabel("UCTS timestamp")
-    ax2.set_ylabel("pedestal (ADC counts)")
-    ax2.errorbar(
+    plt.figure()
+    plt.title(f"Camera Pedestal width through time for run {run_number}")
+    plt.xlabel("UCTS timestamp")
+    plt.ylabel("pedestal (ADC counts)")
+    plt.errorbar(
         tmean,
         ped_w_cam,
         xerr=[tmean - tmin, tmax - tmean],
@@ -251,74 +263,190 @@ def run_ped_tool(
 
 ########################################
 # # PIXEL TIMING RESOLUTION TOOL
-def run_pix_tim(
-    run_number: list,
-    max_events: int,
-    events_per_slice: int,
-    bad_pix_all_flat,
+
+"""Here we compute the ToM from the charge container,
+as well as the STD and the error.
+for this snippet to be compatible with the tom uncertainty in tools_components.py,
+we need to take into account the multiple slices of the run
+The current config only takes one slice.
+what was used in my local dev environemnt was:
+        super().finish(return_output_component=True, *args, **kwargs)
+        outputs = [c for c in ChargesContainers.from_hdf5(self.output_path)]
+with a loop on the outputs (slices)
+one might also need to implement the sources for the events
+to take into account (same as deadtime):
+    id=kwargs.pop("id")
+    if id == 0:  # FFCLS
+        event_type = EventType.FLATFIELD
+    elif id == 1:  # NSB
+        event_type = EventType.SUBARRAY
+    elif id == 2:  # Laser
+        event_type = EventType.SUBARRAY
+also, in the for pix in range(npixels) loop, I changed the ToM position,
+the pulse window, and the bins
+(the pulses for long run 7142 peak at 15-16ns on average)
+The temporary solutiion was provided by Pablo
+the bad pixels haven't been used yet in this tool."""
+
+######################################################
+# DEADTIME TOOL
+
+"""For this tool, the loop to collect all the slices has also been done,
+with as many containers as there are slices.
+Thanks to this tool, we can collect the deltat, to compute the deadtime rate,
+the trigger rates, the deadtime percentage,
+and the events counter to compute the event rate.
+This was discussed with Medha
+"""
+
+
+#################################################
+# RESOLUTION CHARGE TOOL
+def run_long_run_test_tool(
+    run_number: int,
+    spe_run: int,
     pedestal_file,
-    mean_charge_ts: float,
-    lenpix: int,
-    ids: int,
+    nevents: int,
+    events_per_slice: int,
     temp_output,
     output_dir,
+    temperature: int,
+    ids: int,
+    telid,
+    mean_charge_ts: int,
 ):
-    """Here we compute the ToM from the charge container,
-    as well as the STD and the error.
-    for this snippet to be compatible with the tom uncertainty in tools_components.py,
-    we need to take into account the multiple slices of the run
-    The current config only takes one slice.
-    what was used in my local dev environemnt was:
-            super().finish(return_output_component=True, *args, **kwargs)
-            outputs = [c for c in ChargesContainers.from_hdf5(self.output_path)]
-    with a loop on the outputs (slices)
-    one might also need to implement the sources for the events
-    to take into account (same as deadtime):
-        id=kwargs.pop("id")
-        if id == 0:  # FFCLS
-            event_type = EventType.FLATFIELD
-        elif id == 1:  # NSB
-            event_type = EventType.SUBARRAY
-        elif id == 2:  # Laser
-            event_type = EventType.SUBARRAY
-    also, in the for pix in range(npixels) loop, I changed the ToM position,
-    the pulse window, and the bins
-    (the pulses for long run 7142 peak at 15-16ns on average)
-    The temporary solutiion was provided by Pablo
-    the bad pixels haven't been used yet in this tool."""
+    """
+    for this tool, I used again a command that calls a container per slice.
+    Since the tool.finish() takes into account high gain and low gain channels,
+    the lists have to append
+    in the right channel(for channel,charge in enumerate([charge_pe_hg,charge_pe_lg]):)
+    The bad pixels haven't been removed from this.
+    """
 
-    log.debug(f"Output directory: {output_dir}")
-    log.debug(f"Temporary output file: {temp_output}")
-    N = max_events / events_per_slice
-    # rms_mu = []
-    # rms_mu_err = []
-    rms_no_fit = []
-    rms_no_fit_err = []
-    mean_charge_pe = []
+    """
+    ratio_lghg_nsb = []
+    mean_resolution_nsb = []
+    mean_charge = []
+    mean_resolution_nsb_err = []
+    mean_charge_err = []
+    """
 
-    log.info("PROCESSING RUN {}".format(run_number))
-    # Old runs do not have interleaved pedestals
+    print(spe_run, run_number)
 
-    tool = TimingResolutionTestTool(
+    window_shift = 4
+    window_width = 16
+    max_events = 5000
+    method = "LocalPeakWindowSum"
+    log.info(f"PROCESSING RUN {run_number}")
+    gain_run = spe_run
+    gain_file_name = (
+        os.environ["NECTARCAMDATA"]
+        + "/tests/"
+        + (
+            "FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
+            "{}_window_shift_{}_window_width_{}.h5".format(
+                gain_run, max_events, method, window_shift, window_width
+            )
+        )
+    )
+
+    if not os.path.exists(gain_file_name):
+        # IT DOESN T WORK AT THE MOMENT
+        gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
+            progress_bar=True,
+            run_number=gain_run,
+            max_events=max_events,
+            method=method,
+            output_path=gain_file_name,
+            extractor_kwargs={
+                "window_width": window_width,
+                "window_shift": window_shift,
+            },
+        )
+        run_tool(gain_tool)
+    print(f"{nevents}")
+    log.info(f"gain_file_name: {gain_file_name}")
+    tool = TempLongRunTestTool(
         progress_bar=True,
         run_number=run_number,
-        max_events=max_events,
+        max_events=nevents,
         events_per_slice=events_per_slice,
         log_level=20,
-        method="LocalPeakWindowSum",
-        extractor_kwargs={"window_width": 16, "window_shift": 5},
-        overwrite=True,
+        method=method,
+        extractor_kwargs={
+            "window_width": window_width,
+            "window_shift": window_shift,
+        },
         pedestal_file=pedestal_file,
-        use_default_pedestal=True,  # only done if pedestal_file cannot be loaded
+        use_default_pedestal=True,
+        overwrite=True,
         mean_charge_threshold=mean_charge_ts,
     )
     tool.initialize()
     tool.setup()
     tool.start()
-    output = tool.finish(id=ids)
-    print(f"{output=}")
-    # rms_mu.append(output[0])
-    # rms_mu_err.append(output[1])
+    output = tool.finish(gain_file=gain_file_name, id=ids)
+    # output = read_file(run, temperature)
+    (
+        mean_charge_all,
+        std_charge_all,
+        std_err_all,
+        npixels,
+        mean_resolution_all,
+        ratio_hglg_all,
+        tom_all,
+        rms_no_fit_all,
+        rms_no_fit_err_all,
+        trig_rms_all,
+        trig_err_all,
+        ucts_timestamps_all,
+        ucts_deltat_all,
+        event_counter_all,
+        busy_counter_all,
+        collected_trigger_rate_all,
+        time_tot_all,
+        deadtime_pc_all,
+    ) = output
+    # ucts_timestamps = output[0]
+    """ucts_deltat = output[1]
+
+    event_counter = output[2]
+    # busy_counter = output[3]
+
+    collected_trigger_rates = output[4]
+
+    # time_tot = output[5]
+    # print(f"{ucts_timestamps=}")
+    # print(f'{ucts_deltat=}')
+    print(f"{event_counter=}")
+    print(f"{collected_trigger_rates=}")
+    deadtime_pc = output[6]
+    print(f"{deadtime_pc=}")
+    # print(f"{deadtime_us=}")
+    max_dt = max(len(dt) for dt in ucts_deltat)
+    counter = np.array([len(ec) - 1 for ec in event_counter])
+    print(f"{counter=}")
+    num_events = np.array([ec[-1] for ec in event_counter])
+    print(f"{num_events=}")
+    event_rate = counter / num_events
+    print(f"{event_rate=}")
+    print(max_dt)
+
+    padded_dt = []
+    for dt in ucts_deltat:
+        padded_sublist = dt + [np.nan] * (max_dt - len(dt))
+        padded_dt.append(padded_sublist)
+
+    ucts_deltat = np.array(padded_dt)
+    deadtime_mean = np.nanmean(ucts_deltat, axis=1)
+    deadtime_std = np.nanstd(ucts_deltat, axis=1) / np.sqrt(counter)
+    print(deadtime_mean, deadtime_std)
+    deadtime_mean_us = (deadtime_mean * u.ns).to(u.us)
+    deadtime_mean_us = deadtime_mean_us.value
+    deadtime_std_us = (deadtime_std * u.ns).to(u.us)
+    deadtime_std_us = deadtime_std_us.value
+    print(f"{deadtime_mean_us=}")
+    print(f"{deadtime_std_us=}")
     rms_no_fit = np.array(output[0])
     rms_no_fit_err = np.array(output[1])
     mean_charge_pe = np.array(output[2])
@@ -381,220 +509,8 @@ def run_pix_tim(
 
         print(f"{table=}")
         print(f"{ucts_time=}")
-        # tom=table1["peak_hg"]
-
-        N_slices = math.ceil(N)
-        print(N_slices)
-
-        i -= 1
-    return (
-        tom_cam,
-        tom_cam_std,
-        rms_cam_nofit,
-        rms_cam_nofit_err,
-        mean_charge_pe,
-        time_min,
-        time_max,
-        time_mean,
-        N_slices,
-    )
-
-
-######################################################
-# DEADTIME TOOL
-
-
-def run_deadtime_test_tool_process(
-    run_number: int,
-    max_events: int,
-    ids: int,
-    events_per_slice: int,
-    bad_pix_all_flat,
-    lenpix: int,
-    temp_output,
-    output_dir,
-):
-    """For this tool, the loop to collect all the slices has also been done,
-    with as many containers as there are slices.
-    Thanks to this tool, we can collect the deltat, to compute the deadtime rate,
-    the trigger rates, the deadtime percentage,
-    and the events counter to compute the event rate.
-    This was discussed with Medha
     """
 
-    # ucts_timestamps=[]
-    ucts_deltat = []
-    event_counter = []
-    # busy_counter = []
-    collected_trigger_rates = []
-    # time_tot = []
-    deadtime_pc = []
-
-    log.info("Processing `DeadtimeTestTool` on run {}".format(run_number))
-    tool = DeadtimeTestTool(
-        progress_bar=True,
-        run_number=run_number,
-        max_events=max_events,
-        events_per_slice=events_per_slice,
-        log_level=20,
-        method="LocalPeakWindowSum",
-        extractor_kwargs={"window_width": 16, "window_shift": 6},
-        overwrite=True,
-    )
-    tool.initialize()
-    tool.setup()
-    tool.start()
-    output = tool.finish(id=ids)
-
-    # ucts_timestamps = output[0]
-    ucts_deltat = output[1]
-
-    event_counter = output[2]
-    # busy_counter = output[3]
-
-    collected_trigger_rates = output[4]
-
-    # time_tot = output[5]
-    # print(f"{ucts_timestamps=}")
-    # print(f'{ucts_deltat=}')
-    print(f"{event_counter=}")
-    print(f"{collected_trigger_rates=}")
-    deadtime_pc = output[6]
-    print(f"{deadtime_pc=}")
-    # print(f"{deadtime_us=}")
-    max_dt = max(len(dt) for dt in ucts_deltat)
-    counter = np.array([len(ec) - 1 for ec in event_counter])
-    print(f"{counter=}")
-    num_events = np.array([ec[-1] for ec in event_counter])
-    print(f"{num_events=}")
-    event_rate = counter / num_events
-    print(f"{event_rate=}")
-    print(max_dt)
-
-    padded_dt = []
-    for dt in ucts_deltat:
-        padded_sublist = dt + [np.nan] * (max_dt - len(dt))
-        padded_dt.append(padded_sublist)
-
-    ucts_deltat = np.array(padded_dt)
-    deadtime_mean = np.nanmean(ucts_deltat, axis=1)
-    deadtime_std = np.nanstd(ucts_deltat, axis=1) / np.sqrt(counter)
-    print(deadtime_mean, deadtime_std)
-    deadtime_mean_us = (deadtime_mean * u.ns).to(u.us)
-    deadtime_mean_us = deadtime_mean_us.value
-    deadtime_std_us = (deadtime_std * u.ns).to(u.us)
-    deadtime_std_us = deadtime_std_us.value
-    print(f"{deadtime_mean_us=}")
-    print(f"{deadtime_std_us=}")
-
-    # ucts_deltat_cam=np.mean(ucts_deltat, axis=1)
-    # event_counter_cam=np.mean(event_counter, axis=1)
-
-    return (
-        event_rate,
-        deadtime_mean_us,
-        deadtime_std_us,
-        deadtime_pc,
-        collected_trigger_rates,
-    )
-
-
-#################################################
-# RESOLUTION CHARGE TOOL
-def run_res_charge_tool(
-    run_number: int,
-    spe_run: int,
-    pedestal_file,
-    nevents: int,
-    events_per_slice: int,
-    bad_pix_all_flat,
-    lenpix: int,
-    temp_output,
-    output_dir,
-    temperature: int,
-    ids: int,
-    telid,
-):
-    """
-    for this tool, I used again a command that calls a container per slice.
-    Since the tool.finish() takes into account high gain and low gain channels,
-    the lists have to append
-    in the right channel(for channel,charge in enumerate([charge_pe_hg,charge_pe_lg]):)
-    The bad pixels haven't been removed from this.
-    """
-
-    """
-    ratio_lghg_nsb = []
-    mean_resolution_nsb = []
-    mean_charge = []
-    mean_resolution_nsb_err = []
-    mean_charge_err = []
-    """
-
-    print(spe_run, run_number)
-
-    window_shift = 4
-    window_width = 16
-    max_events = 5000
-    method = "LocalPeakWindowSum"
-
-    gain_run = spe_run
-    gain_file_name = (
-        os.environ["NECTARCAMDATA"]
-        + "/tests/"
-        + (
-            "FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
-            "{}_window_shift_{}_window_width_{}.h5".format(
-                gain_run, max_events, method, window_shift, window_width
-            )
-        )
-    )
-
-    if not os.path.exists(gain_file_name):
-        gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
-            progress_bar=True,
-            run_number=gain_run,
-            max_events=max_events,
-            method=method,
-            output_path=gain_file_name,
-            extractor_kwargs={
-                "window_width": window_width,
-                "window_shift": window_shift,
-            },
-        )
-        run_tool(gain_tool)
-    print(f"{nevents}")
-    log.info(f"gain_file_name: {gain_file_name}")
-    tool = ChargeResolutionTestTool(
-        progress_bar=True,
-        run_number=run_number,
-        max_events=nevents,
-        events_per_slice=events_per_slice,
-        method=method,
-        extractor_kwargs={
-            "window_width": window_width,
-            "window_shift": window_shift,
-        },
-        pedestal_file=pedestal_file,
-        overwrite=True,
-    )
-    tool.initialize()
-    tool.setup()
-    tool.start()
-    output = tool.finish(gain_file=gain_file_name, id=ids)
-    # output = read_file(run, temperature)
-    charge = output[0]
-    std = output[1]
-    std_err = output[2]
-    npixels = output[3]
-    mean_resolution = output[4]
-    ratio_hglg = output[5]
-    print(f"{charge=}")
-    print(f"{std=}")
-    print(f"{std_err=}")
-    print(f"{npixels=}")
-    print(f"{mean_resolution=}")
-    print(f"{ratio_hglg=}")
     """
 
     a voir pour le gain photostatistique
@@ -619,62 +535,38 @@ def run_res_charge_tool(
     tool.start()
     tool.finish(figpath=_figpath)
     """
-    return charge, std, std_err, mean_resolution, ratio_hglg
+    return (
+        mean_charge_all,
+        std_charge_all,
+        std_err_all,
+        npixels,
+        mean_resolution_all,
+        ratio_hglg_all,
+        tom_all,
+        rms_no_fit_all,
+        rms_no_fit_err_all,
+        trig_rms_all,
+        trig_err_all,
+        ucts_timestamps_all,
+        ucts_deltat_all,
+        event_counter_all,
+        busy_counter_all,
+        collected_trigger_rate_all,
+        time_tot_all,
+        deadtime_pc_all,
+    )
 
 
 ###############################################
-def run_trig_timing_tool(
-    run_number: int,
-    max_events: int,
-    pedestal_file,
-    ids: int,
-    events_per_slice: int,
-    bad_pix_all_flat,
-    mean_charge_threshold: int,
-    lenpix: int,
-    temp_output,
-    output_dir,
-):
-    """for this tool, the weighted mean cannot be done
-    when the last slice contains one event or a few.
-    When the event is not of the desired type, it displays 0.
-    You have to control your slices
-    so that it's not a direct multiple of the max events,
-    nor to obtain one event in the last slice.
-    Might be a problem for the max_events=None (?)
-    implemented as well a loop and a container for each slice for now.
-    the bad pixels haven't been defined in this tool."""
-    rms, err, charge = [], [], []
-    t_tool = TriggerTimingTestTool(
-        progress_bar=True,
-        run_number=run_number,
-        max_events=max_events,
-        events_per_slice=events_per_slice,
-        log_level=20,
-        peak_height=10,
-        window_width=16,
-        pedestal_file=pedestal_file,
-        method="LocalPeakWindowSum",
-        extractor_kwargs={"window_width": 16, "window_shift": 6},
-        overwrite=True,
-        use_default_pedestal=True,
-        mean_charge_threshold=mean_charge_threshold,
-        # output_path=os.environ["NECTARCAMDATA"]
-        # + "/tests/triggertiming_{}.h5".format(run_number),
-    )
-    t_tool.initialize()
-    t_tool.setup()
-    t_tool.start()
-    output_t = t_tool.finish(id=ids)
-    rms = output_t[2]
-    err = output_t[3]
-    charge = output_t[4]
-
-    print(f"the rms has a shape {np.shape(rms)}")
-    print(f"the err has a shape {np.shape(err)}")
-    print(f"the charge has a shape {np.shape(charge)}")
-    print(rms)
-    return rms, err, charge
+"""for this tool, the weighted mean cannot be done
+when the last slice contains one event or a few.
+When the event is not of the desired type, it displays 0.
+You have to control your slices
+so that it's not a direct multiple of the max events,
+nor to obtain one event in the last slice.
+Might be a problem for the max_events=None (?)
+implemented as well a loop and a container for each slice for now.
+the bad pixels haven't been defined in this tool."""
 
 
 ###############################################
@@ -716,7 +608,7 @@ def get_args():
         choices=ALLOWED_CAMERAS,
         default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
         help="""Process data for a specific NectarCAM camera.
-    Default: NectarCAMQM (Qualification Model).""",
+        Default: NectarCAMQM (Qualification Model).""",
         type=str,
     )
     parser.add_argument(
@@ -736,23 +628,6 @@ def get_args():
         # nargs="+",
         required=False,
         # allow_none=True,
-    )
-
-    parser.add_argument(
-        "-bp",
-        "--badpix",
-        type=list_of_ints,
-        help="bad pixels (separated by space)",
-        required=False,
-        default=None,  # maybe
-    )
-    parser.add_argument(
-        "-bm",
-        "--badmod",
-        type=list_of_ints,
-        help="list of bad modules (separatedby space)",
-        required=False,
-        default=None,
     )
     parser.add_argument(
         "-s",
@@ -818,8 +693,6 @@ def main():
     events_per_slice = args.evnts_per_slice
     telid = args.camera
     print(f"{telid=}")
-    bad_pixels = args.badpix
-    bad_modules = args.badmod
     ids = args.source
     # transmission = args.trans
     mean_charge_ts = args.mean_charge_threshold
@@ -841,121 +714,69 @@ def main():
 
     # on enlève les mauvais pixels (s'il y en a, objectif: ne plus en avoir)
 
-    bad_pix_all = []
-    pix = []
-    # print(np.dtype(pix))
-    bad_pix_all_flat = []
-    if bad_pixels is not None:
-        bad_pix_all.append(bad_pixels)
-        print(bad_pix_all)
-        for sublist in bad_pix_all:
-            bad_pix_all_flat.extend(sublist)
-        bad_pix_all_flat = list(dict.fromkeys(bad_pix_all_flat))
-        for i in range(len(pixel_ids)):
-            if pixel_ids[i] in bad_pix_all_flat:
-                continue
-            else:
-                pix.append(pixel_ids[i])
-    if bad_modules is not None:
-        for i in range(len(bad_modules)):
-            pix_first = (bad_modules[i] + 1) * 7 - 1
-            pix_last = pix_first - 6
-            bad_pix_all.append(list(range(pix_last, pix_first + 1)))
-        for sublist in bad_pix_all:
-            bad_pix_all_flat.extend(sublist)
-        print(len(bad_pix_all_flat))
-        bad_pix_all_flat = list(dict.fromkeys(bad_pix_all_flat))
-        pix = []
-        for i in range(len(pixel_ids)):
-            if pixel_ids[i] in bad_pix_all_flat:
-                continue
-            else:
-                pix.append(pixel_ids[i])
-    print(len(pix))
-
-    if bad_modules is None and bad_pixels is None:
-        pix = pixel_ids
-
-    lenpix = len(pix)
-    print(f"lenpix:{lenpix}")
-    nsamples = 60
-    print(len(bad_pix_all_flat))
-
     outfile, ped, ped_std, ped_w, ped_w_std, tmean, tmin, tmax = run_ped_tool(
         run_number=run_number,
         max_events=nevents,
         events_per_slice=events_per_slice,
-        bad_pix_all_flat=bad_pix_all_flat,
         output_plot=output_dir,
-        lenpix=lenpix,
-        nsamples=nsamples,
     )
 
     (
-        tom,
-        tom_std,
-        rms_cam_nofit,
-        rms_cam_nofit_err,
-        mean_charge_pe,
-        time_min,
-        time_max,
-        time_mean,
-        N_slices,
-    ) = run_pix_tim(
-        run_number=run_number,
-        max_events=nevents,
-        events_per_slice=events_per_slice,
-        bad_pix_all_flat=bad_pix_all_flat,
-        pedestal_file=outfile,
-        ids=ids,
-        mean_charge_ts=mean_charge_ts,
-        lenpix=lenpix,
-        temp_output=temp_output,
-        output_dir=output_dir,
-    )
-
-    (
-        event_rate,
-        deadtime_mean_us,
-        deadtime_std_us,
-        deadtime_pc,
-        collected_trigger_rates,
-    ) = run_deadtime_test_tool_process(
-        run_number=run_number,
-        max_events=nevents,
-        ids=ids,
-        events_per_slice=events_per_slice,
-        bad_pix_all_flat=bad_pix_all_flat,
-        lenpix=lenpix,
-        temp_output=temp_output,
-        output_dir=output_dir,
-    )
-    rms, rms_err, charge = run_trig_timing_tool(
-        run_number=run_number,
-        max_events=nevents,
-        pedestal_file=outfile,
-        ids=ids,
-        events_per_slice=events_per_slice,
-        bad_pix_all_flat=bad_pix_all_flat,
-        lenpix=lenpix,
-        temp_output=temp_output,
-        output_dir=output_dir,
-        mean_charge_threshold=mean_charge_ts,
-    )
-    charge, std, std_err, mean_resolution, ratio_hglg = run_res_charge_tool(
+        mean_charge_all,
+        std_charge_all,
+        std_err_all,
+        mean_resolution_all,
+        err_resolution_all,
+        ratio_hglg_all,
+        tom_all,
+        tom_all_err,
+        rms_no_fit_all,
+        rms_no_fit_err_all,
+        trig_rms_all,
+        trig_err_all,
+        ucts_deltat_all,
+        deadtime_err,
+        event_rate_all,
+        # busy_counter_all,
+        collected_trigger_rate_all,
+        time_tot_all,
+        deadtime_pc_all,
+        tmin,
+        tmax,
+    ) = run_long_run_test_tool(
         run_number=run_number,
         spe_run=spe_run,
         pedestal_file=outfile,
         nevents=nevents,
         events_per_slice=events_per_slice,
-        bad_pix_all_flat=bad_pix_all_flat,
-        lenpix=lenpix,
         temp_output=temp_output,
         output_dir=output_dir,
         temperature=temperature,
         ids=ids,
         telid=telid,
+        mean_charge_ts=mean_charge_ts,
     )
+    print(time_tot_all, tmin, tmax, std_charge_all)
+    """
+    print(f'{mean_charge_all=}')
+    print(f'{std_charge_all=}')
+    print(f'{std_err_all=}')
+    print(f'{npixels=}')
+    print(f'{mean_resolution_all=}')
+    print(f'{ratio_hglg_all=}')
+    print(f'{tom_all=}')
+    print(f'{rms_no_fit_all=}')
+    print(f'{rms_no_fit_err_all=}')
+    print(f'{trig_rms_all=}')
+    print(f'{trig_err_all=}')
+    print(f'{ucts_timestamps_all=}')
+    print(f'{ucts_deltat_all=}')
+    print(f'{event_counter_all=}')
+    print(f'{busy_counter_all=}')
+    print(f'{collected_trigger_rate_all=}')
+    print(f'{time_tot_all}')
+    print(f'{deadtime_pc_all}')
+    """
 
     ####################################################
     path = Path(os.environ["NECTARCAMDATA"] + "/runs")
@@ -1138,119 +959,48 @@ def main():
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, f"cam_ped_width_temp_run{run_number}.png"))
 
-    # flatfield TOM fit
-
-    y = tom
-    t = temp
-    sigma = tom_std
-    least_squares = LeastSquares(t, y, sigma, lin)
-
-    # Initialiser Minuit pour le modèle simplifié
-    m = Minuit(least_squares, a=y[-1] - y[0], b=-y[-1])
-
-    # Exécuter l'ajustement
-    m.migrad()
-    m.hesse()
-
-    # Afficher les résultats
-    print("Données du fit:", m.values, m.errors)
-
-    fig, ax = plt.subplots(2, 1, figsize=(10, 7), gridspec_kw={"height_ratios": [3, 1]})
-
-    ax[0].errorbar(t, y, yerr=sigma, fmt="o", ms=3, label="Data")
-    ax[0].plot(t, lin(t, *m.values), label="Fitted Model", color="red")
-
-    fit_info_simple = [
-        f"$\\chi^2$/$n_\\mathrm{{dof}}$=\
-            {m.fval:.1f}/{m.ndof:.0f}=\
-                {m.fmin.reduced_chi2:.1f}",
+    curves = [
+        (temp, mean_charge_all[0], std_err_all[0]),
+        (temp, mean_charge_all[1], std_err_all[1]),
+        (temp, ratio_hglg_all, None),
+        (temp, mean_resolution_all[0] * 100, err_resolution_all[0] * 100),
+        (temp, tom_all, tom_all_err),
+        (temp, rms_no_fit_all, rms_no_fit_err_all),
+        (temp, trig_rms_all, trig_err_all),
+        (temp, ucts_deltat_all, deadtime_err),
+        (temp, deadtime_pc_all, None),
+        (temp, event_rate_all, None),
+        (temp, collected_trigger_rate_all, None),
     ]
-    for p, v, e in zip(m.parameters, m.values, m.errors):
-        fit_info_simple.append(f"{p} = ${v:.3f} \\pm {e:.3f}$")
-    ax[0].legend(title="\n".join(fit_info_simple), frameon=False, fontsize="large")
-    ax[0].set_title(f"TOM evolution for Run {run_number}")
-    ax[0].set_xlabel("T°C")
-    ax[0].set_ylabel("Sample time (ns)")
-
-    residuals = y - lin(t, *m.values)
-    ax[1].errorbar(
-        t, residuals, yerr=sigma, fmt="o", ms=3, color="green", label="Residuals"
-    )
-    ax[1].axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-    ax[1].set_xlabel("T °C")
-    ax[1].set_ylabel("Residuals (ns)")
-    ax[1].set_title("Residuals of the Fit")
-    ax[1].legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"cam_TOM_temp_run{run_number}.png"))
-
-    # deadtime fit
-
-    y = deadtime_mean_us
-    t = temp
-    sigma = deadtime_std_us
-    least_squares = LeastSquares(t, y, sigma, lin)
-    m = Minuit(least_squares, a=y[0] - y[-1], b=y[-1])
-    m.migrad()
-    m.hesse()
-    print("Données du fit:", m.values, m.errors)
-    fig, ax = plt.subplots(2, 1, figsize=(10, 7), gridspec_kw={"height_ratios": [3, 1]})
-    ax[0].errorbar(t, y, yerr=sigma, fmt="o", ms=3, label="Data")
-    ax[0].plot(t, lin(t, *m.values), label="Fitted Model", color="red")
-
-    fit_info_simple = [
-        f"$\\chi^2$/$n_\\mathrm{{dof}}$=\
-        {m.fval:.1f}/{m.ndof:.0f}={m.fmin.reduced_chi2:.1f}",
+    y_labels = [
+        "Mean charge hg (p.e)",
+        "Mean charge lg (p.e)",
+        "Ratio high gain low gain",
+        "Mean charge resolution hg (%)",
+        "ToM (ns)",
+        "ToM rms (ns)",
+        "trigger timing rms (ns)",
+        "Deadtime (ns)",
+        "Deadtime percentage (%)",
+        "Event rate",
+        "Collected trigger rate (%)",
     ]
-    for p, v, e in zip(m.parameters, m.values, m.errors):
-        fit_info_simple.append(f"{p} = ${v:.5f} \\pm {e:.5f}$")
-    ax[0].legend(title="\n".join(fit_info_simple), frameon=False, fontsize="large")
-    ax[0].set_title(f"Average Deadtime Evolution for Run {run_number}")
-    ax[0].set_xlabel("T°C")
-    ax[0].set_ylabel("deadtime (us)")
 
-    residuals = y - lin(t, *m.values)
-    ax[1].errorbar(
-        t, residuals, yerr=sigma, fmt="o", ms=3, color="green", label="Residuals"
-    )
-    ax[1].axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-    ax[1].set_xlabel("T°C)")
-    ax[1].set_ylabel("Residuals (us)")
-    ax[1].set_title("Residuals of the Fit")
-    ax[1].legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"deadtime_temp_run{run_number}.png"))
-
-    # trigger rate and rms plot
-    ax1 = plt.figure()
-    ax1.set_title(f"Collected trigger rate temperature evolution for run {run_number}")
-    ax1.set_xlabel("T°C")
-    ax1.set_ylabel("trigger rate ")
-    ax1.errorbar(
-        temp,
-        collected_trigger_rates,
-        xerr=None,
-        yerr=None,
-        fmt="o",
-        color="k",
-        capsize=0.0,
-    )
-    plt.savefig(os.path.join(output_dir, f"trig_rate_temp_run{run_number}.png"))
-
-    ax2 = plt.figure()
-    ax2.set_title(f"Trigger uncertainty temperature evolution for run {run_number}")
-    ax2.set_xlabel("UCTS timestamp")
-    ax2.set_ylabel("pedestal (ADC counts)")
-    ax2.errorbar(
-        temp,
-        rms,
-        xerr=None,
-        yerr=rms_err,
-        fmt="o",
-        color="k",
-        capsize=0.0,
-    )
-    plt.savefig(os.path.join(output_dir, f"trig_rms_temp_run_{run_number}.png"))
+    for i, (t, y, y_err) in enumerate(curves):
+        plt.figure()
+        # plt.title(f"Camera Pedestal through time for run {run_number}")
+        plt.xlabel("Temperature (°C)")
+        plt.ylabel(f"{y_labels[i]}")
+        plt.errorbar(
+            t,
+            y,
+            xerr=None,
+            yerr=y_err,
+            fmt="o",
+            color="k",
+            capsize=0.0,
+        )
+        plt.savefig(os.path.join(output_dir, f"{y}_temperature_{run_number}.png"))
 
 
 main()
