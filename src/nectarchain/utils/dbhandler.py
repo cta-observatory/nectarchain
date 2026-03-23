@@ -126,6 +126,13 @@ class CameraArray(np.ndarray):
         self._guess_axis()
         return self._info_axis
 
+    def prod(self, a, **kwargs):
+        """Calls ~numpy.array.prod
+
+        This custom documentation for ~numpy.array.prod is necessary, otherwise
+        Sphinx autodoc fails in importing the `CameraArray` class."""
+        return super().prod(a, **kwargs)
+
     def _guess_axis(self):
         if self._info_axis is None:
             self._info_axis = list()
