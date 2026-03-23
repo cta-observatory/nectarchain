@@ -387,7 +387,12 @@ def run_long_run_test_tool(
     tool.start()
     output = tool.finish(gain_file=gain_file_name, id=ids)
     # output = read_file(run, temperature)
+<<<<<<< HEAD
     (    mean_charge_all,
+=======
+    (
+        mean_charge_all,
+>>>>>>> 996cb42 (work in progress but better)
         std_charge_all,
         std_err_all,
         npixels,
@@ -406,8 +411,11 @@ def run_long_run_test_tool(
         time_tot_all,
         deadtime_pc_all,
     ) = output
+<<<<<<< HEAD
 
     print(f"{output=}")
+=======
+>>>>>>> 996cb42 (work in progress but better)
     # ucts_timestamps = output[0]
     """ucts_deltat = output[1]
 
