@@ -8,6 +8,7 @@ from astropy import units as u
 # Imports from ctapipe
 from ctapipe.containers import EventType
 from ctapipe.core.traits import ComponentNameList, Float
+from ctapipe_io_nectarcam.constants import N_PIXELS
 
 # Imports from nectarchain
 from nectarchain.data.container import ChargesContainers, SPEfitContainer
@@ -15,6 +16,8 @@ from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_test_suite.utils import get_bad_pixels_list
 from nectarchain.utils.constants import GAIN_DEFAULT
+
+get_bad_pixels_list()
 
 
 # overriding so we can have maxevents in the path
@@ -173,6 +176,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             charge_lg[np.where(diff > 6)] = np.nan
 
             bad_pix = get_bad_pixels_list()
+            # no implementation found even though it's there
             if bad_pix is not None:
                 charge_lg[:, bad_pix] = np.nan
                 charge_hg[:, bad_pix] = np.nan
@@ -674,3 +678,384 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
             charge_per_slice.append(charge_per_run)
 
         return timestamps, delta_t_all, rms_all, err_all, charge_per_slice
+
+
+class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
+    """This class, `LinearityTestTool`, is a subclass of
+    `EventsLoopNectarCAMCalibrationTool`. It is responsible for performing a linearity
+    test on NectarCAM data. The class has a `componentsList` attribute that specifies
+    the list of NectarCAM components to be applied.
+
+    The `finish` method is the main functionality of this class. It reads the charge\
+        data from the output file, calculates the mean charge, standard deviation,\
+            and standard error for both the high gain and low gain channels, and\
+                returns these values. This information can be used to assess\
+                    the linearity of the NectarCAM system.
+    """
+
+    name = "TempLongRunTestTool"
+
+    componentsList = ComponentNameList(
+        NectarCAMComponent,
+        default_value=["ChargesComponent"],
+        help="List of Component names to be apply, the order will be respected",
+    ).tag(config=True)
+
+    mean_charge_threshold = Float(
+        help="Threshold below which to select good events,"
+        "in units of mean camera charge.",
+        default_value=10,
+    ).tag(config=True)
+
+    def finish(self, bootstrap=False, *args, **kwargs):
+        id = kwargs.pop("id")
+        super().finish(*args, **kwargs)
+        outputs = [c for c in ChargesContainers.from_hdf5(self.output_path)]
+        # print (f'{len(outputs)=}')
+        # output = super().finish(return_output_component=True, *args, **kwargs)
+        # print(f'{outputs =}')
+        # print(f'{outputs[0].containers=}')
+        # print(f'{output[1].containers=}')
+        (
+            mean_charge_all,
+            std_charge_all,
+            std_err_all,
+            mean_resolution_all,
+            err_resolution_all,
+            ratio_hglg_all,
+            tom_all,
+            tom_all_err,
+            rms_no_fit_all,
+            rms_no_fit_err_all,
+            ucts_deltat_all,
+            deadtime_err,
+            event_rate_all,
+            # busy_counter_all,
+            collected_trigger_rate_all,
+            time_tot_all,
+            deadtime_pc_all,
+            trig_rms_all,
+            trig_err_all,
+            tmin,
+            tmax,
+        ) = (
+            [[], []],
+            [[], []],
+            [[], []],
+            [[], []],
+            [[], []],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
+        # Default runs use a laser source and apply a subarray trigger
+        # Newer runs use flat-field events
+        if id == 0:  # FFCLS
+            event_type = EventType.FLATFIELD
+        elif id == 1:  # NSB
+            event_type = EventType.SUBARRAY
+        elif id == 2:  # Laser
+            event_type = EventType.SUBARRAY
+        for output in outputs:
+            charge_container = output.containers[event_type]
+
+            # Read gain
+            try:
+                print(kwargs["gain_file"])
+                gain_data = next(
+                    SPEfitContainer.from_hdf5(
+                        cls=SPEfitContainer, path=kwargs["gain_file"]
+                    )
+                )
+                # gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
+                print(gain_data)
+                adc_to_pe = gain_data.high_gain[:, 0]
+                print("IT WORKS")
+            except Exception:
+                print("EXCEPTION")
+                adc_to_pe = GAIN_DEFAULT
+
+            # Read charges
+            mean_charge = [0, 0]  # per channel
+            std_charge = [0, 0]
+            std_err = [0, 0]
+
+            mean_resolution = [0, 0]
+            err_resolution = [0, 0]
+            charge_hg = charge_container["charges_hg"]
+            charge_lg = charge_container["charges_lg"]
+
+            tom = charge_container["peak_hg"]
+            npixels = charge_container["npixels"]
+            ucts_timestamps = charge_container["ucts_timestamp"]
+            event_counter = charge_container["ucts_event_counter"]
+            busy_counter = charge_container["ucts_busy_counter"]
+            events_id = charge_container["event_id"]
+            print(f"{events_id}")
+            tmin.append(np.min(ucts_timestamps))
+            tmax.append(np.max(ucts_timestamps))
+
+            print(f"{charge_hg=},\
+                {charge_lg=},\
+                {tom=},\
+                {npixels=},\
+                {ucts_timestamps=},\
+                {event_counter=},\
+                {busy_counter=}")
+
+            # print("charge hg ",charge_hg, len(charge_hg), len(charge_hg[0]))
+            charge_hg = np.array(charge_hg, dtype=float)
+            charge_lg = np.array(charge_lg, dtype=float)
+            good_evts = np.where(
+                np.max(charge_hg, axis=1)
+                < self.mean_charge_threshold * np.mean(charge_hg, axis=1),
+                True,
+                False,
+            )
+
+            charge_hg = charge_hg[good_evts]
+
+            # ToM cut==============
+
+            bad_pix = get_bad_pixels_list()
+            lenpix = N_PIXELS - len(bad_pix)
+            if bad_pix is not None:
+                charge_lg[:, bad_pix] = np.nan
+                charge_hg[:, bad_pix] = np.nan
+                tom[:, bad_pix] = np.nan
+
+            tom_mean = np.nanmean(tom, axis=0)
+            tom_err = np.nanstd(tom, axis=0) / np.sqrt(len(tom))
+            tom_slice = np.nanmean(tom_mean)
+            tom_slice_err = (1 / lenpix) * np.sqrt(np.nansum(tom_err**2))
+            tom_all.append(tom_slice)
+            print(f"{tom_all=}")
+            tom_all_err.append(tom_slice_err)
+            print(f"{tom_all_err=}")
+            # diff = np.abs(tom - tom_mean)
+            # mask events shifted by more than 6 ns
+            # charge_hg[np.where(diff > 4)] = np.nan
+            # charge_lg[np.where(diff > 4)] = np.nan
+
+            print("adc_to_pe", adc_to_pe)
+
+            print("bad pix list ", bad_pix)
+
+            charge_lg = np.array(charge_lg)
+            charge_hg = np.array(charge_hg)
+
+            charge_pe_hg = charge_hg / (adc_to_pe)
+            charge_pe_lg = charge_lg / (adc_to_pe)
+            n_events = len(charge_pe_hg)
+
+            print("n_events", n_events)
+
+            ratio_hglg = np.nanmean(np.nanmean(charge_pe_hg / charge_pe_lg, axis=0))
+            print("ratio ", ratio_hglg)
+
+            ratio_hglg_all.append(ratio_hglg)
+            for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
+                # print(channel,charge)
+                pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
+                # print(pix_mean_charge)
+
+                pix_std_charge = np.nanstd(charge, axis=0)
+
+                pix_resolution = pix_std_charge / pix_mean_charge
+
+                # average of all pixels
+                mean_charge[channel] = np.nanmean(pix_mean_charge)
+                mean_charge_all[channel].append(mean_charge[channel])
+                mean_resolution[channel] = np.nanmean(pix_resolution)
+                err_resolution[channel] = np.nanstd(pix_resolution) / np.sqrt(
+                    2 * lenpix
+                )
+                err_resolution_all[channel].append(err_resolution[channel])
+                mean_resolution_all[channel].append(mean_resolution[channel])
+                print(mean_resolution_all)
+                print(f"{mean_resolution_all=}")
+
+                std_charge[channel] = np.nanmean(pix_std_charge)
+                std_charge_all[channel].append(std_charge[channel])
+
+                # for the charge resolution
+                std_err[channel] = np.nanstd(pix_std_charge)
+                std_err_all[channel].append(std_err[channel])
+
+            print(f"{mean_charge=}")
+
+            tom_no_fit = np.array(tom[good_evts]).reshape(len(good_evts), npixels)
+            rms_no_fit = np.zeros(npixels)
+
+            rms_no_fit_err = np.zeros(npixels)
+
+            # bootstrapping method
+
+            for pix in range(npixels):
+                for tom, rms, err in zip(
+                    [tom_no_fit[:, pix]], [rms_no_fit], [rms_no_fit_err]
+                ):
+                    tom_pos = tom[tom < 20]
+
+                    boot_rms = []
+
+                    sample = tom_pos[tom_pos < 32]
+
+                    bins = np.linspace(0, 32, 133)
+                    hist_values, bin_edges = np.histogram(sample, bins=bins)
+
+                    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+                    if bootstrap:
+
+                        if len(sample) != 0:
+                            for _ in range(1000):
+                                bootsample = np.random.choice(
+                                    sample,
+                                    size=int(3 / 4 * (len(sample))),
+                                    replace=True,
+                                )
+
+                                boot_rms.append(bootsample.std())
+                                # simulated mean of rms
+                            bootrms_mean = np.mean(boot_rms)
+
+                            # simulated standard deviation of rms
+                            bootrms_std = np.std(boot_rms)
+                        else:
+                            bootrms_std = 0
+                            bootrms_mean = 0
+                        # print(bootrms_std)
+                        err[pix] = bootrms_std
+                        rms[pix] = bootrms_mean
+
+                    else:
+                        try:
+                            weighted_mean = np.average(bin_centers, weights=hist_values)
+
+                            # Compute weighted variance
+                            weighted_variance = np.average(
+                                (bin_centers - weighted_mean) ** 2, weights=hist_values
+                            )
+
+                            # Compute RMS value (Standard deviation)
+                            rms[pix] = np.sqrt(weighted_variance)
+
+                            # Compute the total number of data points (sum of histogram
+                            # values, i.e. N)
+                            N = np.sum(hist_values)
+                            # print("Total number of events (N):", N)
+
+                            # Error on the standard deviation
+                            err[pix] = rms[pix] / np.sqrt(2 * N)
+                            # print("Error on RMS:", err[pix])
+                        except Exception:
+                            # no data
+                            rms[pix] = np.nan
+                            err[pix] = np.nan
+            if bad_pix is not None:
+                rms_no_fit[bad_pix] = np.nan
+                rms_no_fit_err[bad_pix] = np.nan
+
+            rms_cam_nofit = np.nanmean(rms_no_fit)
+            rms_cam_nofit_err = (1 / lenpix) * np.sqrt(np.nansum(rms_no_fit_err**2))
+            rms_no_fit_all.append(rms_cam_nofit)
+            rms_no_fit_err_all.append(rms_cam_nofit_err)
+
+            ucts_deltat = [
+                ucts_timestamps[i] - ucts_timestamps[i - 1]
+                for i in range(1, len(ucts_timestamps))
+            ]
+            ucts_deltat = np.diff(ucts_timestamps)
+            time_tot = ((ucts_timestamps[-1] - ucts_timestamps[0]) * u.ns).to(u.s)
+            collected_trigger_rate = (event_counter[-1] + busy_counter[-1]) / time_tot
+
+            deadtime_pc = (
+                busy_counter[-1] / (event_counter[-1] + busy_counter[-1]) * 100
+            )
+            # the error is not yet calculated
+            counter = len(event_counter) - 1
+            print(f"{counter=}")
+            num_events = event_counter[-1]
+            print(f"{num_events=}")
+            event_rate = counter / num_events
+            print(f"{event_rate=}")
+            mean_deltat = np.nanmean(ucts_deltat)
+            deadtime_std = np.nanstd(ucts_deltat) / np.sqrt(counter)
+
+            # CONTINUER ICI
+            # ucts_timestamps_all.append(ucts_timestamps)
+            ucts_deltat_all.append(mean_deltat)
+            deadtime_err.append(deadtime_std)
+            event_rate_all.append(event_rate)
+            # busy_counter_all.append(busy_counter)
+            collected_trigger_rate_all.append(collected_trigger_rate.value)
+            time_tot_all.append(time_tot)
+            deadtime_pc_all.append(deadtime_pc)
+            print(f"{charge_container=}")
+
+            # Only select "good events"
+            ucts_timestamps = ucts_timestamps[good_evts]
+
+            # dt in nanoseconds
+
+            # make hist to get rms value
+            hist_values, bin_edges = np.histogram(ucts_deltat, bins=50)
+            print(hist_values)
+            # Compute bin centers
+            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+            weighted_mean = np.average(bin_centers, weights=hist_values)
+
+            # Compute weighted variance
+            weighted_variance = np.average(
+                (bin_centers - weighted_mean) ** 2, weights=hist_values
+            )
+
+            # Compute RMS value (Standard deviation)
+            trig_rms = np.sqrt(weighted_variance)
+
+            # Compute the total number of data points (sum of histogram values, i.e. N)
+            N = np.sum(hist_values)
+
+            # Error on the standard deviation
+            trig_err = trig_rms / np.sqrt(2 * N)
+            # print("Error on RMS:", err[pix])
+
+            trig_rms_all.append(trig_rms)
+            trig_err_all.append(trig_err)
+        print(tmin, tmax)
+        return (
+            mean_charge_all,
+            std_charge_all,
+            std_err_all,
+            mean_resolution_all,
+            err_resolution_all,
+            ratio_hglg_all,
+            tom_all,
+            tom_all_err,
+            rms_no_fit_all,
+            rms_no_fit_err_all,
+            trig_rms_all,
+            trig_err_all,
+            ucts_deltat_all,
+            deadtime_err,
+            event_rate_all,
+            # busy_counter_all,
+            collected_trigger_rate_all,
+            time_tot_all,
+            deadtime_pc_all,
+            tmin,
+            tmax,
+        )
