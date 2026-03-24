@@ -26,10 +26,47 @@ test_dict = {
             "mysubkey2": np.random.normal(size=geom.n_pixels),
             "FOOPIXTIMELINE-HIGH": np.random.normal(size=1000),
         },
+        # BADPIX keys for testing
+        "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN": {
+            "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN": np.array(
+                [0, 1, 2] + [0] * (geom.n_pixels - 3)
+            ),
+        },
+        "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN": {
+            "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN": np.array(
+                [0, 1, 2] + [0] * (geom.n_pixels - 3)
+            ),
+        },
     }
 }
 # Renders the second image incomplete
 test_dict["run1"]["mykey2"]["mysubkey2"][10:20] = np.nan
+
+
+def test_set_bad_pixels_cap_value():
+    from nectarchain.dqm.bokeh_app.app_hooks import set_bad_pixels_cap_value
+
+    arr = np.array([0.0, 1.2, 0.0, 2.0])
+    capped = set_bad_pixels_cap_value(arr.copy())
+    assert np.all(capped <= 1.0)
+    assert capped[1] == 1.0
+    assert capped[3] == 1.0
+
+
+def test_get_bad_pixels_position():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_bad_pixels_position
+
+    source = test_dict["run1"]
+    image_shape = (geom.n_pixels,)
+    mask_high, mask_low = get_bad_pixels_position(source, image_shape)
+    assert mask_high.shape == image_shape
+    assert mask_low.shape == image_shape
+    assert mask_high[1]
+    assert mask_high[2]
+    assert not mask_high[0]
+    assert mask_low[1]
+    assert mask_low[2]
+    assert not mask_low[0]
 
 
 def test_make_camera_displays():
@@ -37,6 +74,46 @@ def test_make_camera_displays():
 
     for runid in list(test_dict.keys()):
         make_camera_displays(source=test_dict[runid], runid=runid)
+
+
+def test_get_run_times():
+    from datetime import datetime
+
+    from nectarchain.dqm.bokeh_app.app_hooks import get_run_times
+
+    # Create a test source dict with START-TIMES data
+    # Using np.array to simulate the structure expected by the function
+    run_start_time_ts = 1609459200  # 2021-01-01 00:00:00 UTC
+    first_event_time_ts = 1609459260  # 2021-01-01 00:01:00 UTC
+    last_event_time_ts = 1609462800  # 2021-01-01 01:00:00 UTC
+
+    source_with_times = {
+        "START-TIMES": {
+            "Run start time": np.array([run_start_time_ts]),
+            "First event": np.array([first_event_time_ts]),
+            "Last event": np.array([last_event_time_ts]),
+        }
+    }
+
+    run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(
+        source_with_times
+    )
+
+    # Verify the returned strings are in the correct format
+    assert isinstance(run_start_time_dt, str)
+    assert isinstance(first_event_time_dt, str)
+    assert isinstance(last_event_time_dt, str)
+
+    # Verify the format is YYYY-MM-DD HH:MM:SS
+    expected_format = "%Y-%m-%d %H:%M:%S"
+    datetime.strptime(run_start_time_dt, expected_format)
+    datetime.strptime(first_event_time_dt, expected_format)
+    datetime.strptime(last_event_time_dt, expected_format)
+
+    # Verify the values match the input timestamps
+    assert run_start_time_dt == "2021-01-01 00:00:00"
+    assert first_event_time_dt == "2021-01-01 00:01:00"
+    assert last_event_time_dt == "2021-01-01 01:00:00"
 
 
 def test_make_timelines():

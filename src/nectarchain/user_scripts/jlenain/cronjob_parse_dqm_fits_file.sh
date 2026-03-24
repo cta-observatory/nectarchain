@@ -4,7 +4,7 @@
 # This script is to be used as a cronjob on the nectarcam-dqm-rw VM on the LPNHE OpenStack cloud platform, in order to feed the ZODB database from DQM run on DIRAC.
 
 # Log everything to $LOGFILE
-LOGFILE=${0%".sh"}_$(date +%F).log
+LOGFILE=${0%".sh"}_$(date +%F)_$$.log
 LOGFILE=$HOME/log/$(basename $LOGFILE)
 exec 1>"$LOGFILE" 2>&1
 
@@ -21,7 +21,7 @@ function help ()
     usage
     cat <<EOF
 
-This script parse DQM results and feed them into the ZODB data base for visualization through Bokeh.
+This script parses DQM results and feeds them into the ZODB data base for visualization through Bokeh.
 
 OPTIONS:
      -h                       This help message.
@@ -55,7 +55,13 @@ if ! dirac-proxy-init -M -g ctao_nectarcam --pwstdin < ~/.dirac.pwd; then
     exit 1
 fi
 
+cd /mnt/data/nectarcam/dqm || exit 1
+
 remoteParentDir="/ctao/user/j/jlenain/nectarcam/dqm/${camera}"
 nectarchainScriptDir="/opt/cta/nectarchain/src/nectarchain/user_scripts/jlenain"
 
+echo "Starting parsing DQM results for camera ${camera}"
+
 python ${nectarchainScriptDir}/parse_dqm_fits_file.py -c ${camera} -r $(dls ${remoteParentDir} | grep -ve "/ctao" | awk -F. '{print $1}' | awk -Fn '{print $2}' | tr '\n' ' ')
+
+echo "DQM results parsed for camera ${camera}"
