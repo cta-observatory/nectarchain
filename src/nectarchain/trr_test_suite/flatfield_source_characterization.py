@@ -3,27 +3,26 @@ import copy
 import json
 import logging
 import os
+import pickle
+import sys
 from pathlib import Path
 
 import astropy.units as u
 import numpy as np
 import numpy.ma as ma
-import tabulate as tab
 from astropy.io import ascii
 from astropy.table import Table
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image.toymodel import Gaussian
 from ctapipe.io import EventSource
 from ctapipe.io.hdf5tableio import HDF5TableReader
-
-# ctapipe modules
 from ctapipe.visualization import CameraDisplay
 from ctapipe_io_nectarcam.constants import N_PIXELS
 from iminuit import Minuit
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize._numdiff import approx_derivative
 
+# nectarchain imports
 from nectarchain.data.container import PhotostatContainer
 from nectarchain.data.management import DataManagement
 from nectarchain.makers.calibration import (
@@ -35,97 +34,91 @@ from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/{Path(__file__).stem}_{os.getpid()}.log",
+    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/"
+    f"{Path(__file__).stem}_{os.getpid()}.log",
+    handlers=[logging.getLogger("__main__").handlers],
 )
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
 
 plt.style.use(
     os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), "../../utils/plot_style.mpltstyle"
+        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
     )
 )
 
-parser = argparse.ArgumentParser(
-    description="Run NectarCAM photostatistics analysis",
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-)
 
-parser.add_argument("--FF_run_number", required=True, help="Run number", type=int)
-parser.add_argument("--SPE_run_number", required=True, help="SPE run number", type=int)
-parser.add_argument(
-    "-p",
-    "--run-path",
-    default=f'{os.environ.get("NECTARCAMDATA", "").strip()}',
-    help="Path to run file",
-)
+def get_args():
+    """Parses command-line arguments for the deadtime test script.
 
-parser.add_argument(
-    "-c",
-    "--camera",
-    choices=ALLOWED_CAMERAS,
-    default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
-    help="Process data for a specific NectarCAM camera.",
-    type=str,
-)
+    Returns
+    -------
+    parser : argparse.ArgumentParser
+        The parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Flat-field source characterization test B-TEL-1350.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--FF_run_number",
+        default=6729,
+        help="Flat-field run number",
+        type=int,
+    )
+    parser.add_argument(
+        "--SPE_run_number",
+        default=6774,
+        help="SPE run number",
+        type=int,
+    )
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
+    parser.add_argument(
+        "--SPE_config",
+        choices=[
+            "HHVfree",
+            "HHVfixed",
+            "nominal",
+        ],
+        default="nominal",
+        help="SPE configuration to use, either HHVfree, HHVfixed or nominal.\
+            From ICRC2025 proceedings, we recommend to use resoltion at nominal for "
+        "the SPE fit.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="Output directory",
+        default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
+    )
+    parser.add_argument(
+        "--temp_output", help="Temporary output directory for GUI", default=None
+    )
+    parser.add_argument(
+        "-l",
+        "--log",
+        help="log level",
+        default="info",
+        type=str,
+    )
 
-# Accept True/False as string
-parser.add_argument(
-    "-w",
-    "--add-variance",
-    action="store_true",
-    help="Enable variance correction (False by default)",
-)
-parser.add_argument(
-    "--SPE_config",
-    choices=[
-        "HHVfree",
-        "HHVfixed",
-        "nominal",
-    ],
-    default="nominal",
-    help="SPE configuration to use, either HHVfree, HHVfixed or nominal.\
-        From ICRC2025 proceedings, we recommend to use resoltion at nominal for the SPE fit.",
-)
-parser.add_argument(
-    "--method",
-    choices=[
-        "FullWaveformSum",
-        "FixedWindowSum",
-        "GlobalPeakWindowSum",
-        "LocalPeakWindowSum",
-        "SlidingWindowMaxSum",
-        "TwoPassWindowSum",
-    ],
-    default="GlobalPeakWindowSum",
-    help="charge extractor method",
-    type=str,
-)
-parser.add_argument(
-    "--extractor_kwargs",
-    default={"window_width": 8, "window_shift": 4},
-    help="charge extractor parameters",
-    type=json.loads,
-)
-parser.add_argument(
-    "-v",
-    "--verbosity",
-    help="set the verbosity level of logger",
-    default="INFO",
-    choices=["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
-    type=str,
-)
-
-args = parser.parse_args()
+    return parser
 
 
-def pre_process_fits(filename, camera, pdf):
+def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
     with HDF5TableReader(filename) as h5_table:
         assert h5_table._h5file.isopen == True
         for container in h5_table.read(
             "/data/PhotostatContainer_0", PhotostatContainer
         ):
-            log.info(container.as_dict())
+            log.debug(container.as_dict())
             break
     h5_table.close()
 
@@ -134,12 +127,12 @@ def pre_process_fits(filename, camera, pdf):
     # Generate the full expected pixel ID list
     expected_pixels = np.arange(total_pixels)
     container_dict = container.as_dict()
-    log.info(f"number of valid pixels : {len(container_dict['is_valid'])}")
+    log.info(f"Number of valid pixels : {len(container_dict['is_valid'])}")
 
     # Find missing pixel IDs
     existing_pixels = container_dict["pixels_id"]
     missing_pixels = np.setdiff1d(expected_pixels, existing_pixels)
-    log.info(f"Missing pixels {missing_pixels}")
+    log.debug(f"Missing pixels {missing_pixels}")
 
     # pixels marked as broken (0)
     is_valid_full = np.zeros(total_pixels, dtype=float)
@@ -150,14 +143,20 @@ def pre_process_fits(filename, camera, pdf):
     is_valid_full[existing_pixels] = is_valid_values
 
     # Bad/missing pixels plot
-    fig00 = plt.figure(figsize=(5, 5))
-    disp = CameraDisplay(geometry=camera, show_frame=False)
+    fig, ax = plt.subplots()
+    disp = CameraDisplay(geometry=camera, show_frame=False, ax=ax)
     disp.image = is_valid_full
     disp.set_limits_minmax(0, 1)
     disp.cmap = plt.cm.coolwarm
     disp.add_colorbar()
-    fig00.suptitle("Broken / Missing pixels")
-    pdf.savefig(fig00)
+    fig.suptitle("Broken / Missing pixels")
+    fig_name = "camera_broken_pixels"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     # Determine the shape of the 'high_gain' values
     hg_shape = (
@@ -232,37 +231,32 @@ def pre_process_fits(filename, camera, pdf):
     n_pe = ma.masked_array(n_pe, mask=mask)
 
     # Perform some plots
-    fig0 = plt.figure(figsize=(6, 5))
-    ax = plt.subplot()
-    disp = CameraDisplay(geometry=camera, show_frame=False)
+    fig, ax = plt.subplots()
+    disp = CameraDisplay(geometry=camera, show_frame=False, ax=ax)
 
     disp.image = n_pe
     disp.add_colorbar()
     # disp.set_limits_minmax(140, 165)
 
-    cbar1 = fig0.axes[-1]
-    cbar1.set_ylabel(
-        r"Illumination, $n_{\rm PE}$", rotation=90, labelpad=15, fontsize=16
-    )
-    cbar1.tick_params(labelsize=16)  # Increase tick label size on colorbar
+    cbar = fig.axes[-1]
+    cbar.set_ylabel(r"Illumination, $n_{\rm PE}$", rotation=90)
     # Axis labels
-    ax.set_xlabel("x (m)", fontsize=16)
-    ax.set_ylabel("y (m)", fontsize=16)
-    # Tick label size
-    ax.tick_params(axis="both", which="major", labelsize=16)
-    # Title
-    plt.title("Data", fontsize=18)
-    pdf.savefig(fig0)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.tick_params(axis="both", which="major")
+    plt.title("Data")
+    fig_name = "camera_data"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     dict_missing_pix = {
         "Missing pixels": len(missing_pixels),
         "high_gain = 0": ma.count_masked(masked_hg) - len(missing_pixels),
     }
-
-    labels = [
-        f'Missing pixels, number = {dict_missing_pix["Missing pixels"]}',
-        f'high gain = 0, number = {dict_missing_pix["high_gain = 0"]}',
-    ]
 
     return (
         n_pe,
@@ -296,7 +290,9 @@ def define_delete_out(sigma, data):
     return data, sigma, outliers
 
 
-def optimize_with_outlier_rejection(sigma, data, camera, pdf):
+def optimize_with_outlier_rejection(
+    sigma, data, camera, output_dir=None, temp_output=None
+):
     # least-squares score function = sum of data residuals squared
     def lsq(a0, a1, a2, a3):
         # We assume that the 2D-Gaussian is symmetric, thus the last two arguments of
@@ -314,16 +310,16 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     minuit.migrad()
 
     if not minuit.fmin.is_valid:
-        log.info("Warning: Fit did not converge!")
+        log.warning("Fit did not converge !")
     log.info(
         f"""Covariance matrix:
-    
-{tab.tabulate(*minuit.covariance.to_table())}
+
+{minuit.covariance}
 
 """
     )
     log.info(
-        f"Fit new parameters: amplitude = {minuit.values['a0']}, "
+        f"Fitted parameters: amplitude = {minuit.values['a0']}, "
         f"x = {minuit.values['a1']}, y = {minuit.values['a2']}, "
         f"length = {minuit.values['a3']}"
     )
@@ -343,8 +339,8 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
     # Visualization
-    log.info(f" number of masked elements for outliers{sigma_masked.count()}")
-    fig2 = plt.figure(figsize=(12, 9))
+    log.info(f"Number of masked elements for outliers: {sigma_masked.count()}")
+    fig = plt.figure(figsize=(12, 9))
 
     # --- Subplot 1 ---
     ax1 = plt.subplot(2, 2, 1)
@@ -354,15 +350,15 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     # disp1.set_limits_minmax(140, 165)
 
     # Set colorbar label for subplot 1
-    cbar1 = fig2.axes[-1]
-    cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90, labelpad=15, fontsize=14)
+    cbar1 = fig.axes[-1]
+    cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90)
 
-    ax1.set_xlabel("x (m)", fontsize=14)
-    ax1.set_ylabel("y (m)", fontsize=14)
+    ax1.set_xlabel("x (m)")
+    ax1.set_ylabel("y (m)")
 
-    ax1.tick_params(axis="both", which="major", labelsize=11)
+    ax1.tick_params(axis="both", which="major")
     # Title
-    ax1.set_title("Model", fontsize=16)
+    ax1.set_title("Model")
 
     # --- Subplot 2 ---
     ax2 = plt.subplot(2, 2, 2)
@@ -372,18 +368,23 @@ def optimize_with_outlier_rejection(sigma, data, camera, pdf):
     disp2.add_colorbar()
 
     # Set colorbar label for subplot 2
-    cbar2 = fig2.axes[-1]  # Again, the last axis should be the second colorbar
-    cbar2.set_ylabel(r"%", rotation=90, labelpad=15, fontsize=14)
+    cbar2 = fig.axes[-1]  # Again, the last axis should be the second colorbar
+    cbar2.set_ylabel(r"%", rotation=90)
 
-    ax2.set_xlabel("x (m)", fontsize=14)
-    ax2.set_ylabel("y (m)", fontsize=14)
-    ax2.tick_params(axis="both", which="major", labelsize=11)
+    ax2.set_xlabel("x (m)")
+    ax2.set_ylabel("y (m)")
+    ax2.tick_params(axis="both", which="major")
     # Title
-    ax2.set_title("Residuals", fontsize=16)
+    ax2.set_title("Residuals")
 
-    # Save and close
-    pdf.savefig(fig2)
-    plt.close(fig2)
+    fig_name = "camera_displays"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
+
     return n_pe, model, minuit, residuals
 
 
@@ -394,7 +395,7 @@ def propagate_scipy_compatible(model, params, cov, camera):
 
     def model_(parameters):
         # params = [A, mu_x, mu_y, sigma]
-        log.info(f" PARAMETERS = {parameters}")
+        log.debug(f"Model parameters: {parameters}")
         sigma_y = parameters[3]  # enforce sigma_x = sigma_y
         return parameters[0] * (
             Gaussian(
@@ -418,7 +419,9 @@ def propagate_scipy_compatible(model, params, cov, camera):
     return y, ycov
 
 
-def error_propagation_compute(data, minuit_resulting, camera, pdf):
+def error_propagation_compute(
+    data, minuit_resulting, camera, output_dir=None, temp_output=None
+):
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
 
     def model(params):
@@ -485,7 +488,6 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
     # Sort data
     sort_idx = np.argsort(theta)
     theta_sorted = theta[sort_idx]
-    data_sorted = data[sort_idx]
 
     min_per_bin = 20
     min_bin_width = 0.1  # <- control smoothness here
@@ -533,8 +535,7 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
 
     # --- plotting
 
-    fig_model = plt.figure(figsize=(6, 5))
-    ax = plt.subplot()
+    fig, ax = plt.subplots()
     ax.scatter(theta, data, label="data", zorder=0, alpha=0.3)
     ax.fill_between(
         bin_centers,
@@ -548,37 +549,6 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
     ax.plot(bin_centers, binned_y, color="r", label="model", zorder=4)
 
     x_fov = 4.0
-    # idx = np.nanargmin(np.abs(bin_centers - x_fov))
-    # y_center = binned_y[idx]
-    # length = 0.02 * y_center
-    # cap_width = 0.25
-    # label = "2%"
-    #
-    # # compute top & bottom
-    # y_top = y_center + length / 2
-    # y_bottom = y_center - length / 2
-    #
-    # # vertical line
-    # plt.plot(
-    #     [x_fov + cap_width, x_fov + cap_width],
-    #     [y_bottom, y_top],
-    #     color="black",
-    #     lw=2,
-    # )
-    #
-    # plt.plot([x_fov, x_fov + cap_width], [y_top, y_top], color="black", lw=2)
-    #
-    # plt.plot([x_fov, x_fov + cap_width], [y_bottom, y_bottom], color="black", lw=2)
-    #
-    # plt.text(
-    #     x_fov + cap_width + 0.05,
-    #     y_center,
-    #     label,
-    #     va="center",
-    #     ha="left",
-    #     fontsize=14,
-    #     color="black",
-    # )
     plt.axvline(
         x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
     )
@@ -595,12 +565,17 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
 
     plt.ylabel("Number of photoelectrons")
     plt.xlabel("θ [deg]")
-    plt.legend(fontsize=10)
-    pdf.savefig(fig_model)
+    plt.legend()
+    fig_name = "flatfield_source_model"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     # plot with binned data
-    fig_binned = plt.figure(figsize=(6, 5))
-    ax = plt.subplot()
+    fig, ax = plt.subplots()
     ax.errorbar(
         bin_centers_data,
         binned_data,
@@ -620,7 +595,6 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
     )
     ax.plot(bin_centers, binned_y, color="r", label="model", zorder=4)
 
-    x_fov = 4.0
     plt.axvline(
         x=x_fov, color="dimgray", linestyle="--", linewidth=1.5, label="FoV limit"
     )
@@ -631,14 +605,20 @@ def error_propagation_compute(data, minuit_resulting, camera, pdf):
         binned_y * 1.02,
         facecolor="blue",
         alpha=0.5,
-        label="2% requirenment",
+        label="2% requirement",
         zorder=2,
     )
 
     plt.ylabel("Number of photoelectrons")
     plt.xlabel("θ [deg]")
-    plt.legend(fontsize=10)
-    pdf.savefig(fig_binned)
+    plt.legend()
+    fig_name = "flatfield_source_model_binned"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     return {
         "params": values,
@@ -667,7 +647,7 @@ def characterize_peak(minuit, camera):
     log.info(f"Closest pixel ID: {closest_pixel_id}")
     log.info(f"Coordinates: ({closest_x}, {closest_y})")
     log.info(
-        f"The distance between the centre of the camera "
+        "The distance between the centre of the camera "
         f"and the peak of the fitted 2D gaussian: {distance:.3f} meters"
     )
     return distance
@@ -676,19 +656,8 @@ def characterize_peak(minuit, camera):
 # Same fit procedure but taking into account V_int
 
 
-# values for minuit are taken from the firs fit without any
-def optimize_with_outlier_rejection_variance(
-    sigma, data, dict_missing_pix, minuit, camera, pdf
-):
-    def define_delete_out(sigma, data):
-        mean = np.mean(data)
-        std = np.std(data)
-        outliers = [np.abs(data - mean) > 3 * std]
-
-        sigma_var = ma.masked_array(sigma, mask=outliers)
-        data_var = ma.masked_array(data, mask=outliers)
-        return data_var, sigma_var, outliers
-
+# values for minuit are taken from the first fit without any
+def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
     # Update data, sigma, and mask
     n_pe_var, sigma_masked_var, mask_upd = define_delete_out(sigma, data)
 
@@ -712,12 +681,12 @@ def optimize_with_outlier_rejection_variance(
     log.info(
         f"""Covariance matrix:
 
-{tab.tabulate(*minuit_new.covariance.to_table())}
+{minuit_new.covariance}
 
 """
     )
     log.info(
-        f"Fit new parameters: amplitude = {minuit_new.values['x0']},"
+        f"Fitted parameters: amplitude = {minuit_new.values['x0']},"
         f" x = {minuit_new.values['x1']}, y = {minuit_new.values['x2']},"
         f" length = {minuit_new.values['x3']}, "
         f" intrinsic variance = {minuit_new.values['x4']}"
@@ -737,61 +706,11 @@ def optimize_with_outlier_rejection_variance(
     max_residual = np.max(np.abs(residuals))
     log.info(f"Max residual: {max_residual*100:.2f}%")
 
-    dict_missing_pix["rejected_outliers"] = (
-        N_PIXELS
-        - sigma_masked_var.count()
-        - dict_missing_pix["Missing pixels"]
-        - dict_missing_pix["high_gain = 0"]
-    )
-
-    labels = [
-        f'Missing pixels, #{dict_missing_pix["Missing pixels"]}',
-        f'high gain = 0, # {dict_missing_pix["high_gain = 0"]}',
-        f'rejected outliers, # {dict_missing_pix["rejected_outliers"]}',
-    ]
-
-    fig_pie_3, ax = plt.subplots()
-    ax.pie(dict_missing_pix.values(), labels=labels, autopct="%.0f%%")
-    fig_pie_3.suptitle("Piechart of masked pixels")
-    pdf.savefig(fig_pie_3)
-
-    # Visualization
-
-    fig4 = plt.figure(figsize=(16, 8))
-    # --- Subplot 1 ---
-    ax1 = plt.subplot(2, 2, 1)
-    disp1 = CameraDisplay(camera, show_frame=False, ax=ax1)
-    disp1.image = model
-    disp1.add_colorbar()
-
-    # Set colorbar label for subplot 1
-    cbar1 = fig4.axes[-1]
-    cbar1.set_ylabel(r"$n_{\rm PE}$", rotation=90, labelpad=15, fontsize=14)
-    ax1.set_xlabel("x (m)", fontsize=14)
-    ax1.set_ylabel("y (m)", fontsize=14)
-    ax1.tick_params(axis="both", which="major", labelsize=11)
-    ax1.set_title("Model", fontsize=16)
-
-    # --- Subplot 2 ---
-    ax2 = plt.subplot(2, 2, 2)
-    disp2 = CameraDisplay(camera, show_frame=False, ax=ax2)
-    disp2.image = residuals * 100
-    disp2.cmap = plt.cm.coolwarm
-    disp2.add_colorbar()
-    cbar2 = fig4.axes[-1]
-    cbar2.set_ylabel(r"%", rotation=90, labelpad=15, fontsize=14)
-    ax2.set_xlabel("x (m)", fontsize=14)
-    ax2.set_ylabel("y (m)", fontsize=14)
-    ax2.tick_params(axis="both", which="major", labelsize=11)
-    ax2.set_title("Residuals", fontsize=16)
-    pdf.savefig(fig4)
-    plt.close(fig4)
-
     return n_pe_var, model, minuit_new, residuals
 
 
-def compute_ff_coefs(charges, gains, pdf):
-    log.info(f"SHAPE {gains.shape}")
+def compute_ff_coefs(charges, gains, output_dir=None, temp_output=None):
+    log.debug(f"gains shape: {gains.shape}")
     masked_charges = np.ma.masked_where(np.ma.getmask(charges), charges)
     masked_gains = np.ma.masked_where(np.ma.getmask(charges), gains)
 
@@ -802,10 +721,10 @@ def compute_ff_coefs(charges, gains, pdf):
     mean = np.mean(eff)
     std = np.std(eff)
 
-    fig_ff_1, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots()
 
     # Plot histogram
-    n, bins, patches = ax.hist(
+    ax.hist(
         eff,
         bins=50,
         edgecolor="black",
@@ -824,30 +743,34 @@ def compute_ff_coefs(charges, gains, pdf):
         label=f"±1σ = {std:.2f}",
     )
     ax.axvline(mean + std, color="red", linestyle="dashed", linewidth=1.5)
-    ax.set_title(
-        f"Distribution of FF coefficient, model independent",
-        fontsize=16,
-    )
-    ax.set_xlabel("FF coefficient", fontsize=16)
-    ax.set_ylabel("Count", fontsize=16)
-    ax.tick_params(axis="both", labelsize=16)
-    ax.legend(fontsize=16)
+    ax.set_title("Distribution of FF coefficient, model independent")
+    ax.set_xlabel("FF coefficient")
+    ax.set_ylabel("Count")
+    ax.tick_params(axis="both")
+    ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
-    fig_ff_1.tight_layout()
-    pdf.savefig(fig_ff_1)
+    fig_name = "flatfield_coefficients_distribution"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
 
     return eff
 
 
-def compute_ff_coefs_model(data, data_std, model, model_std, pdf):
+def compute_ff_coefs_model(
+    data, data_std, model, model_std, output_dir=None, temp_output=None
+):
     FF_coefs = np.divide(data, model, where=model != 0)
     mean = np.mean(FF_coefs)
     std = np.std(FF_coefs)
     std_FF = np.sqrt((data_std / model) ** 2 + (data * model_std / model**2) ** 2)
-    fig_ff, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots()
 
     # Plot histogram
-    n, bins, patches = ax.hist(
+    ax.hist(
         FF_coefs,
         bins=50,
         edgecolor="black",
@@ -865,14 +788,20 @@ def compute_ff_coefs_model(data, data_std, model, model_std, pdf):
         label=f"±1σ = {std:.2f}",
     )
     ax.axvline(mean + std, color="red", linestyle="dashed", linewidth=1.5)
-    ax.set_title(f"Distribution of FF coefficient, model-based", fontsize=16)
-    ax.set_xlabel("FF coefficient", fontsize=16)
-    ax.set_ylabel("Count", fontsize=16)
-    ax.tick_params(axis="both", labelsize=16)
-    ax.legend(fontsize=16)
+    ax.set_title("Distribution of FF coefficient, model-based")
+    ax.set_xlabel("FF coefficient")
+    ax.set_ylabel("Count")
+    ax.tick_params(axis="both")
+    ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
-    fig_ff.tight_layout()
-    pdf.savefig(fig_ff)
+    fig_name = "flatfield_coefficients_distribution_with_model"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
+    if temp_output:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+            pickle.dump(fig, f)
+
     return FF_coefs, std_FF
 
 
@@ -914,36 +843,57 @@ def get_spefilenames(
     return spe_filenames
 
 
-def main(**kwargs):
+def main():
+    """Flat-field source characterization test B-TEL-1350."""
+
+    parser = get_args()
+    args = parser.parse_args()
+    log.setLevel(args.log.upper())
+
     os.makedirs(
         f"{os.environ.get('NECTARCHAIN_LOG','/tmp')}/{os.getpid()}/figures",
         exist_ok=True,
     )
 
-    log.setLevel(args.verbosity)
+    kwargs = copy.deepcopy(vars(args))
+    kwargs.pop("camera")
+    camera = args.camera
+
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
+    sys.argv = sys.argv[:1]
 
     # --- Assign other variables ---
     run_number = args.FF_run_number
-    run_path = args.run_path + (
-        f"/runs/NectarCAM.Run" f"{str(run_number).zfill(4)}.0000.fits.fz"
+    run_path = os.path.join(
+        os.environ.get("NECTARCAMDATA", "/tmp"),
+        f"runs/NectarCAM.Run{str(run_number).zfill(4)}.0000.fits.fz",
     )
     spe_run_number = args.SPE_run_number
-    method = args.method
-    extractor = args.extractor_kwargs
-    camera = args.camera
-    # only one run file is loaded as it is used only to retrieve camera geometry and bad pixels
+    method = "LocalPeakWindowSum"
+    extractor_kwargs = json.loads('{"window_width": 8, "window_shift": 4}')
+    add_variance = True
 
     log.info(
-        f"Method is {method},  the extractor kwargs are: {extractor['window_shift']}, {extractor['window_width']}"
+        f"Method is {method}, the extractor kwargs are: "
+        f"{extractor_kwargs['window_shift']}, "
+        f"{extractor_kwargs['window_width']}"
     )
 
     str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
-        method=args.method, extractor_kwargs=args.extractor_kwargs
+        method=method, extractor_kwargs=extractor_kwargs
     )
 
     if not args.SPE_config:
         raise ValueError(
-            "You must specify the SPE_config to use, either HHVfree, HHVfixed or nominal"
+            "You must specify the SPE_config to use, either HHVfree, HHVfixed or "
+            "nominal"
         )
 
     try:
@@ -953,9 +903,9 @@ def main(**kwargs):
             method=method,
             extractor_kwargs=str_extractor_kwargs,
         )
-        log.info(f"File {spe_filenames} already exists, skipping spe fit computation.")
+        log.info(f"File {spe_filenames} already exists, skipping SPE fit computation.")
     except FileNotFoundError:
-        log.info(f"SPE fit results file not found, running ")
+        log.info("SPE fit results file not found, running SPE fit")
         spe_filenames = None
 
     if not spe_filenames:
@@ -966,8 +916,8 @@ def main(**kwargs):
             max_events=None,
             method=method,
             extractor_kwargs={
-                "window_width": extractor["window_width"],
-                "window_shift": extractor["window_shift"],
+                "window_width": extractor_kwargs["window_width"],
+                "window_shift": extractor_kwargs["window_shift"],
             },
         )
         gain_tool.setup()
@@ -979,11 +929,11 @@ def main(**kwargs):
             method=method,
             extractor_kwargs=str_extractor_kwargs,
         )
-        log.info(f"THIS IS THE spe_filenames output {spe_filenames}")
+        log.debug(f"This is the spe_filenames output {spe_filenames}")
 
-    log.info(f"ADD_VARIANCE = {args.add_variance}")
+    log.debug(f"Add variance option is set to {add_variance}")
 
-    if args.add_variance:
+    if add_variance:
         log.info("Running analysis with variance correction...")
     else:
         log.info("Running analysis without variance correction...")
@@ -997,22 +947,28 @@ def main(**kwargs):
             str_extractor_kwargs=str_extractor_kwargs,
         )[0]
         log.info(
-            f"File {photostatistics_results_file} already exists, skipping photostatistics computation."
+            f"File {photostatistics_results_file} already exists, skipping "
+            "photostatistics computation."
         )
     except FileNotFoundError:
         log.info(
-            f"Photostatistics results file not found, running "
-            f"PhotoStatisticNectarCAMCalibrationTool..."
+            "Photostatistics results file not found, running "
+            "PhotoStatisticNectarCAMCalibrationTool..."
         )
 
         try:
-            log.info(f"Using SPE results file {spe_filenames[0]}")
+            log.debug(f"Using SPE results file {spe_filenames[0]}")
             tool = PhotoStatisticNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run_number,
                 max_events=None,
                 camera=camera,
                 Ped_run_number=run_number,
+                method=method,
+                extractor_kwargs={
+                    "window_width": extractor_kwargs["window_width"],
+                    "window_shift": extractor_kwargs["window_shift"],
+                },
                 SPE_result=spe_filenames[0],
                 **kwargs,
             )
@@ -1030,11 +986,9 @@ def main(**kwargs):
             log.critical(e, exc_info=True)
             raise e
 
-        log.info("Photostatistics results file was found, beginning the analysis")
-
-    log.info("SPE fit was found, begin the analysis")
-    # Create PdfPages object
-    pdf_file = PdfPages(f"Plots_analysis_run{run_number}.pdf")
+        log.info(
+            "Photostatistics results file was found: " f"{photostatistics_results_file}"
+        )
 
     source = EventSource.from_url(input_url=run_path, max_events=1)
     camera_tel = source.subarray.tel[
@@ -1049,13 +1003,20 @@ def main(**kwargs):
         high_gains,
         low_gains,
         charges,
-    ) = pre_process_fits(photostatistics_results_file, camera_tel, pdf_file)
+    ) = pre_process_fits(
+        photostatistics_results_file,
+        camera_tel,
+        output_dir=output_dir,
+        temp_output=temp_output,
+    )
 
     # First fit no variance
     data_1, fit_1, minuit_1, residuals_1 = optimize_with_outlier_rejection(
-        sigma_masked, n_pe, camera_tel, pdf_file
+        sigma_masked, n_pe, camera_tel, output_dir=output_dir, temp_output=temp_output
     )
-    dict_errors = error_propagation_compute(data_1, minuit_1, camera_tel, pdf_file)
+    dict_errors = error_propagation_compute(
+        data_1, minuit_1, camera_tel, output_dir=output_dir, temp_output=temp_output
+    )
     y_1, yerr_prop_1, minuit_vals_1, minuit_vals_errors_1 = (
         dict_errors["model_values"],
         dict_errors["model_errors"],
@@ -1064,28 +1025,10 @@ def main(**kwargs):
     )
     log.info(f"Resulting error for the model is {np.mean(yerr_prop_1/y_1)*100:.2f}%")
     characterize_peak(minuit_vals_1, camera_tel)
-    log.info(minuit_1.values)
-
-    # Visualize how many pixels were masked
-    dict_missing_pix["rejected_outliers"] = (
-        N_PIXELS
-        - sigma_masked.count()
-        - dict_missing_pix["Missing pixels"]
-        - dict_missing_pix["high_gain = 0"]
-    )
-
-    labels = [
-        f'Missing pixels, #{dict_missing_pix["Missing pixels"]}',
-        f'high gain = 0, # {dict_missing_pix["high_gain = 0"]}',
-        f'rejected outliers, # {dict_missing_pix["rejected_outliers"]}',
-    ]
-    fig_pie, ax = plt.subplots()
-    ax.pie(dict_missing_pix.values(), labels=labels, autopct="%.0f%%")
-    fig_pie.suptitle("Piechart of masked pixels")
-    pdf_file.savefig(fig_pie)
+    log.debug(minuit_1.values)
 
     # Second fit with variance
-    if args.add_variance:
+    if add_variance:
         (
             data_varinace,
             fit_variance,
@@ -1094,7 +1037,6 @@ def main(**kwargs):
         ) = optimize_with_outlier_rejection_variance(
             sigma_masked,
             n_pe,
-            dict_missing_pix,
             [
                 minuit_1.values["a0"],
                 minuit_1.values["a1"],
@@ -1103,19 +1045,19 @@ def main(**kwargs):
                 0.0,
             ],
             camera_tel,
-            pdf_file,
         )
 
         plt.figure()
         plt.hist(residuals_variance_result, bins=50)
-        plt.title("Residuals binned", fontsize=16)
+        plt.title("Residuals binned")
         plt.close()
 
         dict_error_var = error_propagation_compute(
             data_varinace,
             minuit_variance_result,
             camera_tel,
-            pdf_file,
+            output_dir=output_dir,
+            temp_output=temp_output,
         )
 
         (
@@ -1134,21 +1076,28 @@ def main(**kwargs):
             f"Resulting error for the model is "
             f"{np.mean(yerr_prop_variance / y_variance) * 100:.2f}%"
         )
-        log.info(np.min(camera_tel.pix_x.value))
-        log.info(np.min(camera_tel.pix_y.value))
-        log.info(np.mean(camera_tel.pix_x.value))
-        log.info(minuit_values_variance[1])
-        log.info(minuit_values_variance[2])
+        log.debug(np.min(camera_tel.pix_x.value))
+        log.debug(np.min(camera_tel.pix_y.value))
+        log.debug(np.mean(camera_tel.pix_x.value))
+        log.debug(minuit_values_variance[1])
+        log.debug(minuit_values_variance[2])
 
         characterize_peak(minuit_values_variance, camera_tel)
 
     # compute flat field coef
-    simple_ff_coefs = compute_ff_coefs(charges, high_gains, pdf_file)
+    simple_ff_coefs = compute_ff_coefs(
+        charges, high_gains, output_dir=output_dir, temp_output=temp_output
+    )
     ff_coefs_model, ff_coefs_model_err = compute_ff_coefs_model(
-        n_pe, std_n_pe, y_1, yerr_prop_1, pdf_file
+        n_pe,
+        std_n_pe,
+        y_1,
+        yerr_prop_1,
+        output_dir=output_dir,
+        temp_output=temp_output,
     )
 
-    with open(f"Log_info_run_{run_number}_fixed.txt", "a") as f:
+    with open(f"{output_dir}/log_info_run_{run_number}_fixed.txt", "a") as f:
         # Write a header if file is empty (i.e. first time writing)
         if f.tell() == 0:
             f.write(
@@ -1166,7 +1115,7 @@ def main(**kwargs):
         y0_1_err = np.arctan(minuit_vals_errors_1[2] / 12)
         width_1_err = np.arctan(minuit_vals_errors_1[3] / 12)
 
-        if args.add_variance:
+        if add_variance:
             x0_v = np.arctan(minuit_values_variance[1] / 12)
             y0_v = np.arctan(minuit_values_variance[2] / 12)
             width_v = np.arctan(minuit_values_variance[3] / 12)
@@ -1181,7 +1130,7 @@ def main(**kwargs):
             f"{minuit_vals_errors_1[0]},{x0_1_err},"
             f"{y0_1_err},{width_1_err},{np.mean(yerr_prop_1/y_1)*100}\n"
         )
-        if args.add_variance:
+        if add_variance:
             f.write(
                 f"{run_number},With_v_int,{minuit_values_variance[0]},"
                 f"{x0_v},{y0_v},{width_v},"
@@ -1204,13 +1153,14 @@ def main(**kwargs):
     data["Charge_init"] = charges
     data["N_photoelectrons_init"] = n_pe
     data["N_photoelectrons_std_init"] = std_n_pe
-    ascii.write(data, f"FF_calibration_run{run_number}.dat", overwrite=True)
+    ascii.write(
+        data,
+        f"{output_dir}/FF_calibration_run{run_number}.dat",
+        overwrite=True,
+    )
 
-    pdf_file.close()
+    plt.close("all")
 
 
 if __name__ == "__main__":
-    kwargs = copy.deepcopy(vars(args))
-    kwargs.pop("camera")
-
-    main(**kwargs)
+    main()
