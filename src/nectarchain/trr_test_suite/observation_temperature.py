@@ -1,4 +1,5 @@
 import argparse
+import gc
 import logging
 import os
 import sys
@@ -11,7 +12,7 @@ from lmfit.models import Model
 from nectarchain.trr_test_suite.charge_resolution import run_charge_resolution
 from nectarchain.trr_test_suite.deadtime import run_deadtime
 from nectarchain.trr_test_suite.linearity import run_linearity
-from nectarchain.trr_test_suite.utils import linear_fit_function
+from nectarchain.trr_test_suite.utils import ALLOWED_CAMERAS, linear_fit_function
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -49,9 +50,6 @@ According to the nectarchain component interface, you have to set a NECTARCAMDAT
 environment variable in the folder where you have the data from your runs or where
 you want them to be downloaded.
 
-You have to give a list of runs in <run_file>.json, e.g.
-`charge_resolution_run_list.json` and pass it to the args corresponding value of voltage
-and the NSB value of the sets and an output directory to save the final plot.
 
 If the data are not in `$NECTARCAMDATA`, the files will be downloaded through DIRAC.
 
@@ -80,6 +78,14 @@ number of pixels used (default 1000).
         required=False,
         default="all",
     )
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
 
     parser.add_argument(
         "-e",
@@ -93,9 +99,9 @@ number of pixels used (default 1000).
         "-o",
         "--output",
         type=str,
-        help="Output directory. If none, plot will be saved in current directory",
+        help="Output base directory",
         required=False,
-        default="./",
+        default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
@@ -107,7 +113,9 @@ number of pixels used (default 1000).
 class ObservationTemperaturePipeline:
     """Generates the temperature dependent plots"""
 
-    def __init__(self, run_module, run_file, max_events, output_dir, temp_output):
+    def __init__(
+        self, run_module, run_file, camera, max_events, output_dir, temp_output
+    ):
         # Initialise parameters by reading run_file
 
         self.run_module = run_module
@@ -115,6 +123,7 @@ class ObservationTemperaturePipeline:
         self.max_events = max_events
         self.output_dir = output_dir
         self.temp_output = temp_output
+        self.camera = camera
 
         self.df = pd.read_json(run_file)
         self.df_module = self.df.copy()
@@ -208,15 +217,14 @@ class ObservationTemperaturePipeline:
 
         colors = plt.cm.viridis(np.linspace(0, 1, len(df_output["ff_v"].unique())))
         ff_list = sorted(df_output["ff_v"].unique())
-        print("ff_list ", ff_list)
+
         marker = ["o", "s", "d", "^", "*"]
 
         # Calibration curves dependent on temperature
         df_nsb0 = df_output[df_output["NSB"] == 0]
-        print(df_nsb0)
+
         plt.figure()
         for temp_fixed in df_nsb0["temperature"].unique():
-            print("temperature ", temp_fixed)
             df_nsb_temp = df_nsb0[df_nsb0["temperature"] == temp_fixed]
             ff_v = df_nsb_temp["ff_v"]
             mean_charge = df_nsb_temp["mean_charge"]
@@ -226,7 +234,7 @@ class ObservationTemperaturePipeline:
                 mean_charge,
                 yerr=df_nsb_temp["mean_charge_err"],
                 marker="o",
-                label=f"T={temp_fixed}C",
+                label=rf"T={temp_fixed}$^\circ$C",
             )
 
         plt.legend()
@@ -238,13 +246,8 @@ class ObservationTemperaturePipeline:
         # temperature for different FF_voltages and NSBs.
 
         plt.figure(figsize=(8, 6))
-        print(
-            "===before loop =====",
-            sorted(df_output["ff_v"].unique()),
-            enumerate(sorted(df_output["ff_v"].unique())),
-        )
+
         for i, v_fixed in enumerate(ff_list):
-            print("====In loop==== ", v_fixed)
             df_v = df_output[df_output["ff_v"] == v_fixed].sort_values("temperature")
             for j, nsb in enumerate(sorted(df_v["NSB"].unique())):
                 df_v_nsb = df_v[df_v["NSB"] == nsb]
@@ -256,41 +259,94 @@ class ObservationTemperaturePipeline:
                     label=f"FF={v_fixed}V, NSB={nsb}",
                 )
 
-        plt.xlabel("Temperature (°C)")
+        plt.xlabel(r"Temperature ($^\circ$C)")
         plt.ylabel("Charge Resolution")
-        plt.legend(fontsize=8, ncol=2)
-        plt.savefig("ChargeResolution_T_nsb.png")
+        # plt.legend(fontsize=8, ncol=2)
+        fig_name = "charge_resolution_T_nsb"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        plt.savefig(plot_path)
 
+        plt.clf()
+        slope = []
+        intercept = []
+        slope_err = []
+        intercept_err = []
         for i, v_fixed in enumerate(ff_list):
             df_v = df_output[df_output["ff_v"] == v_fixed]
+            mean_res = []
+            min_res = []
+            max_res = []
+            temp_list = []
 
-            # Group by temperature and aggregate over NSB
-            grouped = df_v.groupby("temperature")["mean_charge_resolution"]
+            for j, t_fixed in enumerate(sorted(df_v["temperature"].unique())):
+                df_v_t = df_v[df_v["temperature"] == t_fixed]
+                temp_list.append(t_fixed)
+                res = df_v_t["mean_charge_resolution"]
+                mean_res.append(np.mean(res))
+                min_res.append(np.min(res))
+                max_res.append(np.max(res))
 
-            mean_res = grouped.mean()
-            min_res = grouped.min()
-            max_res = grouped.max()
+            temp_list = np.array(temp_list)
+            min_res = np.array(min_res)
+            max_res = np.array(max_res)
 
-            temps = mean_res.index
+            plt.plot(temp_list, mean_res, label=f"{v_fixed} V", marker="o", ls="")
+            plt.fill_between(temp_list, min_res, max_res, alpha=0.6)
 
-            # Plot mean curve
-            plt.plot(
-                temps,
-                mean_res.values,
-                color=colors[i],
-                marker="o",
-                label=f"FF={v_fixed}V",
+            model = Model(linear_fit_function)
+            params = model.make_params(a=0, b=np.mean(mean_res))
+            charge_res_fit = model.fit(
+                mean_res,
+                params,
+                weights=1 / (max_res - min_res),
+                x=temp_list,
             )
+            slope.append(charge_res_fit.params["a"].value)
+            intercept.append(charge_res_fit.params["b"].value)
+            slope_err.append(charge_res_fit.params["a"].stderr)
+            intercept_err.append(charge_res_fit.params["b"].stderr)
 
-            # Shade min–max band
-            plt.fill_between(
-                temps, min_res.values, max_res.values, color=colors[i], alpha=0.25
-            )
-
-        plt.xlabel("Temperature (°C)")
+        plt.xlabel(r"Temperature ($^\circ$C)")
         plt.ylabel("Charge Resolution")
-        plt.legend(fontsize=8, ncol=2)
-        plt.savefig("ChargeResolution_T_nsb_paper.png")
+        plt.ylim(0.04, 0.22)
+        plt.legend(fontsize=8, ncol=4)
+        fig_name = "ChargeResolution_T_nsb_paper"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        plt.savefig(plot_path)
+
+        plt.clf()
+        gc.collect()
+        fig, ax1 = plt.subplots()
+
+        color = "tab:red"
+
+        ax1.errorbar(ff_list, slope, yerr=slope_err, marker="o", label="slope")
+        ax1.set_xlabel("Voltage (V)")
+        ax1.set_ylabel("Slope")
+        ax2 = ax1.twinx()
+        ax2.errorbar(
+            ff_list,
+            intercept,
+            intercept_err,
+            marker="^",
+            color=color,
+            label="intercept",
+        )
+        ax2.set_ylabel("Mean charge resolution", color=color)
+        mean_slope = np.mean(slope)
+        mean_slope_err = np.mean(slope_err)
+        ax1.text(
+            0.05,
+            0.95,
+            f"Mean slope: {mean_slope:.5f} ± {mean_slope_err:.5f}",
+            transform=ax1.transAxes,
+            verticalalignment="top",
+        )
+        fig.tight_layout()
+        fig_name = "ChargeResolution_parameters"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        plt.savefig(plot_path)
+        plt.close("all")
 
     def plot_linearity_temperature(self, df_module_filtered):
         """Plots
@@ -305,7 +361,7 @@ class ObservationTemperaturePipeline:
             runlist = row["runs"]
             transmission = row["transmissions"]
 
-            print(row, "====", t, runlist, transmission)
+            log.info(row, "====", t, runlist, transmission)
 
             fit_parameters, ratio, ratio_std = run_linearity(
                 runlist,
@@ -476,17 +532,15 @@ class ObservationTemperaturePipeline:
 
         # PLOT2 : HG/LG as function of different transmissions
         slope_hglg = []
-        print("loop", df_lin)
+
         df_lin = df_lin.explode(["transmission", "ratio", "ratio_std"])
         plt.clf()
-        print("before loop ", sorted(df_lin["transmission"].unique()))
-        for transmission in sorted(df_lin["transmission"].unique()):
-            print(transmission)
 
+        for transmission in sorted(df_lin["transmission"].unique()):
             df_lin_transmission = df_lin[
                 df_lin["transmission"] == transmission
             ].sort_values("temperature")
-            print(df_lin_transmission)
+
             plt.errorbar(
                 df_lin_transmission["temperature"],
                 df_lin_transmission["ratio"],
@@ -527,12 +581,15 @@ class ObservationTemperaturePipeline:
                 boxstyle="round", facecolor="white", edgecolor="black", alpha=0.9
             ),
         )
-        plt.xlabel("Temperature $deg C")
+        plt.xlabel(r"Temperature ($^\circ$C)")
         plt.ylabel("HG/LG")
         plt.legend(fontsize=5, ncol=3)
         plt.xlim(-10, 30)
         plt.ylim(-1, 20)
+
         plt.savefig("HGLGRatio_Linearity_temp.png")
+
+        plt.close("all")
 
     def plot_deadtime_temperature(self, df_module_filtered):
         """Plots
@@ -661,18 +718,19 @@ class ObservationTemperaturePipeline:
 def main():
     parser = get_args()
     args = parser.parse_args()
-    print(args)
+
     run_file = args.run_file
 
     run_module = args.run_module
     max_events = args.evts
     output_dir = args.output
+    camera = args.camera
     temp_output = args.temp_output
 
     sys.argv = sys.argv[:1]
 
     pipeline = ObservationTemperaturePipeline(
-        run_module, run_file, max_events, output_dir, temp_output
+        run_module, run_file, camera, max_events, output_dir, temp_output
     )
 
     pipeline.run()
