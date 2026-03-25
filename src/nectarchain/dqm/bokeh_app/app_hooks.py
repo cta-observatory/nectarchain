@@ -41,6 +41,66 @@ geom = geom.transform_to(EngineeringCameraFrame())
 logger = setup_logger()
 
 
+def get_run_ids_for_camera(src, camera_code):
+    """Get run ids for a given camera from database keys
+
+    Parameters
+    ----------
+    src : DQMDB
+        Object-oriented database defined in nectarchain.dqm.db_utils
+        from ZODB and ZEO ClientStorage
+    camera_code : str
+        Code of the camera to filter the run ids for
+
+    Returns
+    -------
+    list
+        List containing the run ids for the given camera
+    """
+
+    all_database_keys = list(src.keys())
+    run_ids_for_camera = []
+    for key in all_database_keys:
+        if "NectarCAM" + camera_code in key:
+            run_ids_for_camera.append(key)
+
+    logger.info(
+        f"Successfully extracted run ids for camera {camera_code} from database keys"
+    )
+
+    return run_ids_for_camera
+
+
+def get_available_cameras_from_db_keys(src):
+    """Get available cameras from database keys
+
+    Parameters
+    ----------
+    src : DQMDB
+        Object-oriented database defined in nectarchain.dqm.db_utils
+        from ZODB and ZEO ClientStorage
+
+    Returns
+    -------
+    set
+        Set containing the names of available cameras
+    """
+
+    all_database_keys = list(src.keys())
+    available_cameras = set()
+    for key in all_database_keys:
+        if not re.match(TEST_PATTERN, key):
+            camera_name = key.split("NectarCAM")[1].split("_")[0]
+            available_cameras.add(camera_name)
+
+    logger.info(
+        "Successfully extracted available cameras"
+        + f"from database keys: {available_cameras}"
+    )
+
+    return available_cameras
+
+
 def get_rundata(src, runid):
     """Get run data to populate plots on the Bokeh displays
 
