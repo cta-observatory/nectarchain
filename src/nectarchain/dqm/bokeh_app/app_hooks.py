@@ -61,7 +61,7 @@ def get_run_ids_for_camera(src, camera_code):
     all_database_keys = list(src.keys())
     run_ids_for_camera = []
     for key in all_database_keys:
-        if "NectarCAM" + camera_code in key:
+        if f"NectarCAM{camera_code}" in key:
             run_ids_for_camera.append(key)
 
     logger.info(
@@ -196,7 +196,7 @@ def make_timelines(source, runid=None):
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in source[parentkey].keys():
                 logger.info(
-                    f"Run id {runid}," + f" preparing plot for {parentkey}, {childkey}"
+                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
                 timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(source[parentkey][childkey]))
@@ -303,7 +303,7 @@ def make_camera_displays(source, runid):
         if not re.match(TEST_PATTERN, parentkey):
             for childkey in source[parentkey].keys():
                 logger.info(
-                    f"Run id {runid}," + f" preparing plot for {parentkey}, {childkey}"
+                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
                 displays[parentkey][childkey] = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
@@ -528,7 +528,7 @@ def get_bad_pixels_position(source, image_shape):
     except KeyError as e:
         mask_bad_pixels_high_gain = np.zeros(shape=constants.N_PIXELS, dtype=bool)
         mask_bad_pixels_low_gain = mask_bad_pixels_high_gain
-        logger.error(f"Exception '{e}'," + " bad pixels flag not found in the database")
+        logger.error(f"Exception '{e}', bad pixels flag not found in the database")
 
     if image_shape != mask_bad_pixels_high_gain.shape:
         mask_bad_pixels_high_gain = np.zeros(shape=image_shape, dtype=bool)

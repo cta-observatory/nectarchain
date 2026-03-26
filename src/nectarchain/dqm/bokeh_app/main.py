@@ -199,7 +199,7 @@ db = DQMDB(read_only=True).root
 
 available_cameras_in_db_keys = get_available_cameras_from_db_keys(db)
 available_cameras_in_db = [
-    "NectarCAM " + cam if cam != "QM" else "NectarCAM " + "Qualification Module"
+    f"NectarCAM {cam}" if cam != "QM" else "NectarCAM Qualification Model"
     for cam in available_cameras_in_db_keys
 ]
 runs_for_available_cameras = {
@@ -217,7 +217,7 @@ for cam, runs in runs_for_available_cameras.items():
     page_layouts_per_camera[cam] = page_layout
     run_selects_per_camera[cam] = run_select
 
-    tab_panels_for_layout.append(TabPanel(child=page_layout, title="NectarCAM " + cam))
+    tab_panels_for_layout.append(TabPanel(child=page_layout, title=f"NectarCAM {cam}"))
 
 tabs_for_layout = Tabs(tabs=tab_panels_for_layout, sizing_mode="scale_width")
 
