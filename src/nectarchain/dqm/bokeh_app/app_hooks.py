@@ -68,6 +68,7 @@ def get_run_ids_for_camera(src, camera_code):
         f"Successfully extracted run ids for camera {camera_code} from database keys"
     )
 
+    run_ids_for_camera = sorted(run_ids_for_camera, reverse=True)
     return run_ids_for_camera
 
 
