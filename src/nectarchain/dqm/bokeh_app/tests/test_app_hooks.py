@@ -123,6 +123,81 @@ def test_make_timelines():
         make_timelines(source=test_dict[runid], runid=runid)
 
 
+def test_get_run_ids_for_camera():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with multiple cameras and runs
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run1000",
+        "NectarCAM2_Run1002",
+        "NectarCAM3_Run1003",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Test extracting run ids for camera 1
+    run_ids_cam01 = get_run_ids_for_camera(root, "1")
+    assert len(run_ids_cam01) == 2
+    assert "NectarCAM1_Run1000" in run_ids_cam01
+    assert "NectarCAM1_Run1001" in run_ids_cam01
+
+    # Test extracting run ids for camera 2
+    run_ids_cam02 = get_run_ids_for_camera(root, "2")
+    assert len(run_ids_cam02) == 2
+    assert "NectarCAM2_Run1000" in run_ids_cam02
+    assert "NectarCAM2_Run1002" in run_ids_cam02
+
+    # Test extracting run ids for camera 3
+    run_ids_cam03 = get_run_ids_for_camera(root, "3")
+    assert len(run_ids_cam03) == 1
+    assert "NectarCAM3_Run1003" in run_ids_cam03
+
+    # Test with camera code that has no matches
+    run_ids_cam99 = get_run_ids_for_camera(root, "99")
+    assert len(run_ids_cam99) == 0
+    assert isinstance(run_ids_cam99, list)
+
+
+def test_get_available_cameras_from_db_keys():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_available_cameras_from_db_keys
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with various key types
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run1000",
+        "NectarCAM3_Run1003",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Test that available cameras are correctly extracted
+    available_cameras = get_available_cameras_from_db_keys(root)
+
+    # Should return a set
+    assert isinstance(available_cameras, set)
+
+    # Should contain only the cameras, not the filtered keys
+    assert "1" in available_cameras
+    assert "2" in available_cameras
+    assert "3" in available_cameras
+
+    # Should have exactly 3 cameras
+    assert len(available_cameras) == 3
+
+
 def test_bokeh(tmp_path):
     from nectarchain.dqm.bokeh_app.app_hooks import (
         get_rundata,

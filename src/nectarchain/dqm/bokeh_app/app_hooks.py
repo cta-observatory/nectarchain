@@ -41,6 +41,67 @@ geom = geom.transform_to(EngineeringCameraFrame())
 logger = setup_logger()
 
 
+def get_run_ids_for_camera(src, camera_code):
+    """Get run ids for a given camera from database keys
+
+    Parameters
+    ----------
+    src : DQMDB
+        Object-oriented database defined in nectarchain.dqm.db_utils
+        from ZODB and ZEO ClientStorage
+    camera_code : str
+        Code of the camera to filter the run ids for
+
+    Returns
+    -------
+    list
+        List containing the run ids for the given camera
+    """
+
+    all_database_keys = list(src.keys())
+    run_ids_for_camera = []
+    for key in all_database_keys:
+        if f"NectarCAM{camera_code}" in key:
+            run_ids_for_camera.append(key)
+
+    logger.info(
+        f"Successfully extracted run ids for camera {camera_code} from database keys"
+    )
+
+    run_ids_for_camera = sorted(run_ids_for_camera, reverse=True)
+    return run_ids_for_camera
+
+
+def get_available_cameras_from_db_keys(src):
+    """Get available cameras from database keys
+
+    Parameters
+    ----------
+    src : DQMDB
+        Object-oriented database defined in nectarchain.dqm.db_utils
+        from ZODB and ZEO ClientStorage
+
+    Returns
+    -------
+    set
+        Set containing the names of available cameras
+    """
+
+    all_database_keys = list(src.keys())
+    available_cameras = set()
+    for key in all_database_keys:
+        if not re.match(TEST_PATTERN, key):
+            camera_name = key.split("NectarCAM")[1].split("_")[0]
+            available_cameras.add(camera_name)
+
+    logger.info(
+        "Successfully extracted available cameras"
+        + f"from database keys: {available_cameras}"
+    )
+
+    return available_cameras
+
+
 def get_rundata(src, runid):
     """Get run data to populate plots on the Bokeh displays
 
@@ -135,7 +196,7 @@ def make_timelines(source, runid=None):
         if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
             for childkey in source[parentkey].keys():
                 logger.info(
-                    f"Run id {runid}," + f" preparing plot for {parentkey}, {childkey}"
+                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
                 timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(source[parentkey][childkey]))
@@ -242,7 +303,7 @@ def make_camera_displays(source, runid):
         if not re.match(TEST_PATTERN, parentkey):
             for childkey in source[parentkey].keys():
                 logger.info(
-                    f"Run id {runid}," + f" preparing plot for {parentkey}, {childkey}"
+                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
                 displays[parentkey][childkey] = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
@@ -467,7 +528,7 @@ def get_bad_pixels_position(source, image_shape):
     except KeyError as e:
         mask_bad_pixels_high_gain = np.zeros(shape=constants.N_PIXELS, dtype=bool)
         mask_bad_pixels_low_gain = mask_bad_pixels_high_gain
-        logger.error(f"Exception '{e}'," + " bad pixels flag not found in the database")
+        logger.error(f"Exception '{e}', bad pixels flag not found in the database")
 
     if image_shape != mask_bad_pixels_high_gain.shape:
         mask_bad_pixels_high_gain = np.zeros(shape=image_shape, dtype=bool)
