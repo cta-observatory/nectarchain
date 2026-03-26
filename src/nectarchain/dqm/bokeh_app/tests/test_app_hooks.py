@@ -124,8 +124,6 @@ def test_make_timelines():
 
 
 def test_get_run_ids_for_camera():
-    import transaction
-
     from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
 
     db = DB(None)
@@ -166,13 +164,8 @@ def test_get_run_ids_for_camera():
     assert len(run_ids_cam99) == 0
     assert isinstance(run_ids_cam99, list)
 
-    transaction.abort()
-    conn.close()
-
 
 def test_get_available_cameras_from_db_keys():
-    import transaction
-
     from nectarchain.dqm.bokeh_app.app_hooks import get_available_cameras_from_db_keys
 
     db = DB(None)
@@ -203,9 +196,6 @@ def test_get_available_cameras_from_db_keys():
 
     # Should have exactly 3 cameras
     assert len(available_cameras) == 3
-
-    transaction.abort()
-    conn.close()
 
 
 def test_bokeh(tmp_path):
