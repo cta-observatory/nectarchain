@@ -25,6 +25,7 @@ geom = geom.transform_to(EngineeringCameraFrame())
 logger = setup_logger()
 
 
+# TODO: test what attr, old and new actually are and update docstring
 def update(attr, old, new):
     """Callback that refreshes the dashboard whenever the selected run changes.
 

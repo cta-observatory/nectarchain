@@ -41,6 +41,7 @@ geom = geom.transform_to(EngineeringCameraFrame())
 logger = setup_logger()
 
 
+# TODO: check actual output type and content
 def get_rundata(src, runid):
     """Get run data to populate plots on the Bokeh displays
 
@@ -175,6 +176,7 @@ def make_timelines(source, runid=None):
     return dict(timelines)
 
 
+# TODO: check consistency of the gridplot
 def update_timelines(data, timelines, runid=None):
     """Reset each timeline previously created by `make_timelines`
 
