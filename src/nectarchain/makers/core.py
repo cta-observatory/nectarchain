@@ -77,6 +77,7 @@ class BaseNectarCAMCalibrationTool(Tool):
         max_events: int = None,
         run_file: str = None,
         camera: int = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        load_feb_info: bool = False,
     ) -> LightNectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
@@ -91,6 +92,8 @@ class BaseNectarCAMCalibrationTool(Tool):
             if provided, will load this run file
         camera : str
             camera for which data are processed. (Default: NectarCAMQM)
+        load_feb_info : bool, optional
+            if True the FEB data will be loaded
 
         Returns
         -------
@@ -102,12 +105,14 @@ class BaseNectarCAMCalibrationTool(Tool):
             generic_filename, _ = DataManagement.findrun(run_number, camera=camera)
             log.info(f"{str(generic_filename)} will be loaded")
             eventsource = LightNectarCAMEventSource(
-                input_url=generic_filename, max_events=max_events
+                input_url=generic_filename,
+                max_events=max_events,
+                load_feb_info=load_feb_info,
             )
         else:
             log.info(f"{run_file} will be loaded")
             eventsource = LightNectarCAMEventSource(
-                input_url=run_file, max_events=max_events
+                input_url=run_file, max_events=max_events, load_feb_info=load_feb_info
             )
         return eventsource
 
@@ -122,6 +127,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         max_events (int, optional): The maximum number of events to be loaded.
         Defaults to None.
         run_file (optional): The specific run file to be loaded.
+        load_feb_info (optional): Whether or not the FEB info need to be loaded.
+        Defaults to False.
 
     Example Usage:
         maker = EventsLoopMaker(run_number=1234, max_events=1000)
@@ -144,6 +151,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
         ("o", "output"): "EventsLoopNectarCAMCalibrationTool.output_path",
         "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice",
+        "load-feb-info": "EventsLoopNectarCAMCalibrationTool.load_feb_info",
     }
 
     flags = {
@@ -209,6 +217,13 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         allow_none=True,
     ).tag(config=True)
 
+    load_feb_info = Bool(
+        help="Indicate to load the FEB info or not. If None, no FEB info "
+        "is loaded (faster).",
+        default_value=False,
+        allow_none=True,
+    ).tag(config=True)
+
     def __new__(cls, *args, **kwargs):
         """This method is used to pass to the current instance of Tool the traits
         defined in the components provided in the componentsList trait.
@@ -255,6 +270,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 self.max_events,
                 run_file=self.run_file,
                 camera=self.camera,
+                load_feb_info=self.load_feb_info,
             )
         )
 
