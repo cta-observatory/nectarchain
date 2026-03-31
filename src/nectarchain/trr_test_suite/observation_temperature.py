@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from lmfit.models import Model
+from scipy import stats
 
 from nectarchain.trr_test_suite.charge_resolution import run_charge_resolution
 from nectarchain.trr_test_suite.deadtime import run_deadtime
@@ -598,6 +599,69 @@ class ObservationTemperaturePipeline:
         2. Relative difference between collected and fitted trigger rates
         """
 
+        def select_runs(runs, trigger_rates, intensities, temperatures):
+            choice_mask = {}
+            unique_temperatures, counts = np.unique(temperatures, return_counts=True)
+            multiple_temperatures = unique_temperatures[counts > 1]
+            for ii, temperature in enumerate(temperatures):
+                if temperature < -5:
+                    choice_mask[runs[ii]] = False
+                elif temperature >= -5 and temperature not in multiple_temperatures:
+                    choice_mask[runs[ii]] = True
+                else:
+                    multiple_temp_indexes = np.where(temperatures == temperature)[0]
+                    min_trigger_rate = np.min(
+                        np.abs(np.array(trigger_rates)[multiple_temp_indexes] - 7000)
+                    )
+                    best_indexes_tr = np.where(
+                        (np.array(trigger_rates)[multiple_temp_indexes] - 7000)
+                        == min_trigger_rate
+                    )[0]
+
+                    min_intensity = np.min(
+                        np.abs(np.array(intensities)[multiple_temp_indexes] - 30)
+                    )
+                    best_indexes_int = np.where(
+                        (np.array(intensities)[multiple_temp_indexes] - 30)
+                        == min_intensity
+                    )[0]
+
+                    best_index = np.intersect1d(
+                        best_indexes_tr, best_indexes_int, assume_unique=True
+                    )
+                    if len(best_index) == 0:
+                        best_index = best_indexes_int
+
+                    choice_mask[
+                        np.array(runs)[multiple_temp_indexes[best_index]][0]
+                    ] = True
+                    choice_mask[
+                        np.setdiff1d(
+                            np.array(runs)[multiple_temp_indexes],
+                            np.array(runs)[multiple_temp_indexes[best_index]],
+                        )[0]
+                    ] = False
+            return choice_mask
+
+        def plot_deadtime_per_temperature(
+            temperatures, deadtime, deadtime_err, y_lims=(0.7, 0.92)
+        ):
+            plt.figure(figsize=(8, 6))
+            plt.errorbar(
+                x=temperatures,
+                y=deadtime,
+                yerr=deadtime_err,
+                ls="",
+                marker="o",
+                color="green",
+            )
+
+            plt.xlabel("Temperature (°C)")
+            plt.ylabel(r"Deadtime ($\mu s$)")
+            plt.ylim(y_lims)
+            plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
+            plt.grid()
+
         temperatures = np.sort(df_module_filtered["temperatures"].tolist()[0])
         argsorted_temps = np.argsort(df_module_filtered["temperatures"].tolist()[0])
         run_list = np.array(df_module_filtered["runs"].tolist()[0])[
@@ -628,15 +692,15 @@ class ObservationTemperaturePipeline:
             temp_output=self.temp_output,
         )
 
+        choices = select_runs(
+            run_list, collected_trigger_rates, intensities, temperatures
+        )
+
         # Deadtime [mus] vs Temperature [°C]
-        plt.figure(figsize=(8, 6))
-        plt.errorbar(
-            x=temperatures,
-            y=deadtime,
-            yerr=deadtime_err,
-            ls="",
-            marker="o",
-            color="green",
+        plot_deadtime_per_temperature(
+            temperatures=temperatures,
+            deadtime=deadtime,
+            deadtime_err=deadtime_err,
         )
         for ii, intensity in enumerate(intensities):
             plt.text(
@@ -648,12 +712,6 @@ class ObservationTemperaturePipeline:
                 fontsize=9,
                 color="green",
             )
-
-        plt.xlabel("Temperature (°C)")
-        plt.ylabel(r"Deadtime ($\mu s$)")
-        plt.ylim(0.65, 1.15)
-        plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
-        plt.grid()
         plot_path = os.path.join(self.output_dir, "deadtime_vs_temperature.png")
         plt.savefig(plot_path)
 
@@ -711,6 +769,46 @@ class ObservationTemperaturePipeline:
         plot_path = os.path.join(
             self.output_dir, "relative_trigger_difference_vs_temperature.png"
         )
+        plt.savefig(plot_path)
+
+        # Deadtime [mus] vs Temperature [°C]
+        # only selected runs for the fit and the paper
+        selected_temperatures = np.array(temperatures)[list(choices.values())]
+        selected_deadtime = np.array(deadtime)[list(choices.values())]
+        selected_deadtime_err = np.array(deadtime_err)[list(choices.values())]
+        slope, intercept, _, _, std_err = stats.linregress(
+            selected_temperatures, selected_deadtime
+        )
+        std_err_intercept = std_err * np.sqrt(
+            1
+            / len(selected_temperatures)
+            * np.mean(selected_temperatures**2)
+            / np.var(selected_temperatures)
+        )
+        plot_deadtime_per_temperature(
+            temperatures=selected_temperatures,
+            deadtime=selected_deadtime,
+            deadtime_err=selected_deadtime_err,
+        )
+        x_fit = np.linspace(
+            min(selected_temperatures) - 2, max(selected_temperatures) + 2, 100
+        )
+        y_fit = slope * x_fit + intercept
+        plt.plot(x_fit, y_fit, color="red", lw=2, ls="--")
+        plt.text(
+            x=0.05,
+            y=0.95,
+            s=f"m: ({slope:.4f} ± {std_err:.4f}) μs/°C"
+            + f"\nc: ({intercept:.4f} ± {std_err_intercept:.4f}) μs",
+            transform=plt.gca().transAxes,
+            ha="left",
+            va="top",
+            fontsize=16,
+            bbox=dict(
+                boxstyle="round", facecolor="white", edgecolor="black", alpha=0.9
+            ),
+        )
+        plot_path = os.path.join(self.output_dir, "deadtime_vs_temperature_fit.png")
         plt.savefig(plot_path)
 
         plt.show()
