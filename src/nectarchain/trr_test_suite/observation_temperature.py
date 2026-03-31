@@ -12,7 +12,8 @@ from lmfit.models import Model
 from nectarchain.trr_test_suite.charge_resolution import run_charge_resolution
 from nectarchain.trr_test_suite.deadtime import run_deadtime
 from nectarchain.trr_test_suite.linearity import run_linearity
-from nectarchain.trr_test_suite.utils import ALLOWED_CAMERAS, linear_fit_function
+from nectarchain.trr_test_suite.utils import linear_fit_function
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
