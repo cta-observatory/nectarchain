@@ -17,12 +17,8 @@ from nectarchain.makers.calibration import (
     PedestalNectarCAMCalibrationTool,
 )
 from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
-from nectarchain.trr_test_suite.utils import (
-    ALLOWED_CAMERAS,
-    err_ratio,
-    get_gain_run,
-    plot_parameters,
-)
+from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
