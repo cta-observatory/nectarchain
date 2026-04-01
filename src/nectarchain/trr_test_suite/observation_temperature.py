@@ -662,6 +662,48 @@ class ObservationTemperaturePipeline:
             plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
             plt.grid()
 
+        def plot_relative_trigger_difference(
+            temperatures,
+            collected_trigger_rates,
+            fitted_trigger_rates,
+            fitted_trigger_rates_err=None,
+            ylims=(0, 12),
+        ):
+            plt.figure(figsize=(8, 6))
+            collected_trigger_rates = np.array(collected_trigger_rates) / 1000
+            fitted_trigger_rates = np.array(fitted_trigger_rates)
+            relative = (
+                np.abs(
+                    (fitted_trigger_rates - collected_trigger_rates)
+                    / collected_trigger_rates
+                )
+                * 100
+            )
+            if fitted_trigger_rates_err is not None:
+                rate_err = np.array(fitted_trigger_rates_err)
+                rate_err = relative * (
+                    (rate_err) / np.abs(fitted_trigger_rates - collected_trigger_rates)
+                )
+            else:
+                rate_err = None
+
+            plt.errorbar(
+                x=temperatures,
+                y=relative,
+                yerr=rate_err,
+                ls="",
+                marker="o",
+                color="red",
+            )
+
+            plt.xlabel("Temperature (°C)")
+            plt.ylabel(r"Rate relative difference (%)")
+            plt.ylim(ylims)
+            plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
+            plt.grid()
+
+            return relative
+
         temperatures = np.sort(df_module_filtered["temperatures"].tolist()[0])
         argsorted_temps = np.argsort(df_module_filtered["temperatures"].tolist()[0])
         run_list = np.array(df_module_filtered["runs"].tolist()[0])[
@@ -717,28 +759,13 @@ class ObservationTemperaturePipeline:
 
         # Relative difference between fitted
         # and collected trigger rates vs Temperature [°C]
-        plt.figure(figsize=(8, 6))
-        collected_trigger_rates = np.array(collected_trigger_rates) / 1000
-        fitted_trigger_rates = np.array(fitted_trigger_rates)
-        relative = (
-            np.abs(
-                (fitted_trigger_rates - collected_trigger_rates)
-                / collected_trigger_rates
-            )
-            * 100
+        relative = plot_relative_trigger_difference(
+            temperatures=temperatures,
+            collected_trigger_rates=collected_trigger_rates,
+            fitted_trigger_rates=fitted_trigger_rates,
+            fitted_trigger_rates_err=fitted_trigger_rates_err,
         )
-        rate_err = np.array(fitted_trigger_rates_err)
-        rate_err = relative * (
-            (rate_err) / np.abs(fitted_trigger_rates - collected_trigger_rates)
-        )
-        plt.errorbar(
-            x=temperatures,
-            y=relative,
-            yerr=rate_err,
-            ls="",
-            marker="o",
-            color="red",
-        )
+
         for ii, intensity in enumerate(intensities):
             plt.text(
                 x=temperatures[ii] + 0.1,
@@ -760,12 +787,6 @@ class ObservationTemperaturePipeline:
             fontsize=10,
             color="grey",
         )
-
-        plt.xlabel("Temperature (°C)")
-        plt.ylabel(r"Relative Difference (%)")
-        plt.ylim(0, 15)
-        plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
-        plt.grid()
         plot_path = os.path.join(
             self.output_dir, "relative_trigger_difference_vs_temperature.png"
         )
@@ -809,6 +830,38 @@ class ObservationTemperaturePipeline:
             ),
         )
         plot_path = os.path.join(self.output_dir, "deadtime_vs_temperature_fit.png")
+        plt.savefig(plot_path)
+
+        # Relative difference between fitted
+        # and collected trigger rates vs Temperature [°C],
+        # with shaded area for the paper
+        selected_temperatures = np.array(temperatures)[list(choices.values())]
+        selected_collected_tr = np.array(collected_trigger_rates)[
+            list(choices.values())
+        ]
+        selected_fitted_tr = np.array(fitted_trigger_rates)[list(choices.values())]
+        relative = plot_relative_trigger_difference(
+            temperatures=selected_temperatures,
+            collected_trigger_rates=selected_collected_tr,
+            fitted_trigger_rates=selected_fitted_tr,
+            fitted_trigger_rates_err=None,
+            ylims=(-5.5, 5.5),
+        )
+        plt.fill_between(
+            x=np.linspace(
+                np.min(selected_temperatures) - 2,
+                np.max(selected_temperatures) + 2,
+                num=100,
+            ),
+            y1=-4,
+            y2=4,
+            color="grey",
+            alpha=0.3,
+        )
+        plt.axhline(0, ls="--", lw=2, color="grey")
+        plot_path = os.path.join(
+            self.output_dir, "relative_trigger_difference_vs_temperature_shaded.png"
+        )
         plt.savefig(plot_path)
 
         plt.show()

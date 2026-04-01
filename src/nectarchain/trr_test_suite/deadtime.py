@@ -546,6 +546,7 @@ def run_deadtime(
         )
         log.info(f"Dead-Time from the fit: {values[0]:.3f} +- " f"{values[1]:.3f} µs")
         log.info(f"Rate from the fit: {values[2]:.2f} +- " f"{values[3]:.2f} Hz")
+        log.info(f"Dead-Time percentage from the fit: {deadtime_pc[ii]} %")
         log.info("Expected run duration from the fit: " f"{values[4]:.2f} s")
         log.info("-" * 40)
 
