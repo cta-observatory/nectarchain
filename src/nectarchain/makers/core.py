@@ -92,7 +92,7 @@ class BaseNectarCAMCalibrationTool(Tool):
             if provided, will load this run file
         camera : str
             camera for which data are processed. (Default: NectarCAMQM)
-        use_lightevtsource : bool
+        use_lightevtsource : bool, optional
             if False the NectarCAMEventSource will be used (Default :
             LightNectarCAMEventSource), allowing to load the FEB data
 
@@ -137,8 +137,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         max_events (int, optional): The maximum number of events to be loaded.
         Defaults to None.
         run_file (optional): The specific run file to be loaded.
-        use_lightevtsource (bool): Whether or not use the LightNectarCAMEventSource.
-        Defaults to True.
+        use_lightevtsource (bool, optional): Whether or not use the
+        LightNectarCAMEventSource. Defaults to True.
 
     Example Usage:
         maker = EventsLoopMaker(run_number=1234, max_events=1000)
