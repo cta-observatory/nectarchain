@@ -77,7 +77,7 @@ class BaseNectarCAMCalibrationTool(Tool):
         max_events: int = None,
         run_file: str = None,
         camera: int = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
-        use_lighteventsource: bool = True,
+        use_lightevtsource: bool = True,
     ) -> LightNectarCAMEventSource | NectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
@@ -92,7 +92,7 @@ class BaseNectarCAMCalibrationTool(Tool):
             if provided, will load this run file
         camera : str
             camera for which data are processed. (Default: NectarCAMQM)
-        use_lighteventsource : bool
+        use_lightevtsource : bool
             if False the NectarCAMEventSource will be used (Default :
             LightNectarCAMEventSource), allowing to load the FEB data
 
@@ -105,7 +105,7 @@ class BaseNectarCAMCalibrationTool(Tool):
         if run_file is None:
             generic_filename, _ = DataManagement.findrun(run_number, camera=camera)
             log.info(f"{str(generic_filename)} will be loaded")
-            if use_lighteventsource:
+            if use_lightevtsource:
                 eventsource = LightNectarCAMEventSource(
                     input_url=generic_filename, max_events=max_events
                 )
@@ -115,7 +115,7 @@ class BaseNectarCAMCalibrationTool(Tool):
                 )
         else:
             log.info(f"{run_file} will be loaded")
-            if use_lighteventsource:
+            if use_lightevtsource:
                 eventsource = LightNectarCAMEventSource(
                     input_url=generic_filename, max_events=max_events
                 )
@@ -137,6 +137,8 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         max_events (int, optional): The maximum number of events to be loaded.
         Defaults to None.
         run_file (optional): The specific run file to be loaded.
+        use_lightevtsource (bool): Whether or not use the LightNectarCAMEventSource.
+        Defaults to True.
 
     Example Usage:
         maker = EventsLoopMaker(run_number=1234, max_events=1000)
@@ -159,6 +161,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         ("m", "max-events"): "EventsLoopNectarCAMCalibrationTool.max_events",
         ("o", "output"): "EventsLoopNectarCAMCalibrationTool.output_path",
         "events-per-slice": "EventsLoopNectarCAMCalibrationTool.events_per_slice",
+        "use_lightevtsource": "EventsLoopNectarCAMCalibrationTool.use_lightevtsource",
     }
 
     flags = {
@@ -179,6 +182,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             HDF5TableWriter,
         ]
         + classes_with_traits(LightNectarCAMEventSource)
+        + classes_with_traits(NectarCAMEventSource)
         + classes_with_traits(NectarCAMComponent)
     )
 
@@ -221,6 +225,13 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         help="number of events that will be treat before to pull the buffer and write"
         "to disk, if None, all the events will be loaded",
         default_value=None,
+        allow_none=True,
+    ).tag(config=True)
+
+    use_lightevtsource = Bool(
+        help="Indicate to use the LightNectarCAMEventSource or not."
+        "If True, no FEB info is loaded (faster).",
+        default_value=True,
         allow_none=True,
     ).tag(config=True)
 
@@ -270,6 +281,7 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
                 self.max_events,
                 run_file=self.run_file,
                 camera=self.camera,
+                use_lightevtsource=self.use_lightevtsource,
             )
         )
 
@@ -561,15 +573,21 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
     @event_source.setter
     def event_source(self, value):
         """
-        Setter method to set a new LightNectarCAMEventSource to the _reader attribute.
+        Setter method to set a new LightNectarCAMEventSource or NectarCAMEventSource
+        to the _reader attribute.
 
         Args:
-            value: a LightNectarCAMEventSource instance.
+            value: a LightNectarCAMEventSource or NectarCAMEventSource instance.
         """
-        if isinstance(value, LightNectarCAMEventSource):
+        if isinstance(value, LightNectarCAMEventSource) or isinstance(
+            value, NectarCAMEventSource
+        ):
             self._event_source = value
         else:
-            raise TypeError("The reader must be a LightNectarCAMEventSource")
+            raise TypeError(
+                "The reader must be a LightNectarCAMEventSource"
+                "or a NectarCAMEventSource."
+            )
 
     @property
     def _npixels(self):
