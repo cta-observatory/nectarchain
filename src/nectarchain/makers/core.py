@@ -20,7 +20,7 @@ from ctapipe.core.traits import (
 )
 from ctapipe.io import HDF5TableWriter
 from ctapipe.io.datawriter import DATA_MODEL_VERSION
-from ctapipe_io_nectarcam import LightNectarCAMEventSource
+from ctapipe_io_nectarcam import LightNectarCAMEventSource, NectarCAMEventSource
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 from tables.exceptions import HDF5ExtError
 from tqdm.auto import tqdm
@@ -77,7 +77,8 @@ class BaseNectarCAMCalibrationTool(Tool):
         max_events: int = None,
         run_file: str = None,
         camera: int = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
-    ) -> LightNectarCAMEventSource:
+        use_lighteventsource: bool = True,
+    ) -> LightNectarCAMEventSource | NectarCAMEventSource:
         """Static method to load from $NECTARCAMDATA directory data for specified run
         with max_events.
 
@@ -91,6 +92,9 @@ class BaseNectarCAMCalibrationTool(Tool):
             if provided, will load this run file
         camera : str
             camera for which data are processed. (Default: NectarCAMQM)
+        use_lighteventsource : bool
+            if False the NectarCAMEventSource will be used (Default :
+            LightNectarCAMEventSource), allowing to load the FEB data
 
         Returns
         -------
@@ -101,14 +105,25 @@ class BaseNectarCAMCalibrationTool(Tool):
         if run_file is None:
             generic_filename, _ = DataManagement.findrun(run_number, camera=camera)
             log.info(f"{str(generic_filename)} will be loaded")
-            eventsource = LightNectarCAMEventSource(
-                input_url=generic_filename, max_events=max_events
-            )
+            if use_lighteventsource:
+                eventsource = LightNectarCAMEventSource(
+                    input_url=generic_filename, max_events=max_events
+                )
+            else:
+                eventsource = NectarCAMEventSource(
+                    input_url=generic_filename, max_events=max_events
+                )
         else:
             log.info(f"{run_file} will be loaded")
-            eventsource = LightNectarCAMEventSource(
-                input_url=run_file, max_events=max_events
-            )
+            if use_lighteventsource:
+                eventsource = LightNectarCAMEventSource(
+                    input_url=generic_filename, max_events=max_events
+                )
+            else:
+                eventsource = NectarCAMEventSource(
+                    input_url=generic_filename, max_events=max_events
+                )
+
         return eventsource
 
 
