@@ -98,7 +98,7 @@ class BaseNectarCAMCalibrationTool(Tool):
 
         Returns
         -------
-        List[ctapipe_io_nectarcam.LightNectarCAMEventSource]
+        List[ctapipe_io_nectarcam.(Light)NectarCAMEventSource]
             List of EventSource for each run files.
         """
         # Load the data from the run file.
