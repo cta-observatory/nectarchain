@@ -167,7 +167,7 @@ jobs:
           pytest -n auto --dist loadscope --cov=nectarchain --cov-report=xml --ignore=src/nectarchain/user_scripts
 
       - name: Upload coverage reports to Codecov with GitHub Action
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         if: contains(matrix.extra-args, 'codecov')
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
