@@ -158,7 +158,7 @@ def update_timestamp(status_col):
     status_col.children[1].text = f"Last update: {ts}"
 
 
-def periodic_update_display(ressource_path, display_registry, widgets, status_col):
+def periodic_update_display(resource_path, display_registry, widgets, status_col):
     """Update all the figures of the webpage and the status divider.
 
     Parameters
@@ -177,13 +177,13 @@ def periodic_update_display(ressource_path, display_registry, widgets, status_co
     out : None
 
     """
-    file = hdf5Proxy(_get_latest_file(ressource_path))
+    file = hdf5Proxy(_get_latest_file(resource_path))
     update_all_figures(file, display_registry, widgets)
     update_timestamp(status_col)
 
 
 def start_periodic_updates(
-    ressource_path, display_registry, widgets, status_col, interval_ms=1000
+    resource_path, display_registry, widgets, status_col, interval_ms=1000
 ):
     """Start the periodic update of the webpage every ``interval_ms`` milliseconds.
 
@@ -211,7 +211,7 @@ def start_periodic_updates(
     periodic_cb_id = curdoc().add_periodic_callback(
         partial(
             periodic_update_display,
-            ressource_path=ressource_path,
+            resource_path=resource_path,
             display_registry=display_registry,
             widgets=widgets,
             status_col=status_col,

@@ -30,13 +30,13 @@ __all__ = ["make_select_run", "make_status_col", "make_header_menu"]
 logger = logging.getLogger(__name__)
 
 
-def _list_runs(ressource_path, extension=".h5"):
-    """List the name of the files in the directory of path ```ressource_path```
+def _list_runs(resource_path, extension=".h5"):
+    """List the name of the files in the directory of path ```resource_path```
     with the format ```extension```.
 
     Parameters
     ----------
-    ressource_path : string
+    resource_path : string
         Path of the directory where to find the files to list.
         Can be relative or absolute (careful if it is relative,
         might be an issue for portability).
@@ -52,8 +52,8 @@ def _list_runs(ressource_path, extension=".h5"):
 
     Examples
     --------
-    >>> ressource_path = "../../example_data"
-    >>> len(_list_runs(ressource_path))
+    >>> resource_path = "../../example_data"
+    >>> len(_list_runs(resource_path))
     5
 
     """
@@ -61,7 +61,7 @@ def _list_runs(ressource_path, extension=".h5"):
     try:
         return [
             item[: -len(extension)]
-            for item in os.listdir(ressource_path)
+            for item in os.listdir(resource_path)
             if item.endswith(extension)
         ]
     except Exception:
@@ -104,7 +104,7 @@ def _on_header_select_change(
     new,
     fobj=None,
     fpath=None,
-    ressource_path=None,
+    resource_path=None,
     status_col=None,
     real_time_tag=None,
     default_update_ms=None,
@@ -125,7 +125,7 @@ def _on_header_select_change(
         File to open, default is None.
     fpath : string, optional
         Path of fobj, default is None.
-    ressource_path : string, optional
+    resource_path : string, optional
         Path of directory to browse for files, default is None.
     status_col : Div, optional
         Bokeh column with the divider for the status of the webpage.
@@ -177,7 +177,7 @@ def _on_header_select_change(
             # real time will have to be replaced by ...data_fetch_helpers.fetch_stream()
             fobj, fpath = open_file_from_selection(
                 sel,
-                ressource_path=ressource_path,
+                resource_path=resource_path,
                 real_time_tag=real_time_tag,
                 time_parentkey=time_parentkey,
                 time_childkey=time_childkey,
@@ -190,7 +190,7 @@ def _on_header_select_change(
             # Update and start periodic updates
             update_all_figures(fobj, display_registry=display_registry, widgets=widgets)
             start_periodic_updates(
-                ressource_path=ressource_path,
+                resource_path=resource_path,
                 display_registry=display_registry,
                 widgets=widgets,
                 status_col=status_col,
@@ -222,7 +222,7 @@ def _on_header_select_change(
             stop_periodic_updates(widgets)
             fobj, fpath = open_file_from_selection(
                 sel,
-                ressource_path=ressource_path,
+                resource_path=resource_path,
                 real_time_tag=real_time_tag,
                 time_parentkey=time_parentkey,
                 time_childkey=time_childkey,
@@ -307,12 +307,12 @@ def make_status_col(file):
     return column(file_div, time_div)
 
 
-def make_header_menu(ressource_path, real_time_tag, file=None, extension=".h5"):
+def make_header_menu(resource_path, real_time_tag, file=None, extension=".h5"):
     """Create full header menu.
 
     Parameters
     ----------
-    ressource_path : string
+    resource_path : string
         Path of the directory where to find the files to list.
         Can be relative or absolute (careful if it is relative,
         might be an issue for portability).
@@ -334,8 +334,8 @@ def make_header_menu(ressource_path, real_time_tag, file=None, extension=".h5"):
     """
 
     if file is None:
-        file = _get_latest_file(ressource_path, extension=extension)
-    list_file = _list_runs(ressource_path, extension=extension)
+        file = _get_latest_file(resource_path, extension=extension)
+    list_file = _list_runs(resource_path, extension=extension)
     run_choice_slidedown = make_select_run(list_file, real_time_tag)
 
     status_col = make_status_col(file)

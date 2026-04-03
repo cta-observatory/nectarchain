@@ -96,10 +96,10 @@ def create_app(doc):
     # Path of data
     if SERVER_CONFIG.test_interface:
         logger.info("Test interface - displaying example runs")
-        RESSOURCE_PATH = PROJECT_ROOT / json_dict["EXAMPLE_RESSOURCE_PATH"]
+        RESOURCE_PATH = PROJECT_ROOT / json_dict["EXAMPLE_RESOURCE_PATH"]
     else:
         logger.info("Real interface - fetching data currently produced by RTA")
-        RESSOURCE_PATH = PROJECT_ROOT / json_dict["RESSOURCE_PATH"]
+        RESOURCE_PATH = PROJECT_ROOT / json_dict["RESOURCE_PATH"]
 
     # Bokeh item storages
     display_registry = []
@@ -107,7 +107,7 @@ def create_app(doc):
 
     # Retrieve latest file to simulate real time data
     # Will change when we add the stream listening part
-    file = _get_latest_file(RESSOURCE_PATH)
+    file = _get_latest_file(RESOURCE_PATH)
     file = hdf5Proxy(file)
 
     # make_body() default kwargs
@@ -132,7 +132,7 @@ def create_app(doc):
 
     # Build UI
     root_layout, header_ret = build_ui(
-        ressource_path=RESSOURCE_PATH,
+        resource_path=RESOURCE_PATH,
         file=file,
         filepath=getattr(file, "filename", None),
         display_registry=display_registry,
@@ -150,11 +150,9 @@ def create_app(doc):
 
     # Start real-time at launch
     try:
-        periodic_update_display(
-            RESSOURCE_PATH, display_registry, widgets, header_ret[1]
-        )
+        periodic_update_display(RESOURCE_PATH, display_registry, widgets, header_ret[1])
         start_periodic_updates(
-            ressource_path=RESSOURCE_PATH,
+            resource_path=RESOURCE_PATH,
             display_registry=display_registry,
             widgets=widgets,
             status_col=header_ret[1],
