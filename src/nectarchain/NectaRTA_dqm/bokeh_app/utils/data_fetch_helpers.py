@@ -18,13 +18,13 @@ __all__ = ["safe_close_file", "open_file_from_selection", "fetch_stream"]
 logger = logging.getLogger(__name__)
 
 
-def _get_latest_file(ressource_path, extension=".h5"):
-    """Open latest .h5 file from the ressource directory.
+def _get_latest_file(resource_path, extension=".h5"):
+    """Open latest .h5 file from the resource directory.
 
     Parameters
     ----------
-    ressource_path : string
-        Ressource path to find files.
+    resource_path : string
+        resource path to find files.
     extension : string, optional
         Extension of the format for files.
         Default is .h5.
@@ -37,15 +37,15 @@ def _get_latest_file(ressource_path, extension=".h5"):
 
     Examples
     --------
-    >>> ressource_path = "../../example_data"
-    >>> print(_get_latest_file(ressource_path).filename.split("/")[-1])
+    >>> resource_path = "../../example_data"
+    >>> print(_get_latest_file(resource_path).filename.split("/")[-1])
     dl1_sb_id_1_obs_id_20549_tel_id_1_line_idx_0thread_idx0th_file_idx5file_idx.h5
 
     """
 
     # Find the latest file
     filepath = max(
-        Path(ressource_path).glob("*" + extension), key=lambda f: f.stat().st_mtime
+        Path(resource_path).glob("*" + extension), key=lambda f: f.stat().st_mtime
     )
     try:
         # Try to open .h5 file
@@ -80,7 +80,7 @@ def safe_close_file(fobj):
 
 def open_file_from_selection(
     sel_value,
-    ressource_path,
+    resource_path,
     real_time_tag,
     extension=".h5",
     time_parentkey=None,
@@ -88,15 +88,15 @@ def open_file_from_selection(
     group_parentkeys=None,
 ):
     """Return an open h5py.File-like object for selection.
-    If ``sel_value == real_time_tag``, returns ``-get_latest_file(ressource_path)``.
+    If ``sel_value == real_time_tag``, returns ``-get_latest_file(resource_path)``.
     Else, expects ``sel_value`` to be a filename (without path and extension).
 
     Parameters
     ----------
     sel_value : string
         Either ```real_time_tag``` or name of the file to load.
-    ressource_path : string
-        Ressource path to find .h5 files.
+    resource_path : string
+        Resource path to find .h5 files.
     real_time_tag : string
         Tag representing the real-time mode.
         Stored in static.constants.json.
@@ -127,7 +127,7 @@ def open_file_from_selection(
         return None, None
 
     if sel_value == real_time_tag:
-        file = _get_latest_file(ressource_path, extension=extension)
+        file = _get_latest_file(resource_path, extension=extension)
         fileproxy = hdf5Proxy(file)
         if time_parentkey is not None and time_childkey is not None:
             try:
@@ -142,7 +142,7 @@ def open_file_from_selection(
         return fileproxy, path
 
     try:
-        filepath = (Path(ressource_path) / (sel_value + extension)).resolve()
+        filepath = (Path(resource_path) / (sel_value + extension)).resolve()
     except Exception as e:
         logger.warning(f"open_file_for_selection: failed file opening: {e}")
         return None, None
