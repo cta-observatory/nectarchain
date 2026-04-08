@@ -135,7 +135,7 @@ def main():
             events_per_slice=9999,
             log_level=20,
             method="LocalPeakWindowSum",
-            extractor_kwargs={"window_width": 16, "window_shift": 6},
+            extractor_kwargs={"window_width": 6, "window_shift": 3}, #This width and shift works best for ToM calculation
             overwrite=True,
             pedestal_file=pedestal_tool.output_path,
             use_default_pedestal=True,  # only done if pedestal_file cannot be loaded
