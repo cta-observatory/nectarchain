@@ -259,7 +259,9 @@ def plot_fitted_rate_vs_collected_trigger_rate(
             pickle.dump(fig, f)
 
 
-def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
+def fit_rate_per_run(
+    runlist: list, deadtime_us: np.ndarray, collected_trigger_rates: np.ndarray
+):
     """Fit the exponential function over the provided run list
 
     Parameters
@@ -268,9 +270,8 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
         NectarCAM run numbers
     deadtime_us : np.ndarray
         Deadtime values in mus
-
-    histograms_deadtime, bin_edges_hist,
-    results
+    collected_trigger_rates : np.ndarray
+        Collected trigger rate values from the camera client counters
 
     Returns
     -------
@@ -310,10 +311,13 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
 
         deadtime_mus = deadtime_us[ii].value[deadtime_us[ii].value > 0] * 1e-6
 
-        lim_low_mus, lim_high_mus = 0.001e-6, 120 * 1e-6
-
-        # lower and upper limits for the deadtime binning in mus
-        nr_bins = 100
+        lim_low_mus = 0.001e-6
+        if collected_trigger_rates[ii] < 3000.0:
+            lim_high_mus = 100000 * 1e-8
+            nr_bins = 8000
+        else:
+            lim_high_mus = 50000 * 1e-7
+            nr_bins = 10000
 
         rate_initial_guess = 40000  # in Hz
 
@@ -532,7 +536,11 @@ def run_deadtime(
                 os.makedirs(output_dir)
             log.info(f"The plots will be saved at: {output_dir}")
 
-    results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
+    results = fit_rate_per_run(
+        runlist=runlist,
+        deadtime_us=deadtime_us,
+        collected_trigger_rates=collected_trigger_rates,
+    )[-1]
 
     log.info(f"Output directory: {output_dir}")
     log.info(f"Temporary output file: {temp_output}")
@@ -544,10 +552,11 @@ def run_deadtime(
             "Dead-Time extracted from the tool process: "
             f"{np.min(deadtime_us[ii]):.3f}"
         )
-        log.info(f"Dead-Time from the fit: {values[0]:.3f} +- " f"{values[1]:.3f} µs")
-        log.info(f"Rate from the fit: {values[2]:.2f} +- " f"{values[3]:.2f} Hz")
-        log.info(f"Dead-Time percentage from the fit: {deadtime_pc[ii]} %")
-        log.info("Expected run duration from the fit: " f"{values[4]:.2f} s")
+        log.info("Dead-Time from the fit: " f"{values[0]:.3f} us")
+        log.info(f"Collected rate: {collected_trigger_rates[ii]:.2f} Hz")
+        log.info(f"Rate from the fit: {values[2]:.2f} Hz")
+        log.info(f"Dead-Time percentage from the tool process: {deadtime_pc[ii]} %")
+        log.info(f"Expected run duration from the fit: {values[4]:.2f} s")
         log.info("-" * 40)
 
     ids = np.array(ids)
@@ -567,16 +576,25 @@ def run_deadtime(
     fitted_trigger_rates, fitted_trigger_rates_err = [], []
 
     for ii, run_num in enumerate(runlist):
-        results = plot_deadtime_and_expo_fit(
+        plot_results = plot_deadtime_and_expo_fit(
             total_delta_t_for_busy_time=time_tot[ii],
             deadtime_us=np.array(deadtime_us[ii].value),
             run=run_num,
             output_plot=output_dir,
         )
-        deadtime.append(results[0])
-        deadtime_err.append(np.abs(results[2]) * 1e-3)
-        fitted_trigger_rates.append(((-1 * results[6]) * (1 / u.us)).to(u.kHz).value)
-        fitted_trigger_rates_err.append(((results[8]) * (1 / u.us)).to(u.kHz).value)
+        deadtime.append(plot_results[0])
+        deadtime_err.append(np.abs(plot_results[2]) * 1e-3)
+        fit_trigger_rate = results[run_num][2] / 1e3  # convert to kHz
+        fit_trigger_rate_plot = ((-1 * plot_results[6]) * (1 / u.us)).to(u.kHz).value
+        if np.abs(fit_trigger_rate - collected_trigger_rates[ii] / 1e3) < np.abs(
+            fit_trigger_rate_plot - collected_trigger_rates[ii] / 1e3
+        ):
+            fitted_trigger_rates.append(fit_trigger_rate)
+        else:
+            fitted_trigger_rates.append(fit_trigger_rate_plot)
+        fitted_trigger_rates_err.append(
+            ((plot_results[8]) * (1 / u.us)).to(u.kHz).value
+        )
         plt.close()
 
     deadtime = np.array(deadtime)

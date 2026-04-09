@@ -644,20 +644,24 @@ class ObservationTemperaturePipeline:
             return choice_mask
 
         def plot_deadtime_per_temperature(
-            temperatures, deadtime, deadtime_err, y_lims=(0.7, 0.92)
+            temperatures,
+            dt_or_dt_pc,  # deadtime or deadtime %
+            dt_err_or_dt_pc_err,  # error on deadtime or on deadtime %
+            y_label=r"Minimum Deadtime ($\mu s$)",
+            y_lims=(0.7, 0.92),
         ):
             plt.figure(figsize=(8, 6))
             plt.errorbar(
                 x=temperatures,
-                y=deadtime,
-                yerr=deadtime_err,
+                y=dt_or_dt_pc,
+                yerr=dt_err_or_dt_pc_err,
                 ls="",
                 marker="o",
-                color="green",
+                color="blue",
             )
 
             plt.xlabel("Temperature (°C)")
-            plt.ylabel(r"Deadtime ($\mu s$)")
+            plt.ylabel(y_label)
             plt.ylim(y_lims)
             plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
             plt.grid()
@@ -667,21 +671,20 @@ class ObservationTemperaturePipeline:
             collected_trigger_rates,
             fitted_trigger_rates,
             fitted_trigger_rates_err=None,
-            ylims=(0, 12),
+            ylims=(-11, 11),
         ):
             plt.figure(figsize=(8, 6))
             collected_trigger_rates = np.array(collected_trigger_rates) / 1000
             fitted_trigger_rates = np.array(fitted_trigger_rates)
             relative = (
-                np.abs(
-                    (fitted_trigger_rates - collected_trigger_rates)
-                    / collected_trigger_rates
-                )
+                (fitted_trigger_rates - collected_trigger_rates)
+                / collected_trigger_rates
                 * 100
             )
+
             if fitted_trigger_rates_err is not None:
                 rate_err = np.array(fitted_trigger_rates_err)
-                rate_err = relative * (
+                rate_err = np.abs(relative) * (
                     (rate_err) / np.abs(fitted_trigger_rates - collected_trigger_rates)
                 )
             else:
@@ -697,7 +700,10 @@ class ObservationTemperaturePipeline:
             )
 
             plt.xlabel("Temperature (°C)")
-            plt.ylabel(r"Rate relative difference (%)")
+            plt.ylabel(
+                r"$\frac{\text{Rate from fit} - "
+                r"\text{Camera rate}}{\text{Camera rate}}$ (%)"
+            )
             plt.ylim(ylims)
             plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
             plt.grid()
@@ -722,8 +728,8 @@ class ObservationTemperaturePipeline:
             fitted_trigger_rates_err,
             deadtime,
             deadtime_err,
-            _,
-            _,
+            deadtime_pc,
+            error_deadtime_pc,
             _,
             _,
         ) = run_deadtime(
@@ -741,8 +747,8 @@ class ObservationTemperaturePipeline:
         # Deadtime [mus] vs Temperature [°C]
         plot_deadtime_per_temperature(
             temperatures=temperatures,
-            deadtime=deadtime,
-            deadtime_err=deadtime_err,
+            dt_or_dt_pc=deadtime,
+            dt_err_or_dt_pc_err=deadtime_err,
         )
         for ii, intensity in enumerate(intensities):
             plt.text(
@@ -752,7 +758,7 @@ class ObservationTemperaturePipeline:
                 ha="left",
                 va="bottom",
                 fontsize=9,
-                color="green",
+                color="blue",
             )
         plot_path = os.path.join(self.output_dir, "deadtime_vs_temperature.png")
         plt.savefig(plot_path)
@@ -787,6 +793,16 @@ class ObservationTemperaturePipeline:
             fontsize=10,
             color="grey",
         )
+        plt.axhline(-10, ls="--", lw=2, color="grey")
+        plt.text(
+            x=temperatures.min() + 0.1,
+            y=-10 - 0.3,
+            s="CTA requirement",
+            ha="left",
+            va="center",
+            fontsize=10,
+            color="grey",
+        )
         plot_path = os.path.join(
             self.output_dir, "relative_trigger_difference_vs_temperature.png"
         )
@@ -808,14 +824,14 @@ class ObservationTemperaturePipeline:
         )
         plot_deadtime_per_temperature(
             temperatures=selected_temperatures,
-            deadtime=selected_deadtime,
-            deadtime_err=selected_deadtime_err,
+            dt_or_dt_pc=selected_deadtime,
+            dt_err_or_dt_pc_err=selected_deadtime_err,
         )
         x_fit = np.linspace(
             min(selected_temperatures) - 2, max(selected_temperatures) + 2, 100
         )
         y_fit = slope * x_fit + intercept
-        plt.plot(x_fit, y_fit, color="red", lw=2, ls="--")
+        plt.plot(x_fit, y_fit, color="orange", lw=3, ls="--")
         plt.text(
             x=0.05,
             y=0.95,
@@ -835,17 +851,19 @@ class ObservationTemperaturePipeline:
         # Relative difference between fitted
         # and collected trigger rates vs Temperature [°C],
         # with shaded area for the paper
-        selected_temperatures = np.array(temperatures)[list(choices.values())]
         selected_collected_tr = np.array(collected_trigger_rates)[
             list(choices.values())
         ]
         selected_fitted_tr = np.array(fitted_trigger_rates)[list(choices.values())]
+        selected_fitted_tr_err = np.array(fitted_trigger_rates_err)[
+            list(choices.values())
+        ]
         relative = plot_relative_trigger_difference(
             temperatures=selected_temperatures,
             collected_trigger_rates=selected_collected_tr,
             fitted_trigger_rates=selected_fitted_tr,
-            fitted_trigger_rates_err=None,
-            ylims=(-5.5, 5.5),
+            fitted_trigger_rates_err=selected_fitted_tr_err,
+            ylims=(-10.5, 10.5),
         )
         plt.fill_between(
             x=np.linspace(
@@ -853,14 +871,56 @@ class ObservationTemperaturePipeline:
                 np.max(selected_temperatures) + 2,
                 num=100,
             ),
-            y1=-4,
-            y2=4,
+            y1=-10,
+            y2=10,
             color="grey",
             alpha=0.3,
         )
         plt.axhline(0, ls="--", lw=2, color="grey")
         plot_path = os.path.join(
             self.output_dir, "relative_trigger_difference_vs_temperature_shaded.png"
+        )
+        plt.savefig(plot_path)
+
+        # Deadtime percentage per temperature
+        selected_deadtime_pc = np.array(deadtime_pc)[list(choices.values())]
+        selected_error_deadtime_pc = np.array(error_deadtime_pc)[list(choices.values())]
+        slope, intercept, _, _, std_err = stats.linregress(
+            selected_temperatures, selected_deadtime_pc
+        )
+        std_err_intercept = std_err * np.sqrt(
+            1
+            / len(selected_temperatures)
+            * np.mean(selected_temperatures**2)
+            / np.var(selected_temperatures)
+        )
+        plot_deadtime_per_temperature(
+            temperatures=selected_temperatures,
+            dt_or_dt_pc=selected_deadtime_pc,
+            dt_err_or_dt_pc_err=selected_error_deadtime_pc,
+            y_label=r"Deadtime %",
+            y_lims=(0, 1),
+        )
+        x_fit = np.linspace(
+            min(selected_temperatures) - 2, max(selected_temperatures) + 2, 100
+        )
+        y_fit = slope * x_fit + intercept
+        plt.plot(x_fit, y_fit, color="orange", lw=3, ls="--")
+        plt.text(
+            x=0.05,
+            y=0.85,
+            s=f"m: ({slope:.4f} ± {std_err:.4f}) %/°C"
+            + f"\nc: ({intercept:.4f} ± {std_err_intercept:.4f}) %",
+            transform=plt.gca().transAxes,
+            ha="left",
+            va="top",
+            fontsize=16,
+            bbox=dict(
+                boxstyle="round", facecolor="white", edgecolor="black", alpha=0.9
+            ),
+        )
+        plot_path = os.path.join(
+            self.output_dir, "deadtime_percentage_vs_temperature.png"
         )
         plt.savefig(plot_path)
 

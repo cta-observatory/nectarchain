@@ -601,7 +601,6 @@ def plot_deadtime_and_expo_fit(
     max_x_value_for_plot = max_x_values_for_plot[
         np.argmin(np.abs(max(deadtime_us) - max_x_values_for_plot))
     ]
-
     entries, bin_edges = np.histogram(
         deadtime_us, bins=100, range=(0, max_x_value_for_plot + 20)
     )
@@ -621,8 +620,8 @@ def plot_deadtime_and_expo_fit(
     )
 
     # the bins should be of integer width, because poisson is an integer distribution
-    x_steps_for_bins = np.arange(0, max_x_value_for_plot + 20, step=5)
-    x_steps_for_bins = x_steps_for_bins[1:] - 5
+    x_steps_for_bins = np.arange(0, max_x_value_for_plot + 20, step=2)
+    x_steps_for_bins = x_steps_for_bins[1:] - 2
 
     entries, bin_edges = np.histogram(
         deadtime_us, bins=x_steps_for_bins, range=[0, total_delta_t_for_busy_time]
