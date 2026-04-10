@@ -660,7 +660,7 @@ class ObservationTemperaturePipeline:
             y_label=r"Minimum Deadtime ($\mu s$)",
             y_lims=(0.7, 0.92),
         ):
-            plt.figure(figsize=(8, 6))
+            plt.figure()
             plt.errorbar(
                 x=temperatures,
                 y=dt_or_dt_pc,
@@ -683,7 +683,7 @@ class ObservationTemperaturePipeline:
             fitted_trigger_rates_err=None,
             ylims=(-11, 11),
         ):
-            plt.figure(figsize=(8, 6))
+            plt.figure()
             collected_trigger_rates = np.array(collected_trigger_rates) / 1000
             fitted_trigger_rates = np.array(fitted_trigger_rates)
             relative = (
@@ -740,7 +740,7 @@ class ObservationTemperaturePipeline:
             deadtime_err,
             deadtime_pc,
             error_deadtime_pc,
-            _,
+            deadtime_pc_fit,
             _,
         ) = run_deadtime(
             nevents=self.max_events,

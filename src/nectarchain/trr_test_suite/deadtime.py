@@ -542,6 +542,8 @@ def run_deadtime(
         collected_trigger_rates=collected_trigger_rates,
     )[-1]
 
+    avg_deadtime_pc = []
+
     log.info(f"Output directory: {output_dir}")
     log.info(f"Temporary output file: {temp_output}")
     log.info(f"N max events to be considered: {nevents}")
@@ -558,6 +560,14 @@ def run_deadtime(
         log.info(f"Dead-Time percentage from the tool process: {deadtime_pc[ii]} %")
         log.info(f"Expected run duration from the fit: {values[4]:.2f} s")
         log.info("-" * 40)
+        if collected_trigger_rates[ii] < 8500 or collected_trigger_rates[ii] > 6500:
+            avg_deadtime_pc.append(deadtime_pc[ii])
+            # compute average deadtime % with only runs at 7 kHz for the thermal test
+    log.info(
+        "Average Dead-Time percentage"
+        + f"for runs at ~7 kHz: {np.mean(avg_deadtime_pc):.3f} %"
+    )
+    log.info("-" * 40)
 
     ids = np.array(ids)
     runlist = np.array(runlist)
