@@ -76,11 +76,126 @@ def test_make_camera_displays():
         make_camera_displays(source=test_dict[runid], runid=runid)
 
 
+def test_get_run_times():
+    from datetime import datetime
+
+    from nectarchain.dqm.bokeh_app.app_hooks import get_run_times
+
+    # Create a test source dict with START-TIMES data
+    # Using np.array to simulate the structure expected by the function
+    run_start_time_ts = 1609459200  # 2021-01-01 00:00:00 UTC
+    first_event_time_ts = 1609459260  # 2021-01-01 00:01:00 UTC
+    last_event_time_ts = 1609462800  # 2021-01-01 01:00:00 UTC
+
+    source_with_times = {
+        "START-TIMES": {
+            "Run start time": np.array([run_start_time_ts]),
+            "First event": np.array([first_event_time_ts]),
+            "Last event": np.array([last_event_time_ts]),
+        }
+    }
+
+    run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(
+        source_with_times
+    )
+
+    # Verify the returned strings are in the correct format
+    assert isinstance(run_start_time_dt, str)
+    assert isinstance(first_event_time_dt, str)
+    assert isinstance(last_event_time_dt, str)
+
+    # Verify the format is YYYY-MM-DD HH:MM:SS
+    expected_format = "%Y-%m-%d %H:%M:%S"
+    datetime.strptime(run_start_time_dt, expected_format)
+    datetime.strptime(first_event_time_dt, expected_format)
+    datetime.strptime(last_event_time_dt, expected_format)
+
+    # Verify the values match the input timestamps
+    assert run_start_time_dt == "2021-01-01 00:00:00"
+    assert first_event_time_dt == "2021-01-01 00:01:00"
+    assert last_event_time_dt == "2021-01-01 01:00:00"
+
+
 def test_make_timelines():
     from nectarchain.dqm.bokeh_app.app_hooks import make_timelines
 
     for runid in list(test_dict.keys()):
         make_timelines(source=test_dict[runid], runid=runid)
+
+
+def test_get_run_ids_for_camera():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with multiple cameras and runs
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run1000",
+        "NectarCAM2_Run1002",
+        "NectarCAM3_Run1003",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Test extracting run ids for camera 1
+    run_ids_cam01 = get_run_ids_for_camera(root, "1")
+    assert len(run_ids_cam01) == 2
+    assert "NectarCAM1_Run1000" in run_ids_cam01
+    assert "NectarCAM1_Run1001" in run_ids_cam01
+
+    # Test extracting run ids for camera 2
+    run_ids_cam02 = get_run_ids_for_camera(root, "2")
+    assert len(run_ids_cam02) == 2
+    assert "NectarCAM2_Run1000" in run_ids_cam02
+    assert "NectarCAM2_Run1002" in run_ids_cam02
+
+    # Test extracting run ids for camera 3
+    run_ids_cam03 = get_run_ids_for_camera(root, "3")
+    assert len(run_ids_cam03) == 1
+    assert "NectarCAM3_Run1003" in run_ids_cam03
+
+    # Test with camera code that has no matches
+    run_ids_cam99 = get_run_ids_for_camera(root, "99")
+    assert len(run_ids_cam99) == 0
+    assert isinstance(run_ids_cam99, list)
+
+
+def test_get_available_cameras_from_db_keys():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_available_cameras_from_db_keys
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with various key types
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run1000",
+        "NectarCAM3_Run1003",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Test that available cameras are correctly extracted
+    available_cameras = get_available_cameras_from_db_keys(root)
+
+    # Should return a set
+    assert isinstance(available_cameras, set)
+
+    # Should contain only the cameras, not the filtered keys
+    assert "1" in available_cameras
+    assert "2" in available_cameras
+    assert "3" in available_cameras
+
+    # Should have exactly 3 cameras
+    assert len(available_cameras) == 3
 
 
 def test_bokeh(tmp_path):
