@@ -117,11 +117,11 @@ class BaseNectarCAMCalibrationTool(Tool):
             log.info(f"{run_file} will be loaded")
             if use_lightevtsource:
                 eventsource = LightNectarCAMEventSource(
-                    input_url=generic_filename, max_events=max_events
+                    input_url=run_file, max_events=max_events
                 )
             else:
                 eventsource = NectarCAMEventSource(
-                    input_url=generic_filename, max_events=max_events
+                    input_url=run_file, max_events=max_events
                 )
 
         return eventsource
