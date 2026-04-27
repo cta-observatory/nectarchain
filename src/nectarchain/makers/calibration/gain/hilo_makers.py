@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 from ctapipe.core.traits import ComponentNameList
 
@@ -14,10 +12,6 @@ from ....data.management import DataManagement
 from ...component import ArrayDataComponent
 from ...extractor.utils import CtapipeExtractor
 from .core import GainNectarCAMCalibrationTool
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["HiLoNectarCAMCalibrationTool"]
 
@@ -56,7 +50,7 @@ class HiLoNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                 max_events=self.max_events,
             )
         except Exception as e:
-            log.warning(e)
+            self.log.warning(e)
             files = []
         if self.reload_events or len(files) != 1:
             if len(files) != 1:

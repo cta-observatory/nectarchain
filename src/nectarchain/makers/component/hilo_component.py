@@ -14,10 +14,6 @@ from ...makers.component import ChargesComponent, GainNectarCAMComponent
 from ...utils import ComponentUtils, ContainerUtils
 from ...utils.constants import GAIN_DEFAULT, GAIN_LINEAR_RANGE, HILO_DEFAULT
 
-# logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-# log = logging.getLogger(__name__)
-# log.handlers = logging.getLogger("__main__").handlers
-
 GAIN_CONTAINER_CLASSES = [PhotostatContainer, SPEfitContainer]
 
 
