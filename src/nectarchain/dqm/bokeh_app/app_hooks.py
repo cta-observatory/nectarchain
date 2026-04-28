@@ -303,17 +303,19 @@ def make_camera_displays(source, runid):
                 camera_display = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
                 )
-                camera_pixel_val_vs_id = make_pixel_val_vs_id(
-                    source, parent_key=parentkey, child_key=childkey
-                )
-                camera_pixel_vals_histo = make_pixel_vals_histo(
-                    source, parent_key=parentkey, child_key=childkey
-                )
-                displays[parentkey][childkey] = [
-                    camera_display,
-                    camera_pixel_val_vs_id,
-                    camera_pixel_vals_histo,
-                ]
+                displays_to_show = [camera_display]
+
+                if "BADPIX" not in parentkey:
+                    camera_pixel_val_vs_id = make_pixel_val_vs_id(
+                        source, parent_key=parentkey, child_key=childkey
+                    )
+                    displays_to_show.append(camera_pixel_val_vs_id)
+                    camera_pixel_vals_histo = make_pixel_vals_histo(
+                        source, parent_key=parentkey, child_key=childkey
+                    )
+                    displays_to_show.append(camera_pixel_vals_histo)
+
+                displays[parentkey][childkey] = displays_to_show
 
     logger.info(f"Successfully created camera display plots for run {runid}")
 
@@ -350,6 +352,8 @@ def update_camera_displays(data, displays, runid=None):
             displays[parentkey][childkey][1],
             displays[parentkey][childkey][2],
         )
+        if len(displays[parentkey][childkey]) == 3
+        else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]

@@ -152,6 +152,8 @@ def get_layout_per_camera(source, runids, camera_code):
             displays[parentkey][childkey][1],
             displays[parentkey][childkey][2],
         )
+        if len(displays[parentkey][childkey]) == 3
+        else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
