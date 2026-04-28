@@ -392,12 +392,20 @@ def make_camera_display(source, parent_key, child_key):
         mask_high_gain, mask_low_gain = get_bad_pixels_position(
             source=source, image_shape=image.shape
         )
-        min_colorbar = np.min(
-            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        # plotting by default range with 99.5% of all events, so that
+        # outliers do not prevent us from seing the bulk of the data
+        min_colorbar = np.nanquantile(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
+            0.005,
         )
-        max_colorbar = np.max(
-            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        max_colorbar = np.nanquantile(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
+            0.995,
         )
+        if max_colorbar == min_colorbar:
+            # avoid problems with bokeh display
+            max_colorbar *= 1.05
+            min_colorbar *= 0.95
         image[mask_low_gain if "LOW-GAIN" in parent_key else mask_high_gain] = 0.0
 
     display = CameraDisplay(geometry=geom)
