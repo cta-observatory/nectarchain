@@ -102,11 +102,11 @@ class TriggerStatistics(DQMSummary):
             "Wrong times": [len(self.event_wrong_times)],
         }
         self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"] = {
-            "All": self.event_times,
-            "Physical": self.event_phy_times,
-            "Pedestals": self.event_ped_times,
-            "Others": self.event_other_times,
-            "Wrong times": self.event_wrong_times,
+            "All": np.array(self.event_times),
+            "Physical": np.array(self.event_phy_times),
+            "Pedestals": np.array(self.event_ped_times),
+            "Others": np.array(self.event_other_times),
+            "Wrong times": np.array(self.event_wrong_times),
         }
         self.TriggerStat_Results_Dict["START-TIMES"] = {
             "Run start time": [self.run_start1],
