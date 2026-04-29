@@ -101,6 +101,13 @@ class TriggerStatistics(DQMSummary):
             "Others": [len(self.event_other_times)],
             "Wrong times": [len(self.event_wrong_times)],
         }
+        self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"] = {
+            "All": self.event_times,
+            "Physical": self.event_phy_times,
+            "Pedestals": self.event_ped_times,
+            "Others": self.event_other_times,
+            "Wrong times": self.event_wrong_times,
+        }
         self.TriggerStat_Results_Dict["START-TIMES"] = {
             "Run start time": [self.run_start1],
             "First event": [self.run_start],
