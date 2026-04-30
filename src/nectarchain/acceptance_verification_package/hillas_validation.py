@@ -7,6 +7,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from nectarchain.utils.constants import ALLOWED_CAMERAS
+
 # TODO
 # this is just a placeholder that makes a plot for test purposes
 # the name is such that in the future it can be replaced
@@ -43,7 +45,14 @@ def get_args():
         required=False,
         default="",
     )
-
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
     parser.add_argument(
         "-o",
         "--output",
