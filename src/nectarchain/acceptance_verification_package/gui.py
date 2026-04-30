@@ -6,7 +6,7 @@ from nectarchain.acceptance_verification_package import hillas_validation
 from nectarchain.trr_test_suite.gui import TestRunner
 
 
-class ATestRunner(TestRunner):
+class AcceptanceTestRunner(TestRunner):
     # redefine list of test modules
     test_modules = {
         "Hillas parameter validation": hillas_validation,
@@ -15,5 +15,5 @@ class ATestRunner(TestRunner):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ex = ATestRunner()
+    ex = AcceptanceTestRunner()
     sys.exit(app.exec())
