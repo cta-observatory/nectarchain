@@ -1,7 +1,9 @@
 import argparse
+import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 
@@ -9,6 +11,14 @@ import matplotlib.pyplot as plt
 # this is just a placeholder that makes a plot for test purposes
 # the name is such that in the future it can be replaced
 # by the script to validate the distribution of Hillas parameters
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/"
+    f"{Path(__file__).stem}_{os.getpid()}.log",
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 def get_args():
