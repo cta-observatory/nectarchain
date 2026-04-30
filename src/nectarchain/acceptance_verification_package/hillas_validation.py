@@ -1,4 +1,5 @@
 import argparse
+import copy
 import logging
 import os
 import pickle
@@ -79,7 +80,15 @@ def main():
     args = parser.parse_args()
     log.setLevel(args.log.upper())
 
-    output_dir = os.path.abspath(args.output)
+    kwargs = copy.deepcopy(vars(args))
+    kwargs.pop("camera")
+    camera = args.camera
+
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
     # Drop arguments from the script after they are parsed, for the GUI to work properly
