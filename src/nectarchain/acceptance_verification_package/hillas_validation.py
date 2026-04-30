@@ -63,6 +63,13 @@ def get_args():
     parser.add_argument(
         "--temp_output", help="Temporary output directory for GUI", default=None
     )
+    parser.add_argument(
+        "-l",
+        "--log",
+        help="log level",
+        default="info",
+        type=str,
+    )
 
     return parser
 
@@ -70,6 +77,7 @@ def get_args():
 def main():
     parser = get_args()
     args = parser.parse_args()
+    log.setLevel(args.log.upper())
 
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
