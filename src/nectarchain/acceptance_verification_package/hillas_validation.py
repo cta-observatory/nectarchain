@@ -97,9 +97,12 @@ def main():
     fig, ax = plt.subplots()
     ax.plot([0, 1], [0, 1])
 
-    plt.savefig(os.path.join(output_dir, "hillas.png"))
+    fig_name = "hillas"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
