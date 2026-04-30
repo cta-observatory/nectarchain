@@ -91,6 +91,8 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
+    log.info(f"Running the script with arguments: {kwargs}")
+
     # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
 
