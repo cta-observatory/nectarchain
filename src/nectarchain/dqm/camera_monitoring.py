@@ -123,6 +123,10 @@ class CameraMonitoring(DQMSummary):
             self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
             self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]
 
+            self.DrawerTimes_run = self.DrawerTimes_new[
+                self.DrawerTimes_new < self.run_end
+            ]
+
             TotalDrawers = np.max(self.DrawerNum2)
 
             for i in range(TotalDrawers + 1):
@@ -133,9 +137,26 @@ class CameraMonitoring(DQMSummary):
                     self.DrawerTemp2_mean.append(
                         np.mean(self.DrawerTemp22[self.DrawerNum2 == i])
                     )
+
+            self.DrawerTemp1_trend = np.array(
+                [
+                    self.DrawerTemp12[self.DrawerNum2 == ii]
+                    for ii in range(TotalDrawers + 1)
+                ]
+            )
+            self.DrawerTemp2_trend = np.array(
+                [
+                    self.DrawerTemp22[self.DrawerNum2 == ii]
+                    for ii in range(TotalDrawers + 1)
+                ]
+            )
             self.DrawerTemp1_mean = np.array(self.DrawerTemp1_mean)
             self.DrawerTemp2_mean = np.array(self.DrawerTemp2_mean)
 
+            self.DrawerTemp_trend = [
+                (self.DrawerTemp1_trend[ii] + self.DrawerTemp2_trend[ii]) / 2.0
+                for ii in range(TotalDrawers + 1)
+            ]
             self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
         except Exception as err:
             log.error(
@@ -148,6 +169,9 @@ class CameraMonitoring(DQMSummary):
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
             ] = self.DrawerTemp_mean
+            self.CameraMonitoring_Results_Dict[
+                "CAMERA-TEMPERATURE-TREND"
+            ] = self.DrawerTemp_trend
         except Exception as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
@@ -203,6 +227,71 @@ class CameraMonitoring(DQMSummary):
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
             ] = full_path
+
+            plt.close()
+
+            fig_trend, _ = plt.subplots()
+            for ii in range(len(self.DrawerTemp_trend)):
+                plt.plot(
+                    self.DrawerTimes_run,
+                    self.DrawerTemp_trend[ii],
+                    label=f"Drawer {ii}",
+                    color="blue",
+                    alpha=0.5,
+                )
+            plt.xlabel("Time")
+            plt.ylabel("Temperature (°C)")
+            plt.title("Camera temperature trend")
+            full_name = name + "_CameraTemperature_Trend.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND"] = fig_trend
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-TREND"
+            ] = full_path
+
+            plt.close()
+
+            fig1_trend, _ = plt.subplots()
+            for ii in range(len(self.DrawerTemp1_trend)):
+                plt.plot(
+                    self.DrawerTimes_run,
+                    self.DrawerTemp1_trend[ii],
+                    label=f"Drawer {ii}",
+                    color="blue",
+                    alpha=0.5,
+                )
+            plt.xlabel("Time")
+            plt.ylabel("Temperature (°C)")
+            plt.title("Camera temperature trend 1")
+            full_name = name + "_CameraTemperature_Trend1.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND-1"] = fig1_trend
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-TREND-1"
+            ] = full_path
+
+            plt.close()
+
+            fig2_trend, _ = plt.subplots()
+            for ii in range(len(self.DrawerTemp2_trend)):
+                plt.plot(
+                    self.DrawerTimes_run,
+                    self.DrawerTemp2_trend[ii],
+                    label=f"Drawer {ii}",
+                    color="blue",
+                    alpha=0.5,
+                )
+            plt.xlabel("Time")
+            plt.ylabel("Temperature (°C)")
+            plt.title("Camera temperature trend 2")
+            full_name = name + "_CameraTemperature_Trend2.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND-2"] = fig2_trend
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-TREND-2"
+            ] = full_path
+
+            plt.close()
 
         except Exception as err:
             log.error(f"Received error code: {err}")
