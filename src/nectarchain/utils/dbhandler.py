@@ -753,7 +753,7 @@ class DBInfos(DictInfos):
         # Now for each tables, load information
         # for table_name in tqdm(tables_to_load):
         for table_name in tables_to_load:
-            try;
+            try:
                 # for table_name in (pbar := tqdm(tables_to_load)):
                 #    pbar.set_description(f"Processing {table_name}")
                 log.info(f"Loading information from table [{table_name}]")
@@ -781,20 +781,35 @@ class DBInfos(DictInfos):
 
                         for col_name in cols:
                             try:
-                                if flags & DBInfosFlag.DRAWER and flags & DBInfosFlag.PIXEL:
-                                    self.tel[camera][table_name][col_name] = DBPixelInfos(
-                                        name=col_name, orig_df=df_sel, verbose=self.verbose
+                                if (
+                                    flags & DBInfosFlag.DRAWER
+                                    and flags & DBInfosFlag.PIXEL
+                                ):
+                                    self.tel[camera][table_name][col_name] = (
+                                        DBPixelInfos(
+                                            name=col_name,
+                                            orig_df=df_sel,
+                                            verbose=self.verbose,
+                                        )
                                     )
                                 elif flags & DBInfosFlag.DRAWER:
                                     # Module level information like FEB Temperature
-                                    self.tel[camera][table_name][col_name] = DBModuleInfos(
-                                        name=col_name, orig_df=df_sel, verbose=self.verbose
+                                    self.tel[camera][table_name][col_name] = (
+                                        DBModuleInfos(
+                                            name=col_name,
+                                            orig_df=df_sel,
+                                            verbose=self.verbose,
+                                        )
                                     )
                                     # print("Implement me")
                                 else:
                                     # Camera level information like UCTS
-                                    self.tel[camera][table_name][col_name] = DBSimpleInfos(
-                                        name=col_name, orig_df=df_sel, verbose=self.verbose
+                                    self.tel[camera][table_name][col_name] = (
+                                        DBSimpleInfos(
+                                            name=col_name,
+                                            orig_df=df_sel,
+                                            verbose=self.verbose,
+                                        )
                                     )
                                     # self.tel[camera][table_name][col_name] = DBInfos()
                                     # print("Implement me")
