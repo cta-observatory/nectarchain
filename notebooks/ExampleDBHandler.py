@@ -28,7 +28,7 @@ try:
     from ctapipe.coordinates import EngineeringCameraFrame
     from ctapipe.visualization import CameraDisplay
 
-    ## in vmarandon scripts at the moment
+    # in vmarandon scripts at the moment
     from nectarchain.utils.dbhandler import DBInfos, to_datetime
 
     # from CalibrationCameraDisplay import CalibrationCameraDisplay
@@ -60,16 +60,16 @@ def GetCamera(cam_name="NectarCam-003"):  # Copied from my Utils code
 
 
 # %%
-## path where the data are if using a run number
+# path where the data are if using a run number
 path = "/Users/vm273425/Programs/NectarCAM/data_ssd/camera2/"
 
-## path of where is the sqlite file (can be in a sub-directory)
+# path of where is the sqlite file (can be in a sub-directory)
 db_data_path = "/Users/vm273425/Programs/NectarCAM/data_ssd/camera2/monitoring"
 
 telid = 2
 
 # %%
-## define the time interval
+# define the time interval
 try:
     # expected date in UTC
     begin_time = to_datetime(parse("2025-11-10 16:00:00"))
@@ -80,20 +80,20 @@ except ParserError as err:
 print(begin_time, end_time)
 
 # %%
-## Create DB Instance
+# Create DB Instance
 dbinfos = DBInfos.init_from_time(
     begin_time, end_time, dbpath=db_data_path, verbose=False
 )
 
-## Could be done using a run number way also, it will look for a run:
+# Could be done using a run number way also, it will look for a run:
 # dbinfos = DBInfos.init_from_run(run, path=path, dbpath=db_data_path,verbose=False)
 
 # %%
-## show available tables
+# show available tables
 dbinfos.show_available_tables()
 
 # %%
-## Show available infos per table
+# Show available infos per table
 dbinfos.show_available_infos()
 
 # %%
@@ -106,13 +106,13 @@ dbinfos.connect(
 # dbinfos.connect("monitoring_drawer_temperatures","monitoring_ffcls","monitoring_tib_scalers")
 
 # %%
-## Retrieve temperature of the modules
+# Retrieve temperature of the modules
 temperatures = dbinfos.tel[telid].monitoring_drawer_temperatures.tfeb1.datas
 temperatures_times = dbinfos.tel[telid].monitoring_drawer_temperatures.tfeb1.times
 print(type(temperatures))
 
 # %%
-## Interpolation can be done with the method "at"
+# Interpolation can be done with the method "at"
 delta_t = (end_time - begin_time).total_seconds()
 steps = 100
 
@@ -157,7 +157,7 @@ ax.grid()
 fig.tight_layout()
 
 # %%
-## Plot temperature in the camera
+# Plot temperature in the camera
 
 pix_temperature = np.nanmean(temperatures, axis=-1).to_pixel()
 # temperatures is of type ModuleArray which is a numpy array with an additionnal function to convert to pixel
@@ -184,7 +184,7 @@ fig.tight_layout()
 # cam1.colorbar.set_label(f'%')
 
 # %%
-## Retrieve hv of the pixels
+# Retrieve hv of the pixels
 hvs = dbinfos.tel[telid].monitoring_channel_voltages.voltage.datas
 hvs_times = dbinfos.tel[telid].monitoring_channel_voltages.voltage.times
 print(type(hvs))
@@ -212,7 +212,7 @@ ax.grid()
 fig.tight_layout()
 
 # %%
-## Plot HV in the camera
+# Plot HV in the camera
 
 hv_means = np.nanmean(hvs, where=hvs > 400, axis=-1)
 hv_stds = np.nanstd(hvs, where=hvs > 400, axis=-1, ddof=1)
