@@ -785,38 +785,39 @@ class DBInfos(DictInfos):
                                     flags & DBInfosFlag.DRAWER
                                     and flags & DBInfosFlag.PIXEL
                                 ):
-                                    self.tel[camera][table_name][col_name] = (
-                                        DBPixelInfos(
-                                            name=col_name,
-                                            orig_df=df_sel,
-                                            verbose=self.verbose,
-                                        )
+                                    self.tel[camera][table_name][
+                                        col_name
+                                    ] = DBPixelInfos(
+                                        name=col_name,
+                                        orig_df=df_sel,
+                                        verbose=self.verbose,
                                     )
                                 elif flags & DBInfosFlag.DRAWER:
                                     # Module level information like FEB Temperature
-                                    self.tel[camera][table_name][col_name] = (
-                                        DBModuleInfos(
-                                            name=col_name,
-                                            orig_df=df_sel,
-                                            verbose=self.verbose,
-                                        )
+                                    self.tel[camera][table_name][
+                                        col_name
+                                    ] = DBModuleInfos(
+                                        name=col_name,
+                                        orig_df=df_sel,
+                                        verbose=self.verbose,
                                     )
                                     # print("Implement me")
                                 else:
                                     # Camera level information like UCTS
-                                    self.tel[camera][table_name][col_name] = (
-                                        DBSimpleInfos(
-                                            name=col_name,
-                                            orig_df=df_sel,
-                                            verbose=self.verbose,
-                                        )
+                                    self.tel[camera][table_name][
+                                        col_name
+                                    ] = DBSimpleInfos(
+                                        name=col_name,
+                                        orig_df=df_sel,
+                                        verbose=self.verbose,
                                     )
                                     # self.tel[camera][table_name][col_name] = DBInfos()
                                     # print("Implement me")
                             except Exception as err:
                                 log.error(
-                                    f"Reading column [{col_name}] from table [{table_name}]"
-                                    f"yield exception [{err}]"  # pffff flake8.............!
+                                    f"Reading column [{col_name}]"
+                                    f" from table [{table_name}]"
+                                    f" yield exception [{err}]"
                                 )
                                 log.error(
                                     "\t==> Consider specializing the function for those"
