@@ -14,16 +14,16 @@
 
 # %%
 try:
-    from dateutil.parser import parse, ParserError
-    import matplotlib.pyplot as plt
-    from matplotlib import dates
-    import numpy as np
-    import warnings
     import datetime
+    import warnings
 
-    from ctapipe.instrument import CameraGeometry
+    import matplotlib.pyplot as plt
+    import numpy as np
     from ctapipe.coordinates import EngineeringCameraFrame
+    from ctapipe.instrument import CameraGeometry
     from ctapipe.visualization import CameraDisplay
+    from dateutil.parser import ParserError, parse
+    from matplotlib import dates
 
     # in vmarandon scripts at the moment
     from nectarchain.utils.dbhandler import DBInfos, to_datetime
