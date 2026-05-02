@@ -15,12 +15,9 @@
 # %%
 try:
     from dateutil.parser import parse, ParserError
-    from tqdm import tqdm
     import matplotlib.pyplot as plt
     from matplotlib import dates
-    import pandas as pd
     import numpy as np
-    import astropy.units as u
     import warnings
     import datetime
 
@@ -102,8 +99,6 @@ dbinfos.connect(
     "monitoring_ffcls", "monitoring_drawer_temperatures", "monitoring_channel_voltages"
 )  # Add any table that are present in the DB
 # dbinfos.connect("*") # Load everything
-# dbinfos.connect("monitoring_drawer_temperatures","monitoring_channel_currents","monitoring_channel_voltages","monitoring_ib","monitoring_ffcls")
-# dbinfos.connect("monitoring_drawer_temperatures","monitoring_ffcls","monitoring_tib_scalers")
 
 # %%
 # Retrieve temperature of the modules
@@ -148,8 +143,8 @@ modules = [124, 132, 140]
 for m in modules:
     ax.plot(temperatures_times, temperatures[m], label=f"Module: {m}")
 ax.set_xlabel("Time (UTC)")
-ax.set_ylabel(f"FEB 1 Temperature")
-ax.set_title(f"FEB 1 Temperature Evolution")
+ax.set_ylabel("FEB 1 Temperature")
+ax.set_title("FEB 1 Temperature Evolution")
 ax.xaxis.set_major_formatter(dates.DateFormatter("%d/%m %H:%M"))
 ax.tick_params("x", rotation=30)
 ax.legend()
@@ -160,7 +155,8 @@ fig.tight_layout()
 # Plot temperature in the camera
 
 pix_temperature = np.nanmean(temperatures, axis=-1).to_pixel()
-# temperatures is of type ModuleArray which is a numpy array with an additionnal function to convert to pixel
+# temperatures is of type ModuleArray
+# this is a numpy array with an additionnal function to convert to pixel
 
 nrows = 1
 ncols = 1
@@ -170,15 +166,16 @@ cam = CameraDisplay(
     geometry=GetCamera(),
     cmap="turbo",
     image=pix_temperature,
-    title=f"FEB 1 Temperature",
+    title="FEB 1 Temperature",
     ax=axs,
     show_frame=False,
     allow_pick=True,
     norm="lin",
 )
 cam.highlight_pixels(range(1855), color="grey", linewidth=0.2)
-# cam.highlight_pixels( range(7*132,7*133), color = "white" ) # highlight the central module
-# CalibrationCameraDisplay is an overload of the CameraDisplay that can highlight differently pixels and easily add function if pixels are clicked
+# CalibrationCameraDisplay is an overload of the CameraDisplay
+# that can highlight differently pixels and easily add function
+# if pixels are clicked
 cam.add_colorbar()
 fig.tight_layout()
 # cam1.colorbar.set_label(f'%')
@@ -203,8 +200,8 @@ pixels = [124 * 7 + 3, 132 * 7 + 3, 140 * 7 + 3]
 for p in pixels:
     ax.plot(hvs_times, hvs[p], label=f"Pixel: {p}")
 ax.set_xlabel("Time (UTC)")
-ax.set_ylabel(f"HV (V)")
-ax.set_title(f"HV Evolution")
+ax.set_ylabel("HV (V)")
+ax.set_title("HV Evolution")
 ax.xaxis.set_major_formatter(dates.DateFormatter("%d/%m %H:%M"))
 ax.tick_params("x", rotation=30)
 ax.legend()
@@ -217,7 +214,8 @@ fig.tight_layout()
 hv_means = np.nanmean(hvs, where=hvs > 400, axis=-1)
 hv_stds = np.nanstd(hvs, where=hvs > 400, axis=-1, ddof=1)
 
-# hv is of type PixelArray which is a numpy array with additionnal feature
+# hv is of type PixelArray which is a numpy array
+# with additionnal feature
 
 nrows = 1
 ncols = 2
@@ -229,14 +227,13 @@ cam = CameraDisplay(
     geometry=GetCamera(),
     cmap="turbo",
     image=hv_means,
-    title=f"Average HV",
+    title="Average HV",
     ax=ax,
     show_frame=False,
     allow_pick=True,
     norm="lin",
 )
 cam.highlight_pixels(range(1855), color="grey", linewidth=0.2)
-# cam.highlight_pixels( range(7*132,7*133), color = "white" ) # highlight the central module
 cam.add_colorbar()
 
 ax = axs[1]
@@ -244,16 +241,17 @@ cams = CameraDisplay(
     geometry=GetCamera(),
     cmap="turbo",
     image=hv_stds,
-    title=f"Std HV",
+    title="Std HV",
     ax=ax,
     show_frame=False,
     allow_pick=True,
     norm="lin",
 )
 cams.highlight_pixels(range(1855), color="grey", linewidth=0.2)
-# cams.highlight_pixels( range(7*132,7*133), color = "white" ) # highlight the central module
 cams.add_colorbar()
-# CalibrationCameraDisplay is an overload of the CameraDisplay that can highlight differently pixels and easily add function if pixels are clicked
+# CalibrationCameraDisplay is an overload of the CameraDisplay
+# that can highlight differently pixels and easily add function
+# if pixels are clicked
 
 
 fig.tight_layout()
