@@ -390,7 +390,7 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
 
 
 def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray):
-    """Run `DeadtimeTestTool` from `utils.py` over the provided run list
+    """Run `DeadtimeTestTool` from `tools_components.py` over the provided run list
 
     Parameters
     ----------
