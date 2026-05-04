@@ -5,9 +5,6 @@ from ctapipe.core import run_tool
 
 from nectarchain.makers.calibration import HiLoNectarCAMCalibrationTool
 
-# Set NECTARCAMDATA environment
-os.environ["NECTARCAMDATA"] = "/data/users/pcorrea"
-
 # Input gain file and pedestal file
 dir_calib_files = "./calibration_files/"
 pedestal_file = dir_calib_files + "pedestal_6249.h5"
