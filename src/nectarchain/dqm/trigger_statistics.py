@@ -127,6 +127,10 @@ class TriggerStatistics(DQMSummary):
             self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"][
                 "Others"
             ] = self.event_other_id
+        if len(self.event_wrong_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"][
+                "Wrong times"
+            ] = self.event_wrong_times
 
         self.TriggerStat_Results_Dict["START-TIMES"] = {
             "Run start time": [self.run_start1],
