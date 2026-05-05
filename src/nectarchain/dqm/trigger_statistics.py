@@ -101,20 +101,33 @@ class TriggerStatistics(DQMSummary):
             "Others": [len(self.event_other_times)],
             "Wrong times": [len(self.event_wrong_times)],
         }
+
         self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"] = {
-            "All": np.array(self.event_times),
-            "Physical": np.array(self.event_phy_times),
-            "Pedestals": np.array(self.event_ped_times),
-            "Others": np.array(self.event_other_times),
-            "Wrong times": np.array(self.event_wrong_times),
+            "All": self.event_times
         }
-        self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"] = {
-            "All": np.array(self.event_id),
-            "Physical": np.array(self.event_phy_id),
-            "Pedestals": np.array(self.event_ped_id),
-            "Others": np.array(self.event_other_id),
-            "Wrong times": np.array(self.event_wrong_id),
-        }
+        self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"] = {"All": self.event_id}
+        if len(self.event_phy_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"][
+                "Physical"
+            ] = self.event_phy_times
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"][
+                "Physical"
+            ] = self.event_phy_id
+        if len(self.event_ped_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"][
+                "Pedestals"
+            ] = self.event_ped_times
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"][
+                "Pedestals"
+            ] = self.event_ped_id
+        if len(self.event_other_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"][
+                "Others"
+            ] = self.event_other_times
+            self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"][
+                "Others"
+            ] = self.event_other_id
+
         self.TriggerStat_Results_Dict["START-TIMES"] = {
             "Run start time": [self.run_start1],
             "First event": [self.run_start],
