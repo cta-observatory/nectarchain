@@ -182,12 +182,12 @@ class CameraMonitoring(DQMSummary):
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
             ] = self.DrawerTemp_mean
-            self.CameraMonitoring_Results_Dict["CAMERA-TEMPERATURE-STD"] = (
-                self.DrawerTemp_std
-            )
-            self.CameraMonitoring_Results_Dict["CAMERA-TEMPERATURE-TREND"] = (
-                self.DrawerTemp_trend
-            )
+            self.CameraMonitoring_Results_Dict[
+                "CAMERA-TEMPERATURE-STD"
+            ] = self.DrawerTemp_std
+            self.CameraMonitoring_Results_Dict[
+                "CAMERA-TEMPERATURE-TREND"
+            ] = self.DrawerTemp_trend
         except Exception as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
