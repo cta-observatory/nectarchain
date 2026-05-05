@@ -41,6 +41,8 @@ class CameraMonitoring(DQMSummary):
         self.DrawerNum2 = None
         self.DrawerTemp1_mean = []
         self.DrawerTemp2_mean = []
+        self.DrawerTemp1_std = []
+        self.DrawerTemp2_std = []
         self.CameraMonitoring_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
@@ -130,13 +132,25 @@ class CameraMonitoring(DQMSummary):
                     self.DrawerTemp1_mean.append(
                         np.mean(self.DrawerTemp12[self.DrawerNum2 == i])
                     )
+                    self.DrawerTemp1_std.append(
+                        np.std(self.DrawerTemp12[self.DrawerNum2 == i])
+                    )
                     self.DrawerTemp2_mean.append(
                         np.mean(self.DrawerTemp22[self.DrawerNum2 == i])
                     )
+                    self.DrawerTemp2_std.append(
+                        np.std(self.DrawerTemp22[self.DrawerNum2 == i])
+                    )
+
             self.DrawerTemp1_mean = np.array(self.DrawerTemp1_mean)
             self.DrawerTemp2_mean = np.array(self.DrawerTemp2_mean)
+            self.DrawerTemp1_std = np.array(self.DrawerTemp1_std)
+            self.DrawerTemp2_std = np.array(self.DrawerTemp2_std)
 
             self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
+            # std of drawer temperatures as mean of std of temp FEB1 and temp FEB2
+            self.DrawerTemp_std = (self.DrawerTemp1_std + self.DrawerTemp2_std) / 2
+
         except Exception as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
@@ -148,6 +162,9 @@ class CameraMonitoring(DQMSummary):
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
             ] = self.DrawerTemp_mean
+            self.CameraMonitoring_Results_Dict[
+                "CAMERA-TEMPERATURE-STD"
+            ] = self.DrawerTemp_std
         except Exception as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
@@ -158,7 +175,7 @@ class CameraMonitoring(DQMSummary):
 
     def plot_results(self, name, fig_path):
         try:
-            fig, _ = plt.subplots()
+            fig_mean, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
             disp.image = self.DrawerTemp_mean
             disp.cmap = plt.cm.coolwarm
@@ -167,14 +184,14 @@ class CameraMonitoring(DQMSummary):
             plt.title("Camera temperature average")
             full_name = name + "_CameraTemperature_Mean.png"
             full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig_mean
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE"
             ] = full_path
 
             plt.close()
 
-            fig1, disp = plt.subplots()
+            fig1_mean, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
             disp.image = self.DrawerTemp1_mean
             disp.cmap = plt.cm.coolwarm
@@ -183,14 +200,16 @@ class CameraMonitoring(DQMSummary):
             plt.title("Camera temperature average 1")
             full_name = name + "_CameraTemperature_average1.png"
             full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"] = fig1
+            self.ChargeInt_Figures_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
+            ] = fig1_mean
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
             ] = full_path
 
             plt.close()
 
-            fig2, disp = plt.subplots()
+            fig2_mean, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
             disp.image = self.DrawerTemp2_mean
             disp.cmap = plt.cm.coolwarm
@@ -199,10 +218,62 @@ class CameraMonitoring(DQMSummary):
             plt.title("Camera temperature average 2")
             full_name = name + "_CameraTemperature_average2.png"
             full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"] = fig2
+            self.ChargeInt_Figures_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
+            ] = fig2_mean
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
             ] = full_path
+
+            plt.close()
+
+            fig_std, _ = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp_std
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature std")
+            full_name = name + "_CameraTemperature_Std.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD"] = fig_std
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-STD"
+            ] = full_path
+
+            plt.close()
+
+            fig1_std, _ = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp1_std
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature std 1")
+            full_name = name + "_CameraTemperature_Std1.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-1"] = fig1_std
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-STD-1"
+            ] = full_path
+
+            plt.close()
+
+            fig2_std, _ = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp2_std
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature std 2")
+            full_name = name + "_CameraTemperature_Std2.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-2"] = fig2_std
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-STD-2"
+            ] = full_path
+
+            plt.close()
 
         except Exception as err:
             log.error(f"Received error code: {err}")
