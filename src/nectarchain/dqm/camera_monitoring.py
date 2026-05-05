@@ -229,7 +229,7 @@ class CameraMonitoring(DQMSummary):
 
             fig_std, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp_mean
+            disp.image = self.DrawerTemp_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
             disp.add_colorbar()
@@ -245,7 +245,7 @@ class CameraMonitoring(DQMSummary):
 
             fig1_std, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp1_mean
+            disp.image = self.DrawerTemp1_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
             disp.add_colorbar()
@@ -261,7 +261,7 @@ class CameraMonitoring(DQMSummary):
 
             fig2_std, _ = plt.subplots()
             disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp2_mean
+            disp.image = self.DrawerTemp2_std
             disp.cmap = plt.cm.coolwarm
             disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
             disp.add_colorbar()
