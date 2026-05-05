@@ -2,7 +2,7 @@ import numpy as np
 
 # bokeh imports
 from bokeh.io import output_file, save
-from bokeh.layouts import column, gridplot, row
+from bokeh.layouts import column, row
 from bokeh.models import Select, TabPanel, Tabs
 from bokeh.plotting import curdoc
 
@@ -221,26 +221,32 @@ def test_bokeh(tmp_path):
     displays = make_camera_displays(source=source, runid=runid)
     timelines = make_timelines(source, runid)
 
-    ncols = 3
     camera_displays = [
-        displays[parentkey][childkey].figure
+        row(
+            displays[parentkey][childkey][0].figure,
+            displays[parentkey][childkey][1],
+            displays[parentkey][childkey][2],
+        )
+        if len(displays[parentkey][childkey]) == 3
+        else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
+
     list_timelines = [
         timelines[parentkey][childkey]
         for parentkey in timelines.keys()
         for childkey in timelines[parentkey].keys()
     ]
 
-    layout_camera_displays = gridplot(
+    layout_camera_displays = column(
         camera_displays,
-        ncols=ncols,
+        sizing_mode="scale_width",
     )
 
-    layout_timelines = gridplot(
+    layout_timelines = column(
         list_timelines,
-        ncols=2,
+        sizing_mode="scale_width",
     )
     # Create different tabs
     tab_camera_displays = TabPanel(
