@@ -93,6 +93,9 @@ def get_args():
         "--source",
         type=int,
         nargs="+",
+        # TODO: may use EventType.FLATFIELD.value,
+        # for FF for instance, and work similarly
+        # with the other ids instead of numbers
         choices=[0, 1, 2, 3, 4, 15, 16, 17, 24, 32, 255],
         # EventType from ctapipe.containers.EventType
         help="Source number (or list of numbers)",
