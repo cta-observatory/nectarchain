@@ -1,41 +1,90 @@
-import os
-import sys
+import logging
 
 from ctapipe.core import run_tool
+from ctapipe.core.logging import ColoredFormatter
+from traitlets.config import Config
 
-from nectarchain.makers.calibration import HiLoNectarCAMCalibrationTool
+from nectarchain.makers.calibration import (
+    FlatFieldSPENominalNectarCAMCalibrationTool,
+    HiLoNectarCAMCalibrationTool,
+    PedestalNectarCAMCalibrationTool,
+)
+from nectarchain.makers.calibration.core import NectarCAMCalibrationTool
 
-# Input gain file and pedestal file
-dir_calib_files = "./calibration_files/"
-pedestal_file = dir_calib_files + "pedestal_6249.h5"
-gain_file = (
-    dir_calib_files + "FlatFieldSPENominalStdNectarCAM_run3936_maxevents50000"
-    "_LocalPeakWindowSum_window_shift_4_window_width_16.h5"
+######################
+# Tool configuration #
+######################
+
+core_tool_name = NectarCAMCalibrationTool.__name__
+ped_tool_name = PedestalNectarCAMCalibrationTool.__name__
+gain_tool_name = FlatFieldSPENominalNectarCAMCalibrationTool.__name__
+hilo_tool_name = HiLoNectarCAMCalibrationTool.__name__
+
+config = Config()
+
+# Global configurations for all tools
+config[core_tool_name].max_events = 10000
+config[core_tool_name].progress_bar = True
+config[core_tool_name].overwrite = True
+config[core_tool_name].log_level = "INFO"
+config[core_tool_name].camera = "NectarCAMQM"
+
+# Configure pedestal tool
+config[ped_tool_name].run_number = 6249
+config[ped_tool_name].events_per_slice = 3000
+
+# Configure gain tool
+config[gain_tool_name].run_number = 3936
+config[gain_tool_name].method = "LocalPeakWindowSum"
+config[gain_tool_name].extractor_kwargs = {"window_width": 8, "window_shift": 4}
+config[gain_tool_name].multiproc = True
+config[gain_tool_name].nproc = 8
+
+# Configure HiLo tool
+config[hilo_tool_name].run_number = 6252  # FF run
+config[hilo_tool_name].method = config[gain_tool_name].method
+config[hilo_tool_name].extractor_kwargs = config[gain_tool_name].extractor_kwargs
+
+
+################
+# Logger setup #
+################
+
+handler = logging.StreamHandler()
+handler.setFormatter(
+    ColoredFormatter(fmt="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 )
 
-# Some traits
-FF_run_number = 6252
-max_events = 5000
-progress_bar = True
-overwrite = True
-method = "LocalPeakWindowSum"
-extractor_kwargs = {"window_width": 8, "window_shift": 4}
-log_level = "INFO"
+log = logging.getLogger(__name__)
+log.setLevel(config[core_tool_name].log_level)
+log.addHandler(handler)
+log.propagate = False
+
+
+#################
+# Main function #
+#################
 
 
 def main():
-    hilo_tool = HiLoNectarCAMCalibrationTool(
-        run_number=FF_run_number,
-        max_events=max_events,
-        overwrite=overwrite,
-        progress_bar=progress_bar,
-        log_level=log_level,
-        method=method,
-        extractor_kwargs=extractor_kwargs,
-        gain_file=gain_file,
-        pedestal_file=pedestal_file,
-    )
+    ped_tool = PedestalNectarCAMCalibrationTool(config=config)
+    if ped_tool.output_path.exists():
+        log.info(f"Pedestals already computed at {ped_tool.output_path}")
+    else:
+        run_tool(ped_tool)
 
+    # This might take a while if need to run the tool :)
+    gain_tool = FlatFieldSPENominalNectarCAMCalibrationTool(config=config)
+    if gain_tool.output_path.exists():
+        log.info(f"Gain for HG channel already computed at {gain_tool.output_path}")
+    else:
+        run_tool(gain_tool)
+
+    hilo_tool = HiLoNectarCAMCalibrationTool(
+        config=config,
+        pedestal_file=ped_tool.output_path,
+        gain_file=gain_tool.output_path,
+    )
     run_tool(hilo_tool)
 
     log.info(
@@ -44,16 +93,7 @@ def main():
     )
 
 
+#####################################
+
 if __name__ == "__main__":
-    import logging
-
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        force=True,
-        level=log_level,
-    )
-    log = logging.getLogger(__name__)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(log_level)
-
     main()
