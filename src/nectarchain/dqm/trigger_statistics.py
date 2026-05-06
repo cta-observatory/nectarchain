@@ -72,14 +72,19 @@ class TriggerStatistics(DQMSummary):
 
         self.event_ped_times = self.event_times[self.event_type == pedestal_num]
         self.event_phy_times = self.event_times[self.event_type == physical_num]
+
         mask = (self.event_type != physical_num) & (self.event_type != pedestal_num)
         self.event_other_times = self.event_times[mask]
 
         self.event_ped_id = self.event_id[self.event_type == pedestal_num]
         self.event_phy_id = self.event_id[self.event_type == physical_num]
-        mask = (self.event_type != physical_num) & (self.event_type != pedestal_num)
         self.event_other_id = self.event_id[mask]
 
+        self.event_ped_id = self.event_ped_id[self.event_ped_times > self.run_start]
+        self.event_phy_id = self.event_phy_id[self.event_phy_times > self.run_start]
+        self.event_other_id = self.event_other_id[
+            self.event_other_times > self.run_start
+        ]
         self.event_ped_times = self.event_ped_times[
             self.event_ped_times > self.run_start
         ]
@@ -90,6 +95,8 @@ class TriggerStatistics(DQMSummary):
             self.event_other_times > self.run_start
         ]
         self.event_wrong_times = self.event_times[self.event_times < self.run_start]
+
+        self.event_id = self.event_id[self.event_times > self.run_start]
         self.event_times = self.event_times[self.event_times > self.run_start]
 
     def get_results(self):
@@ -101,20 +108,31 @@ class TriggerStatistics(DQMSummary):
             "Others": [len(self.event_other_times)],
             "Wrong times": [len(self.event_wrong_times)],
         }
-        self.TriggerStat_Results_Dict["TRIGGER-EVENT-TIMESTAMPS"] = {
-            "All": np.array(self.event_times),
-            "Physical": np.array(self.event_phy_times),
-            "Pedestals": np.array(self.event_ped_times),
-            "Others": np.array(self.event_other_times),
-            "Wrong times": np.array(self.event_wrong_times),
+
+        self.TriggerStat_Results_Dict["TRIGGER-EVENTS-ALL"] = {
+            "Timestamps": self.event_times,
+            "IDs": self.event_id,
         }
-        self.TriggerStat_Results_Dict["TRIGGER-EVENT-IDS"] = {
-            "All": np.array(self.event_id),
-            "Physical": np.array(self.event_phy_id),
-            "Pedestals": np.array(self.event_ped_id),
-            "Others": np.array(self.event_other_id),
-            "Wrong times": np.array(self.event_wrong_id),
-        }
+        if len(self.event_phy_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-PHY"] = {
+                "Timestamps": self.event_phy_times,
+                "IDs": self.event_phy_id,
+            }
+        if len(self.event_ped_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-PED"] = {
+                "Timestamps": self.event_ped_times,
+                "IDs": self.event_ped_id,
+            }
+        if len(self.event_other_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-OTHERS"] = {
+                "Timestamps": self.event_other_times,
+                "IDs": self.event_other_id,
+            }
+        if len(self.event_wrong_times) > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-WRONG"] = {
+                "Timestamps": self.event_wrong_times,
+            }
+
         self.TriggerStat_Results_Dict["START-TIMES"] = {
             "Run start time": [self.run_start1],
             "First event": [self.run_start],
