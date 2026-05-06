@@ -90,15 +90,15 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Setup a temporary directory to store the results of each step in the
         # calibration pipeline
-        self.subtool_res_dir = os.path.join(os.path.dirname(self.output_path), "tmp")
-        self.ped_output_path = pathlib.Path(
-            f"{self.subtool_res_dir}/output_{self.pedestal_tool_name}.h5"
+        self.subtool_res_dir = self.output_path.parent / "tmp"
+        self.ped_output_path = (
+            self.subtool_res_dir / f"output_{self.pedestal_tool_name}.h5"
         )
-        self.gain_output_path = pathlib.Path(
-            f"{self.subtool_res_dir}/output_{self.gain_tool_name}.h5"
+        self.gain_output_path = (
+            self.subtool_res_dir / f"output_{self.gain_tool_name}.h5"
         )
-        self.FF_output_path = pathlib.Path(
-            f"{self.subtool_res_dir}/output_{self.flatfield_tool_name}.h5"
+        self.FF_output_path = (
+            self.subtool_res_dir / f"output_{self.flatfield_tool_name}.h5"
         )
 
         # Setup pedestal tool
