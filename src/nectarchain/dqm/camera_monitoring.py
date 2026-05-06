@@ -186,6 +186,9 @@ class CameraMonitoring(DQMSummary):
                 "CAMERA-TEMPERATURE-AVERAGE"
             ] = self.DrawerTemp_mean
             self.CameraMonitoring_Results_Dict[
+                "CAMERA-TEMPERATURE-STD"
+            ] = self.DrawerTemp_std
+            self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-TREND"
             ] = self.DrawerTemp_trend
         except Exception as err:
@@ -246,6 +249,54 @@ class CameraMonitoring(DQMSummary):
             ] = fig2_mean
             self.ChargeInt_Figures_Names_Dict[
                 "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
+            ] = full_path
+
+            plt.close()
+
+            fig_std, _ = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp_std
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature std")
+            full_name = name + "_CameraTemperature_Std.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD"] = fig_std
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-STD"
+            ] = full_path
+
+            plt.close()
+
+            fig1_std, _ = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp1_std
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature std 1")
+            full_name = name + "_CameraTemperature_Std1.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-1"] = fig1_std
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-STD-1"
+            ] = full_path
+
+            plt.close()
+
+            fig2_std, _ = plt.subplots()
+            disp = CameraDisplay(self.camera)
+            disp.image = self.DrawerTemp2_std
+            disp.cmap = plt.cm.coolwarm
+            disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
+            disp.add_colorbar()
+            plt.title("Camera temperature std 2")
+            full_name = name + "_CameraTemperature_Std2.png"
+            full_path = os.path.join(fig_path, full_name)
+            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-2"] = fig2_std
+            self.ChargeInt_Figures_Names_Dict[
+                "CAMERA-TEMPERATURE-IMAGE-STD-2"
             ] = full_path
 
             plt.close()
