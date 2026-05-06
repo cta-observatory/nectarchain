@@ -9,6 +9,7 @@ from .flatfield_spe_component import (
     FlatFieldSingleNominalSPEStdNectarCAMComponent,
 )
 from .gain_component import GainNectarCAMComponent
+from .hilo_component import HiLoComponent
 from .pedestal_component import PedestalEstimationComponent
 from .photostatistic_algorithm import PhotoStatisticAlgorithm
 from .photostatistic_component import PhotoStatisticNectarCAMComponent
@@ -42,4 +43,5 @@ __all__ = [
     "PhotoStatisticAlgorithm",
     "GainNectarCAMComponent",
     "FlatFieldComponent",
+    "HiLoComponent",
 ]
