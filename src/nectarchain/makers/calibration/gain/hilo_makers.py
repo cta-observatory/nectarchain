@@ -18,6 +18,10 @@ __all__ = ["HiLoNectarCAMCalibrationTool"]
 
 class HiLoNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     name = "HiLoNectarCAMCalibrationTool"
+    description = (
+        "Calibrate the gain of the low-gain channel. "
+        "Do so by computing the HiLo ratio in the regime where the gain is linear."
+    )
 
     componentsList = ComponentNameList(
         NectarCAMComponent,
