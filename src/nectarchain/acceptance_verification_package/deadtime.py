@@ -9,6 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
+from ctapipe.containers import EventType
 
 from nectarchain.trr_test_suite.deadtime import (
     fit_rate_per_run,
@@ -34,27 +35,11 @@ plt.style.use(
 )
 
 
-def get_labels(ids):
-    sources_label = []
-    sources_color = []
-
+def get_labels():
     with open("resources/source_type_labels.json", "r") as f:
         source_labels = json.load(f)
 
-    for source in ids:
-        if str(source) in source_labels:
-            log.info(f"Source {source} found in the source labels file.")
-            sources_label.append(source_labels[str(source)]["source"])
-            sources_color.append(source_labels[str(source)]["color"])
-        else:
-            log.warning(
-                f"Source {source} not found in the source labels file."
-                + " Using default label and color."
-            )
-            sources_label.append(f"Source {source}")
-            sources_color.append("black")
-
-    return sources_label, sources_color
+    return source_labels
 
 
 def get_args():
@@ -70,9 +55,10 @@ def get_args():
         + "According to the nectarchain component interface, you have to set a \
             NECTARCAMDATA environment variable in the folder where you have the data \
                 from your runs or where you want them to be downloaded.\n"
-        + "You have to provide a run number (or list of numbers), the event source \
-            and, optionally, a corresponding camera tag and an output directory \
-                to save the final plot.\n"
+        + "You have to provide a run number (or list of numbers), the event source, \
+            a corresponding camera tag and, optionally, the number of events \
+            to consider for the test and an output directory \
+                to save the final plots.\n"
         + "If the data is not in NECTARCAMDATA, the files will be downloaded through \
             DIRAC.\n"
         + "You can optionally specify the number of events to be processed \
@@ -85,24 +71,17 @@ def get_args():
         type=int,
         nargs="+",
         help="Run number (or list of numbers)",
-        required=False,
-        default="",
+        required=True,
     )
     parser.add_argument(
         "-s",
         "--source",
         type=int,
         nargs="+",
-        # TODO: may use EventType.FLATFIELD.value,
-        # for FF for instance, and work similarly
-        # with the other ids instead of numbers
-        choices=[0, 1, 2, 3, 4, 15, 16, 17, 24, 32, 255],
-        # EventType from ctapipe.containers.EventType
+        choices=[member.value for member in EventType],
+        # [0, 1, 2, 3, 4, 15, 16, 17, 24, 32, 255]
         help="Source number (or list of numbers)",
-        required=False,
-        default=32,
-        # NOTE: assuming standard physics
-        # stereo trigger may not be correct...
+        required=True,
     )
     parser.add_argument(
         "-e",
@@ -142,7 +121,26 @@ def get_args():
 
 
 def main():
-    # TODO: docstring
+    """Runs the deadtime test script, which performs deadtime tests B-TEL-1260 and
+    B-TEL-1270, and event rate test B-MST-1280.
+
+    The script takes command-line arguments to specify a run number, \
+        corresponding event source, the camera tag, and, optionally, \
+        the number of events to consider for the test and an output directory. \
+            It then processes the data for each run, performs an exponential \
+                fit to the deadtime distribution, and generates three plots:
+
+    1. A plot of the exponential function fit on the deadtime\
+        distribution for each run.
+    2. A plot of deadtime percentage vs. collected trigger rate, with the CTAO\
+        requirement indicated.
+    3. A plot of the rate from the fit vs. the collected trigger rate, with the\
+        relative difference shown in the bottom panel.
+
+    The script also saves the generated plots to the specified output directory, and\
+        optionally saves the last two to a temporary output directory for use\
+            in a GUI.
+    """
 
     parser = get_args()
     args = parser.parse_args()
@@ -151,7 +149,9 @@ def main():
     runlist = args.run_numbers
     ids = args.source
 
-    sources_label, sources_color = get_labels(ids)
+    assert len(runlist) == len(ids), "'runlist' and 'ids' must have the same length"
+
+    source_labels = get_labels()
 
     nevents = args.evts
 
@@ -180,7 +180,9 @@ def main():
         time_tot,
         deadtime_us,
         deadtime_pc,
-    ) = run_deadtime_test_tool_process(runlist=runlist, nevents=nevents, ids=ids)
+    ) = run_deadtime_test_tool_process(
+        runlist=runlist, nevents=nevents, ids=ids, test_type="av"
+    )
 
     results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
 
@@ -220,6 +222,8 @@ def main():
             deadtime_us=np.array(deadtime_us[ii].value),
             run=run_num,
             output_plot=output_dir,
+            run_type=EventType(ids[ii]).name,
+            temp_output=temp_output,
         )
         deadtime.append(results[0])
         fitted_trigger_rates.append(((-1 * results[6]) * (1 / u.us)).to(u.kHz).value)
@@ -241,10 +245,6 @@ def main():
     )
 
     if len(runlist) > 1:
-        # TODO: this will not work, sources_label are different
-        # to what the two functions in deadime.py in the trr_test_suite expect.
-        # Unfortunately, the code there is still set on sources as 0, 1, 2,
-        # and may need to be adapted with the new labels....
         plot_deadtime_vs_collected_trigger_rate(
             np.array(ids),
             np.array(collected_trigger_rates),
@@ -252,18 +252,20 @@ def main():
             np.array(error_deadtime_pc),
             np.array(deadtime_pc_fit),
             False,
-            sources_label,
+            source_labels,
             output_dir,
             temp_output,
+            test_type="av",
         )
         plot_fitted_rate_vs_collected_trigger_rate(
             np.array(ids),
             np.array(collected_trigger_rates),
             np.array(fitted_trigger_rates),
             np.array(fitted_trigger_rates_err),
-            sources_label,
+            source_labels,
             output_dir,
             temp_output,
+            test_type="av",
         )
 
     plt.close("all")

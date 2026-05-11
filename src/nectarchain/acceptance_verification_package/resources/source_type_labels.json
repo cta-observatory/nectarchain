@@ -8,6 +8,6 @@
     "16": {"source": "Muon", "color": "magenta"},
     "17": {"source": "Hardware Stereo", "color": "yellow"},
     "24": {"source": "DAQ software trigger", "color": "brown"},
-    "32": {"source": "Standard Physics stereo trigger", "color": "gray"},
+    "32": {"source": "Standard Physics stereo trigger", "color": "pink"},
     "255": {"source": "Unknown", "color": "black"}
 }
