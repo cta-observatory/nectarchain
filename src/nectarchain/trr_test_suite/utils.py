@@ -559,7 +559,12 @@ def pois(x, A, R):
 
 # function by Federica
 def plot_deadtime_and_expo_fit(
-    total_delta_t_for_busy_time, deadtime_us, run, verbose=False, output_plot=None
+    total_delta_t_for_busy_time,
+    deadtime_us,
+    run,
+    verbose=False,
+    output_plot=None,
+    run_type=None,
 ):
     """Compute the deadtime and exponential fit parameters for a given dataset.
 
@@ -575,6 +580,8 @@ def plot_deadtime_and_expo_fit(
         Whether to print the fit results or not.
     output_plot : str, optional
         The path to save the output plot.
+    run_type : str, optional
+        The run type, as extracted from ctapipe.containters.EventType
 
     Returns
     -------
@@ -689,6 +696,7 @@ def plot_deadtime_and_expo_fit(
             max_x_value_for_plot - 50,
             np.max(entries) - 10,
             f"Run {run}"
+            + (f", {run_type}" if run_type else "")
             + "\n"
             + r"$f(\Delta t) = A \cdot$"
             + r"$\exp({-R \cdot (\delta t - \Delta_{\mathrm{min}})})$"

@@ -466,16 +466,20 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
 
     def finish(self, *args, **kwargs):
         id = kwargs.pop("id")
+        test_type = kwargs.pop("test_type")
         output = super().finish(return_output_component=True, *args, **kwargs)
 
         # Specify event type
-        # NOTE: will probably need to be revisited
-        if id == 0:  # FFCLS
-            event_type = EventType.FLATFIELD
-        elif id == 1:  # NSB
-            event_type = EventType.SUBARRAY
-        elif id == 2:  # Laser
-            event_type = EventType.SUBARRAY
+        # NOTE: may probably need to be revisited
+        if test_type == "trr":
+            if id == 0:  # FFCLS
+                event_type = EventType.FLATFIELD
+            elif id == 1:  # NSB
+                event_type = EventType.SUBARRAY
+            elif id == 2:  # Laser
+                event_type = EventType.SUBARRAY
+        elif test_type == "av":
+            event_type = EventType(id)
 
         charge_container = output[0].containers[event_type]
 

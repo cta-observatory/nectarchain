@@ -43,6 +43,7 @@ def plot_deadtime_vs_collected_trigger_rate(
     labels,
     output_dir,
     temp_output,
+    test_type,
 ):
     """Plot the deadtime percentage vs the trigger rates
 
@@ -62,18 +63,30 @@ def plot_deadtime_vs_collected_trigger_rate(
     show_camera_client : bool
         Whether to show the shadead areas for the
         percentage values extracted from the camera client counters
-    labels : list
+    labels : dict
         Labels with the source names for the plot
     output_dir : str
         Path to the output directory to save the plot
     temp_output : str
         Path to temporary output directory for the GUI
+    test_type : str
+        Test type to specify the source ids.
+        Accepted options are 'trr' and 'av',
+        for 'Test-Readiness Review' and 'Acceptance Verification'.
     """
+
+    if test_type not in ["trr", "av"]:
+        log.warning("Invalid chosen 'test_type', falling back to 'trr'.")
+        test_type = "trr"
+    available_ids = np.unique(ids).tolist()
 
     fig, ax = plt.subplots()
 
-    for source in range(0, 3):
+    for source in available_ids:
         mask_source = np.where(ids == source)[0]
+
+        if test_type == "av":
+            source = str(source)
 
         if show_camera_client:
             deadtime_pc_source = deadtime_pc[mask_source]
@@ -121,7 +134,7 @@ def plot_deadtime_vs_collected_trigger_rate(
     ax.text(
         3.5,
         6.75,
-        "CTA requirement",
+        "CTAO requirement",
         color="gray",
         fontsize=20,
         alpha=0.7,
@@ -129,7 +142,7 @@ def plot_deadtime_vs_collected_trigger_rate(
         verticalalignment="center",
     )
 
-    plt.legend()
+    plt.legend(fontsize=12)
 
     plt.xlim(0.0, 15)
     plt.yscale("log")
@@ -152,6 +165,7 @@ def plot_fitted_rate_vs_collected_trigger_rate(
     labels,
     output_dir,
     temp_output,
+    test_type,
 ):
     """Plot the fitted vs collected trigger rates and the relative difference
 
@@ -166,13 +180,22 @@ def plot_fitted_rate_vs_collected_trigger_rate(
     lambda_from_fit_err : np.ndarray
         Error on lambda parameter values
         from the exponential fit with `fit_rate_per_run`
-    labels : list
+    labels : dict
         Labels with the source names for the plot
     output_dir : str
         Path to the output directory to save the plot
     temp_output : str
         Path to temporary output directory for the GUI
+    test_type : str
+        Test type to specify the source ids.
+        Accepted options are 'trr' and 'av',
+        for 'Test-Readiness Review' and 'Acceptance Verification'.
     """
+
+    if test_type not in ["trr", "av"]:
+        log.warning("Invalid chosen 'test_type', falling back to 'trr'.")
+        test_type = "trr"
+    available_ids = np.unique(ids).tolist()
 
     fig, ((ax1, ax2)) = plt.subplots(
         2,
@@ -190,8 +213,12 @@ def plot_fitted_rate_vs_collected_trigger_rate(
 
     x_err = 0
     err_ratio = relative * (((rate_err + x_err) / (yy - xx)) + x_err / xx)
-    for source in range(0, 3):
+    for source in available_ids:
         runl = np.where(ids == source)[0]
+
+        if test_type == "av":
+            source = str(source)
+
         ax2.errorbar(
             xx[runl],
             relative[runl],
@@ -203,7 +230,7 @@ def plot_fitted_rate_vs_collected_trigger_rate(
             color=labels[source]["color"],
         )
 
-    ax2.set_ylim(-25, 25)
+    ax2.set_ylim(-15, 15)
 
     xx = range(0, 60)
 
@@ -224,8 +251,11 @@ def plot_fitted_rate_vs_collected_trigger_rate(
     ax1.set_ylim(1e0, 60)
     ax2.set_xlim(1e0, 60)
 
-    for source in range(0, 3):
+    for source in available_ids:
         runl = np.where(ids == source)[0]
+
+        if test_type == "av":
+            source = str(source)
 
         ax1.errorbar(
             collected_trigger_rates[runl] / 1000,
@@ -238,7 +268,7 @@ def plot_fitted_rate_vs_collected_trigger_rate(
             label=labels[source]["source"],
         )
 
-    ax1.legend()
+    ax1.legend(fontsize=12)
 
     plot_path = os.path.join(output_dir, "fitted_vs_collected_trigger_rates.png")
     plt.savefig(plot_path)
@@ -389,7 +419,9 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
     )
 
 
-def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray):
+def run_deadtime_test_tool_process(
+    runlist: list, nevents: int, ids: np.ndarray, test_type: str = "trr"
+):
     """Run `DeadtimeTestTool` from `tools_components.py` over the provided run list
 
     Parameters
@@ -399,7 +431,11 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
     nevents : int
         max number of events
     ids : np.ndarray
-        Source ids for all the runs.
+        Source ids for all the runs
+    test_type : str
+        Test type to specify the source ids.
+        Accepted options are 'trr' and 'av',
+        for 'Test-Readiness Review' and 'Acceptance Verification'.
 
     Returns
     -------
@@ -421,11 +457,17 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         The deadtime percentage value computed with the counters for each run
     """
 
+    if test_type not in ["trr", "av"]:
+        log.warning("Invalid chosen 'test_type', falling back to 'trr'.")
+        test_type = "trr"
+
     ucts_timestamps, ucts_deltat = [], []
     event_counter, busy_counter = [], []
     collected_trigger_rates = []
     time_tot = []
     deadtime_us, deadtime_pc = [], []
+
+    log.info(f"Starting `DeadtimeTestTool` for test {test_type}")
 
     for run, id in zip(runlist, ids):
         log.info("Processing `DeadtimeTestTool` on run {}".format(run))
@@ -442,7 +484,7 @@ def run_deadtime_test_tool_process(runlist: list, nevents: int, ids: np.ndarray)
         tool.initialize()
         tool.setup()
         tool.start()
-        output = tool.finish(id=id)
+        output = tool.finish(id=id, test_type=test_type)
 
         ucts_timestamps.append(output[0])
         ucts_deltat.append(output[1])
