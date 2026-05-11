@@ -1,5 +1,6 @@
 import logging
 import os
+import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -565,6 +566,7 @@ def plot_deadtime_and_expo_fit(
     verbose=False,
     output_plot=None,
     run_type=None,
+    temp_output=None,
 ):
     """Compute the deadtime and exponential fit parameters for a given dataset.
 
@@ -582,6 +584,9 @@ def plot_deadtime_and_expo_fit(
         The path to save the output plot.
     run_type : str, optional
         The run type, as extracted from ctapipe.containters.EventType
+    temp_output : str, optional
+        The path for the temporary output directory
+        for the GUI for the deadtime tests
 
     Returns
     -------
@@ -663,7 +668,7 @@ def plot_deadtime_and_expo_fit(
     parameter_R_err_new = result.params["R"].stderr
 
     if output_plot:
-        _, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10 / 1.61), layout="constrained")
         # plot deltaT distribution
         plt.hist(
             deadtime_us,
@@ -733,6 +738,12 @@ def plot_deadtime_and_expo_fit(
         )
         plt.savefig(plot_path)
         log.info(f"Plot saved at {plot_path}")
+
+        if temp_output:
+            with open(
+                os.path.join(temp_output, f"plot_deadtime_expo_fit_run{run}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
 
     return (
         deadtime,
