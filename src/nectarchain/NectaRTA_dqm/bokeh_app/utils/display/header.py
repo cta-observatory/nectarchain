@@ -54,7 +54,7 @@ def _list_runs(resource_path, extension=".h5"):
     --------
     >>> resource_path = "../../example_data"
     >>> len(_list_runs(resource_path))
-    5
+    3
 
     """
 
