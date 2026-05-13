@@ -19,7 +19,14 @@ __all__ = ["PipelineNectarCAMCalibrationTool"]
 PEDESTAL_CALIBRATION_TOOLS = {
     name: getattr(pedestal_makers, name) for name in pedestal_makers.__all__
 }
-GAIN_CALIBRATION_TOOLS = {name: getattr(gain, name) for name in gain.__all__}
+HILO_CALIBRATION_TOOLS = {
+    "HiLoNectarCAMCalibrationTool": gain.HiLoNectarCAMCalibrationTool
+}
+GAIN_CALIBRATION_TOOLS = {
+    name: getattr(gain, name)
+    for name in gain.__all__
+    if name not in HILO_CALIBRATION_TOOLS
+}
 FLATFIELD_CALIBRATION_TOOLS = {
     name: getattr(flatfield_makers, name) for name in flatfield_makers.__all__
 }
