@@ -17,10 +17,7 @@ from nectarchain.trr_test_suite.deadtime import (
     plot_fitted_rate_vs_collected_trigger_rate,
     run_deadtime_test_tool_process,
 )
-from nectarchain.trr_test_suite.utils import (
-    plot_deadtime_and_expo_fit,
-    source_ids_deadtime,
-)
+from nectarchain.trr_test_suite.utils import plot_deadtime_and_expo_fit
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
@@ -86,7 +83,38 @@ def get_args():
         # [0, 1, 2, 3, 4, 15, 16, 17, 24, 32, 255]
         help="Source number (or list of numbers)",
         required=True,
-        default=source_ids_deadtime,
+        default=[
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+            32,
+        ],
     )
     parser.add_argument(
         "-e",
