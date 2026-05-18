@@ -612,7 +612,7 @@ def plot_deadtime_and_expo_fit(
     first_nonempty_bin = np.where(entries > 0)[0][0]
     deadtime_err = (
         bin_edges[first_nonempty_bin] - bin_edges[first_nonempty_bin - 1]
-    ) / np.sqrt(entries[first_nonempty_bin])
+    ) / (2 * np.sqrt(3 * entries[first_nonempty_bin]))
 
     deadtime_bin = bin_edges[first_nonempty_bin]
     deadtime_bin_length = (
