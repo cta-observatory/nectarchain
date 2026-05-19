@@ -8,7 +8,6 @@ from astropy import units as u
 # Imports from ctapipe
 from ctapipe.containers import EventType
 from ctapipe.core.traits import ComponentNameList, Float
-from ctapipe_io_nectarcam.constants import N_PIXELS
 
 # Imports from nectarchain
 from nectarchain.data.container import ChargesContainers, SPEfitContainer
@@ -16,8 +15,6 @@ from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_test_suite.utils import get_bad_pixels_list
 from nectarchain.utils.constants import GAIN_DEFAULT
-
-get_bad_pixels_list()
 
 
 # overriding so we can have maxevents in the path
@@ -150,7 +147,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             try:
                 # print(kwargs["gain_file"])
                 gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
-                # print(gain_data)
+                # print(f"{gain_data=}")
                 adc_to_pe = gain_data.high_gain[:, 0]
             except Exception:
                 adc_to_pe = GAIN_DEFAULT
@@ -280,7 +277,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     mean_charge_threshold = Float(
         help="Threshold below which to select good events,"
         "in units of mean camera charge.",
-        default_value=10,
+        default_value=10000,
     ).tag(config=True)
 
     def finish(self, bootstrap=False, *args, **kwargs):
@@ -709,6 +706,8 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
 
     def finish(self, bootstrap=False, *args, **kwargs):
         id = kwargs.pop("id")
+        bad_pix = kwargs["bad_pix"]
+        lenpix = kwargs["lenpix"]
         super().finish(*args, **kwargs)
         outputs = [c for c in ChargesContainers.from_hdf5(self.output_path)]
         # print (f'{len(outputs)=}')
@@ -730,7 +729,8 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             ucts_deltat_all,
             deadtime_err,
             event_rate_all,
-            # busy_counter_all,
+            deadtime_rate,
+            deadtime_rate_err,
             collected_trigger_rate_all,
             time_tot_all,
             deadtime_pc_all,
@@ -759,6 +759,8 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             [],
             [],
             [],
+            [],
+            [],
         )
         # Default runs use a laser source and apply a subarray trigger
         # Newer runs use flat-field events
@@ -771,22 +773,6 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
         for output in outputs:
             charge_container = output.containers[event_type]
 
-            # Read gain
-            try:
-                print(kwargs["gain_file"])
-                gain_data = next(
-                    SPEfitContainer.from_hdf5(
-                        cls=SPEfitContainer, path=kwargs["gain_file"]
-                    )
-                )
-                # gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
-                print(gain_data)
-                adc_to_pe = gain_data.high_gain[:, 0]
-                print("IT WORKS")
-            except Exception:
-                print("EXCEPTION")
-                adc_to_pe = GAIN_DEFAULT
-
             # Read charges
             mean_charge = [0, 0]  # per channel
             std_charge = [0, 0]
@@ -795,6 +781,7 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             mean_resolution = [0, 0]
             err_resolution = [0, 0]
             charge_hg = charge_container["charges_hg"]
+            print(f"{charge_hg=}")
             charge_lg = charge_container["charges_lg"]
 
             tom = charge_container["peak_hg"]
@@ -806,7 +793,14 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             print(f"{events_id}")
             tmin.append(np.min(ucts_timestamps))
             tmax.append(np.max(ucts_timestamps))
-
+            try:
+                print(kwargs["gain_file"])
+                gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
+                # print(f"{gain_data=}")
+                adc_to_pe = gain_data.high_gain[:, 0]
+                print(f"{adc_to_pe=}")
+            except Exception:
+                adc_to_pe = GAIN_DEFAULT
             print(f"{charge_hg=},\
                 {charge_lg=},\
                 {tom=},\
@@ -829,8 +823,6 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
 
             # ToM cut==============
 
-            bad_pix = get_bad_pixels_list()
-            lenpix = N_PIXELS - len(bad_pix)
             if bad_pix is not None:
                 charge_lg[:, bad_pix] = np.nan
                 charge_hg[:, bad_pix] = np.nan
@@ -841,9 +833,9 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             tom_slice = np.nanmean(tom_mean)
             tom_slice_err = (1 / lenpix) * np.sqrt(np.nansum(tom_err**2))
             tom_all.append(tom_slice)
-            print(f"{tom_all=}")
+            # print(f"{tom_all=}")
             tom_all_err.append(tom_slice_err)
-            print(f"{tom_all_err=}")
+            # print(f"{tom_all_err=}")
             # diff = np.abs(tom - tom_mean)
             # mask events shifted by more than 6 ns
             # charge_hg[np.where(diff > 4)] = np.nan
@@ -894,7 +886,7 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
                 std_err[channel] = np.nanstd(pix_std_charge)
                 std_err_all[channel].append(std_err[channel])
 
-            print(f"{mean_charge=}")
+            print(f"{mean_charge=}, {mean_resolution}")
 
             tom_no_fit = np.array(tom[good_evts]).reshape(len(good_evts), npixels)
             rms_no_fit = np.zeros(npixels)
@@ -907,13 +899,13 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
                 for tom, rms, err in zip(
                     [tom_no_fit[:, pix]], [rms_no_fit], [rms_no_fit_err]
                 ):
-                    tom_pos = tom[tom < 20]
+                    tom_pos = tom[tom < 50]
 
                     boot_rms = []
 
-                    sample = tom_pos[tom_pos < 32]
+                    sample = tom_pos[tom_pos < 50]
 
-                    bins = np.linspace(0, 32, 133)
+                    bins = np.linspace(10, 50, 166)
                     hist_values, bin_edges = np.histogram(sample, bins=bins)
 
                     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
@@ -962,6 +954,7 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
                             err[pix] = rms[pix] / np.sqrt(2 * N)
                             # print("Error on RMS:", err[pix])
                         except Exception:
+                            # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
                             # no data
                             rms[pix] = np.nan
                             err[pix] = np.nan
@@ -970,7 +963,8 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
                 rms_no_fit_err[bad_pix] = np.nan
 
             rms_cam_nofit = np.nanmean(rms_no_fit)
-            rms_cam_nofit_err = (1 / lenpix) * np.sqrt(np.nansum(rms_no_fit_err**2))
+            rms_cam_nofit_err = (np.nanstd(rms_no_fit)) / np.sqrt(lenpix)
+            # rms_cam_nofit_err = (1 / lenpix) * np.sqrt(np.nansum(rms_no_fit_err**2))
             rms_no_fit_all.append(rms_cam_nofit)
             rms_no_fit_err_all.append(rms_cam_nofit_err)
 
@@ -994,7 +988,10 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             print(f"{event_rate=}")
             mean_deltat = np.nanmean(ucts_deltat)
             deadtime_std = np.nanstd(ucts_deltat) / np.sqrt(counter)
-
+            dt_rate = mean_deltat / time_tot
+            dt_rate_err = deadtime_std / time_tot
+            deadtime_rate.append(dt_rate)
+            deadtime_rate_err.append(dt_rate_err)
             # CONTINUER ICI
             # ucts_timestamps_all.append(ucts_timestamps)
             ucts_deltat_all.append(mean_deltat)
@@ -1052,7 +1049,8 @@ class TempLongRunTestTool(EventsLoopNectarCAMCalibrationTool):
             ucts_deltat_all,
             deadtime_err,
             event_rate_all,
-            # busy_counter_all,
+            deadtime_rate,
+            deadtime_rate_err,
             collected_trigger_rate_all,
             time_tot_all,
             deadtime_pc_all,
