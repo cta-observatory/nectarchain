@@ -297,7 +297,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     mean_charge_threshold = Float(
         help="Threshold below which to select good events,"
         "in units of mean camera charge.",
-        default_value=10,
+        default_value=10000,
     ).tag(config=True)
 
     def finish(self, bootstrap=False, *args, **kwargs):
