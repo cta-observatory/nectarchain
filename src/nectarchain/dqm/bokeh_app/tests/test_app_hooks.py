@@ -123,6 +123,13 @@ def test_make_timelines():
         make_timelines(source=test_dict[runid], runid=runid)
 
 
+def test_make_waveforms():
+    from nectarchain.dqm.bokeh_app.app_hooks import make_waveforms
+
+    for runid in list(test_dict.keys()):
+        make_waveforms(source=test_dict[runid], runid=runid)
+
+
 def test_get_run_ids_for_camera():
     from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
 
@@ -203,6 +210,7 @@ def test_bokeh(tmp_path):
         get_rundata,
         make_camera_displays,
         make_timelines,
+        make_waveforms,
     )
 
     db = DB(None)
@@ -218,8 +226,9 @@ def test_bokeh(tmp_path):
     run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 
     source = get_rundata(root, run_select.value)
-    displays = make_camera_displays(source=source, runid=runid)
+    displays = make_camera_displays(source, runid)
     timelines = make_timelines(source, runid)
+    waveforms = make_waveforms(source, runid)
 
     camera_displays = [
         row(
@@ -239,6 +248,12 @@ def test_bokeh(tmp_path):
         for childkey in timelines[parentkey].keys()
     ]
 
+    list_waveforms = [
+        waveforms[parentkey][childkey]
+        for parentkey in waveforms.keys()
+        for childkey in waveforms[parentkey].keys()
+    ]
+
     layout_camera_displays = column(
         camera_displays,
         sizing_mode="scale_width",
@@ -248,15 +263,24 @@ def test_bokeh(tmp_path):
         list_timelines,
         sizing_mode="scale_width",
     )
+
+    layout_waveforms = column(
+        list_waveforms,
+        sizing_mode="scale_width",
+    )
+
     # Create different tabs
     tab_camera_displays = TabPanel(
         child=layout_camera_displays, title="Camera displays"
     )
     tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
+    tab_waveforms = TabPanel(child=layout_waveforms, title="Waveforms")
+
     # Combine panels into tabs
     tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines],
+        tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+        sizing_mode="scale_width",
     )
 
     controls = row(run_select)

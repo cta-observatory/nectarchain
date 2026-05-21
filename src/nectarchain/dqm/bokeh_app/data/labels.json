@@ -1,4 +1,10 @@
 {
+    "y_axis_labels_waveforms": {
+        "WF-PHY-AVERAGE-PIX-HIGH-GAIN": "Amplitude (DC counts)",
+        "WF-PHY-AVERAGE-PIX-LOW-GAIN": "Amplitude (DC counts)",
+        "WF-AVERAGE-PED-PIX-HIGH-GAIN": "Amplitude (DC counts)",
+        "WF-AVERAGE-PED-PIX-LOW-GAIN": "Amplitude (DC counts)"
+    },
     "y_axis_labels_timelines": {
         "CAMERA-BADPIXTIMELINE-PED-HIGH-GAIN": "Fraction of bad pixels",
         "CAMERA-BADPIXTIMELINE-PED-LOW-GAIN": "Fraction of bad pixels",

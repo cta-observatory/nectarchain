@@ -26,14 +26,14 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 labels_path = os.path.join(base_dir, "data", "labels.json")
 
 
-NOTINDISPLAY = [
+NOTINCAMERADISPLAY = [
     "TRIGGER-.*",
     "PED-INTEGRATION-.*",
     "START-TIMES",
     "WF-.*",
     ".*PIXTIMELINE-.*",
 ]
-TEST_PATTERN = "(?:% s)" % "|".join(NOTINDISPLAY)
+TEST_PATTERN = "(?:% s)" % "|".join(NOTINCAMERADISPLAY)
 
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
@@ -112,7 +112,7 @@ def get_rundata(src, runid):
         from ZODB and ZEO ClientStorage
     runid : str
         Identifier for dictionary extracted from the database,
-        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'
 
     Returns
     -------
@@ -169,6 +169,110 @@ def get_run_times(source):
     return run_start_time_dt, first_event_time_dt, last_event_time_dt
 
 
+def make_waveforms(source, runid=None):
+    """Make waveform plots
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAQM_Run6310'.
+        By default None
+
+    Returns
+    -------
+    dict
+        Nested dictionary containing line plots for the waveforms
+    """
+
+    with open(labels_path, "r", encoding="utf-8") as file:
+        y_axis_labels = json.load(file)["y_axis_labels_waveforms"]
+
+    waveforms = collections.defaultdict(dict)
+    for parentkey in source.keys():
+        if re.match("(?:WF-.*)", parentkey):
+            for childkey in source[parentkey].keys():
+                logger.info(
+                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
+                )
+                waveforms[parentkey][childkey] = figure(title=childkey)
+                samples = np.arange(len(source[parentkey][childkey]))
+                waveform = source[parentkey][childkey]
+                waveforms[parentkey][childkey] = figure(
+                    title=childkey,
+                    x_range=(np.min(samples) - 5, np.max(samples) + 5),
+                    y_range=(
+                        np.min(waveform) - np.min(waveform) / 100,
+                        np.max(waveform) + np.max(waveform) / 100,
+                    ),
+                )
+                waveforms[parentkey][childkey].line(
+                    x=samples,
+                    y=waveform,
+                    line_width=3,
+                )
+            waveforms[parentkey][childkey].xaxis.axis_label = "Waveform sample number"
+
+            try:
+                waveforms[parentkey][childkey].yaxis.axis_label = y_axis_labels[
+                    parentkey
+                ]
+            except ValueError:
+                waveforms[parentkey][childkey].yaxis.axis_label = ""
+            except KeyError:
+                waveforms[parentkey][childkey].yaxis.axis_label = ""
+
+            waveforms[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
+            waveforms[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
+            waveforms[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
+            waveforms[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
+            waveforms[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
+            waveforms[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+
+    logger.info(f"Successfully created waveform plots for run {runid}")
+
+    return dict(waveforms)
+
+
+def update_waveforms(data, runid=None):
+    """Reset each waveform previously created by `make_waveforms`
+
+    Parameters
+    ----------
+    data : dict
+        Dictionary returned by `get_rundata`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
+        By default None
+
+    Returns
+    -------
+    bokeh.models.TabPanel
+        Updated TabPanel containing the bokeh layout for the waveform plots
+    """
+
+    # Make new timeline plots
+    waveforms = make_waveforms(data, runid)
+
+    list_waveforms = [
+        waveforms[parentkey][childkey]
+        for parentkey in waveforms.keys()
+        for childkey in waveforms[parentkey].keys()
+    ]
+
+    layout_waveforms = column(
+        list_waveforms,
+        sizing_mode="scale_width",
+    )
+
+    tab_waveforms = TabPanel(child=layout_waveforms, title="Waveforms")
+
+    return tab_waveforms
+
+
 def make_timelines(source, runid=None):
     """Make timeline plots for pixel quantities evolving with time
 
@@ -178,7 +282,7 @@ def make_timelines(source, runid=None):
         Dictionary returned by `get_rundata`
     runid : str
         Identifier for dictionary extracted from the database,
-        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
         By default None
 
     Returns
@@ -212,8 +316,6 @@ def make_timelines(source, runid=None):
                     y=source[parentkey][childkey],
                     line_width=3,
                 )
-    for parentkey in timelines.keys():
-        for childkey in timelines[parentkey].keys():
             timelines[parentkey][childkey].xaxis.axis_label = "Event number"
             try:
                 timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[
@@ -236,18 +338,16 @@ def make_timelines(source, runid=None):
     return dict(timelines)
 
 
-def update_timelines(data, timelines, runid=None):
+def update_timelines(data, runid=None):
     """Reset each timeline previously created by `make_timelines`
 
     Parameters
     ----------
     data : dict
         Dictionary returned by `get_rundata`
-    timelines : dict
-        Nested dictionary containing line plots created by `make_timelines`
     runid : str
         Identifier for dictionary extracted from the database,
-        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
         By default None
 
     Returns
@@ -285,7 +385,7 @@ def make_camera_displays(source, runid):
         Dictionary returned by `get_rundata`
     runid : str
         Identifier for dictionary extracted from the database,
-        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
 
     Returns
     -------
@@ -322,19 +422,16 @@ def make_camera_displays(source, runid):
     return dict(displays)
 
 
-def update_camera_displays(data, displays, runid=None):
+def update_camera_displays(data, runid=None):
     """Reset each display previously created by `make_camera_displays`
 
     Parameters
     ----------
     data : dict
         Dictionary returned by `get_rundata`
-    displays : dict
-        Nested dictionary containing display plots
-        created by `make_camera_displays`
     runid : str, optional
         Identifier for dictionary extracted from the database,
-        containing the NectarCAM run number. Example: 'NectarCAM_Run6310'.
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
         By default None
 
     Returns
