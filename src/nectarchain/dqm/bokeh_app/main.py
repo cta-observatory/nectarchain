@@ -5,8 +5,10 @@ from app_hooks import (
     get_rundata,
     make_camera_displays,
     make_timelines,
+    make_waveforms,
     update_camera_displays,
     update_timelines,
+    update_waveforms,
 )
 
 # bokeh imports
@@ -66,8 +68,9 @@ def get_layout_per_camera(source, runids, camera_code):
         logger.info(f"Requested to display information for run: {runid}")
         source = get_rundata(db, runid)
 
-        tab_camera_displays = update_camera_displays(source, displays, runid)
-        tab_timelines = update_timelines(source, timelines, runid)
+        tab_camera_displays = update_camera_displays(source, runid)
+        tab_timelines = update_timelines(source, runid)
+        tab_waveforms = update_waveforms(source, runid)
         run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(
             source
         )
@@ -90,7 +93,8 @@ def get_layout_per_camera(source, runids, camera_code):
 
         # Combine panels into tabs
         tabs = Tabs(
-            tabs=[tab_camera_displays, tab_timelines], sizing_mode="scale_width"
+            tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+            sizing_mode="scale_width",
         )
 
         page_layout.children[1] = tabs
@@ -121,6 +125,7 @@ def get_layout_per_camera(source, runids, camera_code):
     source = get_rundata(db, run_select.value)
     displays = make_camera_displays(source, runid)
     timelines = make_timelines(source, runid)
+    waveforms = make_waveforms(source, runid)
 
     run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
     run_times_string = Div(
@@ -164,6 +169,12 @@ def get_layout_per_camera(source, runids, camera_code):
         for childkey in timelines[parentkey].keys()
     ]
 
+    list_waveforms = [
+        waveforms[parentkey][childkey]
+        for parentkey in waveforms.keys()
+        for childkey in waveforms[parentkey].keys()
+    ]
+
     layout_camera_displays = column(
         camera_displays,
         sizing_mode="scale_width",
@@ -174,15 +185,23 @@ def get_layout_per_camera(source, runids, camera_code):
         sizing_mode="scale_width",
     )
 
+    layout_waveforms = column(
+        list_waveforms,
+        sizing_mode="scale_width",
+    )
+
     # Create different tabs
     tab_camera_displays = TabPanel(
         child=layout_camera_displays, title="Camera displays"
     )
     tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
+    tab_waveforms = TabPanel(child=layout_waveforms, title="Waveforms")
+
     # Combine panels into tabs
     tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines],
+        tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+        sizing_mode="scale_width",
     )
 
     # TODO: may want to add a list to the logging of all created tabs,
