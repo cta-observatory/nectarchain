@@ -31,7 +31,7 @@ from bokeh.models import (
     StringFormatter,
     TableColumn,
     TextInput,
-    Switch,
+    Toggle,
 )
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -106,31 +106,31 @@ class NumericRangeControl:
     Compound control for a high-cardinality numeric field.
  
     Layout (inside the sidebar column):
-        [Switch: "Exact value ±10%"]   ← inactive by default
+        [Toggle: "Exact value ±10%"]   ← inactive by default
         [TextInput: exact value    ]   ← disabled until toggle active
         ──────────────────────────
         [TextInput: min            ]   ← active by default
         [TextInput: max            ]
  
-    When the switch is OFF  → range mode (min/max inputs); query also includes
+    When the toggle is OFF  → range mode (min/max inputs); query also includes
                                docs where the field is missing/null.
-    When the switch is ON   → exact mode (single value ±1%); only docs that
+    When the toggle is ON   → exact mode (single value ±10%); only docs that
                                have the field and match the tolerance are returned.
     """
  
-    TOLERANCE = 0.010   # ±1 %
+    TOLERANCE = 0.10   # ±10 %
  
     def __init__(self, name: str, lo: float, hi: float, on_change_cb):
         self.name = name
         self.lo   = lo
         self.hi   = hi
  
-        # ── Switch ──────────────────────────────────────────────────────────
-        self.toggle = Switch(
-            label=f"{name}: exact value ±1 %",
+        # ── Toggle ──────────────────────────────────────────────────────────
+        self.toggle = Toggle(
+            label=f"{name}: exact value ±10 %",
             active=False,
             sizing_mode="stretch_width",
-
+            button_type="default",
         )
  
         # ── Exact-value input (disabled until toggle is ON) ──────────────
@@ -155,13 +155,12 @@ class NumericRangeControl:
  
         # Wire internal toggle → enable/disable sub-widgets
         def _on_toggle(attr, old, new):
-            search_by_exact_value = bool(new)
-            self.exact_input.disabled = not search_by_exact_value
-            self.min_input.disabled   = search_by_exact_value
-            self.max_input.disabled   = search_by_exact_value
-            #on_change_cb(attr, old, new)
-        
-        # Wire all inputs → trigger update_runconfig_tab on change
+            is_exact = bool(new)
+            self.exact_input.disabled = not is_exact
+            self.min_input.disabled   = is_exact
+            self.max_input.disabled   = is_exact
+            on_change_cb(attr, old, new)
+ 
         self.toggle.on_change("active", _on_toggle)
         self.exact_input.on_change("value", on_change_cb)
         self.min_input.on_change("value",   on_change_cb)
@@ -177,7 +176,7 @@ class NumericRangeControl:
         should be applied.
         """
         if self.toggle.active:
-            # ── Exact ±x % mode ─────────────────────────────────────────
+            # ── Exact ±10 % mode ─────────────────────────────────────────
             raw = self.exact_input.value.strip()
             if not raw:
                 return None          # no value entered → no filter
@@ -223,7 +222,7 @@ def _make_control(name: str, meta: dict):
     ftype  = meta["type"]
     values = meta["values"]
     if ftype == "numeric" and values:
-        distinct = list(set(values))
+        distinct = list(dict.fromkeys(values))
         if len(distinct) <= NUMERIC_SELECT_THRESHOLD:
             # ── Low-cardinality: Select ──────────────────────────────────
             # Format options: keep ints as ints, floats as floats
@@ -238,10 +237,10 @@ def _make_control(name: str, meta: dict):
             )
         else:
             # ── High-cardinality: dual TextInput with toggle ─────────────
-            # (returned as NumericRangeControl; wired to update_runconfig_tab() below)
+            # (returned as NumericRangeControl; wired to update() below)
             lo = min(float(v) for v in distinct)
             hi = max(float(v) for v in distinct)
-            return NumericRangeControl(name, lo, hi, on_change_cb=update_runconfig_tab)
+            return NumericRangeControl(name, lo, hi, on_change_cb=update)
 
 
     if ftype == "date" and values:
