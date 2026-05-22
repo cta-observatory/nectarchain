@@ -2,7 +2,7 @@ import numpy as np
 
 # bokeh imports
 from bokeh.io import output_file, save
-from bokeh.layouts import column, gridplot, row
+from bokeh.layouts import column, row
 from bokeh.models import Select, TabPanel, Tabs
 from bokeh.plotting import curdoc
 
@@ -123,11 +123,94 @@ def test_make_timelines():
         make_timelines(source=test_dict[runid], runid=runid)
 
 
+def test_make_waveforms():
+    from nectarchain.dqm.bokeh_app.app_hooks import make_waveforms
+
+    for runid in list(test_dict.keys()):
+        make_waveforms(source=test_dict[runid], runid=runid)
+
+
+def test_get_run_ids_for_camera():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with multiple cameras and runs
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run1000",
+        "NectarCAM2_Run1002",
+        "NectarCAM3_Run1003",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Test extracting run ids for camera 1
+    run_ids_cam01 = get_run_ids_for_camera(root, "1")
+    assert len(run_ids_cam01) == 2
+    assert "NectarCAM1_Run1000" in run_ids_cam01
+    assert "NectarCAM1_Run1001" in run_ids_cam01
+
+    # Test extracting run ids for camera 2
+    run_ids_cam02 = get_run_ids_for_camera(root, "2")
+    assert len(run_ids_cam02) == 2
+    assert "NectarCAM2_Run1000" in run_ids_cam02
+    assert "NectarCAM2_Run1002" in run_ids_cam02
+
+    # Test extracting run ids for camera 3
+    run_ids_cam03 = get_run_ids_for_camera(root, "3")
+    assert len(run_ids_cam03) == 1
+    assert "NectarCAM3_Run1003" in run_ids_cam03
+
+    # Test with camera code that has no matches
+    run_ids_cam99 = get_run_ids_for_camera(root, "99")
+    assert len(run_ids_cam99) == 0
+    assert isinstance(run_ids_cam99, list)
+
+
+def test_get_available_cameras_from_db_keys():
+    from nectarchain.dqm.bokeh_app.app_hooks import get_available_cameras_from_db_keys
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with various key types
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run1000",
+        "NectarCAM3_Run1003",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Test that available cameras are correctly extracted
+    available_cameras = get_available_cameras_from_db_keys(root)
+
+    # Should return a set
+    assert isinstance(available_cameras, set)
+
+    # Should contain only the cameras, not the filtered keys
+    assert "1" in available_cameras
+    assert "2" in available_cameras
+    assert "3" in available_cameras
+
+    # Should have exactly 3 cameras
+    assert len(available_cameras) == 3
+
+
 def test_bokeh(tmp_path):
     from nectarchain.dqm.bokeh_app.app_hooks import (
         get_rundata,
         make_camera_displays,
         make_timelines,
+        make_waveforms,
     )
 
     db = DB(None)
@@ -143,39 +226,61 @@ def test_bokeh(tmp_path):
     run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 
     source = get_rundata(root, run_select.value)
-    displays = make_camera_displays(source=source, runid=runid)
+    displays = make_camera_displays(source, runid)
     timelines = make_timelines(source, runid)
+    waveforms = make_waveforms(source, runid)
 
-    ncols = 3
     camera_displays = [
-        displays[parentkey][childkey].figure
+        row(
+            displays[parentkey][childkey][0].figure,
+            displays[parentkey][childkey][1],
+            displays[parentkey][childkey][2],
+        )
+        if len(displays[parentkey][childkey]) == 3
+        else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
+
     list_timelines = [
         timelines[parentkey][childkey]
         for parentkey in timelines.keys()
         for childkey in timelines[parentkey].keys()
     ]
 
-    layout_camera_displays = gridplot(
+    list_waveforms = [
+        waveforms[parentkey][childkey]
+        for parentkey in waveforms.keys()
+        for childkey in waveforms[parentkey].keys()
+    ]
+
+    layout_camera_displays = column(
         camera_displays,
-        ncols=ncols,
+        sizing_mode="scale_width",
     )
 
-    layout_timelines = gridplot(
+    layout_timelines = column(
         list_timelines,
-        ncols=2,
+        sizing_mode="scale_width",
     )
+
+    layout_waveforms = column(
+        list_waveforms,
+        sizing_mode="scale_width",
+    )
+
     # Create different tabs
     tab_camera_displays = TabPanel(
         child=layout_camera_displays, title="Camera displays"
     )
     tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
+    tab_waveforms = TabPanel(child=layout_waveforms, title="Waveforms")
+
     # Combine panels into tabs
     tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines],
+        tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+        sizing_mode="scale_width",
     )
 
     controls = row(run_select)
