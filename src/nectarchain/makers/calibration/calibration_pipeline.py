@@ -99,38 +99,55 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Setup a temporary directory to store the results of each step in the
         # calibration pipeline
         self.subtool_res_dir = self.output_path.parent / "tmp"
-        self.ped_output_path = (
-            self.subtool_res_dir / f"output_{self.pedestal_tool_name}.h5"
-        )
-        self.gain_output_path = (
-            self.subtool_res_dir / f"output_{self.gain_tool_name}.h5"
-        )
-        self.FF_output_path = (
-            self.subtool_res_dir / f"output_{self.flatfield_tool_name}.h5"
-        )
 
         # Setup pedestal tool
         pedestal_cls = PEDESTAL_CALIBRATION_TOOLS[self.pedestal_tool_name]
+        self.ped_output_path = (
+            self.subtool_res_dir
+            / f"output_{self.pedestal_tool_name}_run{self.ped_run_number}.h5"
+        )
         self.pedestal_tool = pedestal_cls(
             parent=self,
             run_number=self.ped_run_number,
             output_path=self.ped_output_path,
         )
+
         # Setup gain tool
         gain_cls = GAIN_CALIBRATION_TOOLS[self.gain_tool_name]
         if "SPENominal" in self.gain_tool_name:
+            self.gain_output_path = (
+                self.subtool_res_dir
+                / f"output_{self.gain_tool_name}_run{self.FF_SPE_run_number}.h5"
+            )
             self.gain_tool = gain_cls(
                 parent=self,
                 run_number=self.FF_SPE_run_number,
                 output_path=self.gain_output_path,
             )
         elif "SPEHHV" in self.gain_tool_name:
+            self.gain_output_path = (
+                self.subtool_res_dir / f"output_{self.gain_tool_name}_"
+                f"run{self.FF_SPE_HHV_run_number}.h5"
+            )
             self.gain_tool = gain_cls(
                 parent=self,
                 run_number=self.FF_SPE_HHV_run_number,
                 output_path=self.gain_output_path,
             )
         elif "SPECombined" in self.gain_tool_name:
+            for word in self.SPE_HHV_result_path.name.split("_"):
+                if "run" in word:
+                    self.FF_SPE_HHV_run_number = int(word.split("run")[-1])
+                    break
+            if self.FF_SPE_HHV_run_number == -1:
+                self.log.warning(
+                    f"HHV run number not specified in {self.SPE_HHV_result_path}"
+                )
+            self.gain_output_path = (
+                self.subtool_res_dir / f"output_{self.gain_tool_name}_"
+                f"run{self.FF_SPE_run_number}_"
+                f"HHVrun{self.FF_SPE_HHV_run_number}.h5"
+            )
             self.gain_tool = gain_cls(
                 parent=self,
                 run_number=self.FF_SPE_run_number,
@@ -138,6 +155,20 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 output_path=self.gain_output_path,
             )
         elif "PhotoStatistic" in self.gain_tool_name:
+            for word in self.SPE_HHV_result_path.name.split("_"):
+                if "run" in word:
+                    self.FF_SPE_HHV_run_number = int(word.split("run")[-1])
+                    break
+            if self.FF_SPE_HHV_run_number == -1:
+                self.log.warning(
+                    f"HHV run number not specified in {self.SPE_HHV_result_path}"
+                )
+            self.gain_output_path = (
+                self.subtool_res_dir / f"output_{self.gain_tool_name}_"
+                f"FFrun{self.FF_SPE_run_number}_"
+                f"Pedrun{self.ped_run_number}_"
+                f"HHVrun{self.FF_SPE_HHV_run_number}.h5"
+            )
             self.gain_tool = gain_cls(
                 parent=self,
                 run_number=self.FF_run_number,
@@ -161,6 +192,10 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Setup flatfield tool
         flatfield_cls = FLATFIELD_CALIBRATION_TOOLS[self.flatfield_tool_name]
+        self.FF_output_path = (
+            self.subtool_res_dir
+            / f"output_{self.flatfield_tool_name}_run{self.FF_run_number}.h5"
+        )
         self.flatfield_tool = flatfield_cls(
             parent=self,
             run_number=self.FF_run_number,
