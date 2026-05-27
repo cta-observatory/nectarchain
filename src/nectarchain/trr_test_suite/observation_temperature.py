@@ -845,8 +845,8 @@ class ObservationTemperaturePipeline:
         plt.text(
             x=0.05,
             y=0.95,
-            s=f"m: ({slope:.4f} ± {std_err:.4f}) μs/°C"
-            + f"\nc: ({intercept:.4f} ± {std_err_intercept:.4f}) μs",
+            s=f"slope: ({slope:.4f} ± {std_err:.4f}) μs/°C"
+            + f"\nintercept: ({intercept:.4f} ± {std_err_intercept:.4f}) μs",
             transform=plt.gca().transAxes,
             ha="left",
             va="top",
@@ -919,8 +919,8 @@ class ObservationTemperaturePipeline:
         plt.text(
             x=0.05,
             y=0.85,
-            s=f"m: ({slope:.4f} ± {std_err:.4f}) %/°C"
-            + f"\nc: ({intercept:.4f} ± {std_err_intercept:.4f}) %",
+            s=f"slope: ({slope:.4f} ± {std_err:.4f}) %/°C"
+            + f"\nintercept: ({intercept:.4f} ± {std_err_intercept:.4f}) %",
             transform=plt.gca().transAxes,
             ha="left",
             va="top",
