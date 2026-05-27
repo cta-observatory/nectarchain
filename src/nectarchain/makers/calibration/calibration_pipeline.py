@@ -73,6 +73,11 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         help="Name of tool to use for the gain calibration",
         default_value="FlatFieldSPENominalNectarCAMCalibrationTool",
     ).tag(config=True)
+    hilo_tool_name = CaselessStrEnum(
+        list(HILO_CALIBRATION_TOOLS.keys()),
+        help="Name of tool to use for the HiLo",
+        default_value="HiLoNectarCAMCalibrationTool",
+    ).tag(config=True)
 
     classes = [
         *PEDESTAL_CALIBRATION_TOOLS.values(),
@@ -140,13 +145,27 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 SPE_result=self.SPE_HHV_result_path,
                 output_path=self.gain_output_path,
             )
+
+        # Setup HiLo tool
+        hilo_cls = HILO_CALIBRATION_TOOLS[self.hilo_tool_name]
+        self.hilo_output_path = self.gain_output_path.with_name(
+            f"{self.gain_output_path.stem}_hilo_corrected{self.gain_output_path.suffix}"
+        )
+        self.hilo_tool = hilo_cls(
+            parent=self,
+            run_number=self.FF_run_number,
+            pedestal_file=self.ped_output_path,
+            gain_file=self.gain_output_path,
+            output_path=self.hilo_output_path,
+        )
+
         # Setup flatfield tool
         flatfield_cls = FLATFIELD_CALIBRATION_TOOLS[self.flatfield_tool_name]
         self.flatfield_tool = flatfield_cls(
             parent=self,
             run_number=self.FF_run_number,
             pedestal_file=self.ped_output_path,
-            gain_file=self.gain_output_path,
+            gain_file=self.hilo_output_path,
             output_path=self.FF_output_path,
         )
 
@@ -162,6 +181,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     def start(self):
         run_tool(self.pedestal_tool)
         run_tool(self.gain_tool)
+        run_tool(self.hilo_tool)
         run_tool(self.flatfield_tool)
 
     def finish(self):
