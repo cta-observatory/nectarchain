@@ -238,7 +238,7 @@ of the waveform"
             else:
                 # check location of the peak
                 toms = np.argmax(wfs, axis=-1)
-                tom = toms[0]
+                tom = toms[constants.HIGH_GAIN]
                 tom_mean = np.mean(tom)
                 tom_std = np.std(tom, ddof=1)
 
