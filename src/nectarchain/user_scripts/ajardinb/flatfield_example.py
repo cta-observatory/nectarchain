@@ -105,7 +105,7 @@ def get_bad_pixels(output_from_FlatFieldComponent):
         all_bad_pix: list of bad pixels
     """
 
-    pix_id = FlatFieldOutput.pixels_id
+    pix_id = output_from_FlatFieldComponent.pixels_id
     bad_pix = []
 
     n_event = len(output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, 0, 0])
