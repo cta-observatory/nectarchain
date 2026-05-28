@@ -229,7 +229,7 @@ of the waveform"
             )
 
             # get the waveform
-            wfs = event.r0.tel[self.tel_id].waveform
+            wfs = event.r0.tel[self.tel_id].waveform[:, self.pixels_id]
 
             # subtract pedestal container if filled
             # otherwise use the mean of the n first samples
@@ -267,13 +267,21 @@ of the waveform"
                     wfs_pedsub, axis=-1, where=masked_wfs
                 )
 
-                amp_int_per_pix_per_event[self.__bad_pixels_mask] = np.nan
+                amp_int_per_pix_per_event[
+                    self.__bad_pixels_mask[:, self.pixels_id]
+                ] = np.nan
                 # amp_int_per_pix_per_event = np.ma.array(
                 #    amp_int_per_pix_per_event, mask=self.__bad_pixels_mask
                 # )
 
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event)
-                amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event / self.gain
+                if len(self.gain[constants.HIGH_GAIN]) > self.npixels:
+                    amp_int_per_pix_per_event_pe = (
+                        amp_int_per_pix_per_event
+                        / np.array(self.gain)[:, self.pixels_id]
+                    )
+                else:
+                    amp_int_per_pix_per_event_pe = amp_int_per_pix_per_event / self.gain
 
             else:
                 config = Config(
@@ -297,9 +305,15 @@ of the waveform"
                 amp_int_per_pix_per_event.image[:, self.__bad_pixels_number] = np.nan
                 self.__amp_int_per_pix_per_event.append(amp_int_per_pix_per_event.image)
 
-                amp_int_per_pix_per_event_pe = (
-                    amp_int_per_pix_per_event.image[:] / self.gain[:]
-                )
+                if len(self.gain[constants.HIGH_GAIN]) > self.npixels:
+                    amp_int_per_pix_per_event_pe = (
+                        amp_int_per_pix_per_event.image
+                        / np.array(self.gain)[:, self.pixels_id]
+                    )
+                else:
+                    amp_int_per_pix_per_event_pe = (
+                        amp_int_per_pix_per_event.image / self.gain
+                    )
 
             # amp_int_per_pix_per_event_pe = np.ma.masked_array(
             #    amp_int_per_pix_per_event_pe,
@@ -310,7 +324,7 @@ of the waveform"
             mean_amp_cam_per_event_pe = np.mean(
                 amp_int_per_pix_per_event_pe,
                 axis=-1,
-                where=np.invert(self.__bad_pixels_mask),
+                where=np.invert(self.__bad_pixels_mask[:, self._pixels_id]),
             )
 
             # efficiency coefficients
@@ -334,8 +348,12 @@ of the waveform"
         """
 
         wfs_pedsub = np.copy(wfs)
-        wfs_pedsub[constants.HIGH_GAIN] -= self.__pedestal_container["pedestal_mean_hg"]
-        wfs_pedsub[constants.LOW_GAIN] -= self.__pedestal_container["pedestal_mean_lg"]
+        wfs_pedsub[constants.HIGH_GAIN] -= self.__pedestal_container[
+            "pedestal_mean_hg"
+        ][self._pixels_id]
+        wfs_pedsub[constants.LOW_GAIN] -= self.__pedestal_container["pedestal_mean_lg"][
+            self._pixels_id
+        ]
 
         return wfs_pedsub
 
