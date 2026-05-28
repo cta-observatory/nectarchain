@@ -321,7 +321,7 @@ of the waveform"
             #    | (~np.isfinite(amp_int_per_pix_per_event_pe)),
             # )
 
-            mean_amp_cam_per_event_pe = np.mean(
+            mean_amp_cam_per_event_pe = np.nanmean(
                 amp_int_per_pix_per_event_pe,
                 axis=-1,
                 where=np.invert(self.__bad_pixels_mask[:, self._pixels_id]),
