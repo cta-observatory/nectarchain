@@ -2,6 +2,7 @@ import logging
 import os
 
 import numpy as np
+from ctapipe.core.logging import ColoredFormatter
 from traitlets.config import Config
 
 from nectarchain.makers.calibration import (
@@ -18,13 +19,6 @@ from nectarchain.makers.calibration.calibration_pipeline import (
     PipelineNectarCAMCalibrationTool,
 )
 from nectarchain.makers.calibration.core import NectarCAMCalibrationTool
-
-logging.basicConfig(
-    format="%(asctime)s %(name)s %(levelname)s %(message)s", level=logging.INFO
-)
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 
 ######################
 # Tool configuration #
@@ -79,6 +73,21 @@ config[hilo_tool_name].extractor_kwargs = config[gain_tool_name].extractor_kwarg
 config[FF_tool_name].charge_extraction_method = "LocalPeakWindowSum"
 config[FF_tool_name].window_width = 12
 config[FF_tool_name].window_shift = 4
+
+
+################
+# Logger setup #
+################
+
+handler = logging.StreamHandler()
+handler.setFormatter(
+    ColoredFormatter(fmt="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+)
+
+log = logging.getLogger(__name__)
+log.setLevel(config[core_tool_name].log_level)
+log.addHandler(handler)
+log.propagate = False
 
 
 #################
