@@ -14,9 +14,6 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
-# Set NECTARCAMDATA environment
-os.environ["NECTARCAMDATA"] = "/data/users/pcorrea"
-
 # Some the run numbers to use for each calibration tool
 ped_run_number = 6249
 FF_run_number = 6252
