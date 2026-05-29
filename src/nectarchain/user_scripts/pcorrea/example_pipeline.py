@@ -1,5 +1,5 @@
+import argparse
 import logging
-import os
 
 import numpy as np
 from ctapipe.core.logging import ColoredFormatter
@@ -19,6 +19,25 @@ from nectarchain.makers.calibration.calibration_pipeline import (
     PipelineNectarCAMCalibrationTool,
 )
 from nectarchain.makers.calibration.core import NectarCAMCalibrationTool
+
+####################
+# Parser arguments #
+####################
+
+parser = argparse.ArgumentParser(
+    description="Set up logger level. "
+    "All other configurations need to be specified in the script",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "-l",
+    "--log-level",
+    default="INFO",
+    choices=logging._nameToLevel.keys(),
+    type=str,
+)
+
+args = parser.parse_args()
 
 ######################
 # Tool configuration #
@@ -51,7 +70,6 @@ core_tool_name = NectarCAMCalibrationTool.__name__
 config[core_tool_name].max_events = 10000
 config[core_tool_name].progress_bar = True
 config[core_tool_name].overwrite = True
-config[core_tool_name].log_level = "INFO"
 config[core_tool_name].camera = "NectarCAMQM"
 
 # Configure pedestal tool
@@ -85,7 +103,7 @@ handler.setFormatter(
 )
 
 log = logging.getLogger(__name__)
-log.setLevel(config[core_tool_name].log_level)
+log.setLevel(args.log_level)
 log.addHandler(handler)
 log.propagate = False
 
