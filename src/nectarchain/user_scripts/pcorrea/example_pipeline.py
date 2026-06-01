@@ -1,7 +1,9 @@
 import argparse
 import logging
+from pathlib import Path
 
 import numpy as np
+from ctapipe.core import run_tool
 from ctapipe.core.logging import ColoredFormatter
 from traitlets.config import Config
 
@@ -14,6 +16,7 @@ from nectarchain.makers.calibration import (
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
     HiLoNectarCAMCalibrationTool,
     PedestalNectarCAMCalibrationTool,
+    PhotoStatisticNectarCAMCalibrationTool,
 )
 from nectarchain.makers.calibration.calibration_pipeline import (
     PipelineNectarCAMCalibrationTool,
@@ -57,7 +60,7 @@ FF_tool_name = FlatfieldNectarCAMCalibrationTool.__name__
 
 # Path for a 1400-V result file of the SPE fit
 # used in the SPE combined fit and photostatistic method
-SPE_HHV_result_path = (
+SPE_HHV_result_path = Path(
     "/data/users/pcorrea/SPEHHV_res/"
     "FlatFieldSPEHHVStdNectarCAM_run3942_LocalPeakWindowSum_"
     "window_shift_4_window_width_8.h5"
@@ -93,6 +96,23 @@ config[FF_tool_name].window_width = 12
 config[FF_tool_name].window_shift = 4
 
 
+# Helper to set a default configuration for the SPE HHV tool
+SPE_HHV_tool_default_name = FlatFieldSPEHHVNectarCAMCalibrationTool.__name__
+
+
+def set_SPE_HHV_tool_default_config(
+    config, SPE_HHV_tool_default_name=SPE_HHV_tool_default_name
+):
+    config[SPE_HHV_tool_default_name].max_events = 50000
+    config[SPE_HHV_tool_default_name].method = "LocalPeakWindowSum"
+    config[SPE_HHV_tool_default_name].extractor_kwargs = {
+        "window_width": 8,
+        "window_shift": 4,
+    }
+    config[SPE_HHV_tool_default_name].multiproc = True
+    config[SPE_HHV_tool_default_name].nproc = 8
+
+
 ################
 # Logger setup #
 ################
@@ -113,7 +133,36 @@ log.propagate = False
 #################
 
 
-def main():
+def main(SPE_HHV_result_path=SPE_HHV_result_path):
+    if not SPE_HHV_result_path.exists():
+        log.warning(f"SPE_HHV_result_path does not exist: {SPE_HHV_result_path}")
+
+        set_SPE_HHV_tool_default_config(config)
+        FF_SPE_HHV_run_number = config[SPE_HHV_tool_default_name].run_number
+        SPE_HHV_tool_default = FlatFieldSPEHHVNectarCAMCalibrationTool(
+            run_number=FF_SPE_HHV_run_number, config=config
+        )
+        log.warning(
+            f"Attempting to run {SPE_HHV_tool_default_name} for specified "
+            f"FF_SPE_HHV_run_number = {FF_SPE_HHV_run_number} "
+            f"with default config: {config[SPE_HHV_tool_default_name]}"
+        )
+        log.warning(
+            f"Will save {SPE_HHV_tool_default_name} output at default output path: "
+            f"{SPE_HHV_tool_default.output_path}"
+        )
+
+        if SPE_HHV_tool_default.output_path.exists():
+            log.warning(
+                "Default output path already exists, no need to run "
+                f"{SPE_HHV_tool_default_name}"
+            )
+        else:
+            # NOTE: This will take a while
+            run_tool(SPE_HHV_tool_default)
+
+        SPE_HHV_result_path = SPE_HHV_tool_default.output_path
+
     tool = PipelineNectarCAMCalibrationTool(
         config=config,
         ped_run_number=ped_run_number,
