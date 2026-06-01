@@ -3,8 +3,8 @@ import numpy as np
 # bokeh imports
 from bokeh.io import output_file, save
 from bokeh.layouts import column, row
-from bokeh.models import HoverTool, Select, TabPanel, Tabs
-from bokeh.plotting import curdoc
+from bokeh.models import ColumnDataSource, HoverTool, Select, TabPanel, Tabs
+from bokeh.plotting import curdoc, figure
 
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
@@ -355,3 +355,41 @@ def test_compile_hover_tool():
         "value",
     ]
     assert tooltip_fields == expected_tooltip_fields
+
+
+def test_compile_hover_tool_val_vs_id():
+    from nectarchain.dqm.bokeh_app.app_hooks import compile_hover_tool_val_vs_id
+
+    fig = figure()
+    data_source = ColumnDataSource(
+        data=dict(pix_id=np.arange(10), value=np.random.normal(size=10))
+    )
+    scatter = fig.scatter(x="pix_id", y="value", source=data_source)
+
+    result = compile_hover_tool_val_vs_id(pixel_data=scatter, figure=fig)
+
+    assert result is fig
+
+    # Verify HoverTool was added to the figure
+    hover_tools = [tool for tool in result.tools if isinstance(tool, HoverTool)]
+    assert len(hover_tools) > 0, "No HoverTool found in figure"
+
+    # Find the custom HoverTool we added
+    custom_hover_tool = None
+    for tool in hover_tools:
+        if len(tool.tooltips) == 1:
+            custom_hover_tool = tool
+            break
+
+    assert (
+        custom_hover_tool is not None
+    ), "Custom HoverTool with expected tooltip not found"
+
+    # Verify the tooltip is correct
+    tooltip_label = custom_hover_tool.tooltips[0][0]
+    tooltip_value = custom_hover_tool.tooltips[0][1]
+    assert tooltip_label == "(pix_id, value)"
+    assert tooltip_value == "(@pix_id, @value)"
+
+    # Verify the scatter plot is in the renderers
+    assert scatter in custom_hover_tool.renderers
