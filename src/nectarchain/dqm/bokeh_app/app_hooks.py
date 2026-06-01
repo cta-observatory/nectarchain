@@ -9,7 +9,7 @@ from astropy.coordinates import SkyCoord
 
 # bokeh imports
 from bokeh.layouts import column, row
-from bokeh.models import ColorBar, Label, Node, TabPanel
+from bokeh.models import ColorBar, CustomJS, Label, Node, RangeSlider, TabPanel
 from bokeh.plotting import figure
 
 # ctapipe imports
@@ -400,12 +400,14 @@ def make_camera_displays(source, runid):
                 logger.info(
                     f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
-                camera_display = make_camera_display(
+                camera_display, range_slider = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
                 )
                 displays_to_show = [camera_display]
 
                 if "BADPIX" not in parentkey:
+                    if range_slider is not None:
+                        displays_to_show.append(range_slider)
                     camera_pixel_val_vs_id = make_pixel_val_vs_id(
                         source, parent_key=parentkey, child_key=childkey
                     )
@@ -444,12 +446,17 @@ def update_camera_displays(data, runid=None):
     displays = make_camera_displays(data, runid)
 
     camera_displays = [
-        row(
-            displays[parentkey][childkey][0].figure,
-            displays[parentkey][childkey][1],
-            displays[parentkey][childkey][2],
+        column(
+            [
+                displays[parentkey][childkey][1],  # RangeSlider
+                row(
+                    displays[parentkey][childkey][0].figure,
+                    displays[parentkey][childkey][2],
+                    displays[parentkey][childkey][3],
+                ),
+            ]
         )
-        if len(displays[parentkey][childkey]) == 3
+        if len(displays[parentkey][childkey]) == 4
         else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
@@ -642,6 +649,82 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
     return scatter_value_vs_id
 
 
+# TODO: check again the definition of the dymanic color range change
+# because I'm not sure the values are actually changing
+# to what expected when the slider is moved
+def define_dymanic_color_range(
+    parent_key, image, display, min_colorbar, max_colorbar, color_bar
+):
+    """Define dynamic color range for the camera displays using a RangeSlider widget
+
+    Parameters
+    ----------
+    parent_key : str
+        Parent key to extract quantity from the dict
+    image : numpy.ndarray
+        2D array from the CameraDisplay containing the pixel values to be displayed
+    display : ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay object for which the color range is to be defined
+    min_colorbar : float
+        Minimum value for the colorbar range
+    max_colorbar : float
+        Maximum value for the colorbar range
+    color_bar : bokeh.models.ColorBar
+        ColorBar object associated with the CameraDisplay,
+        to be updated with the new color range
+
+    Returns
+    -------
+    bokeh.models.RangeSlider or None
+        RangeSlider widget for dynamic color range control (None for BADPIX displays)
+    """
+
+    if "BADPIX" not in parent_key:
+        # Calculate appropriate range for the slider
+        slider_min = np.min(image[image != 0]) if np.any(image != 0) else min_colorbar
+        slider_max = np.max(image)
+
+        # Add some padding to the slider range
+        slider_range = slider_max - slider_min
+        slider_min_padded = (
+            slider_min - 0.1 * slider_range if slider_range > 0 else slider_min * 0.9
+        )
+        slider_max_padded = (
+            slider_max + 0.1 * slider_range if slider_range > 0 else slider_max * 1.1
+        )
+
+        range_slider = RangeSlider(
+            start=slider_min_padded,
+            end=slider_max_padded,
+            value=(min_colorbar, max_colorbar),
+            step=(slider_max_padded - slider_min_padded) / 100,
+            title="Color Range",
+            css_classes=["color-range-slider"],
+            direction="rtl",
+            orientation="horizontal",
+            show_value=True,
+        )
+
+        # Create CustomJS callback to update color mapper
+        callback = CustomJS(
+            args=dict(
+                color_mapper=display._color_mapper,
+                color_bar=color_bar,
+            ),
+            code="""
+                color_mapper.low = cb_obj.value[0];
+                color_mapper.high = cb_obj.value[1];
+            """,
+        )
+
+        range_slider.js_on_change("value", callback)
+
+        return range_slider
+
+    else:
+        return None
+
+
 # TODO: some more explanation about the parent and child keys
 # may help the user, if needed
 def make_camera_display(source, parent_key, child_key):
@@ -661,15 +744,18 @@ def make_camera_display(source, parent_key, child_key):
 
     Returns
     -------
-    ctapipe.visualization.bokeh.CameraDisplay
-        CameraDisplay filled with values for the selected quantity,
-        and displayed with the geometry from ctapipe.instrument.CameraGeometry
+    tuple
+        Tuple containing:
+        - ctapipe.visualization.bokeh.CameraDisplay: CameraDisplay filled with values
+          for the selected quantity, and displayed with the geometry from
+          ctapipe.instrument.CameraGeometry
+        - bokeh.models.RangeSlider or None: RangeSlider widget for dynamic color range
+          control (None for BADPIX displays)
     """
 
     # TODO: may want to check here to implement
     # the "on_pixel_clicked" function for pixels
     # ctapipe.readthedocs.io/en/stable/api/ctapipe.visualization.CameraDisplay.html
-
     image = np.nan_to_num(source[parent_key][child_key], nan=0.0)
 
     if "BADPIX" in parent_key:
@@ -752,7 +838,17 @@ def make_camera_display(source, parent_key, child_key):
 
     display.figure.title = child_key
 
-    return display
+    # Create RangeSlider for dynamic color range control
+    range_slider = define_dymanic_color_range(
+        parent_key=parent_key,
+        image=image,
+        display=display,
+        min_colorbar=min_colorbar if "BADPIX" not in parent_key else 0,
+        max_colorbar=max_colorbar if "BADPIX" not in parent_key else 1,
+        color_bar=color_bar,
+    )
+
+    return display, range_slider
 
 
 def set_bad_pixels_cap_value(image):
