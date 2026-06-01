@@ -133,7 +133,9 @@ log.propagate = False
 #################
 
 
-def main(SPE_HHV_result_path=SPE_HHV_result_path):
+def main(
+    SPE_HHV_result_path=SPE_HHV_result_path, FF_SPE_HHV_run_number=FF_SPE_HHV_run_number
+):
     if not SPE_HHV_result_path.exists():
         log.warning(f"SPE_HHV_result_path does not exist: {SPE_HHV_result_path}")
 
