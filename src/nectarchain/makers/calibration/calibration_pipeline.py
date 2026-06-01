@@ -92,10 +92,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         super().setup(*args, **kwargs)
 
-        # This is to ensure that default output paths get correct conf values
-        if not ("output_path" in kwargs.keys()):
-            self._init_output_path()
-
         # Setup a temporary directory to store the results of each step in the
         # calibration pipeline
         self.subtool_res_dir = self.output_path.parent / "tmp"
