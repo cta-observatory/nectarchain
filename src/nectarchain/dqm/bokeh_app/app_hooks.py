@@ -643,6 +643,22 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
 
 
 def compile_hover_tool(display, camgeom):
+    """_summary_
+
+    Parameters
+    ----------
+    display : ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay already filled with values
+    camgeom : ctapipe.instrument.CameraGeometry
+        CameraGeometry object containing the camera layout information
+
+    Returns
+    -------
+    ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay as input but now with the HoverTool
+        added to the figure, to show pixel information on hover
+    """
+
     geom_info = camgeom.to_table()
     pix_id = geom_info["pix_id"].data
     pixel_number = len(pix_id)
