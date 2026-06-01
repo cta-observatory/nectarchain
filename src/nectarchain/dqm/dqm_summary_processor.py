@@ -51,18 +51,39 @@ class DQMSummary:
 
     @staticmethod
     def _create_hdu(name, content):
-        data = Table()
-        try:
-            data[name] = content
-        except TypeError:
+        # Convert to numpy array
+        arr = np.asarray(content)
+
+        # Ensure consistent dtype (convert to float64 or int64 as appropriate)
+        if np.issubdtype(arr.dtype, np.floating):
+            arr = arr.astype(np.float64)
+        elif np.issubdtype(arr.dtype, np.integer):
+            arr = arr.astype(np.int64)
+        elif arr.dtype == object:
+            # Try to infer a numeric type for object arrays
             try:
-                data = Table(content)
-            except ValueError:
-                # We may have caught just a single float value, try to pack it into
-                # the FITS output
-                content = np.array([content])
-                data = Table(content)
-        hdu = fits.BinTableHDU(data)
+                arr = arr.astype(np.float64)
+            except (ValueError, TypeError):
+                # If conversion fails, flatten and use BinTableHDU
+                arr_1d = arr.flatten()
+                data = Table()
+                data[name] = arr_1d
+                hdu = fits.BinTableHDU(data)
+                hdu.name = name
+                return hdu
+
+        # Choose HDU type based on dimensionality
+        if arr.ndim <= 1:
+            # Use BinTableHDU for 0D and 1D arrays
+            if arr.ndim == 0:
+                arr = arr.reshape(1)  # Convert scalar to 1D
+            data = Table()
+            data[name] = arr
+            hdu = fits.BinTableHDU(data)
+        else:
+            # Use ImageHDU for multi-dimensional arrays
+            hdu = fits.ImageHDU(arr)
+
         hdu.name = name
         return hdu
 
