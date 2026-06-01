@@ -9,7 +9,7 @@ from astropy.coordinates import SkyCoord
 
 # bokeh imports
 from bokeh.layouts import column, row
-from bokeh.models import ColorBar, Label, Node, TabPanel
+from bokeh.models import ColorBar, HoverTool, Label, Node, TabPanel
 from bokeh.plotting import figure
 
 # ctapipe imports
@@ -642,6 +642,51 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
     return scatter_value_vs_id
 
 
+def compile_hover_tool(display, camgeom):
+    geom_info = camgeom.to_table()
+    pix_id = geom_info["pix_id"].data
+    pixel_number = len(pix_id)
+    pix_id = np.reshape(pix_id, (int(pixel_number / 7), 7))
+    pix_x = np.round(geom_info["pix_x"].data, decimals=3)
+    pix_y = np.round(geom_info["pix_y"].data, decimals=3)
+
+    cluster_n = []
+    pix_id_in_cluster = []
+
+    for ii in range(pix_id.shape[0]):
+        for jj in range(pix_id.shape[1]):
+            cluster_n.append(ii)
+            pix_id_in_cluster.append(jj)
+
+    pix_id = np.reshape(pix_id, (pixel_number,))
+
+    image = display.image
+
+    display.datasource.add(pix_id, "pix_id")
+    display.datasource.add(pix_x, "pix_x")
+    display.datasource.add(pix_y, "pix_y")
+    display.datasource.add(cluster_n, "cluster_n")
+    display.datasource.add(pix_id_in_cluster, "pix_id_in_cluster")
+    display.datasource.add(image, "image")
+
+    display.figure.add_tools(
+        HoverTool(
+            tooltips=[
+                ("pix id", "@pix_id"),
+                ("pix # in cluster", "@pix_id_in_cluster"),
+                ("cluster #", "@cluster_n"),
+                ("pix x pos", "@pix_x"),
+                ("pix y pos", "@pix_y"),
+                ("value", "@image"),
+            ],
+            mode="mouse",
+            point_policy="snap_to_data",
+        )
+    )
+
+    return display
+
+
 # TODO: some more explanation about the parent and child keys
 # may help the user, if needed
 def make_camera_display(source, parent_key, child_key):
@@ -751,6 +796,8 @@ def make_camera_display(source, parent_key, child_key):
         color_bar.title = ""
 
     display.figure.title = child_key
+
+    display = compile_hover_tool(display=display, camgeom=geom)
 
     return display
 

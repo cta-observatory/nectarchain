@@ -3,7 +3,7 @@ import numpy as np
 # bokeh imports
 from bokeh.io import output_file, save
 from bokeh.layouts import column, row
-from bokeh.models import Select, TabPanel, Tabs
+from bokeh.models import HoverTool, Select, TabPanel, Tabs
 from bokeh.plotting import curdoc
 
 # ctapipe imports
@@ -293,3 +293,65 @@ def test_bokeh(tmp_path):
     output_path = tmp_path / "test.html"
     output_file(output_path)
     save(curdoc(), filename=output_path)
+
+
+def test_compile_hover_tool():
+    from ctapipe.visualization.bokeh import CameraDisplay
+
+    from nectarchain.dqm.bokeh_app.app_hooks import compile_hover_tool
+
+    display = CameraDisplay(geometry=geom)
+    display.image = np.random.normal(size=geom.n_pixels)
+
+    result = compile_hover_tool(display, geom)
+
+    # Verify the function returns a display object
+    assert isinstance(result, CameraDisplay)
+
+    # Verify datasource was populated with expected columns
+    datasource_data = result.datasource.data
+    expected_keys = [
+        "pix_id",
+        "pix_x",
+        "pix_y",
+        "cluster_n",
+        "pix_id_in_cluster",
+        "image",
+    ]
+    for key in expected_keys:
+        assert key in datasource_data, f"Expected key '{key}' not found in datasource"
+
+    # Verify data shapes and content
+    assert len(datasource_data["pix_id"]) == geom.n_pixels
+    assert len(datasource_data["pix_x"]) == geom.n_pixels
+    assert len(datasource_data["pix_y"]) == geom.n_pixels
+    assert len(datasource_data["cluster_n"]) == geom.n_pixels
+    assert len(datasource_data["pix_id_in_cluster"]) == geom.n_pixels
+    assert len(datasource_data["image"]) == geom.n_pixels
+
+    # Verify HoverTool was added to the figure
+    hover_tools = [tool for tool in result.figure.tools if isinstance(tool, HoverTool)]
+    assert len(hover_tools) > 0, "No HoverTool found in figure"
+
+    # Find the custom HoverTool we added
+    custom_hover_tool = None
+    for tool in hover_tools:
+        if len(tool.tooltips) == 6:  # Our custom HoverTool has 6 tooltips
+            custom_hover_tool = tool
+            break
+
+    assert (
+        custom_hover_tool is not None
+    ), "Custom HoverTool with expected tooltips not found"
+
+    # Verify HoverTool has the expected tooltips
+    tooltip_fields = [tooltip[0] for tooltip in custom_hover_tool.tooltips]
+    expected_tooltip_fields = [
+        "pix id",
+        "pix # in cluster",
+        "cluster #",
+        "pix x pos",
+        "pix y pos",
+        "value",
+    ]
+    assert tooltip_fields == expected_tooltip_fields
