@@ -643,7 +643,8 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
 
 
 def compile_hover_tool(display, camgeom):
-    """_summary_
+    """Compile the HoverTool for the
+       input camera display with additional information
 
     Parameters
     ----------
