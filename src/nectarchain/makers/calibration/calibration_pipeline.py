@@ -315,9 +315,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         run_tool(self.flatfield_tool)
 
     def finish(self):
-        self._read_containers_from_subtools()
+        self._read_containers_from_subtool_outputs()
 
-    def _read_containers_from_subtools(self):
+    def _read_containers_from_subtool_outputs(self):
         for key in self._output_paths_subtools.keys():
             self._nectarcam_containers[key] = ContainerUtils.get_container_from_hdf5(
                 self._output_paths_subtools[key],
