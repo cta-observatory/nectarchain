@@ -82,6 +82,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     classes = [
         *PEDESTAL_CALIBRATION_TOOLS.values(),
         *GAIN_CALIBRATION_TOOLS.values(),
+        *HILO_CALIBRATION_TOOLS.values(),
         *FLATFIELD_CALIBRATION_TOOLS.values(),
     ]
 
