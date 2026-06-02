@@ -8,8 +8,8 @@ from ctapipe.containers import (
     PixelStatusContainer,
     WaveformCalibrationContainer,
 )
-from ctapipe.core import run_tool
-from ctapipe.core.traits import CaselessStrEnum, Integer, Path
+from ctapipe.core import ToolConfigurationError, run_tool
+from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
 
 from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
 from ...data.container import GainContainer as NectarCAMGainContainer
@@ -38,6 +38,7 @@ GAIN_CALIBRATION_TOOLS = {
 FLATFIELD_CALIBRATION_TOOLS = {
     name: getattr(flatfield_makers, name) for name in flatfield_makers.__all__
 }
+OUTPUT_FORMATS = [".h5", ".fits", ".fits.gz"]
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
@@ -86,6 +87,19 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         list(HILO_CALIBRATION_TOOLS.keys()),
         help="Name of tool to use for the HiLo",
         default_value="HiLoNectarCAMCalibrationTool",
+    ).tag(config=True)
+
+    output_format = CaselessStrEnum(
+        OUTPUT_FORMATS,
+        help="Format of the category A calibration file",
+        default_value=".fits",
+    ).tag(config=True)
+    save_tmp = Bool(
+        default_value=True,
+        help=(
+            "Option to save tmp subdirectory containing the individual outputs "
+            "of each subtool",
+        ),
     ).tag(config=True)
 
     classes = [
@@ -144,9 +158,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         super().setup(*args, **kwargs)
 
-        # Setup a temporary directory to store the results of each step in the
-        # calibration pipeline
-        self.subtool_res_dir = self.output_path.parent / "tmp"
+        # Check if output path has correct format
+        if not any(self.output_path.name.endswith(end) for end in OUTPUT_FORMATS):
+            raise ToolConfigurationError(
+                f"Format of output file {self.output_path.name} not valid, must be "
+                f"one of {OUTPUT_FORMATS}"
+            )
 
         # Setup pedestal tool
         pedestal_cls = PEDESTAL_CALIBRATION_TOOLS[self.pedestal_tool_name]
