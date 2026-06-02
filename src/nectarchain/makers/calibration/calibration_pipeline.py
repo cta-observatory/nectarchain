@@ -381,8 +381,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._ctapipe_containers["pixel_status"].hardware_failing_pixels[
             mask[..., 0]
         ] = True
-        pedestal_mean_per_pixel_per_sample[mask] = PEDESTAL_DEFAULT
-        pedestal_std_per_pixel_per_sample[mask] = 0
 
         # Compute mean and std of pedestal per pixel
         pedestal_mean_per_pixel = self._get_pedestal_mean_per_pixel(
