@@ -150,37 +150,37 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Setup pedestal tool
         pedestal_cls = PEDESTAL_CALIBRATION_TOOLS[self.pedestal_tool_name]
-        self.ped_output_path = (
-            self.subtool_res_dir
+        self._ped_output_path = (
+            self._res_dir_subtools
             / f"output_{self.pedestal_tool_name}_run{self.ped_run_number}.h5"
         )
         self.pedestal_tool = pedestal_cls(
             parent=self,
             run_number=self.ped_run_number,
-            output_path=self.ped_output_path,
+            output_path=self._ped_output_path,
         )
 
         # Setup gain tool
         gain_cls = GAIN_CALIBRATION_TOOLS[self.gain_tool_name]
         if "SPENominal" in self.gain_tool_name:
-            self.gain_output_path = (
-                self.subtool_res_dir
+            self._gain_output_path = (
+                self._res_dir_subtools
                 / f"output_{self.gain_tool_name}_run{self.FF_SPE_run_number}.h5"
             )
             self.gain_tool = gain_cls(
                 parent=self,
                 run_number=self.FF_SPE_run_number,
-                output_path=self.gain_output_path,
+                output_path=self._gain_output_path,
             )
         elif "SPEHHV" in self.gain_tool_name:
-            self.gain_output_path = (
-                self.subtool_res_dir / f"output_{self.gain_tool_name}_"
+            self._gain_output_path = (
+                self._res_dir_subtools / f"output_{self.gain_tool_name}_"
                 f"run{self.FF_SPE_HHV_run_number}.h5"
             )
             self.gain_tool = gain_cls(
                 parent=self,
                 run_number=self.FF_SPE_HHV_run_number,
-                output_path=self.gain_output_path,
+                output_path=self._gain_output_path,
             )
         elif "SPECombined" in self.gain_tool_name:
             for word in self.SPE_HHV_result_path.name.split("_"):
@@ -191,8 +191,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 self.log.warning(
                     f"HHV run number not specified in {self.SPE_HHV_result_path}"
                 )
-            self.gain_output_path = (
-                self.subtool_res_dir / f"output_{self.gain_tool_name}_"
+            self._gain_output_path = (
+                self._res_dir_subtools / f"output_{self.gain_tool_name}_"
                 f"run{self.FF_SPE_run_number}_"
                 f"HHVrun{self.FF_SPE_HHV_run_number}.h5"
             )
@@ -200,7 +200,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 parent=self,
                 run_number=self.FF_SPE_run_number,
                 SPE_result=self.SPE_HHV_result_path,
-                output_path=self.gain_output_path,
+                output_path=self._gain_output_path,
             )
         elif "PhotoStatistic" in self.gain_tool_name:
             for word in self.SPE_HHV_result_path.name.split("_"):
@@ -211,8 +211,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 self.log.warning(
                     f"HHV run number not specified in {self.SPE_HHV_result_path}"
                 )
-            self.gain_output_path = (
-                self.subtool_res_dir / f"output_{self.gain_tool_name}_"
+            self._gain_output_path = (
+                self._res_dir_subtools / f"output_{self.gain_tool_name}_"
                 f"FFrun{self.FF_SPE_run_number}_"
                 f"Pedrun{self.ped_run_number}_"
                 f"HHVrun{self.FF_SPE_HHV_run_number}.h5"
@@ -222,26 +222,27 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 run_number=self.FF_run_number,
                 Ped_run_number=self.ped_run_number,
                 SPE_result=self.SPE_HHV_result_path,
-                output_path=self.gain_output_path,
+                output_path=self._gain_output_path,
             )
 
         # Setup HiLo tool
         hilo_cls = HILO_CALIBRATION_TOOLS[self.hilo_tool_name]
-        self.hilo_output_path = self.gain_output_path.with_name(
-            f"{self.gain_output_path.stem}_hilo_corrected{self.gain_output_path.suffix}"
+        self._hilo_output_path = self._gain_output_path.with_name(
+            f"{self._gain_output_path.stem}"
+            f"_hilo_corrected{self._gain_output_path.suffix}"
         )
         self.hilo_tool = hilo_cls(
             parent=self,
             run_number=self.FF_run_number,
-            pedestal_file=self.ped_output_path,
-            gain_file=self.gain_output_path,
-            output_path=self.hilo_output_path,
+            pedestal_file=self._ped_output_path,
+            gain_file=self._gain_output_path,
+            output_path=self._hilo_output_path,
         )
 
         # Setup flatfield tool
         flatfield_cls = FLATFIELD_CALIBRATION_TOOLS[self.flatfield_tool_name]
-        self.FF_output_path = (
-            self.subtool_res_dir
+        self._FF_output_path = (
+            self._res_dir_subtools
             / f"output_{self.flatfield_tool_name}_run{self.FF_run_number}.h5"
         )
         self.flatfield_tool = flatfield_cls(
@@ -251,6 +252,14 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             gain_file=self._hilo_output_path,
             output_path=self._FF_output_path,
         )
+
+        # Fill the dictionary of subtool output paths
+        # NOTE: the "gain" path should be the one with HiLo correction
+        self._output_paths_subtools = {
+            "pedestal": self._ped_output_path,
+            "gain": self._hilo_output_path,
+            "flatfield": self._FF_output_path,
+        }
 
     def start(self):
         run_tool(self.pedestal_tool)
