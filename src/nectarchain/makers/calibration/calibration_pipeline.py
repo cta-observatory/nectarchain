@@ -13,7 +13,14 @@ from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
 
 from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
 from ...data.container import GainContainer as NectarCAMGainContainer
-from ...data.container import NectarCAMPedestalContainer
+from ...data.container import (
+    NectarCAMContainer,
+    NectarCAMPedestalContainer,
+    flatfield_container,
+    gain_container,
+    pedestal_container,
+)
+from ...utils.utils import ContainerUtils
 from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
 
@@ -38,7 +45,30 @@ GAIN_CALIBRATION_TOOLS = {
 FLATFIELD_CALIBRATION_TOOLS = {
     name: getattr(flatfield_makers, name) for name in flatfield_makers.__all__
 }
+
+NECTARCAM_PEDESTAL_CONTAINER_CLASSES = [
+    getattr(pedestal_container, name)
+    for name in pedestal_container.__all__
+    if issubclass(getattr(pedestal_container, name), NectarCAMContainer)
+]
+NECTARCAM_GAIN_CONTAINER_CLASSES = [
+    getattr(gain_container, name)
+    for name in gain_container.__all__
+    if issubclass(getattr(gain_container, name), NectarCAMContainer)
+]
+NECTARCAM_FLATFIELD_CONTAINER_CLASSES = [
+    getattr(flatfield_container, name)
+    for name in flatfield_container.__all__
+    if issubclass(getattr(flatfield_container, name), NectarCAMContainer)
+]
+NECTARCAM_CONTAINER_CLASSES_DICT = {
+    "pedestal": NECTARCAM_PEDESTAL_CONTAINER_CLASSES,
+    "gain": NECTARCAM_GAIN_CONTAINER_CLASSES,
+    "flatfield": NECTARCAM_FLATFIELD_CONTAINER_CLASSES,
+}
+
 OUTPUT_FORMATS = [".h5", ".fits", ".fits.gz"]
+GROUP_NAMES = ["data", "data_combined"]
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
@@ -285,5 +315,42 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         run_tool(self.flatfield_tool)
 
     def finish(self):
-        # TODO: write calibration file
-        pass
+        self._read_containers_from_subtools()
+
+    def _read_containers_from_subtools(self):
+        for key in self._output_paths_subtools.keys():
+            self._nectarcam_containers[key] = ContainerUtils.get_container_from_hdf5(
+                self._output_paths_subtools[key],
+                NECTARCAM_CONTAINER_CLASSES_DICT[key],
+                group_names=GROUP_NAMES,
+            )
+
+    # def _add_missing_pixels(self):
+    #     """
+    #     Identifies NectarCAM containers with missing pixels due to hardware failure
+    #     (e.g. an incomplete camera). The missing pixels are then padded with default
+    #     values.
+    #     """
+
+    #     log.info("Checking for missing pixels in input data...")
+
+    #     hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
+
+    #     for key, container in self._nectarcam_containers.items():
+    #         # First identify missing pixels
+    #         for ch in range(N_GAINS):
+    #             hardware_working_pixels[ch] = np.logical_and(
+    #                 hardware_working_pixels[ch],
+    #                 np.isin(PIXEL_INDEX, container.pixels_id),
+    #             )
+    #         # Then add missing pixels_to_container
+    #         ContainerUtils.add_missing_pixels_to_container(
+    #             container, pad_value=self.default_values[key]
+    #         )
+
+    #     # Set the hardware failing pixels status in the pixel status container
+    #     self.output_containers["pixel_status"].hardware_failing_pixels = (
+    #         ~hardware_working_pixels
+    #     )
+
+    #     return
