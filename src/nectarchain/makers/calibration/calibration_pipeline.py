@@ -12,7 +12,13 @@ from ctapipe.containers import (
 )
 from ctapipe.core import ToolConfigurationError, run_tool
 from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
-from ctapipe_io_nectarcam.constants import N_GAINS, N_PIXELS, N_SAMPLES
+from ctapipe_io_nectarcam.constants import (
+    HIGH_GAIN,
+    LOW_GAIN,
+    N_GAINS,
+    N_PIXELS,
+    N_SAMPLES,
+)
 
 from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
 from ...data.container import GainContainer as NectarCAMGainContainer
@@ -23,7 +29,7 @@ from ...data.container import (
     gain_container,
     pedestal_container,
 )
-from ...utils.constants import PEDESTAL_DEFAULT
+from ...utils.constants import GAIN_DEFAULT, HILO_DEFAULT, PEDESTAL_DEFAULT
 from ...utils.utils import ContainerUtils
 from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
@@ -73,6 +79,7 @@ NECTARCAM_CONTAINER_CLASSES_DICT = {
 
 OUTPUT_FORMATS = [".h5", ".fits", ".fits.gz"]
 GROUP_NAMES = ["data", "data_combined"]
+HG_LG_DEFAULT = {HIGH_GAIN: GAIN_DEFAULT, LOW_GAIN: GAIN_DEFAULT / HILO_DEFAULT}
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
@@ -351,6 +358,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Copy data from NectarCAMPedestalContainer to output containers
         self._copy_from_nectarcam_pedestal_container()
 
+        # Copy data from NectarCAMGainContainer to output containers
+        self._copy_from_nectarcam_gain_container()
+
     def _copy_from_nectarcam_pedestal_container(self):
         """
         Copies calibration data from a `NectarCAMPedestalContainer` to the `ctapipe`
@@ -430,6 +440,48 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._ctapipe_containers[
             "pixel_status"
         ].pedestal_failing_pixels = self._nectarcam_containers["pedestal"].pixel_mask
+
+    def _copy_from_nectarcam_gain_container(self):
+        """
+        Copies calibration data from a `NectarCAMGainContainer` to the `ctapipe`
+        containers to be written in the Category A calibration file.
+        """
+
+        self.log.info(
+            "Copying data from "
+            f"{self._nectarcam_containers['gain'].__class__.__name__} "
+            f"to ctapipe containers..."
+        )
+
+        # Combine high gain and low gain arrays
+        gain_per_pixel = self._combine_hg_and_lg(
+            self._nectarcam_containers["gain"].high_gain[..., 0],
+            self._nectarcam_containers["gain"].low_gain[..., 0],
+        )
+        is_valid = self._combine_hg_and_lg(
+            self._nectarcam_containers["gain"].is_valid,
+            self._nectarcam_containers["gain"].is_valid,
+        )
+
+        # Update hardware failing pixels and add default values for fields of interest
+        mask = np.logical_or(
+            np.isnan(gain_per_pixel[HIGH_GAIN]),
+            gain_per_pixel[HIGH_GAIN] == GAIN_DEFAULT,
+        )
+        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[:, mask] = True
+
+        for ch in [HIGH_GAIN, LOW_GAIN]:
+            gain_per_pixel[ch] = np.where(
+                is_valid[ch], gain_per_pixel[ch], HG_LG_DEFAULT[ch]
+            )
+
+        # Fill WaveformCalibrationContainer with gains
+        self._ctapipe_containers["calibration"].n_pe = np.divide(
+            1.0,
+            gain_per_pixel,
+            out=np.zeros_like(gain_per_pixel),
+            where=gain_per_pixel != 0,
+        )
 
     @staticmethod
     def _combine_hg_and_lg(high_gain_array, low_gain_array):
