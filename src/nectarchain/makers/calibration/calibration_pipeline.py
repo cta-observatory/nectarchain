@@ -358,7 +358,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         """
 
         self.log.info(
-            f"Copying data from {self._nectarcam_containers['pedestal'].__name__} "
+            "Copying data from "
+            f"{self._nectarcam_containers['pedestal'].__class__.__name__} "
             f"to ctapipe containers..."
         )
 
