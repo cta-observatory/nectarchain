@@ -2,9 +2,18 @@ import logging
 import os
 import pathlib
 
+from ctapipe.containers import (
+    FlatFieldContainer,
+    PedestalContainer,
+    PixelStatusContainer,
+    WaveformCalibrationContainer,
+)
 from ctapipe.core import run_tool
 from ctapipe.core.traits import CaselessStrEnum, Integer, Path
 
+from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
+from ...data.container import GainContainer as NectarCAMGainContainer
+from ...data.container import NectarCAMPedestalContainer
 from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
 
@@ -85,6 +94,48 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         *HILO_CALIBRATION_TOOLS.values(),
         *FLATFIELD_CALIBRATION_TOOLS.values(),
     ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Temporary directory to store the results of each step in the
+        # calibration pipeline
+        self._res_dir_subtools = self.output_path.parent / "tmp"
+
+        # Output paths of calibration subtools
+        self._ped_output_path = pathlib.Path()
+        self._gain_output_path = pathlib.Path()
+        self._hilo_output_path = pathlib.Path()
+        self._FF_output_path = pathlib.Path()
+        self._output_paths_subtools = {}
+
+        # Dictionary of the `nectarchain` container types of the subtools
+        self._nectarcam_containers = {
+            "pedestal": NectarCAMPedestalContainer(),
+            "gain": NectarCAMGainContainer(),
+            "flatfield": NectarCAMFlatFieldContainer(),
+        }
+
+        # Dictionary of the `ctapipe` container types that are written in the
+        # cat-A calibration file
+        self._ctapipe_containers = {
+            "calibration": WaveformCalibrationContainer(),
+            "flatfield": FlatFieldContainer(),
+            "pedestal": PedestalContainer(),
+            "pixel_status": PixelStatusContainer(),
+        }
+
+    def _init_output_path(self):
+        calib_filename = (
+            f"{self.name}_Pedrun{self.ped_run_number}_FFrun{self.FF_run_number}_"
+            f"FFSPErun{self.FF_SPE_run_number}_FFSPEHHVrun{self.FF_SPE_HHV_run_number}"
+            f"{self.output_format}"
+        )
+
+        self.output_path = pathlib.Path(
+            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/"
+            f"{os.getpid()}/{calib_filename}"
+        )
 
     def setup(self, *args, **kwargs):
         # Default run_number = -1 will raise Exception
@@ -196,18 +247,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self.flatfield_tool = flatfield_cls(
             parent=self,
             run_number=self.FF_run_number,
-            pedestal_file=self.ped_output_path,
-            gain_file=self.hilo_output_path,
-            output_path=self.FF_output_path,
-        )
-
-    def _init_output_path(self):
-        # TODO: update calib_filename with right output file (=calibration file)
-        # Could be either fits or h5
-        calib_filename = f"{self.name}_run{self.run_number}.h5"
-        self.output_path = pathlib.Path(
-            f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/"
-            f"{os.getpid()}/{calib_filename}"
+            pedestal_file=self._ped_output_path,
+            gain_file=self._hilo_output_path,
+            output_path=self._FF_output_path,
         )
 
     def start(self):
