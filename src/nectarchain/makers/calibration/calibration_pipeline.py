@@ -2,6 +2,8 @@ import logging
 import os
 import pathlib
 
+import astropy.units as u
+import numpy as np
 from ctapipe.containers import (
     FlatFieldContainer,
     PedestalContainer,
@@ -10,6 +12,7 @@ from ctapipe.containers import (
 )
 from ctapipe.core import ToolConfigurationError, run_tool
 from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
+from ctapipe_io_nectarcam.constants import N_GAINS, N_PIXELS, N_SAMPLES
 
 from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
 from ...data.container import GainContainer as NectarCAMGainContainer
@@ -20,6 +23,7 @@ from ...data.container import (
     gain_container,
     pedestal_container,
 )
+from ...utils.constants import PEDESTAL_DEFAULT
 from ...utils.utils import ContainerUtils
 from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
@@ -317,6 +321,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     def finish(self):
         self._read_containers_from_subtool_outputs()
 
+        self._fill_ctapipe_containers()
+
     def _read_containers_from_subtool_outputs(self):
         for key in self._output_paths_subtools.keys():
             self._nectarcam_containers[key] = ContainerUtils.get_container_from_hdf5(
@@ -324,33 +330,136 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 NECTARCAM_CONTAINER_CLASSES_DICT[key],
                 group_names=GROUP_NAMES,
             )
+            ContainerUtils.add_missing_pixels_to_container(
+                self._nectarcam_containers[key], pad_value=np.nan
+            )
 
-    # def _add_missing_pixels(self):
-    #     """
-    #     Identifies NectarCAM containers with missing pixels due to hardware failure
-    #     (e.g. an incomplete camera). The missing pixels are then padded with default
-    #     values.
-    #     """
+    def _fill_ctapipe_containers(self):
+        """
+        Fills all `ctapipe` containers to be written in the Category A calibration
+        file from `nectarchain` containers.
+        """
 
-    #     log.info("Checking for missing pixels in input data...")
+        self.log.info(f"Filling ctapipe containers: {self._ctapipe_containers}...")
 
-    #     hardware_working_pixels = np.ones((N_GAINS, N_PIXELS), dtype=bool)
+        # Initialize hardware failing pixels here, they will be tagged in each
+        # subfunction
+        self._ctapipe_containers["pixel_status"].hardware_failing_pixels = np.zeros(
+            (N_GAINS, N_PIXELS), dtype=bool
+        )
 
-    #     for key, container in self._nectarcam_containers.items():
-    #         # First identify missing pixels
-    #         for ch in range(N_GAINS):
-    #             hardware_working_pixels[ch] = np.logical_and(
-    #                 hardware_working_pixels[ch],
-    #                 np.isin(PIXEL_INDEX, container.pixels_id),
-    #             )
-    #         # Then add missing pixels_to_container
-    #         ContainerUtils.add_missing_pixels_to_container(
-    #             container, pad_value=self.default_values[key]
-    #         )
+        # Copy data from NectarCAMPedestalContainer to output containers
+        self._copy_from_nectarcam_pedestal_container()
 
-    #     # Set the hardware failing pixels status in the pixel status container
-    #     self.output_containers["pixel_status"].hardware_failing_pixels = (
-    #         ~hardware_working_pixels
-    #     )
+    def _copy_from_nectarcam_pedestal_container(self):
+        """
+        Copies calibration data from a `NectarCAMPedestalContainer` to the `ctapipe`
+        containers to be written in the Category A calibration file.
+        """
 
-    #     return
+        self.log.info(
+            f"Copying data from {self._nectarcam_containers['pedestal'].__name__} "
+            f"to ctapipe containers..."
+        )
+
+        # Combine high gain and low gain pedestal arrays
+        pedestal_mean_per_pixel_per_sample = self._combine_hg_and_lg(
+            self._nectarcam_containers["pedestal"].pedestal_mean_hg,
+            self._nectarcam_containers["pedestal"].pedestal_mean_lg,
+        )
+        pedestal_std_per_pixel_per_sample = self._combine_hg_and_lg(
+            self._nectarcam_containers["pedestal"].pedestal_std_hg,
+            self._nectarcam_containers["pedestal"].pedestal_std_lg,
+        )
+
+        # Update hardware failing pixels and add default values for fields of interest
+        mask = np.logical_or(
+            np.isnan(pedestal_mean_per_pixel_per_sample),
+            pedestal_mean_per_pixel_per_sample == PEDESTAL_DEFAULT,
+        )
+        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[
+            mask[..., 0]
+        ] = True
+        pedestal_mean_per_pixel_per_sample[mask] = PEDESTAL_DEFAULT
+        pedestal_std_per_pixel_per_sample[mask] = 0
+
+        # Compute mean and std of pedestal per pixel
+        pedestal_mean_per_pixel = self._get_pedestal_mean_per_pixel(
+            pedestal_mean_per_pixel_per_sample
+        )
+        pedestal_std_per_pixel = self._get_pedestal_std_per_pixel(
+            pedestal_std_per_pixel_per_sample,
+        )
+
+        # Set default pedestal values for bad pixels
+        pedestal_mean_per_pixel_with_default = np.where(
+            self._nectarcam_containers["pedestal"].pixel_mask,
+            PEDESTAL_DEFAULT,
+            pedestal_mean_per_pixel,
+        )
+
+        # Fill WaveformCalibrationContainer with pedestals
+        self._ctapipe_containers[
+            "calibration"
+        ].pedestal_per_sample = pedestal_mean_per_pixel_with_default
+
+        # Fill PedestalContainer
+        # NOTE: normally in `ctapipe`, n_events is a float, here it's an array of shape
+        # (`N_pixels`)
+        self._ctapipe_containers["pedestal"].n_events = self._nectarcam_containers[
+            "pedestal"
+        ].nevents.astype(np.int64)
+        self._ctapipe_containers["pedestal"].sample_time = (
+            np.mean(
+                [
+                    self._nectarcam_containers["pedestal"].ucts_timestamp_max,
+                    self._nectarcam_containers["pedestal"].ucts_timestamp_min,
+                ]
+            )
+            * u.ns
+        ).to(u.s)
+        self._ctapipe_containers["pedestal"].sample_time_min = (
+            self._nectarcam_containers["pedestal"].ucts_timestamp_min * u.ns
+        ).to(u.s)
+        self._ctapipe_containers["pedestal"].sample_time_max = (
+            self._nectarcam_containers["pedestal"].ucts_timestamp_max * u.ns
+        ).to(u.s)
+        self._ctapipe_containers["pedestal"].charge_mean = pedestal_mean_per_pixel
+        self._ctapipe_containers["pedestal"].charge_std = pedestal_std_per_pixel
+
+        # Fill PixelStatusContainer with pedestal pixel status
+        self._ctapipe_containers[
+            "pixel_status"
+        ].pedestal_failing_pixels = self._nectarcam_containers["pedestal"].pixel_mask
+
+    @staticmethod
+    def _combine_hg_and_lg(high_gain_array, low_gain_array):
+        """Combines high-gain and low-gain arrays into one array."""
+
+        combined_array = np.stack([high_gain_array, low_gain_array], axis=0)
+
+        return combined_array
+
+    @staticmethod
+    def _get_pedestal_mean_per_pixel(pedestal_mean_per_pixel_per_sample):
+        """Computes the mean pedestal per pixel."""
+
+        pedestal_mean_per_pixel = np.mean(pedestal_mean_per_pixel_per_sample, axis=-1)
+
+        return pedestal_mean_per_pixel
+
+    @staticmethod
+    def _get_pedestal_std_per_pixel(pedestal_std_per_pixel_per_sample):
+        "Computes the std of a pedestal per pixel."
+
+        pedestal_std_per_pixel = (
+            np.sqrt(
+                np.sum(
+                    pedestal_std_per_pixel_per_sample**2,
+                    axis=-1,
+                )
+            )
+            / N_SAMPLES
+        )
+
+        return pedestal_std_per_pixel
