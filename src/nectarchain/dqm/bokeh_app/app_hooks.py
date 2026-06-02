@@ -649,11 +649,8 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
     return scatter_value_vs_id
 
 
-# TODO: check again the definition of the dymanic color range change
-# because I'm not sure the values are actually changing
-# to what expected when the slider is moved
 def define_dymanic_color_range(
-    parent_key, image, display, min_colorbar, max_colorbar, color_bar
+    parent_key, display, min_max_slider, min_max_colorbar, color_bar
 ):
     """Define dynamic color range for the camera displays using a RangeSlider widget
 
@@ -661,14 +658,12 @@ def define_dymanic_color_range(
     ----------
     parent_key : str
         Parent key to extract quantity from the dict
-    image : numpy.ndarray
-        2D array from the CameraDisplay containing the pixel values to be displayed
     display : ctapipe.visualization.bokeh.CameraDisplay
         CameraDisplay object for which the color range is to be defined
-    min_colorbar : float
-        Minimum value for the colorbar range
-    max_colorbar : float
-        Maximum value for the colorbar range
+    min_max_slider : tuple
+        Tuple containing the minimum and maximum values for the slider range
+    min_max_colorbar : tuple
+        Tuple containing the minimum and maximum values for the colorbar range
     color_bar : bokeh.models.ColorBar
         ColorBar object associated with the CameraDisplay,
         to be updated with the new color range
@@ -680,28 +675,20 @@ def define_dymanic_color_range(
     """
 
     if "BADPIX" not in parent_key:
-        # Calculate appropriate range for the slider
-        slider_min = np.min(image[image != 0]) if np.any(image != 0) else min_colorbar
-        slider_max = np.max(image)
+        min_slider, max_slider = min_max_slider
+        min_colorbar, max_colorbar = min_max_colorbar
 
-        # Add some padding to the slider range
-        slider_range = slider_max - slider_min
-        slider_min_padded = (
-            slider_min - 0.1 * slider_range if slider_range > 0 else slider_min * 0.9
-        )
-        slider_max_padded = (
-            slider_max + 0.1 * slider_range if slider_range > 0 else slider_max * 1.1
-        )
+        slider_range = max_slider - min_slider
 
         range_slider = RangeSlider(
-            start=slider_min_padded,
-            end=slider_max_padded,
+            start=min_slider,
+            end=max_slider,
             value=(min_colorbar, max_colorbar),
-            step=(slider_max_padded - slider_min_padded) / 100,
+            step=slider_range / 100,
             title="Color Range",
             css_classes=["color-range-slider"],
-            direction="rtl",
             orientation="horizontal",
+            direction="ltr",
             show_value=True,
         )
 
@@ -714,10 +701,13 @@ def define_dymanic_color_range(
             code="""
                 color_mapper.low = cb_obj.value[0];
                 color_mapper.high = cb_obj.value[1];
+                color_mapper.change.emit();
+                color_bar.change.emit();
             """,
         )
 
         range_slider.js_on_change("value", callback)
+        range_slider.margin = (10, 0, 0, 100)
 
         return range_slider
 
@@ -760,6 +750,8 @@ def make_camera_display(source, parent_key, child_key):
 
     if "BADPIX" in parent_key:
         image = set_bad_pixels_cap_value(image)
+        min_colorbar, max_colorbar = 0.0, 1.0
+        min_slider, max_slider = 0.0, 1.0
     else:
         mask_high_gain, mask_low_gain = get_bad_pixels_position(
             source=source, image_shape=image.shape
@@ -774,10 +766,20 @@ def make_camera_display(source, parent_key, child_key):
             image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
             0.995,
         )
+        min_slider = np.min(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        )
+        max_slider = np.max(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        )
         if max_colorbar == min_colorbar:
             # avoid problems with bokeh display
             max_colorbar *= 1.05
             min_colorbar *= 0.95
+        if max_slider == min_slider:
+            # avoid problems with the slider definition
+            max_slider *= 1.05
+            min_slider *= 0.95
         image[mask_low_gain if "LOW-GAIN" in parent_key else mask_high_gain] = 0.0
 
     display = CameraDisplay(geometry=geom)
@@ -841,10 +843,9 @@ def make_camera_display(source, parent_key, child_key):
     # Create RangeSlider for dynamic color range control
     range_slider = define_dymanic_color_range(
         parent_key=parent_key,
-        image=image,
         display=display,
-        min_colorbar=min_colorbar if "BADPIX" not in parent_key else 0,
-        max_colorbar=max_colorbar if "BADPIX" not in parent_key else 1,
+        min_max_slider=(min_slider, max_slider),
+        min_max_colorbar=(min_colorbar, max_colorbar),
         color_bar=color_bar,
     )
 
