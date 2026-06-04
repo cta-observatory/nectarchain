@@ -354,11 +354,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         self.log.info(f"Filling ctapipe containers: {self._ctapipe_containers}...")
 
-        # Initialize hardware failing pixels here, they will be tagged in each
-        # subfunction
-        self._ctapipe_containers["pixel_status"].hardware_failing_pixels = np.zeros(
-            (N_GAINS, N_PIXELS), dtype=bool
-        )
+        # Identify hardware failing pixels
+        self._set_hardware_failing_pixels()
 
         # Copy data from NectarCAMPedestalContainer to output containers
         self._copy_from_nectarcam_pedestal_container()
@@ -368,6 +365,55 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Copy data from NectarCAMFlatfieldContainer to output containers
         self._copy_from_nectarcam_flatfield_container()
+
+    def _set_hardware_failing_pixels(self):
+        """
+        Tags hardware failing pixels from each `NectarCAMContainer` to write to
+        the `PixelStatusContainer` of `ctapipe`. Generally these are missing pixels.
+
+        NOTE: Since each `NectarCAMContainer` is expanded to the full camera,
+        hardware failing pixels are tagged by either NaN or default calibration values.
+        """
+
+        hardware_failing_pixels = np.zeros((N_GAINS, N_PIXELS), dtype=bool)
+        self.log.warning(f"{hardware_failing_pixels}")
+        # Check for hardware failing pixels in pedestal container
+        # Only need to check first sample of "pedestal waveform"
+        pedestal = self._combine_hg_and_lg(
+            self._nectarcam_containers["pedestal"].pedestal_mean_hg[..., 0],
+            self._nectarcam_containers["pedestal"].pedestal_mean_lg[..., 0],
+        )
+        # These will be tagged by either NaN or default values
+        mask_ped = np.logical_or(
+            np.isnan(pedestal),
+            pedestal == PEDESTAL_DEFAULT,
+        )
+        hardware_failing_pixels[mask_ped] = True
+        self.log.warning(f"{hardware_failing_pixels}")
+        # Check for hardware failing pixels in gain container
+        # Only need to check high gain, since low gain is determined directly from that
+        gain = self._nectarcam_containers["gain"].high_gain[..., 0]
+        # These will be tagged by either NaN or default values
+        mask_gain = np.logical_or(
+            np.isnan(gain),
+            gain == GAIN_DEFAULT,
+        )
+        hardware_failing_pixels[:, mask_gain] = True
+        self.log.warning(f"{hardware_failing_pixels}")
+        # Check for hardware failing pixels in FF container
+        # Only need to check the first event
+        eff_coef = self._nectarcam_containers["flatfield"].eff_coef[0]
+        # These will be tagged by either NaN or default values
+        mask_FF = np.logical_or(
+            np.isnan(eff_coef),
+            eff_coef == FLATFIELD_DEFAULT,
+        )
+        hardware_failing_pixels[mask_FF] = True
+        self.log.warning(f"{hardware_failing_pixels}")
+        # Fill relevant ctapipe container
+        self._ctapipe_containers[
+            "pixel_status"
+        ].hardware_failing_pixels = hardware_failing_pixels
 
     def _copy_from_nectarcam_pedestal_container(self):
         """
@@ -390,15 +436,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             self._nectarcam_containers["pedestal"].pedestal_std_hg,
             self._nectarcam_containers["pedestal"].pedestal_std_lg,
         )
-
-        # Update hardware failing pixels and add default values for fields of interest
-        mask = np.logical_or(
-            np.isnan(pedestal_mean_per_pixel_per_sample),
-            pedestal_mean_per_pixel_per_sample == PEDESTAL_DEFAULT,
-        )
-        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[
-            mask[..., 0]
-        ] = True
 
         # Compute mean and std of pedestal per pixel
         pedestal_mean_per_pixel = self._get_pedestal_mean_per_pixel(
@@ -471,13 +508,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             self._nectarcam_containers["gain"].is_valid,
         )
 
-        # Update hardware failing pixels and add default values for fields of interest
-        mask = np.logical_or(
-            np.isnan(gain_per_pixel[HIGH_GAIN]),
-            gain_per_pixel[HIGH_GAIN] == GAIN_DEFAULT,
-        )
-        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[:, mask] = True
-
         for ch in [HIGH_GAIN, LOW_GAIN]:
             gain_per_pixel[ch] = np.where(
                 is_valid[ch], gain_per_pixel[ch], HG_LG_DEFAULT[ch]
@@ -509,13 +539,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         charge_per_pixel_per_event = self._nectarcam_containers[
             "flatfield"
         ].amp_int_per_pix_per_event.astype(np.float64)
-
-        # Update hardware failing pixels and add default values for fields of interest
-        mask = np.logical_or(
-            np.isnan(np.mean(eff_coef_per_pixel_per_event, axis=0)),
-            np.mean(eff_coef_per_pixel_per_event, axis=0) == FLATFIELD_DEFAULT,
-        )
-        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[mask] = True
 
         FF_pixel_mask = np.logical_or(
             np.isin(
