@@ -376,7 +376,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         """
 
         hardware_failing_pixels = np.zeros((N_GAINS, N_PIXELS), dtype=bool)
-        self.log.warning(f"{hardware_failing_pixels}")
+
         # Check for hardware failing pixels in pedestal container
         # Only need to check first sample of "pedestal waveform"
         pedestal = self._combine_hg_and_lg(
@@ -389,7 +389,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             pedestal == PEDESTAL_DEFAULT,
         )
         hardware_failing_pixels[mask_ped] = True
-        self.log.warning(f"{hardware_failing_pixels}")
+
         # Check for hardware failing pixels in gain container
         # Only need to check high gain, since low gain is determined directly from that
         gain = self._nectarcam_containers["gain"].high_gain[..., 0]
@@ -399,7 +399,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             gain == GAIN_DEFAULT,
         )
         hardware_failing_pixels[:, mask_gain] = True
-        self.log.warning(f"{hardware_failing_pixels}")
+
         # Check for hardware failing pixels in FF container
         # Only need to check the first event
         eff_coef = self._nectarcam_containers["flatfield"].eff_coef[0]
@@ -409,7 +409,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             eff_coef == FLATFIELD_DEFAULT,
         )
         hardware_failing_pixels[mask_FF] = True
-        self.log.warning(f"{hardware_failing_pixels}")
+
         # Fill relevant ctapipe container
         self._ctapipe_containers[
             "pixel_status"
