@@ -357,13 +357,16 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Identify unusable pixels
         self._set_unusable_pixels()
 
-        # Copy data from NectarCAMPedestalContainer to output containers
+        # Set times in WaveformCalibrationContainer
+        self._set_times_in_waveform_calibration_container()
+
+        # Copy data from NectarCAMPedestalContainer to ctapipe containers
         self._copy_from_nectarcam_pedestal_container()
 
-        # Copy data from NectarCAMGainContainer to output containers
+        # Copy data from NectarCAMGainContainer to ctapipe containers
         self._copy_from_nectarcam_gain_container()
 
-        # Copy data from NectarCAMFlatfieldContainer to output containers
+        # Copy data from NectarCAMFlatfieldContainer to ctapipe containers
         self._copy_from_nectarcam_flatfield_container()
 
         # Set default values for bad pixels
@@ -467,6 +470,41 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._ctapipe_containers[
             "pixel_status"
         ].hardware_failing_pixels = hardware_failing_pixels
+
+    def _set_times_in_waveform_calibration_container(self):
+        """
+        Sets the times for the output `WaveformCalibrationContainer`.
+        The `time` field is assumed to be the mean of `time_min` and `time_max`.
+        TODO: Take into account time of gain calibration. In LSTCAM this is done
+        implictly with the same FF run, since they use the PhotoStatistic method.
+        There is also no timing information currently in the `NectarCAMGainContainer`.
+        """
+
+        self.log.info("Updating times...")
+
+        time_min_ped = (
+            self._nectarcam_containers["pedestal"].ucts_timestamp_min * u.ns
+        ).to(u.s)
+        time_min_FF = (
+            np.min(self._nectarcam_containers["flatfield"].ucts_timestamp, axis=0)
+            * u.ns
+        ).to(u.s)
+        time_min = min(time_min_ped, time_min_FF)
+
+        time_max_ped = (
+            self._nectarcam_containers["pedestal"].ucts_timestamp_max * u.ns
+        ).to(u.s)
+        time_max_FF = (
+            np.max(self._nectarcam_containers["flatfield"].ucts_timestamp, axis=0)
+            * u.ns
+        ).to(u.s)
+        time_max = max(time_max_ped, time_max_FF)
+
+        time = (time_min + time_max) / 2.0
+
+        self._ctapipe_containers["calibration"].time_min = time_min
+        self._ctapipe_containers["calibration"].time_max = time_max
+        self._ctapipe_containers["calibration"].time = time
 
     def _copy_from_nectarcam_pedestal_container(self):
         """
