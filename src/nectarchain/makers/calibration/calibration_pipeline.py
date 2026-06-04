@@ -4,6 +4,8 @@ import pathlib
 
 import astropy.units as u
 import numpy as np
+from astropy.io import fits
+from astropy.table import Table
 from astropy.time import Time
 from ctapipe.containers import (
     FlatFieldContainer,
@@ -11,15 +13,11 @@ from ctapipe.containers import (
     PixelStatusContainer,
     WaveformCalibrationContainer,
 )
-from ctapipe.core import ToolConfigurationError, run_tool
+from ctapipe.core import Provenance, ToolConfigurationError, run_tool
 from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
-from ctapipe_io_nectarcam.constants import (
-    HIGH_GAIN,
-    LOW_GAIN,
-    N_GAINS,
-    N_PIXELS,
-    N_SAMPLES,
-)
+from ctapipe.io import HDF5TableWriter
+from ctapipe.io import metadata as meta
+from ctapipe_io_nectarcam.constants import LOW_GAIN, N_GAINS, N_PIXELS, N_SAMPLES
 
 from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
 from ...data.container import GainContainer as NectarCAMGainContainer
@@ -35,6 +33,11 @@ from ...utils.constants import (
     GAIN_DEFAULT,
     HILO_DEFAULT,
     PEDESTAL_DEFAULT,
+)
+from ...utils.metadata import (
+    add_metadata_to_hdu,
+    get_ctapipe_metadata,
+    get_local_metadata,
 )
 from ...utils.utils import ContainerUtils
 from . import flatfield_makers, gain, pedestal_makers
@@ -85,7 +88,7 @@ NECTARCAM_CONTAINER_CLASSES_DICT = {
 
 OUTPUT_FORMATS = [".h5", ".fits", ".fits.gz"]
 GROUP_NAMES = ["data", "data_combined"]
-HG_LG_DEFAULT = {HIGH_GAIN: GAIN_DEFAULT, LOW_GAIN: GAIN_DEFAULT / HILO_DEFAULT}
+PROV_OUTPUT_ROLES = {"create_calibration_file": "catA.r1.mon.tel.camera.calibration"}
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
@@ -333,10 +336,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
     def finish(self):
         self._read_containers_from_subtool_outputs()
-
         self._fill_ctapipe_containers()
-
         self._set_run_start_time()
+        self._write_catA_calibration_file()
 
     def _read_containers_from_subtool_outputs(self):
         for key in self._output_paths_subtools.keys():
@@ -726,4 +728,65 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         """
         self.run_start = Time(
             self._ctapipe_containers["calibration"].time_min, format="unix", scale="utc"
+        )
+
+    def _write_catA_calibration_file(self):
+        """
+        Writes output containers in Category A calibration file.
+        Majority is copied from `lstcam_calib`.
+        """
+        self.log.info(f"Writing Cat-A calibration file at: {self.output_path}")
+
+        # Get ctapipe metadata
+        ctapipe_metadata = get_ctapipe_metadata("Cat-A pixel calibration coefficients")
+
+        # Get local metadata
+        local_metadata = get_local_metadata(
+            self.tel_id,
+            str(self.provenance_log.resolve()),
+            self.run_start.iso,
+        )
+
+        # Write output file in hdf5 format
+        if self.output_path.name.endswith(".h5"):
+            with HDF5TableWriter(self.output_path) as writer:
+                for key, container in self._ctapipe_containers.items():
+                    writer.write(f"tel_{self.tel_id}/{key}", [container])
+
+                # add metadata
+                meta.write_to_hdf5(ctapipe_metadata.to_dict(), writer.h5file)
+                meta.write_to_hdf5(local_metadata.as_dict(), writer.h5file)
+
+        # Write output file in fits or fits.gz format
+        elif self.output_path.name.endswith(".fits") or self.output_path.name.endswith(
+            ".fits.gz"
+        ):
+            primary_hdu = fits.PrimaryHDU()
+            add_metadata_to_hdu(ctapipe_metadata.to_dict(fits=True), primary_hdu)
+            add_metadata_to_hdu(local_metadata.as_dict(), primary_hdu)
+
+            hdul = fits.HDUList(primary_hdu)
+
+            for key, container in self._ctapipe_containers.items():
+                # Patch for Fields that are not filled like `time_correction` in the
+                # WaveformCalibrationContainer -> replace None with np.nan
+                container_dict = container.as_dict()
+                for k, v in container_dict.items():
+                    if v is None:
+                        container_dict[k] = np.nan
+
+                t = Table([container_dict])
+
+                # Workaround for astropy#17930, attach missing units
+                for col, value in self._ctapipe_containers[key].items():
+                    if unit := getattr(value, "unit", None):
+                        t[col].unit = unit
+
+                hdul.append(fits.BinTableHDU(t, name=key))
+
+            hdul.writeto(self.output_path, overwrite=self.overwrite)
+
+        # Update provenance
+        Provenance().add_output_file(
+            self.output_path, role=PROV_OUTPUT_ROLES["create_calibration_file"]
         )
