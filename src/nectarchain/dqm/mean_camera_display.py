@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+from ctapipe.containers import EventType
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
 from matplotlib import pyplot as plt
@@ -69,11 +70,19 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
             # (1, 1855, 60) for single-gain channel
             waveforms = evt.r1.tel[self.tel_id].waveform
 
-        if evt.trigger.event_type.value == 32:  # count peds
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+            # count sky peds, event id 2
             self.counter_ped += 1
             self.CameraAverage_ped1 = waveforms.sum(axis=-1)
             self.CameraAverage_ped.append(self.CameraAverage_ped1[pixels])
-
+        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+            # count standard physics stereo events, event id 32
+            self.counter_evt += 1
+            self.CameraAverage1 = waveforms.sum(axis=-1)
+            self.CameraAverage.append(self.CameraAverage1[pixels])
+        # TODO: add ids for other event types, e.g., dark pedestals
+        # TODO: this else is wrong, we should have a separate counter
+        # for other event types, e.g., dark pedestals. It has to be implemented.
         else:
             self.counter_evt += 1
             self.CameraAverage1 = waveforms.sum(axis=-1)

@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+from ctapipe.containers import EventType
 from matplotlib import pyplot as plt
 
 from .dqm_summary_processor import DQMSummary
@@ -64,8 +65,15 @@ class WaveFormsHighLowGain(DQMSummary):
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
-        if evt.trigger.event_type.value == 32:  # only peds now
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+            # count sky peds, event id 2
             self.counter_ped += 1
+        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+            # count standard physics stereo events, event id 32
+            self.counter_evt += 1
+        # TODO: add ids for other event types, e.g., dark pedestals
+        # TODO: this else is wrong, we should have a separate counter
+        # for other event types, e.g., dark pedestals. It has to be implemented.
         else:
             self.counter_evt += 1
 
@@ -77,8 +85,13 @@ class WaveFormsHighLowGain(DQMSummary):
                 # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
                 # (1, 1855, 60) for single-gain channel
                 waveform = evt.r1.tel[self.tel_id].waveform[..., ipix, :]
-            if evt.trigger.event_type.value == 32:  # only peds now
+            if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
                 self.wf_ped[ipix, :] += waveform
+            elif evt.trigger.event_type.value == EventType.SUBARRAY:
+                self.wf[ipix, :] += waveform
+            # TODO: add ids for other event types, e.g., dark pedestals
+            # TODO: this else is wrong, we should have a separate counter
+            # for other event types, e.g., dark pedestals. It has to be implemented.
             else:
                 self.wf[ipix, :] += waveform
         return None

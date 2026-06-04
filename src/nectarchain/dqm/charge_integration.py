@@ -2,6 +2,7 @@ import os
 
 import ctapipe.instrument.camera.readout
 import numpy as np
+from ctapipe.containers import EventType
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.image.extractor import FixedWindowSum  # noqa: F401
 from ctapipe.image.extractor import FullWaveformSum  # noqa: F401
@@ -47,7 +48,6 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.image_ped_stats = None
         self.ped_all_stats = None
         self.ped_ped_stats = None
-
         self.ChargeInt_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
@@ -147,11 +147,21 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         image = output[0]
         peakpos = output[1]
 
-        if evt.trigger.event_type.value == 32:  # count peds
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+            # count sky peds, event id 2
             self.counter_ped += 1
             self.image_ped.append(image)
             self.peakpos_ped.append(peakpos)
             self.ped_ped.append(ped)
+        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+            # count standard physics stereo events, event id 32
+            self.counter_evt += 1
+            self.image_all.append(image)
+            self.peakpos_all.append(peakpos)
+            self.ped_all.append(ped)
+        # TODO: add ids for other event types, e.g., dark pedestals
+        # TODO: this else is wrong, we should have a separate counter
+        # for other event types, e.g., dark pedestals. It has to be implemented.
         else:
             self.counter_evt += 1
             self.image_all.append(image)

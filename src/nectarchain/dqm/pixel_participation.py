@@ -2,6 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ctapipe.containers import EventType
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
 
@@ -50,10 +51,18 @@ class PixelParticipationHighLowGain(DQMSummary):
             pixels = np.concatenate([missing, pixels])
 
         bad_pixels = np.array(pixelBAD[pixels]).astype(int)
-        if evt.trigger.event_type.value == 32:  # count peds
+
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+            # count sky peds, event id 2
             self.counter_ped += 1
             self.BadPixels_ped += bad_pixels
-
+        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+            # count standard physics stereo events, event id 32
+            self.counter_evt += 1
+            self.BadPixels += bad_pixels
+        # TODO: add ids for other event types, e.g., dark pedestals
+        # TODO: this else is wrong, we should have a separate counter
+        # for other event types, e.g., dark pedestals. It has to be implemented.
         else:
             self.counter_evt += 1
             self.BadPixels += bad_pixels
