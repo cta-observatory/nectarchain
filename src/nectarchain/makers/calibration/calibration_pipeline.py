@@ -4,6 +4,7 @@ import pathlib
 
 import astropy.units as u
 import numpy as np
+from astropy.time import Time
 from ctapipe.containers import (
     FlatFieldContainer,
     PedestalContainer,
@@ -334,6 +335,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._read_containers_from_subtool_outputs()
 
         self._fill_ctapipe_containers()
+
+        self._set_run_start_time()
 
     def _read_containers_from_subtool_outputs(self):
         for key in self._output_paths_subtools.keys():
@@ -715,3 +718,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         )
 
         return pedestal_std_per_pixel
+
+    def _set_run_start_time(self):
+        """
+        Sets the run start time trait required for the metadata in the final calibration
+        file. Take the same time as the first event in the calibration run.
+        """
+        self.run_start = Time(
+            self._ctapipe_containers["calibration"].time_min, format="unix", scale="utc"
+        )
