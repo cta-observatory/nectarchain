@@ -366,6 +366,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Copy data from NectarCAMFlatfieldContainer to output containers
         self._copy_from_nectarcam_flatfield_container()
 
+        # Set default values for bad pixels
+        self._set_default_values_in_waveform_calibration_container()
+
     def _set_unusable_pixels(self):
         """
         Tags bad pixels identified by each `NectarCAMCalibrationTool` to write to
@@ -495,17 +498,10 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             pedestal_std_per_pixel_per_sample,
         )
 
-        # Set default pedestal values for bad pixels
-        pedestal_mean_per_pixel_with_default = np.where(
-            self._nectarcam_containers["pedestal"].pixel_mask,
-            PEDESTAL_DEFAULT,
-            pedestal_mean_per_pixel,
-        )
-
         # Fill WaveformCalibrationContainer with pedestals
         self._ctapipe_containers[
             "calibration"
-        ].pedestal_per_sample = pedestal_mean_per_pixel_with_default
+        ].pedestal_per_sample = pedestal_mean_per_pixel
 
         # Fill PedestalContainer
         # NOTE: normally in `ctapipe`, n_events is a float, here it's an array of shape
@@ -531,11 +527,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._ctapipe_containers["pedestal"].charge_mean = pedestal_mean_per_pixel
         self._ctapipe_containers["pedestal"].charge_std = pedestal_std_per_pixel
 
-        # Fill PixelStatusContainer with pedestal pixel status
-        self._ctapipe_containers[
-            "pixel_status"
-        ].pedestal_failing_pixels = self._nectarcam_containers["pedestal"].pixel_mask
-
     def _copy_from_nectarcam_gain_container(self):
         """
         Copies calibration data from a `NectarCAMGainContainer` to the `ctapipe`
@@ -553,15 +544,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             self._nectarcam_containers["gain"].high_gain[..., 0],
             self._nectarcam_containers["gain"].low_gain[..., 0],
         )
-        is_valid = self._combine_hg_and_lg(
-            self._nectarcam_containers["gain"].is_valid,
-            self._nectarcam_containers["gain"].is_valid,
-        )
-
-        for ch in [HIGH_GAIN, LOW_GAIN]:
-            gain_per_pixel[ch] = np.where(
-                is_valid[ch], gain_per_pixel[ch], HG_LG_DEFAULT[ch]
-            )
 
         # Fill WaveformCalibrationContainer with gains
         self._ctapipe_containers["calibration"].n_pe = np.divide(
@@ -590,13 +572,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             "flatfield"
         ].amp_int_per_pix_per_event.astype(np.float64)
 
-        FF_pixel_mask = np.logical_or(
-            np.isin(
-                self._nectarcam_containers["flatfield"].pixels_id,
-                self._nectarcam_containers["flatfield"].bad_pixels,
-            ),
-            eff_coef_per_pixel_per_event == 0,
-        )
+        FF_pixel_mask = eff_coef_per_pixel_per_event == 0
 
         # Mask bad pixels for FF coefficient computations
         FF_coef_per_pixel_per_event_masked = np.ma.masked_array(
@@ -620,25 +596,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         charge_per_pixel_median = np.median(charge_per_pixel_per_event, axis=0)
         charge_per_pixel_std = np.std(charge_per_pixel_per_event, axis=0)
 
-        # Update hardware failing pixels and add default values for fields of interest
-        mask = np.logical_or(
-            np.isnan(FF_coef_per_pixel_mean),
-            FF_coef_per_pixel_mean == FLATFIELD_DEFAULT,
-        )
-        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[mask] = True
-
-        # Expand dimensions of FF failing pixels to cover both high gain and low gain
-        FF_failing_pixels = self._combine_hg_and_lg(FF_pixel_mask, FF_pixel_mask)
-
-        # Set default FF values for bad pixels
-        FF_coef_per_pixel_mean_with_default = np.where(
-            FF_failing_pixels, FLATFIELD_DEFAULT, FF_coef_per_pixel_mean
-        )
-
         # Fill WaveformCalibrationContainer with FF corrections
         self._ctapipe_containers["calibration"].dc_to_pe = (
-            FF_coef_per_pixel_mean_with_default
-            * self._ctapipe_containers["calibration"].n_pe
+            FF_coef_per_pixel_mean * self._ctapipe_containers["calibration"].n_pe
         )
 
         # Fill FlatFieldContainer
@@ -665,10 +625,26 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         ].relative_gain_median = FF_coef_per_pixel_median
         self._ctapipe_containers["flatfield"].relative_gain_std = FF_coef_per_pixel_std
 
-        # Fill PixelStatusContainer with pedestal pixel status
-        self._ctapipe_containers[
-            "pixel_status"
-        ].flatfield_failing_pixels = FF_failing_pixels
+    def _set_default_values_in_waveform_calibration_container(self):
+        """
+        Sets default values for unusable pixels in the `WaveformCalibrationContainer`.
+        """
+
+        mask = self._ctapipe_containers["calibration"].unusable_pixels
+
+        # Set default pedestal values
+        self._ctapipe_containers["calibration"].pedestal_per_sample[
+            mask
+        ] = PEDESTAL_DEFAULT
+
+        # Set default gain values and correct for HiLo ratio
+        self._ctapipe_containers["calibration"].n_pe[mask] = 1 / GAIN_DEFAULT
+        self._ctapipe_containers["calibration"].n_pe[LOW_GAIN] *= HILO_DEFAULT
+
+        # Set default flatfield values
+        self._ctapipe_containers["calibration"].dc_to_pe[mask] = (
+            self._ctapipe_containers["calibration"].n_pe[mask] * FLATFIELD_DEFAULT
+        )
 
     @staticmethod
     def _combine_hg_and_lg(high_gain_array, low_gain_array):
