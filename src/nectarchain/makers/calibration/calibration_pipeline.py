@@ -29,7 +29,12 @@ from ...data.container import (
     gain_container,
     pedestal_container,
 )
-from ...utils.constants import GAIN_DEFAULT, HILO_DEFAULT, PEDESTAL_DEFAULT
+from ...utils.constants import (
+    FLATFIELD_DEFAULT,
+    GAIN_DEFAULT,
+    HILO_DEFAULT,
+    PEDESTAL_DEFAULT,
+)
 from ...utils.utils import ContainerUtils
 from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
@@ -361,6 +366,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # Copy data from NectarCAMGainContainer to output containers
         self._copy_from_nectarcam_gain_container()
 
+        # Copy data from NectarCAMFlatfieldContainer to output containers
+        self._copy_from_nectarcam_flatfield_container()
+
     def _copy_from_nectarcam_pedestal_container(self):
         """
         Copies calibration data from a `NectarCAMPedestalContainer` to the `ctapipe`
@@ -482,6 +490,112 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             out=np.zeros_like(gain_per_pixel),
             where=gain_per_pixel != 0,
         )
+
+    def _copy_from_nectarcam_flatfield_container(self):
+        """
+        Copies calibration data from a `NectarCAMFlatFieldContainer` to the `ctapipe`
+        containers to be written in the Category A calibration file.
+        """
+
+        self.log.info(
+            "Copying data from "
+            f"{self._nectarcam_containers['flatfield'].__class__.__name__} "
+            f"to ctapipe containers..."
+        )
+
+        eff_coef_per_pixel_per_event = self._nectarcam_containers[
+            "flatfield"
+        ].eff_coef.astype(np.float64)
+        charge_per_pixel_per_event = self._nectarcam_containers[
+            "flatfield"
+        ].amp_int_per_pix_per_event.astype(np.float64)
+
+        # Update hardware failing pixels and add default values for fields of interest
+        mask = np.logical_or(
+            np.isnan(np.mean(eff_coef_per_pixel_per_event, axis=0)),
+            np.mean(eff_coef_per_pixel_per_event, axis=0) == FLATFIELD_DEFAULT,
+        )
+        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[mask] = True
+
+        FF_pixel_mask = np.logical_or(
+            np.isin(
+                self._nectarcam_containers["flatfield"].pixels_id,
+                self._nectarcam_containers["flatfield"].bad_pixels,
+            ),
+            eff_coef_per_pixel_per_event == 0,
+        )
+
+        # Mask bad pixels for FF coefficient computations
+        FF_coef_per_pixel_per_event_masked = np.ma.masked_array(
+            1.0 / eff_coef_per_pixel_per_event,
+            mask=np.broadcast_to(FF_pixel_mask, eff_coef_per_pixel_per_event.shape),
+        )
+
+        # Compute mean, median, std of FF coefficients, for bad pixels fill with 0
+        FF_coef_per_pixel_mean = np.ma.mean(
+            FF_coef_per_pixel_per_event_masked, axis=0
+        ).filled(0)
+        FF_coef_per_pixel_median = np.ma.median(
+            FF_coef_per_pixel_per_event_masked, axis=0
+        ).filled(0)
+        FF_coef_per_pixel_std = np.ma.std(
+            FF_coef_per_pixel_per_event_masked, axis=0
+        ).filled(0)
+
+        # Compute mean, median, std of charges
+        charge_per_pixel_mean = np.mean(charge_per_pixel_per_event, axis=0)
+        charge_per_pixel_median = np.median(charge_per_pixel_per_event, axis=0)
+        charge_per_pixel_std = np.std(charge_per_pixel_per_event, axis=0)
+
+        # Update hardware failing pixels and add default values for fields of interest
+        mask = np.logical_or(
+            np.isnan(FF_coef_per_pixel_mean),
+            FF_coef_per_pixel_mean == FLATFIELD_DEFAULT,
+        )
+        self._ctapipe_containers["pixel_status"].hardware_failing_pixels[mask] = True
+
+        # Expand dimensions of FF failing pixels to cover both high gain and low gain
+        FF_failing_pixels = self._combine_hg_and_lg(FF_pixel_mask, FF_pixel_mask)
+
+        # Set default FF values for bad pixels
+        FF_coef_per_pixel_mean_with_default = np.where(
+            FF_failing_pixels, FLATFIELD_DEFAULT, FF_coef_per_pixel_mean
+        )
+
+        # Fill WaveformCalibrationContainer with FF corrections
+        self._ctapipe_containers["calibration"].dc_to_pe = (
+            FF_coef_per_pixel_mean_with_default
+            * self._ctapipe_containers["calibration"].n_pe
+        )
+
+        # Fill FlatFieldContainer
+        self._ctapipe_containers["flatfield"].sample_time = (
+            np.mean(self._nectarcam_containers["flatfield"].ucts_timestamp) * u.ns
+        ).to(u.s)
+        self._ctapipe_containers["flatfield"].sample_time_min = (
+            np.min(self._nectarcam_containers["flatfield"].ucts_timestamp) * u.ns
+        ).to(u.s)
+        self._ctapipe_containers["flatfield"].sample_time_max = (
+            np.max(self._nectarcam_containers["flatfield"].ucts_timestamp) * u.ns
+        ).to(u.s)
+        self._ctapipe_containers["flatfield"].n_events = self._nectarcam_containers[
+            "flatfield"
+        ].event_id.shape[0]
+        self._ctapipe_containers["flatfield"].charge_mean = charge_per_pixel_mean
+        self._ctapipe_containers["flatfield"].charge_median = charge_per_pixel_median
+        self._ctapipe_containers["flatfield"].charge_std = charge_per_pixel_std
+        self._ctapipe_containers[
+            "flatfield"
+        ].relative_gain_mean = FF_coef_per_pixel_mean
+        self._ctapipe_containers[
+            "flatfield"
+        ].relative_gain_median = FF_coef_per_pixel_median
+        self._ctapipe_containers["flatfield"].relative_gain_std = FF_coef_per_pixel_std
+
+        # Fill PixelStatusContainer with pedestal pixel status
+        self._ctapipe_containers[
+            "pixel_status"
+        ].flatfield_failing_pixels = FF_failing_pixels
 
     @staticmethod
     def _combine_hg_and_lg(high_gain_array, low_gain_array):
