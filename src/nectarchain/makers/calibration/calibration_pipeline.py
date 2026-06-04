@@ -354,8 +354,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         self.log.info(f"Filling ctapipe containers: {self._ctapipe_containers}...")
 
-        # Identify hardware failing pixels
-        self._set_hardware_failing_pixels()
+        # Identify unusable pixels
+        self._set_unusable_pixels()
 
         # Copy data from NectarCAMPedestalContainer to output containers
         self._copy_from_nectarcam_pedestal_container()
@@ -365,6 +365,56 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Copy data from NectarCAMFlatfieldContainer to output containers
         self._copy_from_nectarcam_flatfield_container()
+
+    def _set_unusable_pixels(self):
+        """
+        Tags bad pixels identified by each `NectarCAMCalibrationTool` to write to
+        the `ctapipe` containers.
+
+        NOTE: Pixels tagged as bad during the gain computation are taken into account
+        for the `unusable_pixels` field of the `WaveFormCalibrationContainer`.
+        """
+
+        # First identify hardware failing pixels
+        self._set_hardware_failing_pixels()
+
+        # Identify pixels tagged as bad during pedestal computation
+        pedestal_failing_pixels = self._nectarcam_containers["pedestal"].pixel_mask
+
+        # Identify pixels tagged as bad during gain computation
+        gain_failing_pixels = np.logical_not(
+            self._combine_hg_and_lg(
+                self._nectarcam_containers["gain"].is_valid,
+                self._nectarcam_containers["gain"].is_valid,
+            )
+        )
+
+        # Identify pixels tagged as bad during flatfield computation
+        flatfield_failing_pixels = np.tile(
+            np.isin(
+                self._nectarcam_containers["flatfield"].pixels_id,
+                self._nectarcam_containers["flatfield"].bad_pixels,
+            ),
+            (N_GAINS, 1),
+        )
+
+        # Fill relevant ctapipe containers
+        self._ctapipe_containers[
+            "pixel_status"
+        ].pedestal_failing_pixels = pedestal_failing_pixels
+        self._ctapipe_containers[
+            "pixel_status"
+        ].flatfield_failing_pixels = flatfield_failing_pixels
+
+        pixel_status_arrays = [
+            self._ctapipe_containers["pixel_status"].hardware_failing_pixels,
+            pedestal_failing_pixels,
+            gain_failing_pixels,  # Take into account gain in overall status!
+            flatfield_failing_pixels,
+        ]
+        self._ctapipe_containers["calibration"].unusable_pixels = np.logical_or.reduce(
+            pixel_status_arrays
+        )
 
     def _set_hardware_failing_pixels(self):
         """
