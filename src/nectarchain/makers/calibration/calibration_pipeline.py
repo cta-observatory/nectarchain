@@ -335,12 +335,19 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         run_tool(self.flatfield_tool)
 
     def finish(self):
-        self._read_containers_from_subtool_outputs()
+        self._read_nectarcam_containers_from_subtool_outputs()
         self._fill_ctapipe_containers()
         self._set_run_start_time()
         self._write_catA_calibration_file()
 
-    def _read_containers_from_subtool_outputs(self):
+    def _read_nectarcam_containers_from_subtool_outputs(self):
+        """
+        Reads `nectarchain` containers from the different NectarCAM calibration tools.
+        Missing pixels are padded with NaN values here.
+        NOTE: Some of the subtools already pad `nectarchain` containers with default
+        calibration values. This is taken into account later to identify hardware
+        missing pixels.
+        """
         for key in self._output_paths_subtools.keys():
             self._nectarcam_containers[key] = ContainerUtils.get_container_from_hdf5(
                 self._output_paths_subtools[key],
