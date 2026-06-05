@@ -1,4 +1,3 @@
-import logging
 import os
 import pathlib
 
@@ -42,11 +41,6 @@ from ...utils.metadata import (
 from ...utils.utils import ContainerUtils
 from . import flatfield_makers, gain, pedestal_makers
 from .core import NectarCAMCalibrationTool
-
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
-
 
 __all__ = ["PipelineNectarCAMCalibrationTool"]
 
@@ -204,7 +198,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     def setup(self, *args, **kwargs):
         # Default run_number = -1 will raise Exception
         self.run_number = 0
-        log.warning(f"Set run_number = {self.run_number} to avoid exception")
+        self.log.warning(f"Set run_number = {self.run_number} to avoid exception")
 
         super().setup(*args, **kwargs)
 
@@ -348,6 +342,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         calibration values. This is taken into account later to identify hardware
         missing pixels.
         """
+
+        self.log.info(f"Reading {NectarCAMContainer.__name__} outputs from subtools...")
+
         for key in self._output_paths_subtools.keys():
             self._nectarcam_containers[key] = ContainerUtils.get_container_from_hdf5(
                 self._output_paths_subtools[key],
@@ -396,6 +393,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         # First identify hardware failing pixels
         self._set_hardware_failing_pixels()
 
+        self.log.info("Identifying unusable pixels...")
+
         # Identify pixels tagged as bad during pedestal computation
         pedestal_failing_pixels = self._nectarcam_containers["pedestal"].pixel_mask
 
@@ -442,6 +441,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         NOTE: Since each `NectarCAMContainer` is expanded to the full camera,
         hardware failing pixels are tagged by either NaN or default calibration values.
         """
+
+        self.log.info("Identifying hardware failing pixels...")
 
         hardware_failing_pixels = np.zeros((N_GAINS, N_PIXELS), dtype=bool)
 
@@ -492,7 +493,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         There is also no timing information currently in the `NectarCAMGainContainer`.
         """
 
-        self.log.info("Updating times...")
+        self.log.info("Identifying run times...")
 
         time_min_ped = (
             self._nectarcam_containers["pedestal"].ucts_timestamp_min * u.ns
@@ -679,6 +680,8 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         """
         Sets default values for unusable pixels in the `WaveformCalibrationContainer`.
         """
+
+        self.log.info("Setting default calibration values for unusable pixels...")
 
         mask = self._ctapipe_containers["calibration"].unusable_pixels
 
