@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 
 import astropy.units as u
 import numpy as np
@@ -139,7 +140,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         default_value=".fits",
     ).tag(config=True)
     save_tmp = Bool(
-        default_value=True,
+        default_value=False,
         help=(
             "Option to save tmp subdirectory containing the individual outputs "
             "of each subtool",
@@ -332,6 +333,11 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._read_nectarcam_containers_from_subtool_outputs()
         self._fill_ctapipe_containers_from_nectarcam_containers()
         self._write_catA_calibration_file()
+        if not self.save_tmp:
+            self.log.info(
+                f"Removing temporary subtool result directory: {self._res_dir_subtools}"
+            )
+            shutil.rmtree(self._res_dir_subtools)
 
     def _read_nectarcam_containers_from_subtool_outputs(self):
         """
