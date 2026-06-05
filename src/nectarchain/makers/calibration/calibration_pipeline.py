@@ -15,7 +15,6 @@ from ctapipe.containers import (
 )
 from ctapipe.core import Provenance, ToolConfigurationError, run_tool
 from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
-from ctapipe.io import HDF5TableWriter
 from ctapipe.io import metadata as meta
 from ctapipe_io_nectarcam.constants import (
     LOW_GAIN,
@@ -846,13 +845,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         # Write output file in hdf5 format
         if self.output_path.name.endswith(".h5"):
-            with HDF5TableWriter(self.output_path) as writer:
-                for key, container in self._ctapipe_containers.items():
-                    writer.write(f"tel_{self.tel_id}/{key}", [container])
+            for key, container in self._ctapipe_containers.items():
+                self.writer.write(f"tel_{self.tel_id}/{key}", [container])
 
-                # add metadata
-                meta.write_to_hdf5(ctapipe_metadata.to_dict(), writer.h5file)
-                meta.write_to_hdf5(local_metadata.as_dict(), writer.h5file)
+            # add metadata
+            meta.write_to_hdf5(ctapipe_metadata.to_dict(), self.writer.h5file)
+            meta.write_to_hdf5(local_metadata.as_dict(), self.writer.h5file)
 
         # Write output file in fits or fits.gz format
         elif self.output_path.name.endswith(".fits") or self.output_path.name.endswith(
