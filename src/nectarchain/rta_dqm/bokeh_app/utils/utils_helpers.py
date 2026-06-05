@@ -54,7 +54,8 @@ def get_hillas_parameters(file, parameterkeys, parameter_parentkeys, run_index=-
             run_index
         ]
         angle = file[parameter_parentkeys][parameterkeys["hillas_phi_key"]][run_index]
-        return x, y, width, height, angle
+        # To switch between CameraFrame and EngineerCameraFrame
+        return -y, -x, width, height, np.pi - angle
     except Exception as e:
         logger.warning("Failed to retrieve Hillas parameters:", e)
 
@@ -241,9 +242,15 @@ class hdf5Proxy(dict):
         """
 
         self.ofile = input_file
-        self.filename = input_file.filename
-        self.parentkeys = _leaf_paths_hdf5(input_file)
-        self.shape = len(self.parentkeys)
+        if input_file is not None:
+            self.filename = input_file.filename
+            self.parentkeys = _leaf_paths_hdf5(input_file)
+            self.shape = len(self.parentkeys)
 
-        for parentkey in self.parentkeys:
-            self[parentkey] = hdf5GroupProxy(input_file[parentkey])
+            for parentkey in self.parentkeys:
+                self[parentkey] = hdf5GroupProxy(input_file[parentkey])
+
+        else:
+            self.filename = ""
+            self.parentkeys = []
+            self.shape = 0

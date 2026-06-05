@@ -46,6 +46,12 @@ def parse_server_cli():
         action="store_true",
         help="Run the app using example resource path instead of real-time data",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="",
+        help="Directory where to load DL1 of the RTA.",
+    )
 
     # parser.add_argument(
     #     "--debug",
@@ -101,6 +107,8 @@ def create_app(doc):
     else:
         logger.info("Real interface - fetching data currently produced by RTA")
         RESOURCE_PATH = PROJECT_ROOT / json_dict["RESOURCE_PATH"]
+    if SERVER_CONFIG.output_dir != "":
+        RESOURCE_PATH = Path(SERVER_CONFIG.output_dir)
 
     # Bokeh item storages
     display_registry = []
