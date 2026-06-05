@@ -331,7 +331,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     def finish(self):
         self._read_nectarcam_containers_from_subtool_outputs()
         self._fill_ctapipe_containers()
-        self._set_run_start_time()
         self._write_catA_calibration_file()
 
     def _read_nectarcam_containers_from_subtool_outputs(self):
@@ -518,6 +517,10 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._ctapipe_containers["calibration"].time_min = time_min
         self._ctapipe_containers["calibration"].time_max = time_max
         self._ctapipe_containers["calibration"].time = time
+
+        # Set the run_start trait required for the metadata in the final calibration
+        # file. Take the same time as the first event in the calibration run.
+        self.run_start = Time(time_min, format="unix", scale="utc")
 
     def _copy_from_nectarcam_pedestal_container(self):
         """
@@ -730,15 +733,6 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         )
 
         return pedestal_std_per_pixel
-
-    def _set_run_start_time(self):
-        """
-        Sets the run start time trait required for the metadata in the final calibration
-        file. Take the same time as the first event in the calibration run.
-        """
-        self.run_start = Time(
-            self._ctapipe_containers["calibration"].time_min, format="unix", scale="utc"
-        )
 
     def _write_catA_calibration_file(self):
         """
