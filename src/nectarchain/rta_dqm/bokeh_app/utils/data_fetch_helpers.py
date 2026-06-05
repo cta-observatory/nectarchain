@@ -6,6 +6,7 @@ import logging
 
 # imports
 import os
+import time
 from pathlib import Path
 
 import h5py
@@ -13,12 +14,12 @@ import h5py
 # Bokeh RTA imports
 from .utils_helpers import hdf5Proxy
 
-__all__ = ["safe_close_file", "open_file_from_selection", "fetch_stream"]
+__all__ = ["safe_close_file", "open_file_from_selection"]
 
 logger = logging.getLogger(__name__)
 
 
-def _get_latest_file(resource_path, extension=".h5"):
+def _get_latest_file(resource_path, extension=".h5", n_rec=10, n_files=8):
     """Open latest .h5 file from the resource directory.
 
     Parameters
@@ -28,6 +29,13 @@ def _get_latest_file(resource_path, extension=".h5"):
     extension : string, optional
         Extension of the format for files.
         Default is .h5.
+    n_rec : int, optional
+        Maximum number of retries of search of the files before raising a warning.
+        Default is 10.
+    n_files : int, optional
+        Number of files to be written at the same time.
+        Corresponds to number of lines times number of threads.
+        Default is `2*4=8`.
 
     Returns
     -------
@@ -44,15 +52,27 @@ def _get_latest_file(resource_path, extension=".h5"):
     """
 
     # Find the latest file
-    filepath = max(
+    rec = 0
+    while (
+        len(list(Path(resource_path).glob("*" + extension))) <= n_files and rec < n_rec
+    ):
+        time.sleep(10)
+        rec += 1
+        print(f"Empty DL1 directory {resource_path} - attempt {rec+1}: sleeping 10s...")
+    if rec >= n_rec and len(list(Path(resource_path).glob("*" + extension))) <= n_files:
+        logger.warning(f"_get_latest_file: failed reading {resource_path}")
+        return None
+    filepaths = sorted(
         Path(resource_path).glob("*" + extension), key=lambda f: f.stat().st_mtime
     )
     try:
-        # Try to open .h5 file
-        return h5py.File(filepath, "r")
+        # Try to open .h5 second to last file
+        return h5py.File(filepaths[-n_files - 1], "r")
     except Exception as e:
         # Return None if an error occured
-        logger.warning(f"_get_latest_file: failed reading {filepath}: {e}")
+        logger.warning(
+            f"_get_latest_file: failed reading files {filepaths[-n_files-1]}: {e}"
+        )
         return None
 
 
@@ -171,7 +191,3 @@ def open_file_from_selection(
     except Exception as e:
         logger.warning(f"open_file_for_selection: failed file opening: {e}")
         return None, None
-
-
-def fetch_stream():
-    pass
