@@ -17,7 +17,13 @@ from ctapipe.core import Provenance, ToolConfigurationError, run_tool
 from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
 from ctapipe.io import HDF5TableWriter
 from ctapipe.io import metadata as meta
-from ctapipe_io_nectarcam.constants import LOW_GAIN, N_GAINS, N_PIXELS, N_SAMPLES
+from ctapipe_io_nectarcam.constants import (
+    LOW_GAIN,
+    N_GAINS,
+    N_PIXELS,
+    N_SAMPLES,
+    PIXEL_INDEX,
+)
 
 from ...data.container import FlatFieldContainer as NectarCAMFlatFieldContainer
 from ...data.container import GainContainer as NectarCAMGainContainer
@@ -146,6 +152,13 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             "of each subtool",
         ),
     ).tag(config=True)
+    all_default = Bool(
+        default_value=False,
+        help=(
+            "Option to create a calibration file with only default "
+            "calibration coefficients"
+        ),
+    )
 
     classes = [
         *PEDESTAL_CALIBRATION_TOOLS.values(),
@@ -185,11 +198,15 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         }
 
     def _init_output_path(self):
-        calib_filename = (
-            f"{self.name}_Pedrun{self.ped_run_number}_FFrun{self.FF_run_number}_"
-            f"FFSPErun{self.FF_SPE_run_number}_FFSPEHHVrun{self.FF_SPE_HHV_run_number}"
-            f"{self.output_format}"
-        )
+        if self.all_default:
+            calib_filename = f"{self.name}_DEFAULT_CALIB_VALUES{self.output_format}"
+        else:
+            calib_filename = (
+                f"{self.name}_Pedrun{self.ped_run_number}_FFrun{self.FF_run_number}_"
+                f"FFSPErun{self.FF_SPE_run_number}_"
+                f"FFSPEHHVrun{self.FF_SPE_HHV_run_number}"
+                f"{self.output_format}"
+            )
 
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/"
@@ -324,13 +341,19 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         }
 
     def start(self):
-        run_tool(self.pedestal_tool)
-        run_tool(self.gain_tool)
-        run_tool(self.hilo_tool)
-        run_tool(self.flatfield_tool)
+        if self.all_default:
+            return
+        else:
+            run_tool(self.pedestal_tool)
+            run_tool(self.gain_tool)
+            run_tool(self.hilo_tool)
+            run_tool(self.flatfield_tool)
 
     def finish(self):
-        self._read_nectarcam_containers_from_subtool_outputs()
+        if self.all_default:
+            self._fill_nectarcam_containers_with_default_values()
+        else:
+            self._read_nectarcam_containers_from_subtool_outputs()
         self._fill_ctapipe_containers_from_nectarcam_containers()
         self._write_catA_calibration_file()
         if not self.save_tmp:
@@ -359,6 +382,70 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             ContainerUtils.add_missing_pixels_to_container(
                 self._nectarcam_containers[key], pad_value=np.nan
             )
+
+    def _fill_nectarcam_containers_with_default_values(self):
+        """
+        Construct nectarcam containers filled with default calibration coefficients.
+        """
+
+        self.log.info(
+            f"Filling {NectarCAMContainer.__name__}s filled with default values..."
+        )
+
+        # Set pixels id (all pixels)
+        for key in self._nectarcam_containers.keys():
+            self._nectarcam_containers[key].pixels_id = PIXEL_INDEX
+
+        # No bad pixels
+        self._nectarcam_containers["pedestal"].pixel_mask = np.full(
+            (N_GAINS, N_PIXELS), True, dtype=bool
+        )
+        self._nectarcam_containers["gain"].is_valid = np.full(
+            (N_PIXELS), True, dtype=bool
+        )
+        self._nectarcam_containers["flatfield"].bad_pixels = None
+
+        # Number of events (1 per pixel)
+        self._nectarcam_containers["pedestal"].nevents = np.ones(N_PIXELS)
+        self._nectarcam_containers["flatfield"].event_id = np.ones((1,))
+
+        # FF charges (dummy value)
+        self._nectarcam_containers["flatfield"].amp_int_per_pix_per_event = np.ones(
+            (1, N_GAINS, N_PIXELS)
+        )
+
+        # Default timestamps (my birthday :)
+        default_timestamp = 791054100000000000  # ns
+        self._nectarcam_containers["pedestal"].ucts_timestamp_min = default_timestamp
+        self._nectarcam_containers["pedestal"].ucts_timestamp_max = default_timestamp
+        self._nectarcam_containers["flatfield"].ucts_timestamp = default_timestamp
+
+        # Default pedestal values
+        self._nectarcam_containers["pedestal"].pedestal_mean_hg = np.full(
+            (N_PIXELS, N_SAMPLES), PEDESTAL_DEFAULT
+        )
+        self._nectarcam_containers["pedestal"].pedestal_mean_lg = np.full(
+            (N_PIXELS, N_SAMPLES), PEDESTAL_DEFAULT
+        )
+        self._nectarcam_containers["pedestal"].pedestal_std_hg = np.zeros(
+            (N_PIXELS, N_SAMPLES)
+        )
+        self._nectarcam_containers["pedestal"].pedestal_std_lg = np.zeros(
+            (N_PIXELS, N_SAMPLES)
+        )
+
+        # Default gain values
+        self._nectarcam_containers["gain"].high_gain = np.full(
+            (N_PIXELS, 1), GAIN_DEFAULT
+        )
+        self._nectarcam_containers["gain"].low_gain = np.full(
+            (N_PIXELS, 1), GAIN_DEFAULT / HILO_DEFAULT
+        )
+
+        # Default flatfield values
+        self._nectarcam_containers["flatfield"].eff_coef = np.full(
+            (1, N_GAINS, N_PIXELS), FLATFIELD_DEFAULT
+        )
 
     def _fill_ctapipe_containers_from_nectarcam_containers(self):
         """
