@@ -330,7 +330,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
     def finish(self):
         self._read_nectarcam_containers_from_subtool_outputs()
-        self._fill_ctapipe_containers()
+        self._fill_ctapipe_containers_from_nectarcam_containers()
         self._write_catA_calibration_file()
 
     def _read_nectarcam_containers_from_subtool_outputs(self):
@@ -354,7 +354,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 self._nectarcam_containers[key], pad_value=np.nan
             )
 
-    def _fill_ctapipe_containers(self):
+    def _fill_ctapipe_containers_from_nectarcam_containers(self):
         """
         Fills all `ctapipe` containers to be written in the Category A calibration
         file from `nectarchain` containers.
