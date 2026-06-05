@@ -177,7 +177,7 @@ def _make_camera_display(
         height=height,
         angle=angle,
         fill_color=None,
-        line_color="#40E0D0",
+        line_color="#1f4fff",
         line_width=2,
         line_alpha=1,
     )
