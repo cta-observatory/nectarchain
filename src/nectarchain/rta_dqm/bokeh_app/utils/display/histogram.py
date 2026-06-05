@@ -97,7 +97,7 @@ def make_averaged_histogram(
         data = np.zeros((data.shape[0], 1))
 
     data_to_average = data[-n_runs:]
-    hist, edges = np.histogram(data_to_average, n_bins)
+    hist, edges = np.histogram(data_to_average[np.isfinite(data_to_average)], n_bins)
     hist //= n_runs
     current_data = ColumnDataSource(
         data={
@@ -278,7 +278,7 @@ def make_histogram(
     if data.ndim != 1:
         data = np.zeros((data.shape[0]))
 
-    hist, edges = np.histogram(data, n_bins)
+    hist, edges = np.histogram(data[np.isfinite(data)], n_bins)
     current_data = ColumnDataSource(
         data={
             label: hist,
@@ -450,7 +450,7 @@ def update_display_hist(disp, parentkey, childkey, file, label, n_runs, n_bins):
     n_bins = max(1, int(n_bins))
 
     sample = arr[-n_runs:].ravel()
-    hist, edges = np.histogram(sample, bins=n_bins)
+    hist, edges = np.histogram(sample[np.isfinite(sample)], bins=n_bins)
     hist //= n_runs
     centers = (edges[:-1] + edges[1:]) / 2.0
 
@@ -510,7 +510,7 @@ def update_display_hist_for_1d(disp, parentkey, childkey, file, label, n_bins):
 
     n_bins = max(1, int(n_bins))
 
-    hist, edges = np.histogram(data, bins=n_bins)
+    hist, edges = np.histogram(data[np.isfinite(data)], bins=n_bins)
     centers = (edges[:-1] + edges[1:]) / 2.0
 
     # update the source in-place

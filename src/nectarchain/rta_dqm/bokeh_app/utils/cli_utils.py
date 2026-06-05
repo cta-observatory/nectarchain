@@ -79,6 +79,7 @@ def create_app(doc):
         log_file_name="bokeh_log.log",
         level=logging.INFO,
     )
+    logger.info("Bokeh app started")
 
     # Check CLI
     SERVER_CONFIG = parse_server_cli()
