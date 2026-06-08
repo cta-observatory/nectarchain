@@ -17,6 +17,7 @@ from ctapipe.core import Provenance, ToolConfigurationError, run_tool
 from ctapipe.core.traits import Bool, CaselessStrEnum, Integer, Path
 from ctapipe.io import metadata as meta
 from ctapipe_io_nectarcam.constants import (
+    HIGH_GAIN,
     LOW_GAIN,
     N_GAINS,
     N_PIXELS,
@@ -786,8 +787,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         ] = PEDESTAL_DEFAULT
 
         # Set default gain values and correct for HiLo ratio
-        self._ctapipe_containers["calibration"].n_pe[mask] = 1 / GAIN_DEFAULT
-        self._ctapipe_containers["calibration"].n_pe[LOW_GAIN] *= HILO_DEFAULT
+        self._ctapipe_containers["calibration"].n_pe[HIGH_GAIN, mask[HIGH_GAIN]] = (
+            1 / GAIN_DEFAULT
+        )
+        self._ctapipe_containers["calibration"].n_pe[
+            LOW_GAIN, mask[LOW_GAIN]
+        ] *= HILO_DEFAULT
 
         # Set default flatfield values
         self._ctapipe_containers["calibration"].dc_to_pe[mask] = (
