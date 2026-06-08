@@ -397,12 +397,10 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             self._nectarcam_containers[key].pixels_id = PIXEL_INDEX
 
         # No bad pixels
-        self._nectarcam_containers["pedestal"].pixel_mask = np.full(
-            (N_GAINS, N_PIXELS), True, dtype=bool
+        self._nectarcam_containers["pedestal"].pixel_mask = np.zeros(
+            (N_GAINS, N_PIXELS), dtype=bool
         )
-        self._nectarcam_containers["gain"].is_valid = np.full(
-            (N_PIXELS), True, dtype=bool
-        )
+        self._nectarcam_containers["gain"].is_valid = np.ones((N_PIXELS), dtype=bool)
         self._nectarcam_containers["flatfield"].bad_pixels = None
 
         # Number of events (1 per pixel)
