@@ -209,12 +209,13 @@ of the waveform"
                 f"HILO_DEFAULT = {HILO_DEFAULT}"
             )
             gain = list(
-                np.full(
-                    shape=(constants.N_GAINS, constants.N_PIXELS),
-                    fill_value=GAIN_DEFAULT,
+                np.vstack(
+                    [
+                        np.full(constants.N_PIXELS, GAIN_DEFAULT),
+                        np.full(constants.N_PIXELS, GAIN_DEFAULT / HILO_DEFAULT),
+                    ]
                 )
             )
-            # gain[constants.LOW_GAIN] = gain[constants.HIGH_GAIN] / HILO_DEFAULT
             self.gain = gain  # .tolist()
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
