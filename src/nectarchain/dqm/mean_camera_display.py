@@ -70,12 +70,12 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
             # (1, 1855, 60) for single-gain channel
             waveforms = evt.r1.tel[self.tel_id].waveform
 
-        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL.value:
             # count sky peds, event id 2
             self.counter_ped += 1
             self.CameraAverage_ped1 = waveforms.sum(axis=-1)
             self.CameraAverage_ped.append(self.CameraAverage_ped1[pixels])
-        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+        elif evt.trigger.event_type.value == EventType.SUBARRAY.value:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
             self.CameraAverage1 = waveforms.sum(axis=-1)

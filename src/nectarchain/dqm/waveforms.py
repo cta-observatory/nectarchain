@@ -65,10 +65,10 @@ class WaveFormsHighLowGain(DQMSummary):
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
-        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL.value:
             # count sky peds, event id 2
             self.counter_ped += 1
-        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+        elif evt.trigger.event_type.value == EventType.SUBARRAY.value:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
         # TODO: add ids for other event types, e.g., dark pedestals

@@ -70,21 +70,25 @@ class TriggerStatistics(DQMSummary):
         self.run_end = np.max(self.event_times)
 
         self.event_ped_times = self.event_times[
-            self.event_type == EventType.SKY_PEDESTAL
+            self.event_type == EventType.SKY_PEDESTAL.value
         ]
         # sky pedestal, event id 2
-        self.event_phy_times = self.event_times[self.event_type == EventType.SUBARRAY]
+        self.event_phy_times = self.event_times[
+            self.event_type == EventType.SUBARRAY.value
+        ]
         # standard physics stereo, event id 32
         # TODO: add ids and event time selection for
         # other event types, e.g., dark pedestals
 
-        mask = (self.event_type != EventType.SUBARRAY) & (
-            self.event_type != EventType.SKY_PEDESTAL
+        mask = (self.event_type != EventType.SUBARRAY.value) & (
+            self.event_type != EventType.SKY_PEDESTAL.value
         )
         self.event_other_times = self.event_times[mask]
 
-        self.event_ped_id = self.event_id[self.event_type == EventType.SKY_PEDESTAL]
-        self.event_phy_id = self.event_id[self.event_type == EventType.SUBARRAY]
+        self.event_ped_id = self.event_id[
+            self.event_type == EventType.SKY_PEDESTAL.value
+        ]
+        self.event_phy_id = self.event_id[self.event_type == EventType.SUBARRAY.value]
         self.event_other_id = self.event_id[mask]
 
         self.event_ped_id = self.event_ped_id[self.event_ped_times > self.run_start]

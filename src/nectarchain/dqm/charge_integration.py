@@ -147,13 +147,13 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         image = output[0]
         peakpos = output[1]
 
-        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL.value:
             # count sky peds, event id 2
             self.counter_ped += 1
             self.image_ped.append(image)
             self.peakpos_ped.append(peakpos)
             self.ped_ped.append(ped)
-        elif evt.trigger.event_type.value == EventType.SUBARRAY:
+        elif evt.trigger.event_type.value == EventType.SUBARRAY.value:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
             self.image_all.append(image)
