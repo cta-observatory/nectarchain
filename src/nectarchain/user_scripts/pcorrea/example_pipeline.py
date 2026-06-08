@@ -2,7 +2,6 @@ import argparse
 import logging
 from pathlib import Path
 
-import numpy as np
 from ctapipe.core import run_tool
 from ctapipe.core.logging import ColoredFormatter
 from traitlets.config import Config
@@ -47,14 +46,14 @@ args = parser.parse_args()
 ######################
 
 # Run numbers to use for each calibration tool
-ped_run_number = 6249
-FF_run_number = 6252
+ped_run_number = 7077
+FF_run_number = 7077
 FF_SPE_run_number = 3936
 FF_SPE_HHV_run_number = 3942
 
 # Tools to use for each step in the calibration
 ped_tool_name = PedestalNectarCAMCalibrationTool.__name__
-gain_tool_name = FlatFieldSPENominalStdNectarCAMCalibrationTool.__name__
+gain_tool_name = PhotoStatisticNectarCAMCalibrationTool.__name__
 hilo_tool_name = HiLoNectarCAMCalibrationTool.__name__
 FF_tool_name = FlatfieldNectarCAMCalibrationTool.__name__
 
@@ -66,11 +65,21 @@ SPE_HHV_result_path = Path(
     "window_shift_4_window_width_8.h5"
 )
 
+# Output format of cat-A calibration file (.h5, .fits, .fits.gz)
+output_format = ".h5"
+
+# Option to save the individual outputs of each tool
+save_tmp = True
+
+# Option to make a calibration file filled only with
+# default calibration coefficients
+all_default = False
+
 config = Config()
 
 # Global configurations for all tools
 core_tool_name = NectarCAMCalibrationTool.__name__
-config[core_tool_name].max_events = 10000
+config[core_tool_name].max_events = 1000
 config[core_tool_name].progress_bar = True
 config[core_tool_name].overwrite = True
 config[core_tool_name].camera = "NectarCAMQM"
@@ -84,7 +93,7 @@ config[gain_tool_name].method = "LocalPeakWindowSum"
 config[gain_tool_name].extractor_kwargs = {"window_width": 8, "window_shift": 4}
 config[gain_tool_name].multiproc = True
 config[gain_tool_name].nproc = 8
-config[gain_tool_name].asked_pixels_id = np.arange(100).tolist()
+# config[gain_tool_name].asked_pixels_id = np.arange(500, 600).tolist()
 
 # Configure HiLo tool
 config[hilo_tool_name].method = config[gain_tool_name].method
@@ -95,6 +104,7 @@ config[FF_tool_name].charge_extraction_method = "LocalPeakWindowSum"
 config[FF_tool_name].window_width = 12
 config[FF_tool_name].window_shift = 4
 
+# config[PipelineNectarCAMCalibrationTool.__name__].output_path = "test.xx"
 
 # Helper to set a default configuration for the SPE HHV tool
 SPE_HHV_tool_default_name = FlatFieldSPEHHVNectarCAMCalibrationTool.__name__
@@ -103,7 +113,8 @@ SPE_HHV_tool_default_name = FlatFieldSPEHHVNectarCAMCalibrationTool.__name__
 def set_SPE_HHV_tool_default_config(
     config, SPE_HHV_tool_default_name=SPE_HHV_tool_default_name
 ):
-    config[SPE_HHV_tool_default_name].max_events = 50000
+    config[SPE_HHV_tool_default_name].run_number = 3942
+    config[SPE_HHV_tool_default_name].max_events = 5000
     config[SPE_HHV_tool_default_name].method = "LocalPeakWindowSum"
     config[SPE_HHV_tool_default_name].extractor_kwargs = {
         "window_width": 8,
@@ -136,7 +147,7 @@ log.propagate = False
 def main(
     SPE_HHV_result_path=SPE_HHV_result_path, FF_SPE_HHV_run_number=FF_SPE_HHV_run_number
 ):
-    if not SPE_HHV_result_path.exists():
+    if not SPE_HHV_result_path.exists() and not all_default:
         log.warning(f"SPE_HHV_result_path does not exist: {SPE_HHV_result_path}")
 
         set_SPE_HHV_tool_default_config(config)
@@ -176,6 +187,9 @@ def main(
         gain_tool_name=gain_tool_name,
         hilo_tool_name=hilo_tool_name,
         FF_tool_name=FF_tool_name,
+        output_format=output_format,
+        save_tmp=save_tmp,
+        all_default=all_default,
     )
 
     tool.run()
