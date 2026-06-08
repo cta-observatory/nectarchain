@@ -210,7 +210,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/calib_pipeline/"
-            f"{os.getpid()}/{calib_filename}"
+            f"{calib_filename}"
         )
 
     def setup(self, *args, **kwargs):
