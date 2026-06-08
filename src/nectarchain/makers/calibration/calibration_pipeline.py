@@ -538,38 +538,39 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
 
         hardware_failing_pixels = np.zeros((N_GAINS, N_PIXELS), dtype=bool)
 
-        # Check for hardware failing pixels in pedestal container
-        # Only need to check first sample of "pedestal waveform"
-        pedestal = self._combine_hg_and_lg(
-            self._nectarcam_containers["pedestal"].pedestal_mean_hg[..., 0],
-            self._nectarcam_containers["pedestal"].pedestal_mean_lg[..., 0],
-        )
-        # These will be tagged by either NaN or default values
-        mask_ped = np.logical_or(
-            np.isnan(pedestal),
-            pedestal == PEDESTAL_DEFAULT,
-        )
-        hardware_failing_pixels[mask_ped] = True
+        if not self.all_default:
+            # Check for hardware failing pixels in pedestal container
+            # Only need to check first sample of "pedestal waveform"
+            pedestal = self._combine_hg_and_lg(
+                self._nectarcam_containers["pedestal"].pedestal_mean_hg[..., 0],
+                self._nectarcam_containers["pedestal"].pedestal_mean_lg[..., 0],
+            )
+            # These will be tagged by either NaN or default values
+            mask_ped = np.logical_or(
+                np.isnan(pedestal),
+                pedestal == PEDESTAL_DEFAULT,
+            )
+            hardware_failing_pixels[mask_ped] = True
 
-        # Check for hardware failing pixels in gain container
-        # Only need to check high gain, since low gain is determined directly from that
-        gain = self._nectarcam_containers["gain"].high_gain[..., 0]
-        # These will be tagged by either NaN or default values
-        mask_gain = np.logical_or(
-            np.isnan(gain),
-            gain == GAIN_DEFAULT,
-        )
-        hardware_failing_pixels[:, mask_gain] = True
+            # Check for hardware failing pixels in gain container
+            # Only need to check high gain
+            gain = self._nectarcam_containers["gain"].high_gain[..., 0]
+            # These will be tagged by either NaN or default values
+            mask_gain = np.logical_or(
+                np.isnan(gain),
+                gain == GAIN_DEFAULT,
+            )
+            hardware_failing_pixels[:, mask_gain] = True
 
-        # Check for hardware failing pixels in FF container
-        # Only need to check the first event
-        eff_coef = self._nectarcam_containers["flatfield"].eff_coef[0]
-        # These will be tagged by either NaN or default values
-        mask_FF = np.logical_or(
-            np.isnan(eff_coef),
-            eff_coef == FLATFIELD_DEFAULT,
-        )
-        hardware_failing_pixels[mask_FF] = True
+            # Check for hardware failing pixels in FF container
+            # Only need to check the first event
+            eff_coef = self._nectarcam_containers["flatfield"].eff_coef[0]
+            # These will be tagged by either NaN or default values
+            mask_FF = np.logical_or(
+                np.isnan(eff_coef),
+                eff_coef == FLATFIELD_DEFAULT,
+            )
+            hardware_failing_pixels[mask_FF] = True
 
         # Fill relevant ctapipe container
         self._ctapipe_containers[
