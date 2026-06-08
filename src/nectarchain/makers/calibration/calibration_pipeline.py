@@ -292,7 +292,7 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
                 )
             self._gain_output_path = (
                 self._res_dir_subtools / f"output_{self.gain_tool_name}_"
-                f"FFrun{self.FF_SPE_run_number}_"
+                f"FFrun{self.FF_run_number}_"
                 f"Pedrun{self.ped_run_number}_"
                 f"HHVrun{self.FF_SPE_HHV_run_number}.h5"
             )
