@@ -9,7 +9,7 @@ from astropy.coordinates import SkyCoord
 
 # bokeh imports
 from bokeh.layouts import column, row
-from bokeh.models import ColorBar, Label, Node, TabPanel
+from bokeh.models import ColorBar, ColumnDataSource, HoverTool, Label, Node, TabPanel
 from bokeh.plotting import figure
 
 # ctapipe imports
@@ -564,6 +564,36 @@ def make_pixel_vals_histo(source, parent_key, child_key):
     return histo_values
 
 
+def compile_hover_tool_val_vs_id(pixel_data, figure):
+    """Compile the HoverTool for the
+       input scatter figure with additional information
+
+    Parameters
+    ----------
+    pixel_data : bokeh.plotting.figure.scatter
+        Scatter plot defined and already filled
+        in the corresponding function
+    figure : bokeh.plotting.figure
+        Figure object to add the HoverTool to
+
+    Returns
+    -------
+    bokeh.plotting.figure
+        Figure object with the HoverTool added
+    """
+
+    figure.add_tools(
+        HoverTool(
+            tooltips=[("(pix_id, value)", "(@pix_id, @value)")],
+            mode="mouse",
+            point_policy="snap_to_data",
+            renderers=[pixel_data],
+        )
+    )
+
+    return figure
+
+
 def make_pixel_val_vs_id(source, parent_key, child_key):
     """Make 1D plot of camera pixel values vs pixel id
        to fill the nested dict
@@ -621,9 +651,11 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
         y_range=(min_val, max_val),
     )
 
-    scatter_value_vs_id.scatter(
-        x=np.arange(len(image)),
-        y=image,
+    data_source = ColumnDataSource(data=dict(pix_id=np.arange(len(image)), value=image))
+    pixel_data = scatter_value_vs_id.scatter(
+        x="pix_id",
+        y="value",
+        source=data_source,
         color="blue",
         size=5,
         alpha=0.6,
@@ -639,7 +671,73 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
     scatter_value_vs_id.xaxis.axis_label_text_font_style = "normal"
     scatter_value_vs_id.yaxis.axis_label_text_font_style = "normal"
 
+    scatter_value_vs_id = compile_hover_tool_val_vs_id(
+        pixel_data=pixel_data, figure=scatter_value_vs_id
+    )
+
     return scatter_value_vs_id
+
+
+def compile_hover_tool(display, camgeom):
+    """Compile the HoverTool for the
+       input camera display with additional information
+
+    Parameters
+    ----------
+    display : ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay already filled with values
+    camgeom : ctapipe.instrument.CameraGeometry
+        CameraGeometry object containing the camera layout information
+
+    Returns
+    -------
+    ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay as input but now with the HoverTool
+        added to the figure, to show pixel information on hover
+    """
+
+    geom_info = camgeom.to_table()
+    pix_id = geom_info["pix_id"].data
+    pixel_number = len(pix_id)
+    pix_id = np.reshape(pix_id, (int(pixel_number / 7), 7))
+    pix_x = np.round(geom_info["pix_x"].data, decimals=3)
+    pix_y = np.round(geom_info["pix_y"].data, decimals=3)
+
+    cluster_n = []
+    pix_id_in_cluster = []
+
+    for ii in range(pix_id.shape[0]):
+        for jj in range(pix_id.shape[1]):
+            cluster_n.append(ii)
+            pix_id_in_cluster.append(jj)
+
+    pix_id = np.reshape(pix_id, (pixel_number,))
+
+    image = display.image
+
+    display.datasource.add(pix_id, "pix_id")
+    display.datasource.add(pix_x, "pix_x")
+    display.datasource.add(pix_y, "pix_y")
+    display.datasource.add(cluster_n, "cluster_n")
+    display.datasource.add(pix_id_in_cluster, "pix_id_in_cluster")
+    display.datasource.add(image, "image")
+
+    display.figure.add_tools(
+        HoverTool(
+            tooltips=[
+                ("pix id", "@pix_id"),
+                ("pix # in cluster", "@pix_id_in_cluster"),
+                ("cluster #", "@cluster_n"),
+                ("pix x pos", "@pix_x"),
+                ("pix y pos", "@pix_y"),
+                ("value", "@image"),
+            ],
+            mode="mouse",
+            point_policy="snap_to_data",
+        )
+    )
+
+    return display
 
 
 # TODO: some more explanation about the parent and child keys
@@ -751,6 +849,8 @@ def make_camera_display(source, parent_key, child_key):
         color_bar.title = ""
 
     display.figure.title = child_key
+
+    display = compile_hover_tool(display=display, camgeom=geom)
 
     return display
 
