@@ -4,8 +4,8 @@ import pathlib
 
 from ctapipe.core.traits import ComponentNameList
 
-from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
-from nectarchain.makers.component import NectarCAMComponent
+from ..component import NectarCAMComponent
+from .core import NectarCAMCalibrationTool
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ log.handlers = logging.getLogger("__main__").handlers
 __all__ = ["FlatfieldNectarCAMCalibrationTool"]
 
 
-class FlatfieldNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
+class FlatfieldNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     name = "FlatfieldNectarCAMCalibrationTool"
 
     componentsList = ComponentNameList(
