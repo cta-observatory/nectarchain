@@ -10,13 +10,14 @@ from astropy.coordinates import SkyCoord
 # bokeh imports
 from bokeh.layouts import column, row
 from bokeh.models import (
-  ColorBar,
-  CustomJS,
-  ColumnDataSource,
-  HoverTool, Label,
-  Node,
-  RangeSlider,
-  TabPanel,
+    ColorBar,
+    ColumnDataSource,
+    CustomJS,
+    HoverTool,
+    Label,
+    Node,
+    RangeSlider,
+    TabPanel,
 )
 from bokeh.plotting import figure
 
@@ -454,18 +455,20 @@ def update_camera_displays(data, runid=None):
     displays = make_camera_displays(data, runid)
 
     camera_displays = [
-        column(
-            [
-                displays[parentkey][childkey][1],  # RangeSlider
-                row(
-                    displays[parentkey][childkey][0].figure,
-                    displays[parentkey][childkey][2],
-                    displays[parentkey][childkey][3],
-                ),
-            ]
+        (
+            column(
+                [
+                    displays[parentkey][childkey][1],  # RangeSlider
+                    row(
+                        displays[parentkey][childkey][0].figure,
+                        displays[parentkey][childkey][2],
+                        displays[parentkey][childkey][3],
+                    ),
+                ]
+            )
+            if len(displays[parentkey][childkey]) == 4
+            else displays[parentkey][childkey][0].figure
         )
-        if len(displays[parentkey][childkey]) == 4
-        else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
