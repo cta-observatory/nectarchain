@@ -65,10 +65,10 @@ class WaveFormsHighLowGain(DQMSummary):
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
-        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL.value:
+        if evt.trigger.event_type == EventType.SKY_PEDESTAL:
             # count sky peds, event id 2
             self.counter_ped += 1
-        elif evt.trigger.event_type.value == EventType.SUBARRAY.value:
+        elif evt.trigger.event_type == EventType.SUBARRAY:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
         # TODO: add ids for other event types, e.g., dark pedestals
@@ -85,9 +85,9 @@ class WaveFormsHighLowGain(DQMSummary):
                 # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
                 # (1, 1855, 60) for single-gain channel
                 waveform = evt.r1.tel[self.tel_id].waveform[..., ipix, :]
-            if evt.trigger.event_type.value == EventType.SKY_PEDESTAL:
+            if evt.trigger.event_type == EventType.SKY_PEDESTAL:
                 self.wf_ped[ipix, :] += waveform
-            elif evt.trigger.event_type.value == EventType.SUBARRAY:
+            elif evt.trigger.event_type == EventType.SUBARRAY:
                 self.wf[ipix, :] += waveform
             # TODO: add ids for other event types, e.g., dark pedestals
             # TODO: this else is wrong, we should have a separate counter

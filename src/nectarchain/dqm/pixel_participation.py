@@ -52,11 +52,11 @@ class PixelParticipationHighLowGain(DQMSummary):
 
         bad_pixels = np.array(pixelBAD[pixels]).astype(int)
 
-        if evt.trigger.event_type.value == EventType.SKY_PEDESTAL.value:
+        if evt.trigger.event_type == EventType.SKY_PEDESTAL:
             # count sky peds, event id 2
             self.counter_ped += 1
             self.BadPixels_ped += bad_pixels
-        elif evt.trigger.event_type.value == EventType.SUBARRAY.value:
+        elif evt.trigger.event_type == EventType.SUBARRAY:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
             self.BadPixels += bad_pixels
