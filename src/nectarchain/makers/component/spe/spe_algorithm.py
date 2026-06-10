@@ -484,7 +484,9 @@ class SPEnominalalgorithm(SPEalgorithm):
         ``**kwargs``
             Additional keyword arguments.
         """
-        super().__init__(pixels_id=pixels_id, config=config, parent=parent, **kwargs)
+        super().__init__(
+            pixels_id=np.unique(pixels_id), config=config, parent=parent, **kwargs
+        )
         if isinstance(charge, np.ma.masked_array):
             self.__charge = charge
         else:
@@ -780,7 +782,9 @@ class SPEnominalalgorithm(SPEalgorithm):
         self.log.info("checking asked pixels id")
         if pixels_id is None:
             pixels_id = self.pixels_id
+            pixels_id = np.unique(pixels_id)
             npix = self.npixels
+            self.log.info(f"there are {npix} pixels")
         else:
             self.log.debug("checking that asked pixels id are in data")
             pixels_id = np.asarray(pixels_id)
