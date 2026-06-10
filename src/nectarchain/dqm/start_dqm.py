@@ -16,10 +16,10 @@ from nectarchain.dqm.camera_monitoring import CameraMonitoring
 from nectarchain.dqm.charge_integration import ChargeIntegrationHighLowGain
 from nectarchain.dqm.db_utils import DQMDB
 from nectarchain.dqm.mean_camera_display import MeanCameraDisplayHighLowGain
-from nectarchain.dqm.mean_waveforms import MeanWaveFormsHighLowGain
 from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
+from nectarchain.dqm.waveforms import WaveFormsHighLowGain
 from nectarchain.makers import ChargesNectarCAMCalibrationTool
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
@@ -207,8 +207,8 @@ def main():
     ####################################################################################
     processors = [
         TriggerStatistics(HIGH_GAIN, args.r0),
-        MeanWaveFormsHighLowGain(HIGH_GAIN, args.r0),
-        MeanWaveFormsHighLowGain(LOW_GAIN, args.r0),
+        WaveFormsHighLowGain(HIGH_GAIN, args.r0),
+        WaveFormsHighLowGain(LOW_GAIN, args.r0),
         MeanCameraDisplayHighLowGain(HIGH_GAIN, args.r0),
         MeanCameraDisplayHighLowGain(LOW_GAIN, args.r0),
         ChargeIntegrationHighLowGain(HIGH_GAIN, args.r0),
@@ -225,8 +225,8 @@ def main():
 
     NESTED_DICT_KEYS = [
         "Results_TriggerStatistics",
-        "Results_MeanWaveForms_HighGain",
-        "Results_MeanWaveForms_LowGain",
+        "Results_WaveForms_HighGain",
+        "Results_WaveForms_LowGain",
         "Results_MeanCameraDisplay_HighGain",
         "Results_MeanCameraDisplay_LowGain",
         "Results_ChargeIntegration_HighGain",
