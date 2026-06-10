@@ -410,13 +410,22 @@ class NectarCAMObsTempPipeline:
         return tool.output_path
 
     def compute_flatfield(self, run_number):
-        """Compute (or reuse) flatfield for *run_number* (two-pass). Returns Path."""
+        """Single-pass flatfield using precomputed gain + pedestal."""
+
         self.log.info(f"Flatfield run {run_number}: checking for existing output…")
 
-        gain_array = np.ones((constants.N_GAINS, constants.N_PIXELS))
-        gain_array[0] *= GAIN_DEFAULT
-        gain_array[1] *= GAIN_DEFAULT / HILO_DEFAULT
+        # ------------------------------------------------------------------
+        # Load upstream calibrations (DO NOT recompute)
+        # ------------------------------------------------------------------
+        gain_hg, gain_lg = self._load_or_default(run_number, "gain")
+        ped_hg, ped_lg = self._load_or_default(run_number, "pedestal")
 
+        gain_array = np.stack([gain_hg, gain_lg], axis=0)
+        pedestal_array = np.stack([ped_hg, ped_lg], axis=0)
+
+        # ------------------------------------------------------------------
+        # Tool configuration
+        # ------------------------------------------------------------------
         common = dict(
             progress_bar=True,
             camera=self.args.camera,
@@ -431,47 +440,31 @@ class NectarCAMObsTempPipeline:
             bad_pix=[],
         )
 
-        # Use a pass-1 tool only to resolve the output path and check existence.
-        # Pass-2 will write to the same path (same run + same common kwargs).
-        tool1 = FlatfieldNectarCAMCalibrationTool(gain=gain_array.tolist(), **common)
+        tool = FlatfieldNectarCAMCalibrationTool(
+            gain=gain_array.tolist(),
+            pedestal=pedestal_array.tolist(),  # 👈 KEY CHANGE
+            **common,
+        )
 
-        if os.path.exists(tool1.output_path):
-            self.log.info(
-                f"Flatfield already computed! Found output file: {tool1.output_path}..."
-            )
-        else:
-            self.log.info(
-                f"No output found, computing flatfield for run {run_number} (two-pass)…"
-            )
+        # ------------------------------------------------------------------
+        # reuse existing file if available
+        # ------------------------------------------------------------------
+        existing = self._resolve_existing_output(
+            tool, "flatfield", run_number, self.flatfield_results
+        )
+        if existing:
+            return existing
 
-            # --- Pass 1: default gain values ---
-            self.log.info("  First pass…")
-            tool1.setup()
-            tool1.start()
-            ff_out_1 = tool1.finish(return_output_component=True)[0]
+        self.log.info(f"Computing flatfield for run {run_number} (single pass)…")
 
-            # Estimate gain from Var(amp)/Mean(amp) on the pass-1 amplitudes
-            amp = ff_out_1.amp_int_per_pix_per_event  # (n_events, n_gains, n_pixels)
-            updated_gain = np.divide(
-                np.var(amp, axis=0),
-                np.mean(amp, axis=0),
-                where=np.mean(amp, axis=0) != 0.0,
-                out=np.ones((constants.N_GAINS, constants.N_PIXELS)),
-            )
+        tool.start()
+        tool.finish(return_output_component=True)
 
-            # --- Pass 2: updated gain values ---
-            self.log.info("  Second pass…")
-            tool2 = FlatfieldNectarCAMCalibrationTool(
-                gain=updated_gain.tolist(), **common
-            )
-            tool2.setup()
-            tool2.start()
-            tool2.finish(return_output_component=True)
-            self.log.info(f"Flatfield saved to {tool2.output_path}")
+        output_path = self._tool_output_path(tool)
+        self.flatfield_results[run_number] = output_path
 
-        self.flatfield_results[run_number] = tool1.output_path
-
-        return tool1.output_path
+        self.log.info(f"Flatfield saved to {output_path}")
+        return output_path
 
     def compute_charge(self, run_number):
         """Compute (or reuse) charges for *run_number*. Returns output Path."""
