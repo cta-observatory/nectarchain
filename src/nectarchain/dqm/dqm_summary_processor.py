@@ -51,38 +51,41 @@ class DQMSummary:
 
     @staticmethod
     def _create_hdu(name, content):
-        # Convert to numpy array
-        arr = np.asarray(content)
+        data = Table()
 
-        # Ensure consistent dtype (convert to float64 or int64 as appropriate)
-        if np.issubdtype(arr.dtype, np.floating):
-            arr = arr.astype(np.float64)
-        elif np.issubdtype(arr.dtype, np.integer):
-            arr = arr.astype(np.int64)
-        elif arr.dtype == object:
-            # Try to infer a numeric type for object arrays
-            try:
+        if isinstance(content, np.ndarray):
+            arr = np.asarray(content)
+            # Ensure consistent dtype (convert to float64 or int64 as appropriate)
+            if np.issubdtype(arr.dtype, np.floating):
                 arr = arr.astype(np.float64)
-            except (ValueError, TypeError):
-                # If conversion fails, flatten and use BinTableHDU
-                arr_1d = arr.flatten()
-                data = Table()
-                data[name] = arr_1d
-                hdu = fits.BinTableHDU(data)
-                hdu.name = name
-                return hdu
+            elif np.issubdtype(arr.dtype, np.integer):
+                arr = arr.astype(np.int64)
+            elif np.issubdtype(arr.dtype, np.object_):
+                arr = arr.astype(np.float64)
 
-        # Choose HDU type based on dimensionality
-        if arr.ndim <= 1:
-            # Use BinTableHDU for 0D and 1D arrays
-            if arr.ndim == 0:
-                arr = arr.reshape(1)  # Convert scalar to 1D
-            data = Table()
-            data[name] = arr
+            # for 1- and 0-dimensional arrays
+            if arr.ndim <= 1:
+                if arr.ndim == 0:
+                    arr = arr.reshape(1)  # Convert scalar to 1D
+                data[name] = arr
+                hdu = fits.BinTableHDU(data)
+            else:
+                hdu = fits.ImageHDU(arr)
+
+        # sometimes content can be a dict, as from trigger_statistics
+        elif isinstance(content, dict):
+            try:
+                data[name] = content
+            except Exception as e:
+                log.warning(f"Caught {type(e).__name__}. Details: {e}")
+                data = Table(content)
+
             hdu = fits.BinTableHDU(data)
+
+        # content can be a float, need to be recast to an array
         else:
-            # Use ImageHDU for multi-dimensional arrays
-            hdu = fits.ImageHDU(arr)
+            data = Table(np.array([content]))
+            hdu = fits.BinTableHDU(data)
 
         hdu.name = name
         return hdu
