@@ -905,7 +905,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         plot.addItem(error)
         plot.plot(
             x=charge,
-            y=np.trapz(counts, charge)
+            y=np.trapezoid(counts, charge)
             * MPE2(
                 charge,
                 pp,
@@ -1002,7 +1002,7 @@ class SPEnominalalgorithm(SPEalgorithm):
         ax.errorbar(charge, counts, np.sqrt(counts), zorder=0, fmt=".", label="data")
         ax.plot(
             charge,
-            np.trapz(counts, charge)
+            np.trapezoid(counts, charge)
             * MPE2(
                 charge,
                 pp,
@@ -1236,7 +1236,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         if (
             len(
                 pixels_id[
-                    np.in1d(
+                    np.isin(
                         pixels_id,
                         self._nectarGainSPEresult.pixels_id[
                             self._nectarGainSPEresult.is_valid
@@ -1359,7 +1359,7 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
             ]
         else:
             pixels_id = np.asarray(pixels_id)[
-                np.in1d(
+                np.isin(
                     pixels_id,
                     self._nectarGainSPEresult.pixels_id[
                         self._nectarGainSPEresult.is_valid

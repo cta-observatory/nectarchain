@@ -3,6 +3,7 @@ import os
 import pickle
 import sys
 import tempfile
+from glob import glob
 
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -28,8 +29,11 @@ from PyQt5.QtWidgets import (
 )
 
 from nectarchain.trr_test_suite import (
+    charge_resolution,
     deadtime,
+    flatfield_source_characterization,
     linearity,
+    nsb_rate_calibration,
     pedestal,
     pix_couple_tim_uncertainty,
     pix_tim_uncertainty,
@@ -62,8 +66,11 @@ class TestRunner(QWidget):
     """
 
     test_modules = {
+        "Charge Resolution Test": charge_resolution,
         "Linearity Test": linearity,
         "Deadtime Test": deadtime,
+        "Flat-field Source Characterization Test": flatfield_source_characterization,
+        "NSB Rate Calibration Test": nsb_rate_calibration,
         "Pedestal Test": pedestal,
         "Pixel Time Uncertainty Test": pix_tim_uncertainty,
         "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty,
@@ -74,6 +81,9 @@ class TestRunner(QWidget):
         super().__init__()
         self.params = {}
         self.process = None
+        # Generate temporary output path
+        self.temp_output = tempfile.gettempdir()
+        # print(f"Temporary output dir: {self.temp_output}")  # Debug print
         self.plot_files = []  # Store the list of plot files
         self.current_plot_index = 0  # Index to track which plot is being displayed
         self.figure = Figure(figsize=(8, 6))
@@ -322,10 +332,6 @@ class TestRunner(QWidget):
             self.update()
             self.repaint()
 
-            # Generate temporary output path
-            self.temp_output = tempfile.gettempdir()
-            # print(f"Temporary output dir: {self.temp_output}")  # Debug print
-
             for param, _ in self.params.items():
                 widget_list = self.param_widgets.findChildren(QLineEdit, param)
                 if widget_list:
@@ -367,10 +373,6 @@ class TestRunner(QWidget):
                 self, "Error", "No parameters found for the selected test"
             )
 
-        self.plot_files = [
-            os.path.join(self.temp_output, f"plot{i}.pkl") for i in range(1, 3)
-        ]
-
     def read_process_output(self):
         """Reads and displays the process output in real-time."""
         if self.process:
@@ -391,10 +393,8 @@ class TestRunner(QWidget):
             )
 
     def check_and_display_plot(self):
-        plot_files = [
-            os.path.join(self.temp_output, f"plot{i}.pkl") for i in range(1, 3)
-        ]
-        self.display_plot([f for f in plot_files if os.path.exists(f)])
+        self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
+        self.display_plot([f for f in self.plot_files if os.path.exists(f)])
 
     def display_plot(self, plot_files):
         """Loads the plots from the pickle files and displays them on the canvas."""
@@ -473,11 +473,10 @@ class TestRunner(QWidget):
         else:
             self.prev_button.setEnabled(False)
 
-    @staticmethod
-    def cleanup_tempdir():
+    def cleanup_tempdir(self):
         """Remove old plot files in temp directory."""
-        for i in range(1, 3):
-            plot_file = os.path.join(tempfile.gettempdir(), f"plot{i}.pkl")
+        self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
+        for plot_file in self.plot_files:
             if os.path.exists(plot_file):
                 os.remove(plot_file)
 

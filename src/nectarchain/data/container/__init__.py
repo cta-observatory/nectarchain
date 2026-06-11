@@ -10,7 +10,7 @@ from .core import (
     merge_map_ArrayDataContainer,
 )
 from .flatfield_container import FlatFieldContainer
-from .gain_container import GainContainer, SPEfitContainer
+from .gain_container import GainContainer, PhotostatContainer, SPEfitContainer
 from .pedestal_container import (
     NectarCAMPedestalContainer,
     NectarCAMPedestalContainers,
@@ -29,6 +29,7 @@ __all__ = [
     "WaveformsContainer",
     "WaveformsContainers",
     "GainContainer",
+    "PhotostatContainer",
     "SPEfitContainer",
     "NectarCAMPedestalContainer",
     "NectarCAMPedestalContainers",

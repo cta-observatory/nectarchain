@@ -5,6 +5,7 @@ from .flatfield_spe_makers import (
     FlatFieldSPENominalNectarCAMCalibrationTool,
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
 )
+from .hilo_makers import HiLoNectarCAMCalibrationTool
 from .photostat_makers import PhotoStatisticNectarCAMCalibrationTool
 
 # from .white_target_spe_makers import *
@@ -16,4 +17,5 @@ __all__ = [
     "FlatFieldSPEHHVStdNectarCAMCalibrationTool",
     "FlatFieldSPECombinedStdNectarCAMCalibrationTool",
     "PhotoStatisticNectarCAMCalibrationTool",
+    "HiLoNectarCAMCalibrationTool",
 ]

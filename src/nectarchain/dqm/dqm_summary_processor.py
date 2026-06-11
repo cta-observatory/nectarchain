@@ -52,17 +52,41 @@ class DQMSummary:
     @staticmethod
     def _create_hdu(name, content):
         data = Table()
-        try:
-            data[name] = content
-        except TypeError:
+
+        if isinstance(content, np.ndarray):
+            arr = np.asarray(content)
+            # Ensure consistent dtype (convert to float64 or int64 as appropriate)
+            if np.issubdtype(arr.dtype, np.floating):
+                arr = arr.astype(np.float64)
+            elif np.issubdtype(arr.dtype, np.integer):
+                arr = arr.astype(np.int64)
+            elif np.issubdtype(arr.dtype, np.object_):
+                arr = arr.astype(np.float64)
+
+            # for 1- and 0-dimensional arrays
+            if arr.ndim <= 1:
+                if arr.ndim == 0:
+                    arr = arr.reshape(1)  # Convert scalar to 1D
+                data[name] = arr
+                hdu = fits.BinTableHDU(data)
+            else:
+                hdu = fits.ImageHDU(arr)
+
+        # sometimes content can be a dict, as from trigger_statistics
+        elif isinstance(content, dict):
             try:
+                data[name] = content
+            except Exception as e:
+                log.warning(f"Caught {type(e).__name__}. Details: {e}")
                 data = Table(content)
-            except ValueError:
-                # We may have caught just a single float value, try to pack it into
-                # the FITS output
-                content = np.array([content])
-                data = Table(content)
-        hdu = fits.BinTableHDU(data)
+
+            hdu = fits.BinTableHDU(data)
+
+        # content can be a float, need to be recast to an array
+        else:
+            data = Table(np.array([content]))
+            hdu = fits.BinTableHDU(data)
+
         hdu.name = name
         return hdu
 

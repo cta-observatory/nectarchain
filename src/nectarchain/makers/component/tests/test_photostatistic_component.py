@@ -8,7 +8,7 @@ from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam.constants import N_SAMPLES
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer  # noqa : F401
 
-from nectarchain.data.container import GainContainer, SPEfitContainer
+from nectarchain.data.container import PhotostatContainer, SPEfitContainer
 from nectarchain.makers.component import PhotoStatisticNectarCAMComponent
 from nectarchain.makers.component.charges_component import ChargesComponent
 from nectarchain.makers.core import BaseNectarCAMCalibrationTool
@@ -128,6 +128,6 @@ class TestPhotoStatisticNectarCAMComponent:
             return_value=(spe_fit_container for i in range(2)),
         ):
             output = instance.finish(figpath="/tmp/photostat_test/")
-        assert isinstance(output, GainContainer)
+        assert isinstance(output, PhotostatContainer)
         assert isinstance(output.is_valid, np.ndarray)
         assert os.path.exists("/tmp/photostat_test/plot_correlation_Photo_Stat_SPE.pdf")

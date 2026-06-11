@@ -135,7 +135,6 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     f" with extraction"
                     f" method FullWaveformSum,\n reload charges from event loop"
                 )
-
             super().start(
                 n_events=n_events, restart_from_begining=False, *args, **kwargs
             )
@@ -148,6 +147,7 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             chargesContainers = ChargesContainers.from_hdf5(FF_files[0])
             if isinstance(chargesContainers, ChargesContainer):
                 self.components[0]._FF_chargesContainers = chargesContainers
+
             else:
                 n_slices = 0
                 try:
@@ -213,10 +213,4 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     )
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
-        # if isinstance(container,SPEfitContainer) :
-        #    self.writer.write(table_name = f"{self.method}_{CtapipeExtractor.get_extrac
-        # tor_kwargs_str(self.extractor_kwargs)}",
-        #                      containers = container,
-        #    )
-        # else :
         super()._write_container(container=container, index_component=index_component)
