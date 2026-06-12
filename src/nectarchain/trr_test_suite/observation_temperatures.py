@@ -130,10 +130,7 @@ Set $NECTARCAMDATA and $NECTARCHAIN_FIGURES before running.
     parser.add_argument("--max_events_charge", default=1000, type=int)
 
     parser.add_argument(
-        "--bad_pixels",
-        nargs="+",
-        default=_DEFAULT_BAD_PIXELS,
-        type=int,
+        "--bad_pixels", nargs="+", default=_DEFAULT_BAD_PIXELS, type=int
     )
     parser.add_argument("--use_bad_pixels", action="store_true", default=False)
 
