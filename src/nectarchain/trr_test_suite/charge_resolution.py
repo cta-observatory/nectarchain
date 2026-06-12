@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +18,7 @@ from nectarchain.makers.calibration import (
 )
 from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
 from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -70,7 +72,14 @@ number of pixels used (default 1000).
         required=False,
         default="resources/charge_resolution_run_list.json",
     )
-
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
     parser.add_argument(
         "-e",
         "--evts",
@@ -128,7 +137,13 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
-    output_dir = os.path.abspath(args.output)
+    camera = args.camera
+
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
     log.debug(f"Temporary output directory: {temp_output}")
@@ -179,6 +194,7 @@ def main():
             pedestal_tool = PedestalNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run,
+                camera=camera,
                 max_events=1000,
                 events_per_slice=max_events,
                 log_level=20,
@@ -200,6 +216,7 @@ def main():
                 gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=gain_run,
+                    camera=camera,
                     max_events=max_events,
                     method=method,
                     output_path=gain_file_name,
@@ -214,6 +231,7 @@ def main():
             tool = ChargeResolutionTestTool(
                 progress_bar=True,
                 run_number=run,
+                camera=camera,
                 max_events=nevents,
                 method=method,
                 extractor_kwargs={
