@@ -16,6 +16,7 @@ from nectarchain.dqm.camera_monitoring import CameraMonitoring
 from nectarchain.dqm.charge_integration import ChargeIntegrationHighLowGain
 from nectarchain.dqm.db_utils import DQMDB
 from nectarchain.dqm.mean_camera_display import MeanCameraDisplayHighLowGain
+from nectarchain.dqm.ping_pong import PingPongMonitoring
 from nectarchain.dqm.pixel_participation import PixelParticipationHighLowGain
 from nectarchain.dqm.pixel_timeline import PixelTimelineHighLowGain
 from nectarchain.dqm.trigger_statistics import TriggerStatistics
@@ -206,6 +207,7 @@ def main():
     # LIST OF PROCESSES TO RUN
     ####################################################################################
     processors = [
+        PingPongMonitoring(HIGH_GAIN, args.r0),
         TriggerStatistics(HIGH_GAIN, args.r0),
         WaveFormsHighLowGain(HIGH_GAIN, args.r0),
         WaveFormsHighLowGain(LOW_GAIN, args.r0),
@@ -224,6 +226,7 @@ def main():
     NESTED_DICT = {}  # The final results dictionary
 
     NESTED_DICT_KEYS = [
+        "Results_PingPongChanges",
         "Results_TriggerStatistics",
         "Results_WaveForms_HighGain",
         "Results_WaveForms_LowGain",
