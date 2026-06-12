@@ -56,6 +56,20 @@ from nectarchain.makers.extractor.utils import CtapipeExtractor
 from nectarchain.utils import ContainerUtils
 
 # ---------------------------------------------------------------------------
+# Load bad pixel defaults
+# ---------------------------------------------------------------------------
+
+_BAD_PIXEL_FILE = (
+    Path(__file__).resolve().parent / "resources" / "bad_pixel_modules.json"
+)
+
+try:
+    with open(_BAD_PIXEL_FILE, "r") as f:
+        _DEFAULT_BAD_PIXELS = json.load(f)["bad_pixel"]
+except Exception:
+    _DEFAULT_BAD_PIXELS = None
+
+# ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
 
@@ -115,7 +129,12 @@ Set $NECTARCAMDATA and $NECTARCHAIN_FIGURES before running.
     parser.add_argument("--max_events_flatfield", default=1000, type=int)
     parser.add_argument("--max_events_charge", default=1000, type=int)
 
-    parser.add_argument("--bad_pixels", nargs="+", default=None, type=int)
+    parser.add_argument(
+        "--bad_pixels",
+        nargs="+",
+        default=_DEFAULT_BAD_PIXELS,
+        type=int,
+    )
     parser.add_argument("--use_bad_pixels", action="store_true", default=False)
 
     parser.add_argument("--recompute_pedestal", action="store_true", default=False)
