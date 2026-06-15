@@ -31,7 +31,7 @@ from bokeh.models import (
     StringFormatter,
     TableColumn,
     TextInput,
-    Toggle,
+    Switch,
 )
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -106,15 +106,15 @@ class NumericRangeControl:
     Compound control for a high-cardinality numeric field.
  
     Layout (inside the sidebar column):
-        [Toggle: "Exact value ±10%"]   ← inactive by default
+        [Switch: "Exact value ±10%"]   ← inactive by default
         [TextInput: exact value    ]   ← disabled until toggle active
         ──────────────────────────
         [TextInput: min            ]   ← active by default
         [TextInput: max            ]
  
-    When the toggle is OFF  → range mode (min/max inputs); query also includes
+    When the switch is OFF  → range mode (min/max inputs); query also includes
                                docs where the field is missing/null.
-    When the toggle is ON   → exact mode (single value ±10%); only docs that
+    When the switch is ON   → exact mode (single value ±10%); only docs that
                                have the field and match the tolerance are returned.
     """
  
@@ -125,12 +125,12 @@ class NumericRangeControl:
         self.lo   = lo
         self.hi   = hi
  
-        # ── Toggle ──────────────────────────────────────────────────────────
-        self.toggle = Toggle(
+        # ── Switch ──────────────────────────────────────────────────────────
+        self.toggle = Switch(
             label=f"{name}: exact value ±10 %",
             active=False,
             sizing_mode="stretch_width",
-            button_type="default",
+
         )
  
         # ── Exact-value input (disabled until toggle is ON) ──────────────
@@ -155,12 +155,13 @@ class NumericRangeControl:
  
         # Wire internal toggle → enable/disable sub-widgets
         def _on_toggle(attr, old, new):
-            is_exact = bool(new)
-            self.exact_input.disabled = not is_exact
-            self.min_input.disabled   = is_exact
-            self.max_input.disabled   = is_exact
-            on_change_cb(attr, old, new)
- 
+            search_by_exact_value = bool(new)
+            self.exact_input.disabled = not search_by_exact_value
+            self.min_input.disabled   = search_by_exact_value
+            self.max_input.disabled   = search_by_exact_value
+            #on_change_cb(attr, old, new)
+        
+        # Wire all inputs → trigger update on change
         self.toggle.on_change("active", _on_toggle)
         self.exact_input.on_change("value", on_change_cb)
         self.min_input.on_change("value",   on_change_cb)
@@ -222,7 +223,7 @@ def _make_control(name: str, meta: dict):
     ftype  = meta["type"]
     values = meta["values"]
     if ftype == "numeric" and values:
-        distinct = list(dict.fromkeys(values))
+        distinct = list(set(values))
         if len(distinct) <= NUMERIC_SELECT_THRESHOLD:
             # ── Low-cardinality: Select ──────────────────────────────────
             # Format options: keep ints as ints, floats as floats
