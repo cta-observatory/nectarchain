@@ -231,12 +231,17 @@ def test_bokeh(tmp_path):
     waveforms = make_waveforms(source, runid)
 
     camera_displays = [
-        row(
-            displays[parentkey][childkey][0].figure,
-            displays[parentkey][childkey][1],
-            displays[parentkey][childkey][2],
+        column(
+            [
+                displays[parentkey][childkey][1],  # RangeSlider
+                row(
+                    displays[parentkey][childkey][0].figure,
+                    displays[parentkey][childkey][2],
+                    displays[parentkey][childkey][3],
+                ),
+            ]
         )
-        if len(displays[parentkey][childkey]) == 3
+        if len(displays[parentkey][childkey]) == 4
         else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()

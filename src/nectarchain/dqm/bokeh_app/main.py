@@ -152,12 +152,17 @@ def get_layout_per_camera(source, runids, camera_code):
     # new = runids[1]
     # update_camera_displays(attr, old, new)
     camera_displays = [
-        row(
-            displays[parentkey][childkey][0].figure,
-            displays[parentkey][childkey][1],
-            displays[parentkey][childkey][2],
+        column(
+            [
+                displays[parentkey][childkey][1],  # RangeSlider
+                row(
+                    displays[parentkey][childkey][0].figure,
+                    displays[parentkey][childkey][2],
+                    displays[parentkey][childkey][3],
+                ),
+            ]
         )
-        if len(displays[parentkey][childkey]) == 3
+        if len(displays[parentkey][childkey]) == 4
         else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
