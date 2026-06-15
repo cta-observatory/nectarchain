@@ -14,6 +14,8 @@ env:
   NUMBA_NUM_THREADS: 1
   MPLBACKEND: Agg
   PYTEST_ADDOPTS: --color=yes
+  XDG_CACHE_HOME: "${{ github.workspace }}/.cache"
+  CTAPIPE_CACHE: "${{ github.workspace }}/.cache/ctapipe"
 
 jobs:
   lint:
@@ -37,6 +39,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: lint
     strategy:
+      # here until the issues downloading from the DESY server are resolved
+      # we'd actually want to fail fast usually, but with the recurring failures with the
+      # test data server it becomes essentially impossible to get a green CI run if a
+      # failing job cancels all others.
+      fail-fast: false
       matrix:
         include:
           - os: "ubuntu-latest"
@@ -96,6 +103,26 @@ jobs:
           PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
           sed -i -e "s/- python=.*/- python=$PYTHON_VERSION/g" environment.yml
+
+      - name: Ensure astropy and ctapipe cache dir
+        run: |
+          mkdir -p $XDG_CACHE_HOME/astropy
+          mkdir -p $CTAPIPE_CACHE
+
+      - name: restore cache data
+        id: cache-restore
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            .cache/ctapipe
+            .cache/astropy
+          key: ctapipe-test-data-desy
+          restore-keys: |
+            ctapipe-test-data-desy
+
+      - name: debug caches
+        run: |
+          find .cache
 
       - name: Setup xvfb for X11 display
         if: matrix.os == 'ubuntu-latest'
@@ -171,6 +198,17 @@ jobs:
         if: contains(matrix.extra-args, 'codecov')
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: cache data
+        # make sure the largest test job uploads the cached data
+        if: contains(matrix.extra-args, 'codecov')
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            .cache/ctapipe
+            .cache/astropy
+          key: ctapipe-test-data-desy-${{ github.run_id }}-${{ github.run_attempt }}
+
 
       # - name: Start SSH Debugging Session
       #   if: ${{ failure() }}
