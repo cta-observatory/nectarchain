@@ -9,7 +9,16 @@ from astropy.coordinates import SkyCoord
 
 # bokeh imports
 from bokeh.layouts import column, row
-from bokeh.models import ColorBar, ColumnDataSource, HoverTool, Label, Node, TabPanel
+from bokeh.models import (
+    ColorBar,
+    ColumnDataSource,
+    CustomJS,
+    HoverTool,
+    Label,
+    Node,
+    RangeSlider,
+    TabPanel,
+)
 from bokeh.plotting import figure
 
 # ctapipe imports
@@ -400,12 +409,14 @@ def make_camera_displays(source, runid):
                 logger.info(
                     f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
-                camera_display = make_camera_display(
+                camera_display, range_slider = make_camera_display(
                     source, parent_key=parentkey, child_key=childkey
                 )
                 displays_to_show = [camera_display]
 
                 if "BADPIX" not in parentkey:
+                    if range_slider is not None:
+                        displays_to_show.append(range_slider)
                     camera_pixel_val_vs_id = make_pixel_val_vs_id(
                         source, parent_key=parentkey, child_key=childkey
                     )
@@ -444,13 +455,20 @@ def update_camera_displays(data, runid=None):
     displays = make_camera_displays(data, runid)
 
     camera_displays = [
-        row(
-            displays[parentkey][childkey][0].figure,
-            displays[parentkey][childkey][1],
-            displays[parentkey][childkey][2],
+        (
+            column(
+                [
+                    displays[parentkey][childkey][1],  # RangeSlider
+                    row(
+                        displays[parentkey][childkey][0].figure,
+                        displays[parentkey][childkey][2],
+                        displays[parentkey][childkey][3],
+                    ),
+                ]
+            )
+            if len(displays[parentkey][childkey]) == 4
+            else displays[parentkey][childkey][0].figure
         )
-        if len(displays[parentkey][childkey]) == 3
-        else displays[parentkey][childkey][0].figure
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
@@ -678,6 +696,72 @@ def make_pixel_val_vs_id(source, parent_key, child_key):
     return scatter_value_vs_id
 
 
+def define_dymanic_color_range(
+    parent_key, display, min_max_slider, min_max_colorbar, color_bar
+):
+    """Define dynamic color range for the camera displays using a RangeSlider widget
+
+    Parameters
+    ----------
+    parent_key : str
+        Parent key to extract quantity from the dict
+    display : ctapipe.visualization.bokeh.CameraDisplay
+        CameraDisplay object for which the color range is to be defined
+    min_max_slider : tuple
+        Tuple containing the minimum and maximum values for the slider range
+    min_max_colorbar : tuple
+        Tuple containing the minimum and maximum values for the colorbar range
+    color_bar : bokeh.models.ColorBar
+        ColorBar object associated with the CameraDisplay,
+        to be updated with the new color range
+
+    Returns
+    -------
+    bokeh.models.RangeSlider or None
+        RangeSlider widget for dynamic color range control (None for BADPIX displays)
+    """
+
+    if "BADPIX" not in parent_key:
+        min_slider, max_slider = min_max_slider
+        min_colorbar, max_colorbar = min_max_colorbar
+
+        slider_range = max_slider - min_slider
+
+        range_slider = RangeSlider(
+            start=min_slider,
+            end=max_slider,
+            value=(min_colorbar, max_colorbar),
+            step=slider_range / 100,
+            title="Color Range",
+            css_classes=["color-range-slider"],
+            orientation="horizontal",
+            direction="ltr",
+            show_value=True,
+        )
+
+        # Create CustomJS callback to update color mapper
+        callback = CustomJS(
+            args=dict(
+                color_mapper=display._color_mapper,
+                color_bar=color_bar,
+            ),
+            code="""
+                color_mapper.low = cb_obj.value[0];
+                color_mapper.high = cb_obj.value[1];
+                color_mapper.change.emit();
+                color_bar.change.emit();
+            """,
+        )
+
+        range_slider.js_on_change("value", callback)
+        range_slider.margin = (10, 0, 0, 100)
+
+        return range_slider
+
+    else:
+        return None
+
+
 def compile_hover_tool(display, camgeom):
     """Compile the HoverTool for the
        input camera display with additional information
@@ -759,19 +843,24 @@ def make_camera_display(source, parent_key, child_key):
 
     Returns
     -------
-    ctapipe.visualization.bokeh.CameraDisplay
-        CameraDisplay filled with values for the selected quantity,
-        and displayed with the geometry from ctapipe.instrument.CameraGeometry
+    tuple
+        Tuple containing:
+        - ctapipe.visualization.bokeh.CameraDisplay: CameraDisplay filled with values
+          for the selected quantity, and displayed with the geometry from
+          ctapipe.instrument.CameraGeometry
+        - bokeh.models.RangeSlider or None: RangeSlider widget for dynamic color range
+          control (None for BADPIX displays)
     """
 
     # TODO: may want to check here to implement
     # the "on_pixel_clicked" function for pixels
     # ctapipe.readthedocs.io/en/stable/api/ctapipe.visualization.CameraDisplay.html
-
     image = np.nan_to_num(source[parent_key][child_key], nan=0.0)
 
     if "BADPIX" in parent_key:
         image = set_bad_pixels_cap_value(image)
+        min_colorbar, max_colorbar = 0.0, 1.0
+        min_slider, max_slider = 0.0, 1.0
     else:
         mask_high_gain, mask_low_gain = get_bad_pixels_position(
             source=source, image_shape=image.shape
@@ -786,10 +875,20 @@ def make_camera_display(source, parent_key, child_key):
             image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
             0.995,
         )
+        min_slider = np.min(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        )
+        max_slider = np.max(
+            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+        )
         if max_colorbar == min_colorbar:
             # avoid problems with bokeh display
             max_colorbar *= 1.05
             min_colorbar *= 0.95
+        if max_slider == min_slider:
+            # avoid problems with the slider definition
+            max_slider *= 1.05
+            min_slider *= 0.95
         image[mask_low_gain if "LOW-GAIN" in parent_key else mask_high_gain] = 0.0
 
     display = CameraDisplay(geometry=geom)
@@ -850,9 +949,18 @@ def make_camera_display(source, parent_key, child_key):
 
     display.figure.title = child_key
 
+    # Create RangeSlider for dynamic color range control
+    range_slider = define_dymanic_color_range(
+        parent_key=parent_key,
+        display=display,
+        min_max_slider=(min_slider, max_slider),
+        min_max_colorbar=(min_colorbar, max_colorbar),
+        color_bar=color_bar,
+    )
+
     display = compile_hover_tool(display=display, camgeom=geom)
 
-    return display
+    return display, range_slider
 
 
 def set_bad_pixels_cap_value(image):
