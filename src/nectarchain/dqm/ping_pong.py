@@ -74,7 +74,7 @@ class PingPongMonitoring(DQMSummary):
                     mismatches = min([pop1, pop2], key=len)
                     log.warning(
                         f"The first event has some discreptancies"
-                        f"for pixels {mismatches}"
+                        f" for pixels {mismatches}"
                     )
                     self.change[mismatches] += 1
                     self.event_times.append(trigger_time)
@@ -98,7 +98,7 @@ class PingPongMonitoring(DQMSummary):
         if not np.array_equal(state, expected):
             log.warning(
                 f"Mismatch: Event {trigger_id}, State: {state[:10]}"
-                f"(expected {expected[:10]}), time={trigger_time}"
+                f" (expected {expected[:10]}), time={trigger_time}"
             )
             self.ref_state = state
             self.ref_parity = parity
@@ -121,7 +121,7 @@ class PingPongMonitoring(DQMSummary):
             )
             self.run_end = np.max(self.event_times) + 100"""
         except Exception as err:
-            log.error(f"Data could not be retrieved. Received error " f"code: {err}")
+            log.error(f"Data could not be retrieved. Received error code: {err}")
 
     def get_results(self):
         try:
@@ -132,7 +132,7 @@ class PingPongMonitoring(DQMSummary):
                 "CAMERA-PING-PONG-CHANGES-TIMES"
             ] = self.event_times
         except Exception as err:
-            log.error(f"Data could not be retrieved. Received error " f"code: {err}")
+            log.error(f"Data could not be retrieved. Received error code: {err}")
 
         return self.PingPongMonitoring_Results_Dict
 
