@@ -105,7 +105,7 @@ def get_bad_pixels(output_from_FlatFieldComponent):
         all_bad_pix: list of bad pixels
     """
 
-    pix_id = FlatFieldOutput.pixels_id
+    pix_id = output_from_FlatFieldComponent.pixels_id
     bad_pix = []
 
     n_event = len(output_from_FlatFieldComponent.amp_int_per_pix_per_event[:, 0, 0])
@@ -119,7 +119,7 @@ def get_bad_pixels(output_from_FlatFieldComponent):
     mean_amp = np.mean(mean_amp_int_per_pix, axis=1)
     std_amp = np.std(mean_amp_int_per_pix, axis=1)
 
-    for p in range(0, constants.N_PIXELS):
+    for p in range(0, len(pix_id)):
         # pixel with hi/lo ratio to small or to high (+/- 5 times the mean hi/lo ratio)
         if (hi_lo[p] < np.mean(hi_lo) - (5 * np.std(hi_lo))) or (
             hi_lo[p] > np.mean(hi_lo) + (5 * np.std(hi_lo))
