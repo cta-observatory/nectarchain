@@ -36,6 +36,14 @@ plt.style.use(
 
 
 def get_labels():
+    """Labels for source types are taken from ctapipe.containers.EventType,
+       each label for the corresponding event type ID
+
+    Returns
+    -------
+    dict
+        Dictionary containing the source type labels
+    """
     with open("resources/source_type_labels.json", "r") as f:
         source_labels = json.load(f)
 
