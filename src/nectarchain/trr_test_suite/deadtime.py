@@ -47,7 +47,15 @@ def get_labels():
     dict
         Dictionary containing the source type labels
     """
-    with open("../trr_test_suite/resources/source_type_labels.json", "r") as f:
+
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Construct the absolute path to the JSON file
+    json_path = os.path.join(
+        script_dir, "../trr_test_suite/resources/source_type_labels.json"
+    )
+
+    with open(json_path, "r") as f:
         source_labels = json.load(f)
 
     return source_labels
