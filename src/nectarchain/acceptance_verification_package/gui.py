@@ -2,7 +2,8 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from nectarchain.acceptance_verification_package import deadtime, hillas_validation
+from nectarchain.acceptance_verification_package import hillas_validation
+from nectarchain.trr_test_suite import deadtime
 from nectarchain.trr_test_suite.gui import TestRunner
 
 
