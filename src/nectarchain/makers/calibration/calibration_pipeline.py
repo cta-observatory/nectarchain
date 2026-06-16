@@ -726,16 +726,16 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             mask=np.broadcast_to(FF_pixel_mask, eff_coef_per_pixel_per_event.shape),
         )
 
-        # Compute mean, median, std of FF coefficients, for bad pixels fill with 0
+        # Compute mean, median, std of FF coefficients, for bad pixels fill with NaN
         FF_coef_per_pixel_mean = np.ma.mean(
             FF_coef_per_pixel_per_event_masked, axis=0
-        ).filled(0)
+        ).filled(np.nan)
         FF_coef_per_pixel_median = np.ma.median(
             FF_coef_per_pixel_per_event_masked, axis=0
-        ).filled(0)
+        ).filled(np.nan)
         FF_coef_per_pixel_std = np.ma.std(
             FF_coef_per_pixel_per_event_masked, axis=0
-        ).filled(0)
+        ).filled(np.nan)
 
         # Compute mean, median, std of charges
         charge_per_pixel_mean = np.mean(charge_per_pixel_per_event, axis=0)
