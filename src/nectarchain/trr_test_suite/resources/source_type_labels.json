@@ -1,0 +1,13 @@
+{
+    "0": {"source": "Flatfield", "color": "red"},
+    "1": {"source": "Single Photo Electron", "color": "blue"},
+    "2": {"source": "Sky Pedestal", "color": "purple"},
+    "3": {"source": "Dark Pedestal", "color": "green"},
+    "4": {"source": "Electronic Pedestal", "color": "orange"},
+    "15": {"source": "Other Calibration", "color": "cyan"},
+    "16": {"source": "Muon", "color": "magenta"},
+    "17": {"source": "Hardware Stereo", "color": "yellow"},
+    "24": {"source": "DAQ software trigger", "color": "brown"},
+    "32": {"source": "Standard Physics stereo trigger", "color": "pink"},
+    "255": {"source": "Unknown", "color": "black"}
+}
