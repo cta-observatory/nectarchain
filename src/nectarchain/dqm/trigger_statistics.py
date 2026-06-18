@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 from astropy import time as astropytime
+from ctapipe.containers import EventType
 from matplotlib import pyplot as plt
 
 from .dqm_summary_processor import DQMSummary
@@ -54,8 +55,6 @@ class TriggerStatistics(DQMSummary):
 
     def finish_run(self):
         self.triggers = np.unique(self.event_type)
-        pedestal_num = 32
-        physical_num = 2
 
         self.event_id = np.array(self.event_id)
         self.run_times = np.array(self.run_times)
@@ -70,14 +69,26 @@ class TriggerStatistics(DQMSummary):
         # self.run_start = np.min(self.event_times)
         self.run_end = np.max(self.event_times)
 
-        self.event_ped_times = self.event_times[self.event_type == pedestal_num]
-        self.event_phy_times = self.event_times[self.event_type == physical_num]
+        self.event_ped_times = self.event_times[
+            self.event_type == EventType.SKY_PEDESTAL.value
+        ]
+        # sky pedestal, event id 2
+        self.event_phy_times = self.event_times[
+            self.event_type == EventType.SUBARRAY.value
+        ]
+        # standard physics stereo, event id 32
+        # TODO: add ids and event time selection for
+        # other event types, e.g., dark pedestals
 
-        mask = (self.event_type != physical_num) & (self.event_type != pedestal_num)
+        mask = (self.event_type != EventType.SUBARRAY.value) & (
+            self.event_type != EventType.SKY_PEDESTAL.value
+        )
         self.event_other_times = self.event_times[mask]
 
-        self.event_ped_id = self.event_id[self.event_type == pedestal_num]
-        self.event_phy_id = self.event_id[self.event_type == physical_num]
+        self.event_ped_id = self.event_id[
+            self.event_type == EventType.SKY_PEDESTAL.value
+        ]
+        self.event_phy_id = self.event_id[self.event_type == EventType.SUBARRAY.value]
         self.event_other_id = self.event_id[mask]
 
         self.event_ped_id = self.event_ped_id[self.event_ped_times > self.run_start]
