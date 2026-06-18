@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 log.handlers = logging.getLogger("__main__").handlers
 
 
-__all__ = ["GainContainer", "SPEfitContainer"]
+__all__ = ["GainContainer", "SPEfitContainer", "PhotostatContainer"]
 
 
 class GainContainer(NectarCAMContainer):

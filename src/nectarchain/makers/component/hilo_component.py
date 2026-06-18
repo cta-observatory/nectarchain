@@ -5,16 +5,14 @@ from ctapipe.containers import EventType
 from ctapipe.core.traits import Path
 from ctapipe_io_nectarcam.containers import NectarCAMDataContainer
 
-from ...data.container import (
-    PhotostatContainer,
-    SPEfitContainer,
-    merge_map_ArrayDataContainer,
-)
+from ...data.container import gain_container, merge_map_ArrayDataContainer
 from ...makers.component import ChargesComponent, GainNectarCAMComponent
 from ...utils import ComponentUtils, ContainerUtils
 from ...utils.constants import GAIN_DEFAULT, GAIN_LINEAR_RANGE, HILO_DEFAULT
 
-GAIN_CONTAINER_CLASSES = [PhotostatContainer, SPEfitContainer]
+GAIN_CONTAINER_CLASSES = [
+    getattr(gain_container, name) for name in gain_container.__all__
+]
 
 
 class HiLoComponent(GainNectarCAMComponent):

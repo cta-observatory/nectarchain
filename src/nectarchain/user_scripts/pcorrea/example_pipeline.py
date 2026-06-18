@@ -1,57 +1,181 @@
+import argparse
 import logging
-import os
+from pathlib import Path
 
-import numpy as np
+from ctapipe.core import run_tool
+from ctapipe.core.logging import ColoredFormatter
 from traitlets.config import Config
 
+from nectarchain.makers.calibration import (
+    FlatfieldNectarCAMCalibrationTool,
+    FlatFieldSPECombinedStdNectarCAMCalibrationTool,
+    FlatFieldSPEHHVNectarCAMCalibrationTool,
+    FlatFieldSPEHHVStdNectarCAMCalibrationTool,
+    FlatFieldSPENominalNectarCAMCalibrationTool,
+    FlatFieldSPENominalStdNectarCAMCalibrationTool,
+    HiLoNectarCAMCalibrationTool,
+    PedestalNectarCAMCalibrationTool,
+    PhotoStatisticNectarCAMCalibrationTool,
+)
 from nectarchain.makers.calibration.calibration_pipeline import (
     PipelineNectarCAMCalibrationTool,
 )
+from nectarchain.makers.calibration.core import NectarCAMCalibrationTool
 
-logging.basicConfig(
-    format="%(asctime)s %(name)s %(levelname)s %(message)s", level=logging.INFO
+####################
+# Parser arguments #
+####################
+
+parser = argparse.ArgumentParser(
+    description="Set up logger level. "
+    "All other configurations need to be specified in the script",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
+parser.add_argument(
+    "-l",
+    "--log-level",
+    default="INFO",
+    choices=logging._nameToLevel.keys(),
+    type=str,
+)
 
-# Set NECTARCAMDATA environment
-os.environ["NECTARCAMDATA"] = "/data/users/pcorrea"
+args = parser.parse_args()
 
-# Some the run numbers to use for each calibration tool
-ped_run_number = 6249
-FF_run_number = 6252
+######################
+# Tool configuration #
+######################
+
+# Run numbers to use for each calibration tool
+ped_run_number = 7077
+FF_run_number = 7077
 FF_SPE_run_number = 3936
 FF_SPE_HHV_run_number = 3942
 
-# Specify which tools to use for each step in the calibration
-ped_tool_name = "PedestalNectarCAMCalibrationTool"
-gain_tool_name = "FlatFieldSPENominalStdNectarCAMCalibrationTool"
-FF_tool_name = "FlatfieldNectarCAMCalibrationTool"
+# Tools to use for each step in the calibration
+ped_tool_name = PedestalNectarCAMCalibrationTool.__name__
+gain_tool_name = PhotoStatisticNectarCAMCalibrationTool.__name__
+hilo_tool_name = HiLoNectarCAMCalibrationTool.__name__
+FF_tool_name = FlatfieldNectarCAMCalibrationTool.__name__
 
 # Path for a 1400-V result file of the SPE fit
 # used in the SPE combined fit and photostatistic method
-SPE_HHV_result_path = (
+SPE_HHV_result_path = Path(
     "/data/users/pcorrea/SPEHHV_res/"
     "FlatFieldSPEHHVStdNectarCAM_run3942_LocalPeakWindowSum_"
     "window_shift_4_window_width_8.h5"
 )
 
-# Some general configurations that will pass to all subtools
-max_events = 12000
-progress_bar = True
-overwrite = True
+# Output format of cat-A calibration file (.h5, .fits, .fits.gz)
+output_format = ".h5"
 
-# Some specific configurations for each subtool
+# Option to save the individual outputs of each tool
+save_tmp = True
+
+# Option to make a calibration file filled only with
+# default calibration coefficients
+all_default = False
+
 config = Config()
-config[ped_tool_name].events_per_slice = 5000
+
+# Global configurations for all tools
+core_tool_name = NectarCAMCalibrationTool.__name__
+config[core_tool_name].max_events = 1000
+config[core_tool_name].progress_bar = True
+config[core_tool_name].overwrite = True
+config[core_tool_name].camera = "NectarCAMQM"
+
+# Configure pedestal tool
+config[ped_tool_name].events_per_slice = 3000
+config[ped_tool_name].method = "FullWaveformSum"
+
+# Configure gain tool
+config[gain_tool_name].method = "LocalPeakWindowSum"
+config[gain_tool_name].extractor_kwargs = {"window_width": 8, "window_shift": 4}
 config[gain_tool_name].multiproc = True
 config[gain_tool_name].nproc = 8
-# config[gain_tool_name].display = False
-asked_pixels_id = np.arange(100)
-config[gain_tool_name].asked_pixels_id = asked_pixels_id.tolist()
+# config[gain_tool_name].asked_pixels_id = np.arange(500, 600).tolist()
+
+# Configure HiLo tool
+config[hilo_tool_name].method = config[gain_tool_name].method
+config[hilo_tool_name].extractor_kwargs = config[gain_tool_name].extractor_kwargs
+
+# Configure flat-field tool
+config[FF_tool_name].charge_extraction_method = "LocalPeakWindowSum"
+config[FF_tool_name].window_width = 12
+config[FF_tool_name].window_shift = 4
+
+# config[PipelineNectarCAMCalibrationTool.__name__].output_path = "test.xx"
+
+# Helper to set a default configuration for the SPE HHV tool
+SPE_HHV_tool_default_name = FlatFieldSPEHHVNectarCAMCalibrationTool.__name__
 
 
-def main():
+def set_SPE_HHV_tool_default_config(
+    config, SPE_HHV_tool_default_name=SPE_HHV_tool_default_name
+):
+    config[SPE_HHV_tool_default_name].run_number = 3942
+    config[SPE_HHV_tool_default_name].max_events = 5000
+    config[SPE_HHV_tool_default_name].method = "LocalPeakWindowSum"
+    config[SPE_HHV_tool_default_name].extractor_kwargs = {
+        "window_width": 8,
+        "window_shift": 4,
+    }
+    config[SPE_HHV_tool_default_name].multiproc = True
+    config[SPE_HHV_tool_default_name].nproc = 8
+
+
+################
+# Logger setup #
+################
+
+handler = logging.StreamHandler()
+handler.setFormatter(
+    ColoredFormatter(fmt="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+)
+
+log = logging.getLogger(__name__)
+log.setLevel(args.log_level)
+log.addHandler(handler)
+log.propagate = False
+
+
+#################
+# Main function #
+#################
+
+
+def main(
+    SPE_HHV_result_path=SPE_HHV_result_path, FF_SPE_HHV_run_number=FF_SPE_HHV_run_number
+):
+    if not SPE_HHV_result_path.exists() and not all_default:
+        log.warning(f"SPE_HHV_result_path does not exist: {SPE_HHV_result_path}")
+
+        set_SPE_HHV_tool_default_config(config)
+        FF_SPE_HHV_run_number = config[SPE_HHV_tool_default_name].run_number
+        SPE_HHV_tool_default = FlatFieldSPEHHVNectarCAMCalibrationTool(
+            run_number=FF_SPE_HHV_run_number, config=config
+        )
+        log.warning(
+            f"Attempting to run {SPE_HHV_tool_default_name} for specified "
+            f"FF_SPE_HHV_run_number = {FF_SPE_HHV_run_number} "
+            f"with default config: {config[SPE_HHV_tool_default_name]}"
+        )
+        log.warning(
+            f"Will save {SPE_HHV_tool_default_name} output at default output path: "
+            f"{SPE_HHV_tool_default.output_path}"
+        )
+
+        if SPE_HHV_tool_default.output_path.exists():
+            log.warning(
+                "Default output path already exists, no need to run "
+                f"{SPE_HHV_tool_default_name}"
+            )
+        else:
+            # NOTE: This will take a while
+            run_tool(SPE_HHV_tool_default)
+
+        SPE_HHV_result_path = SPE_HHV_tool_default.output_path
+
     tool = PipelineNectarCAMCalibrationTool(
         config=config,
         ped_run_number=ped_run_number,
@@ -61,10 +185,11 @@ def main():
         SPE_HHV_result_path=SPE_HHV_result_path,
         ped_tool_name=ped_tool_name,
         gain_tool_name=gain_tool_name,
+        hilo_tool_name=hilo_tool_name,
         FF_tool_name=FF_tool_name,
-        max_events=max_events,
-        progress_bar=progress_bar,
-        overwrite=overwrite,
+        output_format=output_format,
+        save_tmp=save_tmp,
+        all_default=all_default,
     )
 
     tool.run()
