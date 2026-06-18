@@ -11,9 +11,8 @@ from traitlets.config.loader import Config
 
 from ...data.container import (
     FlatFieldContainer,
-    GainContainer,
     NectarCAMPedestalContainer,
-    SPEfitContainer,
+    gain_container,
 )
 from ...makers.component import NectarCAMComponent
 from ...utils import ContainerUtils
@@ -30,7 +29,9 @@ log.handlers = logging.getLogger("__main__").handlers
 
 __all__ = ["FlatFieldComponent"]
 
-GAIN_CONTAINER_CLASSES = [GainContainer, SPEfitContainer]
+GAIN_CONTAINER_CLASSES = [
+    getattr(gain_container, name) for name in gain_container.__all__
+]
 
 
 class FlatFieldComponent(NectarCAMComponent):
@@ -208,12 +209,13 @@ of the waveform"
                 f"HILO_DEFAULT = {HILO_DEFAULT}"
             )
             gain = list(
-                np.full(
-                    shape=(constants.N_GAINS, constants.N_PIXELS),
-                    fill_value=GAIN_DEFAULT,
+                np.vstack(
+                    [
+                        np.full(constants.N_PIXELS, GAIN_DEFAULT),
+                        np.full(constants.N_PIXELS, GAIN_DEFAULT / HILO_DEFAULT),
+                    ]
                 )
             )
-            gain[constants.LOW_GAIN] = gain[constants.HIGH_GAIN] / HILO_DEFAULT
             self.gain = gain  # .tolist()
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
