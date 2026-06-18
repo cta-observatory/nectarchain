@@ -2,6 +2,7 @@ import logging
 import os
 
 import numpy as np
+from ctapipe.containers import EventType
 from matplotlib import pyplot as plt
 
 from .dqm_summary_processor import DQMSummary
@@ -62,11 +63,19 @@ class PixelTimelineHighLowGain(DQMSummary):
         np.put(status, pixels, pixelBAD[pixels])
         bad_count = np.sum(status)
 
-        if evt.trigger.event_type.value == 32:  # count peds
+        if evt.trigger.event_type == EventType.SKY_PEDESTAL:
+            # count sky peds, event id 2
             self.counter_ped += 1
             self.SumBadPixels_ped.append(bad_count)
             self.SumBadPixels.append(0)
-
+        elif evt.trigger.event_type == EventType.SUBARRAY:
+            # count standard physics stereo events, event id 32
+            self.counter_evt += 1
+            self.SumBadPixels.append(bad_count)
+            self.SumBadPixels_ped.append(0)
+        # TODO: add ids for other event types, e.g., dark pedestals
+        # TODO: this else is wrong, we should have a separate counter
+        # for other event types, e.g., dark pedestals. It has to be implemented.
         else:
             self.counter_evt += 1
             self.SumBadPixels.append(bad_count)
