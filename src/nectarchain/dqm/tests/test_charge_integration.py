@@ -1,3 +1,7 @@
+import os
+import tempfile
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 from ctapipe.utils import get_dataset_path
 from ctapipe_io_nectarcam import LightNectarCAMEventSource as EventSource
@@ -445,3 +449,333 @@ class TestChargeIntegrationHighLowGain:
 
         # Should have processed the event
         assert processor.counter_evt + processor.counter_ped > 0
+
+    @patch("nectarchain.dqm.charge_integration.CameraDisplay")
+    @patch("nectarchain.dqm.charge_integration.plt")
+    def test_plot_results_with_events(self, mock_plt, mock_camera_display):
+        """Test plot_results method with event data"""
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+        processor.gain_c = "High"
+        processor.Pix = 100
+        processor.Samp = 60
+        processor.pixels = np.arange(100)
+
+        # Mock camera geometry for plotting
+        mock_camera = MagicMock()
+        processor.camera = mock_camera
+        processor.pixelBADplot = [np.zeros(100, dtype=bool)]
+
+        # Add mock data for events
+        processor.image_all = [np.random.random(100) for _ in range(3)]
+        processor.peakpos_all = [np.random.random(100) for _ in range(3)]
+        processor.ped_all = [1.0, 2.0, 3.0]
+        processor.counter_evt = 3
+        processor.counter_ped = 0
+
+        # Run finish_run to compute stats
+        processor.finish_run()
+
+        # Mock CameraDisplay to avoid geometry issues
+        mock_disp = MagicMock()
+        mock_camera_display.return_value = mock_disp
+
+        # Mock plt.subplots
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+
+        # Test plot_results - should not raise any errors
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fig_dict, fig_names_dict = processor.plot_results("test", temp_dir)
+
+            # Should return dictionaries
+            assert isinstance(fig_dict, dict)
+            assert isinstance(fig_names_dict, dict)
+
+            # Should have created figures for event data
+            assert len(fig_dict) > 0
+
+    @patch("nectarchain.dqm.charge_integration.CameraDisplay")
+    @patch("nectarchain.dqm.charge_integration.plt")
+    def test_plot_results_with_pedestals(self, mock_plt, mock_camera_display):
+        """Test plot_results method with pedestal data"""
+        processor = ChargeIntegrationHighLowGain(LOW_GAIN, r0=True)
+        processor.gain_c = "Low"
+        processor.Pix = 100
+        processor.Samp = 60
+        processor.pixels = np.arange(100)
+
+        # Mock camera geometry
+        mock_camera = MagicMock()
+        processor.camera = mock_camera
+        processor.pixelBADplot = [np.zeros(100, dtype=bool)]
+
+        # Add mock data for pedestals
+        processor.image_ped = [np.random.random(100) for _ in range(2)]
+        processor.peakpos_ped = [np.random.random(100) for _ in range(2)]
+        processor.ped_ped = [1.0, 2.0]
+        processor.counter_evt = 0
+        processor.counter_ped = 2
+
+        # Run finish_run to compute stats
+        processor.finish_run()
+
+        # Mock CameraDisplay to avoid geometry issues
+        mock_disp = MagicMock()
+        mock_camera_display.return_value = mock_disp
+
+        # Mock plt.subplots
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+
+        # Test plot_results with pedestal data
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fig_dict, fig_names_dict = processor.plot_results("test", temp_dir)
+
+            # Should return dictionaries
+            assert isinstance(fig_dict, dict)
+            assert isinstance(fig_names_dict, dict)
+
+    @patch("nectarchain.dqm.charge_integration.CameraDisplay")
+    @patch("nectarchain.dqm.charge_integration.plt")
+    def test_plot_results_no_data(self, mock_plt, mock_camera_display):
+        """Test plot_results method with no data"""
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+        processor.gain_c = "High"
+        processor.Pix = 100
+        processor.Samp = 60
+        processor.pixels = np.arange(100)
+
+        # Mock camera geometry
+        mock_camera = MagicMock()
+        processor.camera = mock_camera
+        processor.pixelBADplot = [np.zeros(100, dtype=bool)]
+
+        # No data - counters are zero
+        processor.counter_evt = 0
+        processor.counter_ped = 0
+
+        # Mock CameraDisplay to avoid geometry issues
+        mock_disp = MagicMock()
+        mock_camera_display.return_value = mock_disp
+
+        # Mock plt.subplots
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+
+        # Test plot_results with no data - should not raise errors
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fig_dict, fig_names_dict = processor.plot_results("test", temp_dir)
+
+            # Should return empty dictionaries when no data
+            assert isinstance(fig_dict, dict)
+            assert isinstance(fig_names_dict, dict)
+
+    @patch("nectarchain.dqm.charge_integration.CameraDisplay")
+    @patch("nectarchain.dqm.charge_integration.plt")
+    def test_plot_results_both_events_and_pedestals(
+        self, mock_plt, mock_camera_display
+    ):
+        """Test plot_results method with both event and pedestal data"""
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+        processor.gain_c = "High"
+        processor.Pix = 100
+        processor.Samp = 60
+        processor.pixels = np.arange(100)
+
+        # Mock camera geometry
+        mock_camera = MagicMock()
+        processor.camera = mock_camera
+        processor.pixelBADplot = [np.zeros(100, dtype=bool)]
+
+        # Add mock data for both events and pedestals
+        processor.image_all = [np.random.random(100) for _ in range(2)]
+        processor.peakpos_all = [np.random.random(100) for _ in range(2)]
+        processor.ped_all = [1.0, 2.0]
+        processor.counter_evt = 2
+
+        processor.image_ped = [np.random.random(100) for _ in range(1)]
+        processor.peakpos_ped = [np.random.random(100) for _ in range(1)]
+        processor.ped_ped = [1.5]
+        processor.counter_ped = 1
+
+        # Run finish_run to compute stats
+        processor.finish_run()
+
+        # Mock CameraDisplay to avoid geometry issues
+        mock_disp = MagicMock()
+        mock_camera_display.return_value = mock_disp
+
+        # Mock plt.subplots
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_plt.subplots.return_value = (mock_fig, mock_ax)
+
+        # Test plot_results with both types of data
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fig_dict, fig_names_dict = processor.plot_results("test", temp_dir)
+
+            # Should have created multiple figures
+            assert len(fig_dict) > 0
+            assert len(fig_names_dict) > 0
+
+    @patch("nectarchain.dqm.charge_integration.plt.subplots")
+    @patch("nectarchain.dqm.charge_integration.CameraDisplay")
+    def test_plot_camera_image(self, mock_camera_display, mock_subplots):
+        """Test _plot_camera_image helper method"""
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+        processor.gain_c = "High"
+
+        # Mock camera geometry
+        mock_camera = MagicMock()
+        processor.camera = mock_camera
+        processor.pixelBADplot = [np.zeros(100, dtype=bool)]
+
+        # Mock the subplots and CameraDisplay
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        mock_subplots.return_value = (mock_fig, mock_ax)
+
+        mock_disp = MagicMock()
+        mock_camera_display.return_value = mock_disp
+
+        # Test the helper method
+        with tempfile.TemporaryDirectory() as temp_dir:
+            processor._plot_camera_image(
+                image=np.ones(100),
+                title="Test Title",
+                text="Test Text",
+                filename="test_file.png",
+                key="TEST-KEY",
+                fig_path=temp_dir,
+            )
+
+            # Verify that subplots was called
+            assert mock_subplots.called
+
+            # Verify that CameraDisplay was created
+            assert mock_camera_display.called
+
+            # Verify that the figure was stored
+            assert "TEST-KEY" in processor.ChargeInt_Figures_Dict
+            assert "TEST-KEY" in processor.ChargeInt_Figures_Names_Dict
+
+    def test_get_results_edge_cases(self):
+        """Test get_results with various edge cases"""
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+        processor.gain_c = "High"
+
+        # Test case: only ped_all_stats,
+        # no image stats - but counter_evt is 0 so nothing should be included
+        processor.image_all_stats = {"average": np.ones(100)}
+        processor.ped_all_stats = {"average": np.ones(100)}
+        processor.image_ped_stats = None
+        processor.ped_ped_stats = None
+        processor.counter_evt = 0
+        processor.counter_ped = 0
+
+        results = processor.get_results()
+        # Should not include anything when both counters are 0
+        assert len(results) == 0
+
+        # Test case: only image stats with counter_evt > 0
+        processor.image_all_stats = {"average": np.ones(100)}
+        processor.ped_all_stats = {"average": 1.0}
+        processor.counter_evt = 1
+        processor.counter_ped = 0
+
+        results = processor.get_results()
+        assert len(results) > 0
+        assert "CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-HIGH-GAIN" in results
+        assert "PED-INTEGRATION-IMAGE-ALL-AVERAGE-HIGH-GAIN" in results
+
+    @patch(
+        "nectarchain.dqm.charge_integration.ArrayDataComponent._compute_broken_pixels_event"  # noqa
+    )
+    @patch("nectarchain.dqm.charge_integration.CtapipeExtractor.get_image_peak_time")
+    def test_process_event_index_error_handling(
+        self, mock_get_image_peak_time, mock_broken_pixels
+    ):
+        """Test that IndexError is handled gracefully in process_event"""
+        path = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
+        config = Config(
+            dict(
+                NectarCAMEventSource=dict(
+                    NectarCAMR0Corrections=dict(
+                        calibration_path=None,
+                        apply_flatfield=False,
+                        select_gain=False,
+                    )
+                )
+            )
+        )
+
+        reader1 = EventSource(input_url=path, config=config, max_events=1)
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+
+        Pix, Samp = processor.define_for_run(reader1)
+        processor.configure_for_run(path, Pix, Samp, reader1)
+
+        # Mock the broken pixels computation
+        processor.pixels = np.arange(1834)  # Match the actual data size
+        mock_broken_pixels.return_value = (
+            np.zeros(1834, dtype=bool),
+            np.zeros(1834, dtype=bool),
+        )
+
+        # Mock the integrator's __call__ method to raise IndexError first
+        original_integrator = processor.integrator
+        mock_integrator = MagicMock()
+
+        # First call raises IndexError, second call succeeds
+        def integrator_side_effect(*args, **kwargs):
+            if not hasattr(integrator_side_effect, "called"):
+                integrator_side_effect.called = True
+                raise IndexError("Waveform shape issue")
+            else:
+                # Return a mock object that get_image_peak_time can process
+                return MagicMock()
+
+        mock_integrator.side_effect = integrator_side_effect
+        processor.integrator = mock_integrator
+
+        # Mock get_image_peak_time to return proper data
+        mock_get_image_peak_time.return_value = (np.ones(1834), np.ones(1834))
+
+        # Process event - should handle IndexError gracefully
+        reader2 = EventSource(input_url=path, config=config, max_events=1)
+        for evt in reader2:
+            processor.process_event(evt, noped=False)
+            break
+
+        # Should have processed the event successfully after retry
+        assert processor.counter_evt + processor.counter_ped > 0
+        # Verify that the integrator was called twice (original + retry)
+        assert mock_integrator.call_count == 2
+
+        # Restore original integrator
+        processor.integrator = original_integrator
+
+    def test_write_all_results(self):
+        """Test that write_all_results method works correctly"""
+        processor = ChargeIntegrationHighLowGain(HIGH_GAIN, r0=True)
+
+        # Add some mock results
+        processor.ChargeInt_Results_Dict = {
+            "TEST_KEY_1": np.ones(100),
+            "TEST_KEY_2": {"nested": "data"},
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = os.path.join(temp_dir, "test_output")
+
+            # This should not raise any errors
+            processor.write_all_results(
+                output_path, {"TestResults": processor.ChargeInt_Results_Dict}
+            )
+
+            # Check that the FITS file was created
+            fits_file = output_path + "_Results.fits"
+            assert os.path.exists(fits_file)
