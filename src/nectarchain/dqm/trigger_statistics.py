@@ -69,80 +69,86 @@ class TriggerStatistics(DQMSummary):
         # self.run_start = np.min(self.event_times)
         self.run_end = np.max(self.event_times)
 
-        self.event_ped_times = self.event_times[
-            self.event_type == EventType.SKY_PEDESTAL.value
-        ]
+        # First, save wrong times (events before run_start) from unfiltered data
+        is_wrong = self.event_times < self.run_start
+        self.event_wrong_times = self.event_times[is_wrong]
+
+        # Filter by run_start - only keep events after run_start
+        valid = self.event_times > self.run_start
+        self.event_id = self.event_id[valid]
+        self.event_times = self.event_times[valid]
+        self.event_type = self.event_type[valid]
+
+        # Compute masks for subsets on the filtered arrays
+        self._ped_mask = self.event_type == EventType.SKY_PEDESTAL.value
         # sky pedestal, event id 2
-        self.event_phy_times = self.event_times[
-            self.event_type == EventType.SUBARRAY.value
-        ]
+        self._phy_mask = self.event_type == EventType.SUBARRAY.value
         # standard physics stereo, event id 32
         # TODO: add ids and event time selection for
         # other event types, e.g., dark pedestals
-
-        mask = (self.event_type != EventType.SUBARRAY.value) & (
-            self.event_type != EventType.SKY_PEDESTAL.value
-        )
-        self.event_other_times = self.event_times[mask]
-
-        self.event_ped_id = self.event_id[
-            self.event_type == EventType.SKY_PEDESTAL.value
-        ]
-        self.event_phy_id = self.event_id[self.event_type == EventType.SUBARRAY.value]
-        self.event_other_id = self.event_id[mask]
-
-        self.event_ped_id = self.event_ped_id[self.event_ped_times > self.run_start]
-        self.event_phy_id = self.event_phy_id[self.event_phy_times > self.run_start]
-        self.event_other_id = self.event_other_id[
-            self.event_other_times > self.run_start
-        ]
-        self.event_ped_times = self.event_ped_times[
-            self.event_ped_times > self.run_start
-        ]
-        self.event_phy_times = self.event_phy_times[
-            self.event_phy_times > self.run_start
-        ]
-        self.event_other_times = self.event_other_times[
-            self.event_other_times > self.run_start
-        ]
-        self.event_wrong_times = self.event_times[self.event_times < self.run_start]
-
-        self.event_id = self.event_id[self.event_times > self.run_start]
-        self.event_times = self.event_times[self.event_times > self.run_start]
+        self._other_mask = ~self._ped_mask & ~self._phy_mask
 
     def get_results(self):
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
+
+        # Count using masks (no array creation)
+        n_ped = self._ped_mask.sum()
+        n_phy = self._phy_mask.sum()
+        n_other = self._other_mask.sum()
+
         self.TriggerStat_Results_Dict["TRIGGER-STATISTICS"] = {
             "All": [len(self.event_times)],
-            "Physical": [len(self.event_phy_times)],
-            "Pedestals": [len(self.event_ped_times)],
-            "Others": [len(self.event_other_times)],
+            "Physical": [n_phy],
+            "Pedestals": [n_ped],
+            "Others": [n_other],
             "Wrong times": [len(self.event_wrong_times)],
         }
 
-        self.TriggerStat_Results_Dict["TRIGGER-EVENTS-ALL"] = {
-            "Timestamps": self.event_times,
-            "IDs": self.event_id,
-        }
-        if len(self.event_phy_times) > 0:
-            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-PHY"] = {
-                "Timestamps": self.event_phy_times,
-                "IDs": self.event_phy_id,
+        from astropy.table import Table
+
+        # Use masks directly on main arrays - no intermediate copies
+        # ALL events
+        self.TriggerStat_Results_Dict["TRIGGER-EVENTS-ALL"] = Table(
+            {
+                "Timestamps": self.event_times,
+                "IDs": self.event_id,
             }
-        if len(self.event_ped_times) > 0:
-            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-PED"] = {
-                "Timestamps": self.event_ped_times,
-                "IDs": self.event_ped_id,
-            }
-        if len(self.event_other_times) > 0:
-            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-OTHERS"] = {
-                "Timestamps": self.event_other_times,
-                "IDs": self.event_other_id,
-            }
+        )
+
+        # PHY events
+        if n_phy > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-PHY"] = Table(
+                {
+                    "Timestamps": self.event_times[self._phy_mask],
+                    "IDs": self.event_id[self._phy_mask],
+                }
+            )
+
+        # PED events
+        if n_ped > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-PED"] = Table(
+                {
+                    "Timestamps": self.event_times[self._ped_mask],
+                    "IDs": self.event_id[self._ped_mask],
+                }
+            )
+
+        # OTHERS events
+        if n_other > 0:
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-OTHERS"] = Table(
+                {
+                    "Timestamps": self.event_times[self._other_mask],
+                    "IDs": self.event_id[self._other_mask],
+                }
+            )
+
+        # WRONG times (only has Timestamps, no IDs)
         if len(self.event_wrong_times) > 0:
-            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-WRONG"] = {
-                "Timestamps": self.event_wrong_times,
-            }
+            self.TriggerStat_Results_Dict["TRIGGER-EVENTS-WRONG"] = Table(
+                {
+                    "Timestamps": self.event_wrong_times,
+                }
+            )
 
         self.TriggerStat_Results_Dict["START-TIMES"] = {
             "Run start time": [self.run_start1],
@@ -202,32 +208,33 @@ class TriggerStatistics(DQMSummary):
             label="All events (%s + %s invisible)"
             % (len(self.event_times), len(self.event_wrong_times)),
         )
+        # Use masks directly on main arrays
         ax.hist(
-            self.event_phy_times - self.run_start,
+            self.event_times[self._phy_mask] - self.run_start,
             n,
             color="cyan",
             linewidth=1,
             log=True,
             alpha=0.5,
-            label="Physical events (%s)" % len(self.event_phy_times),
+            label="Physical events (%s)" % self._phy_mask.sum(),
         )
         ax.hist(
-            self.event_ped_times - self.run_start,
+            self.event_times[self._ped_mask] - self.run_start,
             n,
             color="orange",
             linewidth=1,
             log=True,
             alpha=0.5,
-            label="Pedestal events (%s)" % len(self.event_ped_times),
+            label="Pedestal events (%s)" % self._ped_mask.sum(),
         )
         ax.hist(
-            self.event_other_times - self.run_start,
+            self.event_times[self._other_mask] - self.run_start,
             n,
             color="brown",
             linewidth=1,
             log=True,
             alpha=0.5,
-            label="Other events (%s)" % len(self.event_other_times),
+            label="Other events (%s)" % self._other_mask.sum(),
         )
         plt.legend(loc="upper right")
         plt.xlabel("Time")
@@ -253,32 +260,33 @@ class TriggerStatistics(DQMSummary):
             alpha=0.5,
             label="All events (%s)" % len(self.event_id),
         )
+        # Use masks directly on main arrays
         ax.hist(
-            self.event_phy_id,
+            self.event_id[self._phy_mask],
             n,
             color="orange",
             linewidth=1,
             log=True,
             alpha=0.5,
-            label="Physical events (%s)" % len(self.event_phy_id),
+            label="Physical events (%s)" % self._phy_mask.sum(),
         )
         ax.hist(
-            self.event_ped_id,
+            self.event_id[self._ped_mask],
             n,
             color="cyan",
             linewidth=1,
             log=True,
             alpha=0.5,
-            label="Pedestal events (%s)" % len(self.event_ped_id),
+            label="Pedestal events (%s)" % self._ped_mask.sum(),
         )
         ax.hist(
-            self.event_other_id,
+            self.event_id[self._other_mask],
             n,
             color="brown",
             linewidth=1,
             log=True,
             alpha=0.5,
-            label="Other events (%s)" % len(self.event_other_id),
+            label="Other events (%s)" % self._other_mask.sum(),
         )
         plt.legend(loc="upper right")
         plt.xlabel("ID")

@@ -82,6 +82,11 @@ class DQMSummary:
 
             hdu = fits.BinTableHDU(data)
 
+        # Handle astropy Table objects directly
+        elif isinstance(content, Table):
+            # Content is already a Table, use it as the HDU data
+            hdu = fits.BinTableHDU(content, name=name)
+
         # content can be a float, need to be recast to an array
         else:
             data = Table(np.array([content]))
