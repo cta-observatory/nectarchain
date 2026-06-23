@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
 import numpy as np
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import yaml
 from astropy.table import QTable
 from ctapipe.core.component import Component
