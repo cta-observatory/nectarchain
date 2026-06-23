@@ -115,10 +115,19 @@ for run in args.runs:
 
     for h in range(1, len(hdu)):
         extname = hdu[h].header["EXTNAME"]
+        xtension = hdu[extname].header["XTENSION"]
         outdict[extname] = dict()
-        for i in range(hdu[extname].header["TFIELDS"]):
-            keyname = hdu[extname].header[f"TTYPE{i+1}"]
-            outdict[extname][keyname] = hdu[extname].data[keyname]
+        if xtension == "BINTABLE":
+            for i in range(hdu[extname].header["TFIELDS"]):
+                keyname = hdu[extname].header[f"TTYPE{i+1}"]
+                outdict[extname][keyname] = hdu[extname].data[keyname]
+        elif xtension == "IMAGE":
+            outdict[extname][extname] = hdu[extname].data
+        else:
+            log.warning(
+                f"I do not know how to parse FITS extension {xtension}, "
+                f"please teach me !"
+            )
 
     try:
         db = DQMDB(read_only=False)
