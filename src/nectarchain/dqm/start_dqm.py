@@ -98,6 +98,12 @@ def main():
         type=int,
         help="Maximum number of events to loop through in each run slice",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Allows verbose TQDM for loops",
+    )
     parser.add_argument("-i", "--input-files", nargs="+", help="Local input files")
     parser.add_argument("--log", default="info", help="debug output", type=str)
 
@@ -246,11 +252,18 @@ def main():
     for p in processors:
         p.configure_for_run(path, Pix, Samp, reader1, **charges_kwargs)
 
-    for evt in tqdm(
-        reader, total=args.max_events if args.max_events else len(reader), unit="ev"
-    ):
+    start_read = time.time()
+    looping_over = (
+        tqdm(
+            reader, total=args.max_events if args.max_events else len(reader), unit="ev"
+        )
+        if args.verbose
+        else reader
+    )
+    for evt in looping_over:
         for p in processors:
             p.process_event(evt, noped)
+    read_time = time.time() - start_read
 
     # for the rest of the event files
     for arg in args.input_files[1:]:
@@ -260,24 +273,35 @@ def main():
         with EventSource(
             input_url=path2, config=config, max_events=args.max_events
         ) as reader:
-            for evt in tqdm(
-                reader,
-                total=args.max_events if args.max_events else len(reader),
-                unit="ev",
-            ):
+            looping_over = (
+                tqdm(
+                    reader,
+                    total=args.max_events if args.max_events else len(reader),
+                    unit="ev",
+                )
+                if args.verbose
+                else reader
+            )
+            for evt in looping_over:
                 for p in processors:
                     p.process_event(evt, noped)
 
+    start_finish = time.time()
     for p in processors:
         p.finish_run()
+    finish_time = time.time() - start_finish
 
+    start_results = time.time()
     dict_num = 0
     for p in processors:
         NESTED_DICT[NESTED_DICT_KEYS[dict_num]] = p.get_results()
         dict_num += 1
+    results_time = time.time() - start_results
 
+    start_write = time.time()
     # Write all results in 1 fits file:
     p.write_all_results(ResPath, NESTED_DICT)
+    write_time = time.time() - start_write
     if args.write_db:
         db = DQMDB(read_only=False)
         if db.insert(name, NESTED_DICT):
@@ -287,18 +311,23 @@ def main():
 
     # if plot option in arguments, it will construct the figures and save them
     if PlotFig:
+        figures_to_save = []
         for p in processors:
-            processor_figure_dict, processor_figure_name_dict = p.plot_results(
-                name, fig_path
-            )
+            fig_dict, name_dict = p.plot_results(name, fig_path)
+            figures_to_save.extend(zip(fig_dict.values(), name_dict.values()))
 
-            for fig_plot in processor_figure_dict:
-                fig = processor_figure_dict[fig_plot]
-                SavePath = processor_figure_name_dict[fig_plot]
-                fig.savefig(SavePath)
-                plt.close()
+        # Save all at once (matplotlib can parallelize I/O)
+        for fig, path in figures_to_save:
+            fig.savefig(path)
+            plt.close(fig)
 
     end = time.time()
+    log.info(
+        f"Read: {read_time:.2f}s, "
+        + f"Finish: {finish_time:.2f}s, "
+        + f"Results: {results_time:.2f}s, "
+        + f"Write: {write_time:.2f}s"
+    )
     log.info(f"Processing time: {end-start:.2f} s.")
 
 
