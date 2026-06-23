@@ -53,22 +53,26 @@ class WaveFormsHighLowGain(DQMSummary):
 
         self.tel_id = Reader1.subarray.tel_ids[0]
 
-        self.wf = np.zeros((Pix, Samp))
-        self.wf_ped = np.zeros((Pix, Samp))
+        self.wf = np.zeros((Pix, Samp), dtype=np.float32)
+        self.wf_ped = np.zeros((Pix, Samp), dtype=np.float32)
 
         self.counter_evt = 0
         self.counter_ped = 0
 
-        self.wf_average = np.zeros((Pix, Samp))
-        self.wf_ped_average = np.zeros((Pix, Samp))
+        self.wf_average = np.zeros((Pix, Samp), dtype=np.float32)
+        self.wf_ped_average = np.zeros((Pix, Samp), dtype=np.float32)
 
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
-        if evt.trigger.event_type == EventType.SKY_PEDESTAL:
+        is_ped = evt.trigger.event_type == EventType.SKY_PEDESTAL
+        is_phy = evt.trigger.event_type == EventType.SUBARRAY
+
+        # Update counters
+        if is_ped:
             # count sky peds, event id 2
             self.counter_ped += 1
-        elif evt.trigger.event_type == EventType.SUBARRAY:
+        elif is_phy:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
         # TODO: add ids for other event types, e.g., dark pedestals
@@ -77,23 +81,25 @@ class WaveFormsHighLowGain(DQMSummary):
         else:
             self.counter_evt += 1
 
-        for ipix in range(self.Pix):
-            if self.r0:
-                waveform = evt.r0.tel[self.tel_id].waveform[self.k][ipix]
+        # Extract ALL waveforms at once (vectorized)
+        if self.r0:
+            waveforms = evt.r0.tel[self.tel_id].waveform[self.k]
+            # Shape: (Pix, Samp)
+        else:
+            # Handle both 2D (Pix, Samp) and 3D (Gain, Pix, Samp) cases
+            wf = evt.r1.tel[self.tel_id].waveform
+            if wf.ndim == 3:
+                waveforms = wf[self.k]  # Select gain channel
             else:
-                # This should accommodate cases were the shape of waveforms is 2D
-                # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
-                # (1, 1855, 60) for single-gain channel
-                waveform = evt.r1.tel[self.tel_id].waveform[..., ipix, :]
-            if evt.trigger.event_type == EventType.SKY_PEDESTAL:
-                self.wf_ped[ipix, :] += waveform
-            elif evt.trigger.event_type == EventType.SUBARRAY:
-                self.wf[ipix, :] += waveform
-            # TODO: add ids for other event types, e.g., dark pedestals
-            # TODO: this else is wrong, we should have a separate counter
-            # for other event types, e.g., dark pedestals. It has to be implemented.
-            else:
-                self.wf[ipix, :] += waveform
+                waveforms = wf  # Already 2D
+
+        if is_ped:
+            self.wf_ped += waveforms
+        elif is_phy:
+            self.wf += waveforms
+        else:
+            self.wf += waveforms
+
         return None
 
     def finish_run(self):
@@ -150,13 +156,9 @@ class WaveFormsHighLowGain(DQMSummary):
 
             part_fig, part_ax = plt.subplots()
 
-            for ipix in range(self.Pix):
-                part_ax.plot(
-                    wf_list, x[ipix, :], color=colors[i], alpha=0.08, linewidth=1
-                )
-                full_ax.plot(
-                    wf_list, x[ipix, :], color=colors[i], alpha=0.08, linewidth=1
-                )
+            # VECTORIZED: Plot all waveforms at once
+            part_ax.plot(wf_list, x.T, color=colors[i], alpha=0.08, linewidth=1)
+            full_ax.plot(wf_list, x.T, color=colors[i], alpha=0.08, linewidth=1)
 
             part_ax.set_title(f"Mean Waveforms {key.capitalize()} ({self.gain_c} Gain)")
             part_ax.set_xlabel("Samples")
