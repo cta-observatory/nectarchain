@@ -54,17 +54,17 @@ class PingPongMonitoring(DQMSummary):
 
         self.change = np.zeros(len(self.pixel_ids))
         for i, evt1 in enumerate(Reader1):
-            # log.warning("configure the run with the first event")
             self.run_start1 = evt1.nectarcam.tel[self.tel_id].svc.date
             cell_id = evt1.nectarcam.tel[self.tel_id].evt.first_cell_id
             event_id = evt1.index.event_id
             trigger_time = evt1.trigger.time.value
             ping = (cell_id & 0x400).astype(bool)
+            # This performs a bitwise AND operation between
+            # the value of cell_id and the hexadecimal number 0x400
+            # 0x400 in binary is 010000000000 (12 bits)
+            # checks if the 11th bit (from the right, starting at 0)
+            # is set in cell_id
             if event_id == 1 or i == 0:
-                # log.warning(
-                # f"collecting reference data from the first event,"\
-                # f"event {event_id}"
-                # )
                 self.ref_parity = evt1.index.event_id % 2
                 self.ref_state = np.array(ping)
                 self.first_event = np.array(ping.view(np.int8))
@@ -79,7 +79,6 @@ class PingPongMonitoring(DQMSummary):
                     self.change[mismatches] += 1
                     self.event_times.append(trigger_time)
                     self.nchanges += 1
-            # log.warning(f"the parity of the first event is {self.ref_parity}")
 
     def process_event(
         self,
@@ -96,6 +95,8 @@ class PingPongMonitoring(DQMSummary):
 
         self.event_id.append(trigger_id)
         if not np.array_equal(state, expected):
+            # TODO: add a comment explaining
+            # why only logging the first ten elements
             log.warning(
                 f"Mismatch: Event {trigger_id}, State: {state[:10]}"
                 f" (expected {expected[:10]}), time={trigger_time}"
@@ -106,6 +107,8 @@ class PingPongMonitoring(DQMSummary):
             self.change[mismatches] += 1
             self.event_times.append(trigger_time)
             self.nchanges += 1
+            # TODO: add a comment explaining
+            # why only logging the first ten elements
             log.warning(
                 f"Reset reference. Changes incremented at indices: {mismatches[:10]}..."
             )
@@ -116,10 +119,10 @@ class PingPongMonitoring(DQMSummary):
             self.event_id = np.array(self.event_id)
             self.event_times = np.array(self.event_times)
 
-            """self.run_start = (
-                self.event_times[self.event_id == np.min(self.event_id)] - 100
-            )
-            self.run_end = np.max(self.event_times) + 100"""
+            # self.run_start = (
+            #     self.event_times[self.event_id == np.min(self.event_id)] - 100
+            # )
+            # self.run_end = np.max(self.event_times) + 100
         except Exception as err:
             log.error(f"Data could not be retrieved. Received error code: {err}")
 
