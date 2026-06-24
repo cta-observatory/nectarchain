@@ -451,7 +451,11 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
 
 
 def run_deadtime_test_tool_process(
-    runlist: list, nevents: int, ids: np.ndarray, test_type: str = "trr"
+    runlist: list,
+    camera: str,
+    nevents: int,
+    ids: np.ndarray,
+    test_type: str = "trr",
 ):
     """Run `DeadtimeTestTool` from `tools_components.py` over the provided run list
 
@@ -459,6 +463,8 @@ def run_deadtime_test_tool_process(
     ----------
     runlist : list
         list containing the NectarCAM run numbers
+    camera : str
+        NectarCAM camera for which the test is performed
     nevents : int
         max number of events
     ids : np.ndarray
@@ -505,6 +511,7 @@ def run_deadtime_test_tool_process(
         tool = DeadtimeTestTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
@@ -739,7 +746,7 @@ def main():
         deadtime_us,
         deadtime_pc,
     ) = run_deadtime_test_tool_process(
-        runlist=runlist, nevents=nevents, ids=ids, test_type=test_type
+        runlist=runlist, camera=camera, nevents=nevents, ids=ids, test_type=test_type
     )
 
     results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
