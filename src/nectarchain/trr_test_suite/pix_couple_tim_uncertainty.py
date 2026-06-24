@@ -19,6 +19,15 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
+    )
+except FileNotFoundError as e:
+    raise e
+
 TRANSIT_TIME_CORRECTIONS = get_dataset_path(
     filename=(
         "hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod" ".csv"
