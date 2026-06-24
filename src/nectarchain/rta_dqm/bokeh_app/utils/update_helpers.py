@@ -158,7 +158,14 @@ def update_timestamp(status_col):
     status_col.children[1].text = f"Last update: {ts}"
 
 
-def periodic_update_display(resource_path, display_registry, widgets, status_col):
+def periodic_update_display(
+    resource_path,
+    display_registry,
+    widgets,
+    status_col,
+    time_parentkey=None,
+    time_childkey=None,
+):
     """Update all the figures of the webpage and the status divider.
 
     Parameters
@@ -171,19 +178,40 @@ def periodic_update_display(resource_path, display_registry, widgets, status_col
         Storage of all interactive widgets for manual update.
     status_col : column
         Bokeh column layout for the status of the webpage.
+    time_parentkey : string, optional
+        Parentkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    time_childkey : string, optional
+        Childkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
 
     Returns
     -------
     out : None
 
     """
-    file = hdf5Proxy(_get_latest_file(resource_path))
-    update_all_figures(file, display_registry, widgets)
+    with _get_latest_file(resource_path) as fileHDF5:
+        fileproxy = hdf5Proxy(fileHDF5)
+    if time_parentkey is not None and time_childkey is not None:
+        try:
+            sort_indexes = fileproxy[time_parentkey].sort_from_key(time_childkey)
+            for group_parentkey in fileproxy.parentkeys:
+                if group_parentkey.startswith("dl1"):
+                    fileproxy[group_parentkey].mask(sort_indexes)
+        except Exception as e:
+            logger.warning(f"periodic_update_display: failed data time sorting: {e}")
+    update_all_figures(fileproxy, display_registry, widgets)
     update_timestamp(status_col)
 
 
 def start_periodic_updates(
-    resource_path, display_registry, widgets, status_col, interval_ms=1000
+    resource_path,
+    display_registry,
+    widgets,
+    status_col,
+    interval_ms=1000,
+    time_parentkey=None,
+    time_childkey=None,
 ):
     """Start the periodic update of the webpage every ``interval_ms`` milliseconds.
 
@@ -200,6 +228,12 @@ def start_periodic_updates(
     interval_ms : int, optional
         Interval between each refresh, in milliseconds.
         Default is 1000, i.e. every second.
+    time_parentkey : string, optional
+        Parentkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
+    time_childkey : string, optional
+        Childkey for time to sort data.
+        Default is ``None``, meaning nothing is sorted.
 
     Returns
     -------
@@ -215,6 +249,8 @@ def start_periodic_updates(
             display_registry=display_registry,
             widgets=widgets,
             status_col=status_col,
+            time_parentkey=time_parentkey,
+            time_childkey=time_childkey,
         ),
         interval_ms,
     )

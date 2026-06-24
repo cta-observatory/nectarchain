@@ -2,6 +2,8 @@
 This module stores the Bokeh webpage utility helpers for the RTA of NectarCAM.
 """
 
+import copy
+
 # imports
 import logging
 
@@ -80,12 +82,25 @@ def _leaf_paths_hdf5(file):
 
     paths = []
     file.visititems(lambda name, obj: paths.append(name))
-    leaf_paths = [
-        p
-        for p in paths
-        if not any(other != p and other.startswith(p + "/") for other in set(paths))
-    ]
-    return leaf_paths
+    if paths[0].startswith("file"):
+        leaf_paths = [
+            "/".join(p.split("/")[1:])
+            for p in paths
+            if not any(other != p and other.startswith(p + "/") for other in set(paths))
+        ]
+        branch_paths = [
+            p.split("/")[0]
+            for p in paths
+            if not any(other != p and other.startswith(p + "/") for other in set(paths))
+        ]
+    else:
+        leaf_paths = leaf_paths = [
+            p
+            for p in paths
+            if not any(other != p and other.startswith(p + "/") for other in set(paths))
+        ]
+        branch_paths = []
+    return list(set(leaf_paths)), list(set(branch_paths))
 
 
 class hdf5GroupProxy(dict):
@@ -137,7 +152,6 @@ class hdf5GroupProxy(dict):
         out : None
 
         """
-
         self.ogroup = input_data
         self.shape = input_data.shape
 
@@ -162,7 +176,6 @@ class hdf5GroupProxy(dict):
         out : None
 
         """
-
         indexes = np.asarray(indexes)
         for key in self.childkeys:
             self[key] = self[key][indexes]
@@ -185,14 +198,34 @@ class hdf5GroupProxy(dict):
 
         Returns
         -------
-        out : None
-
+        out : array-like
+            Sorted indexes according to ``key``.
         """
-
         increase = 1 if increasing else -1
         indexes = np.argsort(self[key], axis=axis)[::increase]
-        self.mask(indexes)
+        # self.mask(indexes)
         return indexes
+
+    def concat(self, other):
+        """Concatenate two hdf5GroupProxy, expecting same schema.
+
+        Parameters
+        ----------
+        other : hdf5GroupProxy
+            Other hdf5GroupProxy to concatenate.
+
+        Raises
+        ------
+        Exception : KeyError
+            Both childkeys should be the same.
+        """
+        if set(self.childkeys) == set(other.childkeys):
+            for key in self.childkeys:
+                self[key] = np.concatenate((self[key], other[key]))
+        elif len(self.childkeys) == 0:
+            self = copy.deepcopy(other)
+        else:
+            raise KeyError("Both childkeys should be the same.")
 
 
 class hdf5Proxy(dict):
@@ -244,13 +277,25 @@ class hdf5Proxy(dict):
         self.ofile = input_file
         if input_file is not None:
             self.filename = input_file.filename
-            self.parentkeys = _leaf_paths_hdf5(input_file)
+            self.parentkeys, self.fileorigins = _leaf_paths_hdf5(input_file)
             self.shape = len(self.parentkeys)
 
-            for parentkey in self.parentkeys:
-                self[parentkey] = hdf5GroupProxy(input_file[parentkey])
+            if len(self.fileorigins):
+                for parentkey in self.parentkeys:
+                    self[parentkey] = hdf5GroupProxy(
+                        input_file[self.fileorigins[0] + "/" + parentkey]
+                    )
+                for fileorigin in self.fileorigins[1:]:
+                    for parentkey in self.parentkeys:
+                        self[parentkey].concat(
+                            hdf5GroupProxy(input_file[fileorigin + "/" + parentkey])
+                        )
+            else:
+                for parentkey in self.parentkeys:
+                    self[parentkey] = hdf5GroupProxy(input_file[parentkey])
 
         else:
             self.filename = ""
             self.parentkeys = []
+            self.fileorigins = []
             self.shape = 0

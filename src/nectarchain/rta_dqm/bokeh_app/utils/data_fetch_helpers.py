@@ -6,10 +6,13 @@ import logging
 
 # imports
 import os
+import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import h5py
+from watchdog.events import FileSystemEventHandler
 
 # Bokeh RTA imports
 from .utils_helpers import hdf5Proxy
@@ -19,7 +22,60 @@ __all__ = ["safe_close_file", "open_file_from_selection"]
 logger = logging.getLogger(__name__)
 
 
-def _get_latest_file(resource_path, extension=".h5", n_rec=10, n_files=8):
+class LatestFilesHandler(FileSystemEventHandler):
+    def __init__(self, latest_files, n_files):
+        self.latest_files = latest_files
+        self.n_files = n_files
+
+    def on_created(self, event):
+        if event.is_directory:
+            return
+
+        path = Path(event.src_path)
+
+        if path.suffix != ".h5":
+            return
+
+        self.latest_files.append(path)
+
+        while len(self.latest_files) > self.n_files:
+            self.latest_files.popleft()
+
+
+@contextmanager
+def agglomerate_DL1(list_filepaths):
+    """Aggolemerate multiple DL1 files into one"""
+    tmp = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
+    tmp_path = tmp.name
+    # logger.info(f"Building agglomerated temporary file {tmp.name}")
+    tmp.close()
+
+    out = h5py.File(tmp_path, "w")
+
+    f_out = None
+
+    try:
+        for i, fp in enumerate(list_filepaths):
+            with h5py.File(fp, "r") as f:
+                grp = out.create_group(f"file_{i}")
+                for name in f:
+                    f.copy(name, grp, name=name)
+
+        out.flush()
+
+        f_out = h5py.File(tmp_path, "r")
+        yield f_out
+
+    finally:
+        if f_out is not None:
+            f_out.close()
+        out.close()
+        os.remove(tmp_path)
+
+
+def _get_latest_file(
+    resource_path, extension=".h5", n_rec=10, n_writing_files=8, n_files=15
+):
     """Open latest .h5 file from the resource directory.
 
     Parameters
@@ -32,10 +88,13 @@ def _get_latest_file(resource_path, extension=".h5", n_rec=10, n_files=8):
     n_rec : int, optional
         Maximum number of retries of search of the files before raising a warning.
         Default is 10.
-    n_files : int, optional
+    n_writing_files : int, optional
         Number of files to be written at the same time.
         Corresponds to number of lines times number of threads.
         Default is `2*4=8`.
+    n_files : int, optional
+        Maximum number of files to agglomerate.
+        Default is 10.
 
     Returns
     -------
@@ -54,12 +113,18 @@ def _get_latest_file(resource_path, extension=".h5", n_rec=10, n_files=8):
     # Find the latest file
     rec = 0
     while (
-        len(list(Path(resource_path).glob("*" + extension))) <= n_files and rec < n_rec
+        len(list(Path(resource_path).glob("*" + extension))) <= n_writing_files
+        and rec < n_rec
     ):
         time.sleep(10)
         rec += 1
-        print(f"Empty DL1 directory {resource_path} - attempt {rec+1}: sleeping 10s...")
-    if rec >= n_rec and len(list(Path(resource_path).glob("*" + extension))) <= n_files:
+        logger.info(
+            f"Empty DL1 directory {resource_path} - attempt {rec+1}: sleeping 10s..."
+        )
+    if (
+        rec >= n_rec
+        and len(list(Path(resource_path).glob("*" + extension))) <= n_writing_files
+    ):
         logger.warning(f"_get_latest_file: failed reading {resource_path}")
         return None
     filepaths = sorted(
@@ -67,11 +132,16 @@ def _get_latest_file(resource_path, extension=".h5", n_rec=10, n_files=8):
     )
     try:
         # Try to open .h5 second to last file
-        return h5py.File(filepaths[-n_files - 1], "r")
+        return agglomerate_DL1(
+            filepaths[-(n_writing_files + n_files + 1) : -(n_writing_files + 1)]
+        )
     except Exception as e:
         # Return None if an error occured
         logger.warning(
-            f"_get_latest_file: failed reading files {filepaths[-n_files-1]}: {e}"
+            f"""
+_get_latest_file: failed reading files \
+{filepaths[-(n_writing_files+n_files+1):-(n_writing_files+1)]}: {e}
+            """
         )
         return None
 
@@ -147,8 +217,8 @@ def open_file_from_selection(
         return None, None
 
     if sel_value == real_time_tag:
-        file = _get_latest_file(resource_path, extension=extension)
-        fileproxy = hdf5Proxy(file)
+        with _get_latest_file(resource_path, extension=extension) as file:
+            fileproxy = hdf5Proxy(file)
         if time_parentkey is not None and time_childkey is not None:
             try:
                 sort_indexes = fileproxy[time_parentkey].sort_from_key(time_childkey)

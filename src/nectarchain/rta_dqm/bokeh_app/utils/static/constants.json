@@ -1,8 +1,8 @@
 {
     "REAL_TIME_TAG": "Real time",
-    "DEFAULT_UPDATE_MS": 1000,
+    "DEFAULT_UPDATE_MS": 3000,
     "EXAMPLE_RESOURCE_PATH": "example_data",
-    "RESOURCE_PATH": "example_data",
+    "RESOURCE_PATH": "example_data2",
     "DEFAULT_EXTENSION": ".h5",
     "time_parentkey": "dl1/event/telescope/images/tel_001",
     "time_childkey": "trigger_time",

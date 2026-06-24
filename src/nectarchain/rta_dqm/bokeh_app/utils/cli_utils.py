@@ -116,8 +116,15 @@ def create_app(doc):
 
     # Retrieve latest file to simulate real time data
     # Will change when we add the stream listening part
-    file = _get_latest_file(RESOURCE_PATH)
-    file = hdf5Proxy(file)
+    with _get_latest_file(RESOURCE_PATH) as fileHDF5:
+        fileproxy = hdf5Proxy(fileHDF5)
+    if time_parentkey is not None and time_childkey is not None:
+        try:
+            sort_indexes = fileproxy[time_parentkey].sort_from_key(time_childkey)
+            for group_parentkey in group_parentkeys:
+                fileproxy[group_parentkey].mask(sort_indexes)
+        except Exception as e:
+            logger.warning(f"create_app: failed data time sorting: {e}")
 
     # make_body() default kwargs
     # Keep statistic functions for timelines only if in the Numpy module
@@ -142,8 +149,8 @@ def create_app(doc):
     # Build UI
     root_layout, header_ret = build_ui(
         resource_path=RESOURCE_PATH,
-        file=file,
-        filepath=getattr(file, "filename", None),
+        file=fileproxy,
+        filepath=getattr(fileproxy, "filename", None),
         display_registry=display_registry,
         widgets=widgets,
         real_time_tag=REAL_TIME_TAG,
@@ -159,13 +166,22 @@ def create_app(doc):
 
     # Start real-time at launch
     try:
-        periodic_update_display(RESOURCE_PATH, display_registry, widgets, header_ret[1])
+        periodic_update_display(
+            RESOURCE_PATH,
+            display_registry,
+            widgets,
+            header_ret[1],
+            time_parentkey=time_parentkey,
+            time_childkey=time_childkey,
+        )
         start_periodic_updates(
             resource_path=RESOURCE_PATH,
             display_registry=display_registry,
             widgets=widgets,
             status_col=header_ret[1],
             interval_ms=DEFAULT_UPDATE_MS,
+            time_parentkey=time_parentkey,
+            time_childkey=time_childkey,
         )
     except Exception:
         pass

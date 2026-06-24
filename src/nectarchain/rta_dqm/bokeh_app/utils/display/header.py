@@ -195,6 +195,8 @@ def _on_header_select_change(
                 widgets=widgets,
                 status_col=status_col,
                 interval_ms=default_update_ms,
+                time_parentkey=time_parentkey,
+                time_childkey=time_childkey,
             )
         except Exception as e:
             logger.warning(f"Failed to update figures: {e}")
@@ -246,7 +248,7 @@ def _on_header_select_change(
         # errors raised
         except Exception as e:
             _set_status_text(
-                [f"Could not open selected file: {sel} : {e}"] * 2,
+                [f"Could not open selected file: {sel} : {e}"],
                 status_col=status_col,
             )
             logger.warning(f"Could not open selected file: {e}")
@@ -307,7 +309,12 @@ def make_status_col(file):
     return column(file_div, time_div)
 
 
-def make_header_menu(resource_path, real_time_tag, file=None, extension=".h5"):
+def make_header_menu(
+    resource_path,
+    real_time_tag,
+    file=None,
+    extension=".h5",
+):
     """Create full header menu.
 
     Parameters
@@ -334,9 +341,11 @@ def make_header_menu(resource_path, real_time_tag, file=None, extension=".h5"):
     """
 
     if file is None:
-        file = _get_latest_file(resource_path, extension=extension)
+        with _get_latest_file(resource_path, extension=extension) as file:
+            status_col = make_status_col(file)
+    else:
+        status_col = make_status_col(file)
     list_file = _list_runs(resource_path, extension=extension)
     run_choice_slidedown = make_select_run(list_file, real_time_tag)
 
-    status_col = make_status_col(file)
     return run_choice_slidedown, status_col
