@@ -12,6 +12,7 @@ from ctapipe_io_nectarcam import N_PIXELS, N_SAMPLES
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.utils import photons2ADC
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -61,6 +62,14 @@ def get_args():
         default=[3647],
     )
     parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
+    parser.add_argument(
         "-e",
         "--evts",
         type=int,
@@ -98,6 +107,8 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    camera = args.camera
+
     runlist = args.runlist
     nevents = args.evts
 
@@ -117,6 +128,7 @@ def main():
         tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=999,
             log_level=20,
