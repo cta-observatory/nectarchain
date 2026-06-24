@@ -31,11 +31,14 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-plt.style.use(
-    os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
     )
-)
+except FileNotFoundError as e:
+    raise e
 
 
 def get_labels():
