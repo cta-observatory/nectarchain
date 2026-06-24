@@ -49,7 +49,7 @@ class PingPongMonitoring(DQMSummary):
             EngineeringCameraFrame()
         )
         self.cmap = "gnuplot2"
-        self.pixel_ids = Reader1.camera_config.pixel_id_map
+        self.pixel_ids = np.arange(self.Pix)
         self.subarray = Reader1.subarray
 
         self.change = np.zeros(len(self.pixel_ids))
