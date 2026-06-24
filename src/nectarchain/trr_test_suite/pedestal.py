@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -112,13 +113,14 @@ def main():
     runlist = args.runlist
     nevents = args.evts
 
-    # output_dir = args.output
-    # temp_output_file = args.temp_output
-    output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
-
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
-    log.debug(f"Temporary output dir: {temp_output}")
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    log.debug(f"Temporary output directory: {temp_output}")
 
     sys.argv = sys.argv[:1]
     output = []
