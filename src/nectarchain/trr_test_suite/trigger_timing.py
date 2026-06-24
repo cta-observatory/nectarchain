@@ -172,7 +172,7 @@ def main():
     rms = np.array(rms)
     err = np.array(err)
     charge = np.array(charge)
-    print(rms, err, charge)
+    log.debug(f"{rms}, {err}, {charge}")
 
     fig, ax = plt.subplots()
 
