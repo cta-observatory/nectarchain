@@ -237,8 +237,6 @@ def main():
     plt.xlabel(r"RMS of $\Delta t_{\mathrm{TOM}}$ for pairs of pixels [ns]")
     plt.ylabel("Normalized entries")
 
-    plt.gcf()
-
     plt.savefig(os.path.join(output_dir, "pix_couple_tim_uncertainty.png"))
 
     if temp_output:
