@@ -1,6 +1,7 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -11,6 +12,13 @@ from ctapipe_io_nectarcam import N_PIXELS, N_SAMPLES
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.utils import photons2ADC
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 def get_args():
@@ -89,14 +97,14 @@ def main():
     output_dir = os.path.abspath(args.output)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output dir: {temp_output}")  # Debug print
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output dir: {temp_output}")
 
     sys.argv = sys.argv[:1]
     output = []
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info(f"PROCESSING RUN {run}")
         tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
