@@ -18,7 +18,7 @@ from nectarchain.trr_test_suite.utils import (
     err_sum,
     linear_fit_function,
     plot_parameters,
-    trasmission_390ns,
+    transmission_390ns,
 )
 
 logging.basicConfig(
@@ -67,7 +67,7 @@ def get_args():
         nargs="+",
         help="List of corresponding transmission for each run",
         required=False,
-        default=trasmission_390ns,
+        default=transmission_390ns,
     )
     parser.add_argument(
         "-e",
