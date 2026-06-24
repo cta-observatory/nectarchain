@@ -12,9 +12,12 @@ from ctapipe.utils import get_dataset_path
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
 
 TRANSIT_TIME_CORRECTIONS = get_dataset_path(
     filename=(
