@@ -175,19 +175,15 @@ def main():
         charge[index], std[index], std_err[index], npixels = output
         index += 1
 
-    # print("FINAL",charge)
-
     # we assume that they overlap at 0.01 so they should have the same value
     # normalise high gain and low gain using charge value at 0.01
     transmission = np.array(transmission)
     norm_factor_hg = charge[
         np.argwhere((transmission < 1.1e-2) & (transmission > 9e-3)), 0
     ][0]
-    # print(norm_factor_hg)
     norm_factor_lg = charge[
         np.argwhere((transmission < 1.1e-2) & (transmission > 9e-3)), 1
     ][0]
-    # print(norm_factor_lg)
     charge_norm_hg = charge[:, 0] / norm_factor_hg
     charge_norm_lg = charge[:, 1] / norm_factor_lg
     std_norm_hg = std[:, 0] / norm_factor_hg
@@ -234,7 +230,6 @@ def main():
         )  # sort by true charge
 
         ch_sorted = np.array(sorted(yx))
-        # print(ch_sorted)
 
         # linearity
         model = Model(linear_fit_function)
@@ -264,8 +259,6 @@ def main():
                 ][1]
             ],
         )
-
-        # print(ch_fit.fit_report())
 
         a = ch_fit.params["a"].value
         b = ch_fit.params["b"].value
