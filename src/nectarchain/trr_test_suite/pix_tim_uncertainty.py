@@ -13,6 +13,7 @@ from ctapipe.core import run_tool
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import TimingResolutionTestTool
 from nectarchain.trr_test_suite.utils import pe2photons, photons2pe
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -58,6 +59,14 @@ def get_args():
         help="List of runs (numbers separated by space)",
         required=False,
         default=[i for i in range(3446, 3457)],
+    )
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
     )
     parser.add_argument(
         "-e",
@@ -106,6 +115,8 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    camera = args.camera
+
     runlist = args.runlist
     nevents = args.evts
     # npixels = args.pixels
@@ -129,6 +140,7 @@ def main():
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=12000,
             events_per_slice=5000,
             log_level=20,
@@ -143,6 +155,7 @@ def main():
         tool = TimingResolutionTestTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=9999,
             log_level=20,
