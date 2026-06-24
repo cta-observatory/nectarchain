@@ -3,6 +3,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -133,12 +134,17 @@ def main():
     runlist = args.runlist
     nevents = args.evts
     tt_path = TRANSIT_TIME_CORRECTIONS
-    output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
-    log.debug(f"Temporary output file: {temp_output}")
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    log.debug(f"Temporary output directory: {temp_output}")
 
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
     tom = []
 
