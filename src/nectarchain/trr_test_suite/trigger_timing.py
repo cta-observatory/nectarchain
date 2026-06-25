@@ -250,10 +250,12 @@ def main():
         pe2photons(ax.get_xlim()[0]), pe2photons(ax.get_xlim()[1])
     )  # Match limits
 
-    plt.savefig(os.path.join(output_dir, "trigger_timing.png"))
+    fig_name = "trigger_timing"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
 
