@@ -156,9 +156,12 @@ def main():
     ax.set_xlabel("Pixel")
     ax.set_ylabel("Mean baseline (ADC)")
 
-    plt.savefig(os.path.join(output_dir, "pedestal_baseline.png"))
+    fig_name = "pedestal_baseline"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     # The next block of code produces a plot to verify requirement B-TEL-1370
@@ -223,9 +226,12 @@ def main():
     ax.set_xlabel("Pixel")
     ax.set_ylabel("(ADC)")
 
-    plt.savefig(os.path.join(output_dir, "pedestal_uncertainty.png"))
+    fig_name = "pedestal_uncertainty"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
