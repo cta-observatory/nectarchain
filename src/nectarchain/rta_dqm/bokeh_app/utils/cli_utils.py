@@ -8,10 +8,13 @@ import json
 import logging
 
 # imports
+import os
+import shutil
 import sys
 from collections import deque
 from pathlib import Path
 
+import ctapipe
 import numpy as np
 
 # Bokeh imports
@@ -96,23 +99,34 @@ def create_app(doc):
     with open(PROJECT_ROOT / "utils/static/constants.json") as constants_file:
         json_dict = json.load(constants_file)
     REAL_TIME_TAG = json_dict["REAL_TIME_TAG"]
-    DEFAULT_UPDATE_MS = int(json_dict["DEFAULT_UPDATE_MS"])
+    DEFAULT_UPDATE_MS = json_dict["DEFAULT_UPDATE_MS"]
     DEFAULT_EXTENSION = json_dict["DEFAULT_EXTENSION"]
-    MAX_READ_FILES = int(json_dict["MAX_READ_FILES"])
+    MAX_READ_FILES = json_dict["MAX_READ_FILES"]
     time_parentkey = json_dict["time_parentkey"]
     time_childkey = json_dict["time_childkey"]
     group_parentkeys = json_dict["group_parentkeys"]
 
     # Path of data
     if SERVER_CONFIG.test_interface:
+        # Test data import
         logger.info("Test interface - displaying example runs")
         RESOURCE_PATH = PROJECT_ROOT / json_dict["EXAMPLE_RESOURCE_PATH"]
+        if os.path.exists(RESOURCE_PATH):
+            shutil.rmtree(RESOURCE_PATH)
+        os.makedirs(RESOURCE_PATH)
+        for filename in json_dict["EXAMPLE_DATA_FILES"]:
+            filepath = ctapipe.utils.get_dataset_path(
+                filename,
+                url="http://cccta-dataserver.in2p3.fr/data/ctapipe-test-data/v1.1.0",
+            )
+            shutil.move(filepath, os.path.join(RESOURCE_PATH, filename))
+
     else:
+        # Real time start
         logger.info("Real interface - fetching data currently produced by RTA")
         RESOURCE_PATH = PROJECT_ROOT / json_dict["RESOURCE_PATH"]
         if SERVER_CONFIG.output_dir != "":
             RESOURCE_PATH = Path(SERVER_CONFIG.output_dir)
-
     # Scan of resource repository once
     latest_files = deque(
         sorted(Path(RESOURCE_PATH).glob("*.h5"), key=lambda p: p.stat().st_mtime)[
