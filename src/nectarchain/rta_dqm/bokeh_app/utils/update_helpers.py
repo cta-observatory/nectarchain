@@ -190,8 +190,10 @@ def periodic_update_display(
     out : None
 
     """
+    t0 = time.perf_counter()
     with _get_latest_file(file_list) as fileHDF5:
         fileproxy = hdf5Proxy(fileHDF5)
+    t1 = time.perf_counter()
     if time_parentkey is not None and time_childkey is not None:
         try:
             sort_indexes = fileproxy[time_parentkey].sort_from_key(time_childkey)
@@ -200,8 +202,13 @@ def periodic_update_display(
                     fileproxy[group_parentkey].mask(sort_indexes)
         except Exception as e:
             logger.warning(f"periodic_update_display: failed data time sorting: {e}")
+    t2 = time.perf_counter()
     update_all_figures(fileproxy, display_registry, widgets)
     update_timestamp(status_col)
+    t3 = time.perf_counter()
+    print("File agglomeration: ", t1 - t0, "s")
+    print("File time sorting: ", t2 - t1, "s")
+    print("Webpage update: ", t3 - t2, "s")
 
 
 def start_periodic_updates(
