@@ -178,13 +178,15 @@ def plot_deadtime_vs_collected_trigger_rate(
     plt.xlim(0.0, 15)
     plt.yscale("log")
     plt.ylim(1e-2, 1e2)
-    plot_path = os.path.join(output_dir, "deadtime_pc_vs_trigger_rate.png")
+
+    fig_name = "deadtime_pc_vs_trigger_rate"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     log.info(f"Plot saved at: {plot_path}")
 
     if temp_output:
-        with open(os.path.join(temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
 
@@ -301,13 +303,14 @@ def plot_fitted_rate_vs_collected_trigger_rate(
 
     ax1.legend(fontsize=12)
 
-    plot_path = os.path.join(output_dir, "fitted_vs_collected_trigger_rates.png")
+    fig_name = "fitted_vs_collected_trigger_rates"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     log.info(f"Plot saved at: {plot_path}")
 
     if temp_output:
-        with open(os.path.join(temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
 
