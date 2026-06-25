@@ -237,10 +237,12 @@ def main():
     plt.xlabel(r"RMS of $\Delta t_{\mathrm{TOM}}$ for pairs of pixels [ns]")
     plt.ylabel("Normalized entries")
 
-    plt.savefig(os.path.join(output_dir, "pix_couple_tim_uncertainty.png"))
+    fig_name = "pix_couple_tim_uncertainty"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
