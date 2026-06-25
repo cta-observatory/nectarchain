@@ -177,8 +177,6 @@ def main():
     max_events = 5000
     method = "LocalPeakWindowSum"
 
-    pkl_index = 0
-
     for iNSB in range(len(NSB)):
         runlist = runs_list[iNSB]
         ff_volt = ff_v_list[iNSB]
@@ -284,20 +282,16 @@ def main():
         # ax.grid()
         ax.legend()
         ax.set_ylim(-1, 600)
-        plt.savefig(
-            os.path.join(
-                output_dir,
-                "Charge_FF_V_final_cuts_{}_{}.png".format(
-                    runlist[0], runlist[len(runlist) - 1]
-                ),
-            )
-        )
+
+        fig_name = f"Charge_FF_V_final_cuts_{runlist[0]}_{runlist[len(runlist)-1]}.png"
+        plot_path = os.path.join(output_dir, f"{fig_name}.png")
+        plt.savefig(plot_path)
+
         if temp_output:
             with open(
-                os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb"
+                os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb"
             ) as f:
                 pickle.dump(fig, f)
-                pkl_index += 1
 
         ratio_lghg_nsb.append(ratio_hglg)
 
@@ -381,11 +375,14 @@ def main():
     ax.set_xlabel("Charge (p.e.)")
     ax.set_ylabel("HG/LG ratio")
     ax.legend()
-    plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_pe_T{temperature}.png"))
+
+    fig_name = f"HGLG_Ratio_pe_T{temperature}"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
-            pkl_index += 1
 
     charge_plot = np.linspace(20, 1000)
     stat_limit = 1 / np.sqrt(charge_plot)  # statistical limit
@@ -428,11 +425,14 @@ def main():
     ax.set_title("T={} degrees".format(temperature))
     ax.set_xlim(20, 1000)
     ax.legend()
-    plt.savefig(os.path.join(output_dir, f"charge_resolution_T{temperature}.png"))
+
+    fig_name = f"charge_resolution_T{temperature}"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
-            pkl_index += 1
 
     plt.close("all")
 
