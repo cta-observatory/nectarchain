@@ -306,6 +306,7 @@ def make_body(
 
 
 def build_ui(
+    file_list,
     resource_path,
     file,
     filepath,
@@ -323,6 +324,7 @@ def build_ui(
 
     Parameters
     ----------
+    file_list
     resource_path : string
         Path of the directory where to find the files to list.
         Can be relative or absolute (careful if it is relative,
@@ -366,7 +368,7 @@ def build_ui(
     # call make_header_menu; be defensive about its return signature
     header_select, status_col = None, None
     header_ret = make_header_menu(
-        resource_path, real_time_tag, file, extension=extension
+        file_list, resource_path, real_time_tag, file, extension=extension
     )
     header_select, status_col = header_ret[0], header_ret[1]
 
@@ -381,6 +383,7 @@ def build_ui(
     try:
         file, filepath = open_file_from_selection(
             header_select.value if hasattr(header_select, "value") else real_time_tag,
+            file_list,
             resource_path=resource_path,
             real_time_tag=real_time_tag,
             time_parentkey=sort_time_parentkey,
@@ -409,26 +412,24 @@ def build_ui(
     # curdoc().add_root(root_layout)
 
     # wire select callback
-    try:
-        header_select.on_change(
-            "value",
-            partial(
-                _on_header_select_change,
-                fobj=file,
-                fpath=filepath,
-                resource_path=resource_path,
-                status_col=status_col,
-                real_time_tag=real_time_tag,
-                default_update_ms=default_update_ms,
-                display_registry=display_registry,
-                widgets=widgets,
-                time_parentkey=sort_time_parentkey,
-                time_childkey=sort_time_childkey,
-                group_parentkeys=group_parentkeys,
-            ),
-        )
-    except Exception:
-        pass
+    header_select.on_change(
+        "value",
+        partial(
+            _on_header_select_change,
+            fobj=file,
+            fpath=filepath,
+            file_list=file_list,
+            resource_path=resource_path,
+            status_col=status_col,
+            real_time_tag=real_time_tag,
+            default_update_ms=default_update_ms,
+            display_registry=display_registry,
+            widgets=widgets,
+            time_parentkey=sort_time_parentkey,
+            time_childkey=sort_time_childkey,
+            group_parentkeys=group_parentkeys,
+        ),
+    )
 
     # set status if available
     if status_col is not None:

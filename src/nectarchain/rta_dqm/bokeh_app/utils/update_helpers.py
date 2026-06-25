@@ -159,7 +159,7 @@ def update_timestamp(status_col):
 
 
 def periodic_update_display(
-    resource_path,
+    file_list,
     display_registry,
     widgets,
     status_col,
@@ -170,8 +170,8 @@ def periodic_update_display(
 
     Parameters
     ----------
-    file : dict_like
-        Data of the considered run.
+    file_list : list
+        list of the files to agglomerate.
     display_registry : list
         Storage of all the displays for later update.
     widgets : list
@@ -190,7 +190,7 @@ def periodic_update_display(
     out : None
 
     """
-    with _get_latest_file(resource_path) as fileHDF5:
+    with _get_latest_file(file_list) as fileHDF5:
         fileproxy = hdf5Proxy(fileHDF5)
     if time_parentkey is not None and time_childkey is not None:
         try:
@@ -205,6 +205,7 @@ def periodic_update_display(
 
 
 def start_periodic_updates(
+    file_list,
     resource_path,
     display_registry,
     widgets,
@@ -245,7 +246,7 @@ def start_periodic_updates(
     periodic_cb_id = curdoc().add_periodic_callback(
         partial(
             periodic_update_display,
-            resource_path=resource_path,
+            file_list=file_list,
             display_registry=display_registry,
             widgets=widgets,
             status_col=status_col,

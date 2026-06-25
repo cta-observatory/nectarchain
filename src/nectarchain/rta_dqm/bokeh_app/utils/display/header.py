@@ -104,6 +104,7 @@ def _on_header_select_change(
     new,
     fobj=None,
     fpath=None,
+    file_list=None,
     resource_path=None,
     status_col=None,
     real_time_tag=None,
@@ -161,6 +162,7 @@ def _on_header_select_change(
     """
 
     sel = new
+    print("IN")
 
     # close previously opened non-latest file (if any)
     # (for now consider only format handled i.e .h5 files)
@@ -177,6 +179,7 @@ def _on_header_select_change(
             # real time will have to be replaced by ...data_fetch_helpers.fetch_stream()
             fobj, fpath = open_file_from_selection(
                 sel,
+                file_list,
                 resource_path=resource_path,
                 real_time_tag=real_time_tag,
                 time_parentkey=time_parentkey,
@@ -190,6 +193,7 @@ def _on_header_select_change(
             # Update and start periodic updates
             update_all_figures(fobj, display_registry=display_registry, widgets=widgets)
             start_periodic_updates(
+                file_list=file_list,
                 resource_path=resource_path,
                 display_registry=display_registry,
                 widgets=widgets,
@@ -221,9 +225,11 @@ def _on_header_select_change(
         logger.info(f"Reading mode (filename: {sel}): {time.strftime('%H:%M:%S')}")
         # open the selected file and update once (no periodic updates)'
         try:
+            print("TEST")
             stop_periodic_updates(widgets)
             fobj, fpath = open_file_from_selection(
                 sel,
+                file_list,
                 resource_path=resource_path,
                 real_time_tag=real_time_tag,
                 time_parentkey=time_parentkey,
@@ -310,6 +316,7 @@ def make_status_col(file):
 
 
 def make_header_menu(
+    file_list,
     resource_path,
     real_time_tag,
     file=None,
@@ -319,6 +326,8 @@ def make_header_menu(
 
     Parameters
     ----------
+    file_list : list
+        list of the files to agglomerate.
     resource_path : string
         Path of the directory where to find the files to list.
         Can be relative or absolute (careful if it is relative,
@@ -341,7 +350,7 @@ def make_header_menu(
     """
 
     if file is None:
-        with _get_latest_file(resource_path, extension=extension) as file:
+        with _get_latest_file(file_list) as file:
             status_col = make_status_col(file)
     else:
         status_col = make_status_col(file)

@@ -9,14 +9,16 @@ import logging
 
 # imports
 import sys
+from collections import deque
 from pathlib import Path
 
 import numpy as np
 
 # Bokeh imports
 from bokeh.io import curdoc
+from watchdog.observers import Observer
 
-from .data_fetch_helpers import _get_latest_file
+from .data_fetch_helpers import LatestFilesHandler, _get_latest_file
 from .high_level_builders import build_ui
 from .logging_config import setup_logging
 from .update_helpers import periodic_update_display, start_periodic_updates
@@ -94,8 +96,9 @@ def create_app(doc):
     with open(PROJECT_ROOT / "utils/static/constants.json") as constants_file:
         json_dict = json.load(constants_file)
     REAL_TIME_TAG = json_dict["REAL_TIME_TAG"]
-    DEFAULT_UPDATE_MS = json_dict["DEFAULT_UPDATE_MS"]
+    DEFAULT_UPDATE_MS = int(json_dict["DEFAULT_UPDATE_MS"])
     DEFAULT_EXTENSION = json_dict["DEFAULT_EXTENSION"]
+    MAX_READ_FILES = int(json_dict["MAX_READ_FILES"])
     time_parentkey = json_dict["time_parentkey"]
     time_childkey = json_dict["time_childkey"]
     group_parentkeys = json_dict["group_parentkeys"]
@@ -107,8 +110,22 @@ def create_app(doc):
     else:
         logger.info("Real interface - fetching data currently produced by RTA")
         RESOURCE_PATH = PROJECT_ROOT / json_dict["RESOURCE_PATH"]
-    if SERVER_CONFIG.output_dir != "":
-        RESOURCE_PATH = Path(SERVER_CONFIG.output_dir)
+        if SERVER_CONFIG.output_dir != "":
+            RESOURCE_PATH = Path(SERVER_CONFIG.output_dir)
+
+    # Scan of resource repository once
+    latest_files = deque(
+        sorted(Path(RESOURCE_PATH).glob("*.h5"), key=lambda p: p.stat().st_mtime)[
+            -MAX_READ_FILES:
+        ],
+        maxlen=MAX_READ_FILES,
+    )
+
+    observer = Observer()
+    observer.schedule(
+        LatestFilesHandler(latest_files, MAX_READ_FILES), RESOURCE_PATH, recursive=False
+    )
+    observer.start()
 
     # Bokeh item storages
     display_registry = []
@@ -116,7 +133,7 @@ def create_app(doc):
 
     # Retrieve latest file to simulate real time data
     # Will change when we add the stream listening part
-    with _get_latest_file(RESOURCE_PATH) as fileHDF5:
+    with _get_latest_file(list(latest_files)) as fileHDF5:
         fileproxy = hdf5Proxy(fileHDF5)
     if time_parentkey is not None and time_childkey is not None:
         try:
@@ -148,6 +165,7 @@ def create_app(doc):
 
     # Build UI
     root_layout, header_ret = build_ui(
+        file_list=list(latest_files),
         resource_path=RESOURCE_PATH,
         file=fileproxy,
         filepath=getattr(fileproxy, "filename", None),
@@ -165,26 +183,24 @@ def create_app(doc):
     header_ret = root_layout.children[0].children
 
     # Start real-time at launch
-    try:
-        periodic_update_display(
-            RESOURCE_PATH,
-            display_registry,
-            widgets,
-            header_ret[1],
-            time_parentkey=time_parentkey,
-            time_childkey=time_childkey,
-        )
-        start_periodic_updates(
-            resource_path=RESOURCE_PATH,
-            display_registry=display_registry,
-            widgets=widgets,
-            status_col=header_ret[1],
-            interval_ms=DEFAULT_UPDATE_MS,
-            time_parentkey=time_parentkey,
-            time_childkey=time_childkey,
-        )
-    except Exception:
-        pass
+    periodic_update_display(
+        list(latest_files),
+        display_registry,
+        widgets,
+        header_ret[1],
+        time_parentkey=time_parentkey,
+        time_childkey=time_childkey,
+    )
+    start_periodic_updates(
+        file_list=list(latest_files),
+        resource_path=RESOURCE_PATH,
+        display_registry=display_registry,
+        widgets=widgets,
+        status_col=header_ret[1],
+        interval_ms=DEFAULT_UPDATE_MS,
+        time_parentkey=time_parentkey,
+        time_childkey=time_childkey,
+    )
 
 
 def main():

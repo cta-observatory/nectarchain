@@ -27,7 +27,7 @@ class LatestFilesHandler(FileSystemEventHandler):
         self.latest_files = latest_files
         self.n_files = n_files
 
-    def on_created(self, event):
+    def on_closed(self, event):
         if event.is_directory:
             return
 
@@ -73,7 +73,7 @@ def agglomerate_DL1(list_filepaths):
         os.remove(tmp_path)
 
 
-def _get_latest_file(
+def _get_latest_file1(
     resource_path, extension=".h5", n_rec=10, n_writing_files=8, n_files=15
 ):
     """Open latest .h5 file from the resource directory.
@@ -146,6 +146,55 @@ _get_latest_file: failed reading files \
         return None
 
 
+def _get_latest_file(
+    file_list,
+    n_rec=10,
+):
+    """Open and agglomerate the latest .h5 fileq from the resource directory.
+
+    Parameters
+    ----------
+    file_list : list
+        list of the files to agglomerate.
+    n_rec : int, optional
+        Maximum number of retries of search of the files before raising a warning.
+        Default is 10.
+
+    Returns
+    -------
+    out : h5py.File or None
+        The opened HDF5 file if successful.
+        Returns ``None`` if any error occured.
+
+    Examples
+    --------
+    >>> resource_path = "../../example_data"
+    >>> print(_get_latest_file(resource_path).filename.split("/")[-1])
+    dl1_sb_id_1_obs_id_20549_tel_id_1_line_idx_0thread_idx0th_file_idx5file_idx.h5
+
+    """
+
+    # Find the latest file
+    rec = 0
+    while not len(file_list) and rec < n_rec:
+        time.sleep(10)
+        rec += 1
+        logger.info(
+            f"Empty DL1 directory {file_list} - attempt {rec+1}: sleeping 10s..."
+        )
+    if rec >= n_rec and not len(file_list):
+        logger.warning(f"_get_latest_file: failed reading {file_list}")
+        return None
+
+    try:
+        # Try to open .h5 second to last file
+        return agglomerate_DL1(file_list)
+    except Exception as e:
+        # Return None if an error occured
+        logger.warning(f"_get_latest_file: failed reading files {file_list}: {e}")
+        return None
+
+
 def safe_close_file(fobj):
     """Safely close ``fobj`` file. If ``fobj`` can not be closed, no nothing.
 
@@ -170,6 +219,7 @@ def safe_close_file(fobj):
 
 def open_file_from_selection(
     sel_value,
+    file_list,
     resource_path,
     real_time_tag,
     extension=".h5",
@@ -185,6 +235,8 @@ def open_file_from_selection(
     ----------
     sel_value : string
         Either ```real_time_tag``` or name of the file to load.
+    file_list : list
+        list of the files to agglomerate.
     resource_path : string
         Resource path to find .h5 files.
     real_time_tag : string
@@ -217,7 +269,7 @@ def open_file_from_selection(
         return None, None
 
     if sel_value == real_time_tag:
-        with _get_latest_file(resource_path, extension=extension) as file:
+        with _get_latest_file(file_list) as file:
             fileproxy = hdf5Proxy(file)
         if time_parentkey is not None and time_childkey is not None:
             try:

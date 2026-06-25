@@ -4,6 +4,7 @@
     "EXAMPLE_RESOURCE_PATH": "example_data",
     "RESOURCE_PATH": "example_data2",
     "DEFAULT_EXTENSION": ".h5",
+    "MAX_READ_FILES": "15",
     "time_parentkey": "dl1/event/telescope/images/tel_001",
     "time_childkey": "trigger_time",
     "group_parentkeys": ["dl1/event/subarray/trigger", "dl1/event/telescope/parameters/tel_001"]
