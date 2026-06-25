@@ -108,12 +108,12 @@ class WaveFormsHighLowGain(DQMSummary):
         if self.counter_evt > 0:
             self.wf_average = self.wf / self.counter_evt  # get average
             # get average over pixels
-            self.wf_mean_over_pix = np.mean(self.wf_average, axis=0)
+            self.wf_mean_over_pix = np.nanmean(self.wf_average, axis=0)
 
         if self.counter_ped > 0:
             # get average pedestals
             self.wf_ped_average = self.wf_ped / self.counter_ped
-            self.wf_ped_mean_over_pix = np.mean(self.wf_ped_average, axis=0)
+            self.wf_ped_mean_over_pix = np.nanmean(self.wf_ped_average, axis=0)
 
         return None
 
