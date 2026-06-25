@@ -278,10 +278,13 @@ def main():
     plt.ylim((0, 2.7))
     secax = ax.secondary_xaxis("top", functions=(pe2photons, photons2pe))
     secax.set_xlabel("Illumination charge [photons]", labelpad=7)
-    plt.savefig(os.path.join(output_dir, "pix_tim_uncertainty.png"))
+
+    fig_name = "pix_tim_uncertainty"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
