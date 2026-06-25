@@ -434,9 +434,12 @@ def main():
         alpha=0.9,
     )
 
-    plt.savefig(os.path.join(output_dir, "linearity_test.png"))
+    fig_name = "linearity_test"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     # charge resolution
@@ -497,9 +500,13 @@ def main():
 
     plt.xlim(3e-2, 4e3)
     plt.legend(frameon=False)
-    plt.savefig(os.path.join(output_dir, "charge_resolution.png"))
+
+    fig_name = "charge_resolution"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
     plt.close("all")
 
