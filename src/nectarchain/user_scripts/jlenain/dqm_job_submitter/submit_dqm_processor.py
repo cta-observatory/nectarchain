@@ -210,27 +210,29 @@ for run in runlist:
         ]
     )
     sandboxlist = [f"{executable_wrapper}"]
+    inputdatalist = []
     for f in meta["Files"]:
         if f.endswith(".fits.fz") and f"NectarCAM.Run{run}" in f:
-            sandboxlist.append(f"LFN:{f}")
-    if sqlfilelist:
-        for s in sqlfilelist:
-            sandboxlist.append(f"LFN:{s}")
-    if len(sandboxlist) < 2:
+            inputdatalist.append(f"{f}")
+    for s in sqlfilelist:
+        inputdatalist.append(f"{s}")
+    if len(sandboxlist) < 1:
         logger.critical(
-            f"""Misformed sandboxlist, actual data .fits.fz files missing:
-{sandboxlist}
+            f"""Misformed inputdatalist, actual data .fits.fz files missing:
+{inpudatalist}
 
 Aborting...
 """
         )
         sys.exit(1)
     logger.info(
-        f"""Submitting job for run {run}, with the following InputSandbox:
+        f"""Submitting job for run {run}, with the following InputSandbox and InputData:
 {sandboxlist}
+{inputdatalist}
 """
     )
     j.setInputSandbox(sandboxlist)
+    j.setInputData(inputdatalist)
 
     if not args.dry_run:
         if args.local:
