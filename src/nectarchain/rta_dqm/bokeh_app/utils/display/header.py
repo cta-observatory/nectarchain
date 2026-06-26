@@ -162,7 +162,6 @@ def _on_header_select_change(
     """
 
     sel = new
-    print("IN")
 
     # close previously opened non-latest file (if any)
     # (for now consider only format handled i.e .h5 files)
@@ -225,7 +224,6 @@ def _on_header_select_change(
         logger.info(f"Reading mode (filename: {sel}): {time.strftime('%H:%M:%S')}")
         # open the selected file and update once (no periodic updates)'
         try:
-            print("TEST")
             stop_periodic_updates(widgets)
             fobj, fpath = open_file_from_selection(
                 sel,

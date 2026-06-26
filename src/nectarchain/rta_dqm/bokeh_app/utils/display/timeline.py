@@ -11,7 +11,7 @@ import numpy as np
 from bokeh.layouts import column, gridplot
 
 # Bokeh imports
-from bokeh.models import ColumnDataSource, Div, HoverTool, Range1d, TabPanel
+from bokeh.models import ColumnDataSource, Div, HoverTool, TabPanel
 from bokeh.palettes import Inferno
 
 # ctapipe imports
@@ -81,9 +81,7 @@ def make_2d_timeline(
         labels = {"func_key": "Mean"}
     data = np.asarray(file[parentkey][childkey])
     x_axis = np.asarray(file[time_parentkey][time_childkey])
-    data = data[x_axis.argsort()]
-    x_axis = x_axis[x_axis.argsort()]
-    x_axis -= x_axis[-1]
+    # x_axis -= x_axis[-1]
     if data.ndim != 2:
         data = data.reshape((data.shape[0], 1))
     if ylabel is None:
@@ -92,7 +90,7 @@ def make_2d_timeline(
     display = BokehPlot(
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
-        x_range=(x_axis.min(), x_axis.max()),
+        x_range=(x_axis[0] - x_axis[-1], 0),
         toolbar_location="above",
     )
     fig = display.figure
@@ -102,10 +100,12 @@ def make_2d_timeline(
 
     computed_data = ColumnDataSource(
         data={
-            "time": x_axis,
+            "time": x_axis - x_axis[-1],
         }
         | {labels[key]: funcs[key](data, axis=-1) for key in labels.keys()}
     )
+    cached_timelines = computed_data.data
+    cached_timelines["time"] = x_axis
 
     colors = Inferno[len(funcs) + 2][1:-1]
     for index, key in enumerate(funcs):
@@ -136,6 +136,7 @@ def make_2d_timeline(
         "childkey": childkey,
         "time_childkey": time_childkey,
         "time_parentkey": time_parentkey,
+        "cached_timelines": cached_timelines,
         "funcs": funcs,
         "labels": labels,
         "factory": "make_2d_timeline",
@@ -294,9 +295,7 @@ def make_1d_timeline(
         label = childkey
     data = np.asarray(file[parentkey][childkey])
     x_axis = np.asarray(file[time_parentkey][time_childkey])
-    data = data[x_axis.argsort()]
-    x_axis = x_axis[x_axis.argsort()]
-    x_axis -= x_axis[-1]
+    # x_axis -= x_axis[-1]
 
     if data.ndim != 1:
         data = data.reshape((data.shape[0]))
@@ -305,7 +304,7 @@ def make_1d_timeline(
     display = BokehPlot(
         tools=("xpan", "box_zoom", "wheel_zoom", "save", "reset"),
         active_drag="xpan",
-        x_range=(x_axis.min(), x_axis.max()),
+        x_range=(x_axis[0] - x_axis[-1], 0),
         toolbar_location="above",
     )
     fig = display.figure
@@ -313,7 +312,10 @@ def make_1d_timeline(
     fig.xaxis.axis_label = "Time [unit time]"
     fig.yaxis.axis_label = ylabel.capitalize()
 
-    column_data = ColumnDataSource(data={"time": x_axis, "y": data})
+    column_data = ColumnDataSource(data={"time": x_axis - x_axis[-1], "y": data})
+
+    cached_timelines = column_data.data
+    cached_timelines["time"] = x_axis
 
     color = Inferno[3][1]
     if step:
@@ -354,6 +356,7 @@ def make_1d_timeline(
         "childkey": childkey,
         "time_childkey": time_childkey,
         "time_parentkey": time_parentkey,
+        "cached_timelines": cached_timelines,
         "labels": label,
         "factory": "make_1d_timeline",
     }
@@ -564,7 +567,13 @@ def make_tab_timelines(
 
 
 def update_timelines(
-    disp, parentkey, childkey, time_parentkey, time_childkey, current_file
+    disp,
+    cached_timeline,
+    parentkey,
+    childkey,
+    time_parentkey,
+    time_childkey,
+    current_file,
 ):
     """Recompute timeline series and
     update any ColumnDataSource found in the figure.
@@ -590,44 +599,53 @@ def update_timelines(
     out: None
 
     """
-
     try:
-        arr = np.asarray(current_file[parentkey][childkey])
-        x_axis = np.asarray(current_file[time_parentkey][time_childkey])
-        arr = arr[x_axis.argsort()]
-        x_axis = x_axis[x_axis.argsort()]
-        x_axis -= x_axis[-1]
+        arr = np.asarray(current_file[parentkey][childkey])[-1]
+        x_axis = np.asarray(current_file[time_parentkey][time_childkey])[-1]
     except Exception as e:
         logger.warning(f"_recompute_timeline_display: read failed: {e}")
         return
 
     # compute standard series if they are typical
-    try:
-        mean = np.nanmean(arr, axis=-1)
-        median = np.nanmedian(arr, axis=-1)
-        mx = np.nanmax(arr, axis=-1)
-        mn = np.nanmin(arr, axis=-1)
+    # try:
+    x_axis = np.concatenate((cached_timeline["time"], [x_axis]))
+    idxs = np.argsort(x_axis)
+    sorted_x_axis = x_axis[idxs]
+    sorted_x_axis -= sorted_x_axis[-1]
+    if np.isin(["Mean", "Median", "Min", "Max"], list(cached_timeline.keys())).all():
+        mean = np.concatenate((cached_timeline["Mean"], [np.nanmean(arr)]))
+        median = np.concatenate((cached_timeline["Median"], [np.nanmedian(arr)]))
+        mn = np.concatenate((cached_timeline["Min"], [np.nanmin(arr)]))
+        mx = np.concatenate((cached_timeline["Max"], [np.nanmax(arr)]))
+    elif "y" in cached_timeline.keys():
+        y = np.concatenate((cached_timeline["y"], [arr]))
+    """
     except Exception as e:
         logger.warning(f"Could not compute any statistics: {e}")
         mean = np.array([])
         median = np.array([])
         mx = np.array([])
         mn = np.array([])
+        y = np.array([])
+    """
 
     # update any CDS that contains matching keys
-    disp.figure.x_range = Range1d(x_axis.min(), x_axis.max())
+    disp.figure.x_range.start = sorted_x_axis.min()
+    disp.figure.x_range.end = sorted_x_axis.max()
     for r in getattr(disp.figure, "renderers", []):
         src = getattr(r, "data_source", None)
         if not isinstance(src, ColumnDataSource):
             continue
         # try to update common column names
         data_keys = src.data.keys()
-        update_dict = {"time": x_axis}
+        update_dict = {"time": sorted_x_axis}
         if np.all(np.isin(list(data_keys), ["time", "Min", "Median", "Mean", "Max"])):
             update_dict |= {"Min": mn, "Mean": mean, "Median": median, "Max": mx}
         elif np.all(np.isin(list(data_keys), ["time", "y"])):
-            update_dict |= {"y": arr}
+            update_dict |= {"y": y}
         else:
             logger.warning("No right data format found")
             return
         src.data = update_dict
+        update_dict["time"] = x_axis
+        disp._meta["cached_timelines"] = update_dict
