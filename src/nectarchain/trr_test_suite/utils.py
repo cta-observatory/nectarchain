@@ -252,10 +252,8 @@ deadtime_labels = {
 
 def get_bad_pixels_list():
     # List of modules and pixels to be rejected
-    MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
-    JSON_PATH = os.path.join(MODULE_DIR, "resources", "bad_pix_module.json")
     try:
-        df = pd.read_json(JSON_PATH)
+        df = pd.read_json("resources/bad_pix_module.json")
         modules_list = np.array(df.bad_module[0])
         pix_list = np.array(df.bad_pixel[0])
 
