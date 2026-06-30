@@ -1,9 +1,11 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,8 +19,25 @@ from nectarchain.trr_test_suite.utils import (
     err_sum,
     linear_fit_function,
     plot_parameters,
-    trasmission_390ns,
+    transmission_390ns,
 )
+from nectarchain.utils.constants import ALLOWED_CAMERAS
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
+
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
+    )
+except FileNotFoundError as e:
+    raise e
 
 
 def get_args():
@@ -53,13 +72,21 @@ def get_args():
         default=[i for i in range(3404, 3424)] + [i for i in range(3435, 3444)],
     )
     parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
+    parser.add_argument(
         "-t",
         "--trans",
         type=float,
         nargs="+",
         help="List of corresponding transmission for each run",
         required=False,
-        default=trasmission_390ns,
+        default=transmission_390ns,
     )
     parser.add_argument(
         "-e",
@@ -114,16 +141,21 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    camera = args.camera
+
     runlist = args.runlist
     transmission = args.trans  # corresponding transmission for above data
 
     nevents = args.evts
 
-    output_dir = os.path.abspath(args.output)
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    log.debug(f"Output directory: {output_dir}")
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
-
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output file: {temp_output}")  # Debug print
+    log.debug(f"Temporary output directory: {temp_output}")
 
     sys.argv = sys.argv[:1]
 
@@ -135,10 +167,11 @@ def main():
 
     index = 0
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info(f"PROCESSING RUN {run}")
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=12000,
             events_per_slice=5000,
             log_level=20,
@@ -151,6 +184,7 @@ def main():
         tool = LinearityTestTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             events_per_slice=999,
             max_events=nevents,
             log_level=20,
@@ -167,19 +201,15 @@ def main():
         charge[index], std[index], std_err[index], npixels = output
         index += 1
 
-    # print("FINAL",charge)
-
     # we assume that they overlap at 0.01 so they should have the same value
     # normalise high gain and low gain using charge value at 0.01
     transmission = np.array(transmission)
     norm_factor_hg = charge[
         np.argwhere((transmission < 1.1e-2) & (transmission > 9e-3)), 0
     ][0]
-    # print(norm_factor_hg)
     norm_factor_lg = charge[
         np.argwhere((transmission < 1.1e-2) & (transmission > 9e-3)), 1
     ][0]
-    # print(norm_factor_lg)
     charge_norm_hg = charge[:, 0] / norm_factor_hg
     charge_norm_lg = charge[:, 1] / norm_factor_lg
     std_norm_hg = std[:, 0] / norm_factor_hg
@@ -226,7 +256,6 @@ def main():
         )  # sort by true charge
 
         ch_sorted = np.array(sorted(yx))
-        # print(ch_sorted)
 
         # linearity
         model = Model(linear_fit_function)
@@ -256,8 +285,6 @@ def main():
                 ][1]
             ],
         )
-
-        # print(ch_fit.fit_report())
 
         a = ch_fit.params["a"].value
         b = ch_fit.params["b"].value
@@ -407,9 +434,12 @@ def main():
         alpha=0.9,
     )
 
-    plt.savefig(os.path.join(output_dir, "linearity_test.png"))
+    fig_name = "linearity_test"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     # charge resolution
@@ -470,9 +500,13 @@ def main():
 
     plt.xlim(3e-2, 4e3)
     plt.legend(frameon=False)
-    plt.savefig(os.path.join(output_dir, "charge_resolution.png"))
+
+    fig_name = "charge_resolution"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
     plt.close("all")
 

@@ -1,9 +1,11 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
+import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +13,23 @@ from ctapipe_io_nectarcam import N_PIXELS, N_SAMPLES
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.utils import photons2ADC
+from nectarchain.utils.constants import ALLOWED_CAMERAS
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
+
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
+    )
+except FileNotFoundError as e:
+    raise e
 
 
 def get_args():
@@ -42,6 +61,14 @@ def get_args():
         help="List of runs (numbers separated by space)",
         required=False,
         default=[3647],
+    )
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
     )
     parser.add_argument(
         "-e",
@@ -81,25 +108,29 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    camera = args.camera
+
     runlist = args.runlist
     nevents = args.evts
 
-    # output_dir = args.output
-    # temp_output_file = args.temp_output
-    output_dir = os.path.abspath(args.output)
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    log.debug(f"Output directory: {output_dir}")
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
-
-    print(f"Output directory: {output_dir}")  # Debug print
-    print(f"Temporary output dir: {temp_output}")  # Debug print
+    log.debug(f"Temporary output directory: {temp_output}")
 
     sys.argv = sys.argv[:1]
     output = []
 
     for run in runlist:
-        print("PROCESSING RUN {}".format(run))
+        log.info(f"PROCESSING RUN {run}")
         tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=999,
             log_level=20,
@@ -125,9 +156,12 @@ def main():
     ax.set_xlabel("Pixel")
     ax.set_ylabel("Mean baseline (ADC)")
 
-    plt.savefig(os.path.join(output_dir, "pedestal_baseline.png"))
+    fig_name = "pedestal_baseline"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     # The next block of code produces a plot to verify requirement B-TEL-1370
@@ -192,9 +226,12 @@ def main():
     ax.set_xlabel("Pixel")
     ax.set_ylabel("(ADC)")
 
-    plt.savefig(os.path.join(output_dir, "pedestal_uncertainty.png"))
+    fig_name = "pedestal_uncertainty"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")

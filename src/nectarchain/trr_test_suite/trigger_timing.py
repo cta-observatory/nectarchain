@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,10 +14,23 @@ from ctapipe.core import run_tool
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import TriggerTimingTestTool
 from nectarchain.trr_test_suite.utils import pe2photons
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
+
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
+    )
+except FileNotFoundError as e:
+    raise e
 
 
 def get_args():
@@ -46,6 +60,14 @@ def get_args():
         help="List of runs (numbers separated by space)",
         required=False,
         default=[i for i in range(3259, 3263)],
+    )
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
     )
     parser.add_argument(
         "-e",
@@ -100,16 +122,22 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    camera = args.camera
+
     runlist = args.runlist
 
     nevents = args.evts
 
-    output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
-
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
-    log.debug(f"Temporary output file: {temp_output}")
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    log.debug(f"Temporary output directory: {temp_output}")
 
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
 
     # ucts_timestamps = np.zeros((len(runlist),nevents))
@@ -132,6 +160,7 @@ def main():
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=12000,
             events_per_slice=5000,
             log_level=20,
@@ -146,6 +175,7 @@ def main():
         tool = TriggerTimingTestTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
@@ -169,7 +199,7 @@ def main():
     rms = np.array(rms)
     err = np.array(err)
     charge = np.array(charge)
-    print(rms, err, charge)
+    log.debug(f"{rms}, {err}, {charge}")
 
     fig, ax = plt.subplots()
 
@@ -220,10 +250,12 @@ def main():
         pe2photons(ax.get_xlim()[0]), pe2photons(ax.get_xlim()[1])
     )  # Match limits
 
-    plt.savefig(os.path.join(output_dir, "trigger_timing.png"))
+    fig_name = "trigger_timing"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
 

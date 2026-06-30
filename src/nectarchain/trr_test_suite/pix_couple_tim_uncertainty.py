@@ -3,6 +3,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,10 +12,23 @@ from ctapipe.utils import get_dataset_path
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
-logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
 log = logging.getLogger(__name__)
-log.handlers = logging.getLogger("__main__").handlers
+
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
+    )
+except FileNotFoundError as e:
+    raise e
 
 TRANSIT_TIME_CORRECTIONS = get_dataset_path(
     filename=(
@@ -54,6 +68,14 @@ def get_args():
             default 3292",
         required=False,
         default=[3292],
+    )
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
     )
     parser.add_argument(
         "-e",
@@ -107,15 +129,22 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    camera = args.camera
+
     runlist = args.runlist
     nevents = args.evts
     tt_path = TRANSIT_TIME_CORRECTIONS
-    output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
-    log.debug(f"Temporary output file: {temp_output}")
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    log.debug(f"Temporary output directory: {temp_output}")
 
+    # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
     tom = []
 
@@ -133,6 +162,7 @@ def main():
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=12000,
             events_per_slice=5000,
             log_level=20,
@@ -147,6 +177,7 @@ def main():
         tool = ToMPairsTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             events_per_slice=501,
             max_events=nevents,
             log_level=20,
@@ -206,12 +237,12 @@ def main():
     plt.xlabel(r"RMS of $\Delta t_{\mathrm{TOM}}$ for pairs of pixels [ns]")
     plt.ylabel("Normalized entries")
 
-    plt.gcf()
-
-    plt.savefig(os.path.join(output_dir, "pix_couple_tim_uncertainty.png"))
+    fig_name = "pix_couple_tim_uncertainty"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
