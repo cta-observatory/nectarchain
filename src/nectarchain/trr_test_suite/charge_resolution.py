@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +18,7 @@ from nectarchain.makers.calibration import (
 )
 from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
 from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
+from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -70,7 +72,14 @@ number of pixels used (default 1000).
         required=False,
         default="resources/charge_resolution_run_list.json",
     )
-
+    parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
     parser.add_argument(
         "-e",
         "--evts",
@@ -128,7 +137,13 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
-    output_dir = os.path.abspath(args.output)
+    camera = args.camera
+
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
     log.debug(f"Temporary output directory: {temp_output}")
@@ -162,8 +177,6 @@ def main():
     max_events = 5000
     method = "LocalPeakWindowSum"
 
-    pkl_index = 0
-
     for iNSB in range(len(NSB)):
         runlist = runs_list[iNSB]
         ff_volt = ff_v_list[iNSB]
@@ -179,6 +192,7 @@ def main():
             pedestal_tool = PedestalNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run,
+                camera=camera,
                 max_events=1000,
                 events_per_slice=max_events,
                 log_level=20,
@@ -200,6 +214,7 @@ def main():
                 gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
                     progress_bar=True,
                     run_number=gain_run,
+                    camera=camera,
                     max_events=max_events,
                     method=method,
                     output_path=gain_file_name,
@@ -214,6 +229,7 @@ def main():
             tool = ChargeResolutionTestTool(
                 progress_bar=True,
                 run_number=run,
+                camera=camera,
                 max_events=nevents,
                 method=method,
                 extractor_kwargs={
@@ -266,20 +282,16 @@ def main():
         # ax.grid()
         ax.legend()
         ax.set_ylim(-1, 600)
-        plt.savefig(
-            os.path.join(
-                output_dir,
-                "Charge_FF_V_final_cuts_{}_{}.png".format(
-                    runlist[0], runlist[len(runlist) - 1]
-                ),
-            )
-        )
+
+        fig_name = f"Charge_FF_V_final_cuts_{runlist[0]}_{runlist[len(runlist)-1]}.png"
+        plot_path = os.path.join(output_dir, f"{fig_name}.png")
+        plt.savefig(plot_path)
+
         if temp_output:
             with open(
-                os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb"
+                os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb"
             ) as f:
                 pickle.dump(fig, f)
-                pkl_index += 1
 
         ratio_lghg_nsb.append(ratio_hglg)
 
@@ -363,11 +375,14 @@ def main():
     ax.set_xlabel("Charge (p.e.)")
     ax.set_ylabel("HG/LG ratio")
     ax.legend()
-    plt.savefig(os.path.join(output_dir, f"HGLG_Ratio_pe_T{temperature}.png"))
+
+    fig_name = f"HGLG_Ratio_pe_T{temperature}"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
-            pkl_index += 1
 
     charge_plot = np.linspace(20, 1000)
     stat_limit = 1 / np.sqrt(charge_plot)  # statistical limit
@@ -410,11 +425,14 @@ def main():
     ax.set_title("T={} degrees".format(temperature))
     ax.set_xlim(20, 1000)
     ax.legend()
-    plt.savefig(os.path.join(output_dir, f"charge_resolution_T{temperature}.png"))
+
+    fig_name = f"charge_resolution_T{temperature}"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
+    plt.savefig(plot_path)
+
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot{pkl_index}.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
-            pkl_index += 1
 
     plt.close("all")
 

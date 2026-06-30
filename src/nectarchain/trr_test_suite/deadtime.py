@@ -31,11 +31,14 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-plt.style.use(
-    os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+try:
+    plt.style.use(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+        )
     )
-)
+except FileNotFoundError as e:
+    raise e
 
 
 def get_labels():
@@ -175,13 +178,15 @@ def plot_deadtime_vs_collected_trigger_rate(
     plt.xlim(0.0, 15)
     plt.yscale("log")
     plt.ylim(1e-2, 1e2)
-    plot_path = os.path.join(output_dir, "deadtime_pc_vs_trigger_rate.png")
+
+    fig_name = "deadtime_pc_vs_trigger_rate"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     log.info(f"Plot saved at: {plot_path}")
 
     if temp_output:
-        with open(os.path.join(temp_output, "plot1.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
 
@@ -298,13 +303,14 @@ def plot_fitted_rate_vs_collected_trigger_rate(
 
     ax1.legend(fontsize=12)
 
-    plot_path = os.path.join(output_dir, "fitted_vs_collected_trigger_rates.png")
+    fig_name = "fitted_vs_collected_trigger_rates"
+    plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     log.info(f"Plot saved at: {plot_path}")
 
     if temp_output:
-        with open(os.path.join(temp_output, "plot2.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
 
@@ -448,7 +454,11 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
 
 
 def run_deadtime_test_tool_process(
-    runlist: list, nevents: int, ids: np.ndarray, test_type: str = "trr"
+    runlist: list,
+    camera: str,
+    nevents: int,
+    ids: np.ndarray,
+    test_type: str = "trr",
 ):
     """Run `DeadtimeTestTool` from `tools_components.py` over the provided run list
 
@@ -456,6 +466,8 @@ def run_deadtime_test_tool_process(
     ----------
     runlist : list
         list containing the NectarCAM run numbers
+    camera : str
+        NectarCAM camera for which the test is performed
     nevents : int
         max number of events
     ids : np.ndarray
@@ -502,6 +514,7 @@ def run_deadtime_test_tool_process(
         tool = DeadtimeTestTool(
             progress_bar=True,
             run_number=run,
+            camera=camera,
             max_events=nevents,
             events_per_slice=10000,
             log_level=20,
@@ -736,7 +749,7 @@ def main():
         deadtime_us,
         deadtime_pc,
     ) = run_deadtime_test_tool_process(
-        runlist=runlist, nevents=nevents, ids=ids, test_type=test_type
+        runlist=runlist, camera=camera, nevents=nevents, ids=ids, test_type=test_type
     )
 
     results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]

@@ -133,7 +133,7 @@ filters = np.array(
 
 # the next ones are in the order of the test linearity runs by federica
 # maybe more practical because the runs will be in that order again
-trasmission_390ns = np.array(
+transmission_390ns = np.array(
     [
         0.002016919,
         0.045238588,
