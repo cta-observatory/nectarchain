@@ -32,9 +32,6 @@ class CameraMonitoring(DQMSummary):
         self.run_start = None
         self.run_end = None
         self.DrawerTimes = None
-        self.DrawerTemp11 = None
-        self.DrawerTemp21 = None
-        self.DrawerNum1 = None
         self.DrawerTimes_new = None
         self.DrawerTemp12 = None
         self.DrawerTemp22 = None
@@ -43,6 +40,9 @@ class CameraMonitoring(DQMSummary):
         self.DrawerTemp2_mean = []
         self.DrawerTemp1_std = []
         self.DrawerTemp2_std = []
+        self.DrawerTemp_mean = []
+        self.DrawerTemp_std = []
+        self.DrawerTemp_trend = []
         self.CameraMonitoring_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
@@ -75,13 +75,7 @@ class CameraMonitoring(DQMSummary):
         con = sqlite3.connect(SqlFileName)
         cursor = con.cursor()
         try:
-            # print(cursor.fetchall())
-            # cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
-            # TempData = cursor.execute(
-            #     """SELECT * FROM monitoring_drawer_temperatures"""
-            # )
-            # print(TempData.description)
             self.DrawerTemp = cursor.fetchall()
             cursor.close()
         except sqlite3.Error as err:
@@ -102,76 +96,64 @@ class CameraMonitoring(DQMSummary):
             self.event_id = np.array(self.event_id)
             self.event_times = np.array(self.event_times)
 
-            self.run_start = (
-                self.event_times[self.event_id == np.min(self.event_id)] - 100
-            )
+            min_evt_idx = np.argmin(self.event_id)
+            self.run_start = self.event_times[min_evt_idx] - 100
             self.run_end = np.max(self.event_times) + 100
 
             self.DrawerTemp = np.array(self.DrawerTemp)
-            self.DrawerTimes = np.array(self.DrawerTemp[:, 3])
+            self.DrawerTimes = astropytime.Time(
+                np.array(self.DrawerTemp[:, 3], dtype=str), format="iso"
+            ).unix
 
-            for i in range(len(self.DrawerTimes)):
-                self.DrawerTimes[i] = astropytime.Time(
-                    self.DrawerTimes[i], format="iso"
-                ).unix
+            run_mask = (self.DrawerTimes > self.run_start) & (
+                self.DrawerTimes < self.run_end
+            )
+            self.DrawerTimes_run = self.DrawerTimes[run_mask]
+            self.DrawerTemp12 = self.DrawerTemp[:, 4][run_mask]
+            self.DrawerTemp22 = self.DrawerTemp[:, 5][run_mask]
+            self.DrawerNum2 = self.DrawerTemp[:, 2][run_mask]
 
-            self.DrawerTemp11 = self.DrawerTemp[:, 4][self.DrawerTimes > self.run_start]
-            self.DrawerTemp21 = self.DrawerTemp[:, 5][self.DrawerTimes > self.run_start]
-            self.DrawerNum1 = self.DrawerTemp[:, 2][self.DrawerTimes > self.run_start]
+            TotalDrawers = int(np.max(self.DrawerNum2))
+            n_drawers = TotalDrawers + 1
+            PIXELS_PER_DRAWER = 7  # NectarCAM has 7 pixels per drawer
 
-            self.DrawerTimes_new = self.DrawerTimes[self.DrawerTimes > self.run_start]
+            drawer_temp1_mean = np.zeros(n_drawers)
+            drawer_temp2_mean = np.zeros(n_drawers)
+            drawer_temp1_std = np.zeros(n_drawers)
+            drawer_temp2_std = np.zeros(n_drawers)
 
-            self.DrawerTemp12 = self.DrawerTemp11[self.DrawerTimes_new < self.run_end]
-            self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
-            self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]
+            for i in range(n_drawers):
+                mask = self.DrawerNum2 == i
+                temp1 = self.DrawerTemp12[mask]
+                temp2 = self.DrawerTemp22[mask]
 
-            self.DrawerTimes_run = self.DrawerTimes_new[
-                self.DrawerTimes_new < self.run_end
-            ]
+                if len(temp1) > 0:
+                    drawer_temp1_mean[i] = np.mean(temp1)
+                    drawer_temp1_std[i] = np.std(temp1)
+                    drawer_temp2_mean[i] = np.mean(temp2)
+                    drawer_temp2_std[i] = np.std(temp2)
+                else:
+                    drawer_temp1_mean[i] = np.nan
+                    drawer_temp1_std[i] = np.nan
+                    drawer_temp2_mean[i] = np.nan
+                    drawer_temp2_std[i] = np.nan
 
-            TotalDrawers = np.max(self.DrawerNum2)
-
-            for i in range(TotalDrawers + 1):
-                for j in range(7):
-                    self.DrawerTemp1_mean.append(
-                        np.mean(self.DrawerTemp12[self.DrawerNum2 == i])
-                    )
-                    self.DrawerTemp1_std.append(
-                        np.std(self.DrawerTemp12[self.DrawerNum2 == i])
-                    )
-                    self.DrawerTemp2_mean.append(
-                        np.mean(self.DrawerTemp22[self.DrawerNum2 == i])
-                    )
-                    self.DrawerTemp2_std.append(
-                        np.std(self.DrawerTemp22[self.DrawerNum2 == i])
-                    )
+            self.DrawerTemp1_mean = np.repeat(drawer_temp1_mean, PIXELS_PER_DRAWER)
+            self.DrawerTemp2_mean = np.repeat(drawer_temp2_mean, PIXELS_PER_DRAWER)
+            self.DrawerTemp1_std = np.repeat(drawer_temp1_std, PIXELS_PER_DRAWER)
+            self.DrawerTemp2_std = np.repeat(drawer_temp2_std, PIXELS_PER_DRAWER)
 
             self.DrawerTemp1_trend = np.array(
-                [
-                    self.DrawerTemp12[self.DrawerNum2 == ii]
-                    for ii in range(TotalDrawers + 1)
-                ]
+                [self.DrawerTemp12[self.DrawerNum2 == ii] for ii in range(n_drawers)]
             )
             self.DrawerTemp2_trend = np.array(
-                [
-                    self.DrawerTemp22[self.DrawerNum2 == ii]
-                    for ii in range(TotalDrawers + 1)
-                ]
+                [self.DrawerTemp22[self.DrawerNum2 == ii] for ii in range(n_drawers)]
             )
-            self.DrawerTemp1_mean = np.array(self.DrawerTemp1_mean)
-            self.DrawerTemp2_mean = np.array(self.DrawerTemp2_mean)
-            self.DrawerTemp1_std = np.array(self.DrawerTemp1_std)
-            self.DrawerTemp2_std = np.array(self.DrawerTemp2_std)
 
-            # this 2D array has shape (n_drawers, n_time_points)
-            self.DrawerTemp_trend = np.array(
-                [
-                    (self.DrawerTemp1_trend[ii] + self.DrawerTemp2_trend[ii]) / 2.0
-                    for ii in range(TotalDrawers + 1)
-                ]
-            )
+            self.DrawerTemp_trend = (
+                self.DrawerTemp1_trend + self.DrawerTemp2_trend
+            ) / 2.0
             self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
-            # std of drawer temperatures as mean of std of temp FEB1 and temp FEB2
             self.DrawerTemp_std = (self.DrawerTemp1_std + self.DrawerTemp2_std) / 2
 
         except Exception as err:
