@@ -25,6 +25,7 @@ dependencies:
   - pyqt
   - pyqtgraph
   - protozfits
+  - watchdog
   - pip:
     - zeo
     - zodb
