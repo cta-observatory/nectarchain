@@ -218,7 +218,6 @@ class TestRunner(QWidget):
                         "default": arg.default,
                         "help": arg.help,  # Store the help text
                     }
-            print(f"DEBUG JPL: got params {params} for module {module}")
             return params
         else:
             raise RuntimeError("No get_args function found in module.")
@@ -334,10 +333,7 @@ class TestRunner(QWidget):
             #  one test to the other, to be fixed !
             self.test_selector.setCurrentIndex(index)
             self.update_parameters()
-            print(
-                "DEBUG JPL: Currently processing test"
-                f" {self.test_selector.currentText()}"
-            )
+            print("Currently processing test" f" {self.test_selector.currentText()}")
             self.run_test()
 
     def run_test(self):
