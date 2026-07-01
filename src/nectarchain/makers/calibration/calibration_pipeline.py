@@ -789,9 +789,9 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self._ctapipe_containers["calibration"].n_pe[HIGH_GAIN, mask[HIGH_GAIN]] = (
             1 / GAIN_DEFAULT
         )
-        self._ctapipe_containers["calibration"].n_pe[
-            LOW_GAIN, mask[LOW_GAIN]
-        ] *= HILO_DEFAULT
+        self._ctapipe_containers["calibration"].n_pe[LOW_GAIN, mask[LOW_GAIN]] = (
+            HILO_DEFAULT / GAIN_DEFAULT
+        )
 
         # Set default flatfield values
         self._ctapipe_containers["calibration"].dc_to_pe[mask] = (
