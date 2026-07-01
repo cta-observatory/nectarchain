@@ -66,7 +66,7 @@ SPE_HHV_result_path = Path(
 )
 
 # Output format of cat-A calibration file (.h5, .fits, .fits.gz)
-output_format = ".h5"
+output_format = ".fits"
 
 # Option to save the individual outputs of each tool
 save_tmp = True
@@ -110,6 +110,7 @@ config[FF_tool_name].window_shift = 4
 SPE_HHV_tool_default_name = FlatFieldSPEHHVNectarCAMCalibrationTool.__name__
 
 
+# NOTE: this is for NectarCAMQM
 def set_SPE_HHV_tool_default_config(
     config, SPE_HHV_tool_default_name=SPE_HHV_tool_default_name
 ):
