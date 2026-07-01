@@ -10,9 +10,7 @@ import numpy as np
 import tables
 from ctapipe_io_nectarcam.constants import N_PIXELS
 
-from nectarchain.makers.calibration import (
-    PedestalNectarCAMCalibrationTool,
-)
+from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
@@ -177,7 +175,7 @@ def get_args():
         help="Output directory, \
             If none, the plots and containers will be saved in your current directory",
         required=False,
-        default="./",
+        default=f"{os.environ.get('NECTARCAMDATA', './')}",
     )
     parser.add_argument(
         "--temp_output",
