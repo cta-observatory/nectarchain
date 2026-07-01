@@ -152,7 +152,7 @@ def get_args():
     )
     parser.add_argument(
         "-me",
-        "--max_evnts",
+        "--max-events",
         help="maximum events",
         type=int,
         default=None,
@@ -198,7 +198,7 @@ def main():
     args = parser.parse_args()
     log.setLevel(args.log.upper())
     run_number = args.runlist
-    nevents = args.max_evnts
+    nevents = args.max_events
     camera = args.camera
     events_per_slice = args.evnts_per_slice
     output_dir = os.path.join(
