@@ -1,0 +1,12 @@
+{
+    "REAL_TIME_TAG": "Real time",
+    "DEFAULT_UPDATE_MS": 3000,
+    "EXAMPLE_RESOURCE_PATH": "example_data",
+    "EXAMPLE_DATA_FILES": ["moving_white_target_02_06_26_1.h5", "moving_white_target_02_06_26_2.h5"],
+    "RESOURCE_PATH": "example_data2",
+    "DEFAULT_EXTENSION": ".h5",
+    "MAX_READ_FILES": 15,
+    "time_parentkey": "dl1/event/telescope/images/tel_001",
+    "time_childkey": "trigger_time",
+    "group_parentkeys": ["dl1/event/subarray/trigger", "dl1/event/telescope/parameters/tel_001"]
+}

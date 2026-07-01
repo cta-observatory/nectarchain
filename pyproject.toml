@@ -36,6 +36,7 @@ dependencies = [
     "pyqt5",
     "pyqtgraph",
     "tomli; python_version < '3.11'",
+    "watchdog",
 ]
 
 # needed for setuptools_scm, we don't define a static version
