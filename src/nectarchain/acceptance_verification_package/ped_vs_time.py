@@ -31,18 +31,17 @@ plt.style.use(
 def run_ped_tool(
     run_number: list,
     camera: str,
-    max_events: int,
     events_per_slice: int,
-    output_dir,
+    output_dir: str,
+    log=logging.INFO,
 ):
     outfile = f"{output_dir}Pedestal_run_{run_number}.h5"
     ped_tool = PedestalNectarCAMCalibrationTool(
         progress_bar=True,
         run_number=run_number,
         camera=camera,
-        max_events=max_events,
         events_per_slice=events_per_slice,
-        log_level=20,
+        log_level=log,
         output_path=outfile,
         overwrite=True,
         filter_method="ChargeDistributionFilter",
@@ -151,15 +150,7 @@ def get_args():
         type=str,
     )
     parser.add_argument(
-        "-me",
-        "--max-events",
-        help="maximum events",
-        type=int,
-        default=None,
-    )
-    parser.add_argument(
-        "-eps",
-        "--evnts_per_slice",
+        "--events_per_slice",
         default=5000,
         help="frequency of events in the run. Please put the pedestal frequency first.\
             Go through the log is unsure",
@@ -198,9 +189,8 @@ def main():
     args = parser.parse_args()
     log.setLevel(args.log.upper())
     run_number = args.runlist
-    nevents = args.max_events
     camera = args.camera
-    events_per_slice = args.evnts_per_slice
+    events_per_slice = args.events_per_slice
     output_dir = os.path.join(
         os.path.abspath(args.output),
         f"trr_camera_{camera}/{Path(__file__).stem}",
@@ -227,9 +217,9 @@ def main():
     ) = run_ped_tool(
         run_number=run_number,
         camera=camera,
-        max_events=nevents,
         events_per_slice=events_per_slice,
         output_dir=output_dir,
+        log=args.log.upper(),
     )
     tmean_date = (tmean - tmin[0]) * 1e-9
     tmin_date = (tmin - tmin[0]) * 1e-9
