@@ -36,6 +36,7 @@ labels_path = os.path.join(base_dir, "data", "labels.json")
 
 
 NOTINCAMERADISPLAY = [
+    "CAMERA-PING-PONG-.*",
     "TRIGGER-.*",
     "PED-INTEGRATION-.*",
     "START-TIMES",
@@ -178,8 +179,41 @@ def get_run_times(source):
     return run_start_time_dt, first_event_time_dt, last_event_time_dt
 
 
+def extract_waveforms_from_source(source):
+    """Extract waveforms from the provided run data
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata`
+
+    Returns
+    -------
+    dict
+        Dictionaries containing waveforms extracted from the run data
+    """
+
+    average_waveforms = {}
+    all_waveforms = {}
+    for parentkey in source.keys():
+        if re.search(r"WF.*AVERAGE", parentkey):
+            average_waveforms[parentkey] = {}
+            for childkey in source[parentkey].keys():
+                average_waveforms[parentkey][childkey] = source[parentkey][childkey]
+        if re.match(r"WF-(?!.*AVERAGE).*", parentkey):
+            all_waveforms[parentkey] = {}
+            for childkey in source[parentkey].keys():
+                all_waveforms[parentkey][childkey] = source[parentkey][childkey]
+
+    logger.info(
+        "Successfully extracted average, and pixel-wise, waveforms from run data"
+    )
+
+    return average_waveforms, all_waveforms
+
+
 def make_waveforms(source, runid=None):
-    """Make waveform plots
+    """Make waveform plots with both average and individual pixel waveforms
 
     Parameters
     ----------
@@ -200,45 +234,135 @@ def make_waveforms(source, runid=None):
         y_axis_labels = json.load(file)["y_axis_labels_waveforms"]
 
     waveforms = collections.defaultdict(dict)
-    for parentkey in source.keys():
-        if re.match("(?:WF-.*)", parentkey):
-            for childkey in source[parentkey].keys():
-                logger.info(
-                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
-                )
-                waveforms[parentkey][childkey] = figure(title=childkey)
-                samples = np.arange(len(source[parentkey][childkey]))
-                waveform = source[parentkey][childkey]
-                waveforms[parentkey][childkey] = figure(
-                    title=childkey,
-                    x_range=(np.min(samples) - 5, np.max(samples) + 5),
-                    y_range=(
-                        np.min(waveform) - np.min(waveform) / 100,
-                        np.max(waveform) + np.max(waveform) / 100,
-                    ),
-                )
-                waveforms[parentkey][childkey].line(
-                    x=samples,
-                    y=waveform,
-                    line_width=3,
-                )
-            waveforms[parentkey][childkey].xaxis.axis_label = "Waveform sample number"
+    average_waveforms, all_waveforms = extract_waveforms_from_source(source)
 
+    LOWER_PERCENTILE = 2.5  # For 95% confidence band
+    UPPER_PERCENTILE = 97.5
+
+    colors_phy = ["blue", "turquoise"]
+    colors_ped = ["red", "orange"]
+
+    for parentkey in average_waveforms.keys():
+        colors = colors_phy if "PHY" in parentkey else colors_ped
+
+        # Find corresponding all_waveforms key by removing -AVERAGE-
+        all_parentkey = parentkey.replace("-AVERAGE-PIX", "")
+
+        for childkey in average_waveforms[parentkey].keys():
+            logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
+
+            all_childkey = childkey.replace("-AVERAGE-PIX", "")
+
+            samples = np.arange(len(source[parentkey][childkey]))
+            avg_waveform = average_waveforms[parentkey][childkey]
+
+            # Determine y-range from average waveform first
+            y_min = np.min(avg_waveform) - np.abs(np.min(avg_waveform)) * 0.1
+            y_max = np.max(avg_waveform) + np.abs(np.max(avg_waveform)) * 0.1
+
+            # Adjust y-range if individual waveforms are available
+            if (
+                all_parentkey in all_waveforms.keys()
+                and all_childkey in all_waveforms[all_parentkey]
+            ):
+                pixel_waveforms = all_waveforms[all_parentkey][all_childkey]
+                lower_bound = np.percentile(pixel_waveforms, LOWER_PERCENTILE, axis=0)
+                upper_bound = np.percentile(pixel_waveforms, UPPER_PERCENTILE, axis=0)
+                y_min = min(
+                    y_min, np.min(lower_bound) - np.abs(np.min(lower_bound)) * 0.1
+                )
+                y_max = max(
+                    y_max, np.max(upper_bound) + np.abs(np.max(upper_bound)) * 0.1
+                )
+
+            # Create figure once with proper ranges
+            fig = figure(
+                title=all_childkey,
+                x_range=(np.min(samples) - 5, np.max(samples) + 5),
+                y_range=(y_min, y_max),
+            )
+
+            # Plot individual pixel waveforms with low alpha
+            if (
+                all_parentkey in all_waveforms.keys()
+                and all_childkey in all_waveforms[all_parentkey]
+            ):
+                pixel_waveforms = all_waveforms[all_parentkey][all_childkey]
+
+                # Compute percentiles across all pixels for each sample
+                lower_bound = np.percentile(pixel_waveforms, LOWER_PERCENTILE, axis=0)
+                upper_bound = np.percentile(pixel_waveforms, UPPER_PERCENTILE, axis=0)
+
+                # Plot shaded 95% percentile band
+                x_band = np.concatenate([samples, samples[::-1]])
+                y_band = np.concatenate([lower_bound, upper_bound[::-1]])
+                fig.patch(
+                    x=x_band,
+                    y=y_band,
+                    fill_color=colors[0],
+                    fill_alpha=0.2,
+                    line_color=None,
+                    legend_label=f"{int(UPPER_PERCENTILE-LOWER_PERCENTILE)}% range",
+                )
+
+                # TODO: need to optimise the outliers plotting, still too slow...
+                # # Identify outlier waveforms (any point outside the band)
+                # is_outlier = np.any(
+                #     (pixel_waveforms < lower_bound) | (pixel_waveforms > upper_bound),
+                #     axis=1
+                # )
+                # outlier_indices = np.where(is_outlier)[0]
+                # n_outliers = len(outlier_indices)
+
+                # logger.info(f"Found {n_outliers} outlier
+                # waveforms out of {pixel_waveforms.shape[0]}")
+
+                # # Plot outliers in turquoise
+                # for idx in outlier_indices:
+                #     fig.line(
+                #         x=samples,
+                #         y=pixel_waveforms[idx],
+                #         line_width=0.5,
+                #         color=colors[1],
+                #         alpha=0.3
+                #     )
+
+                # # Add legend entry for outliers
+                # if n_outliers > 0:
+                #     fig.line(
+                #         x=[], y=[],
+                #         line_width=0.5,
+                #         color=colors[1],
+                #         alpha=0.3,
+                #         legend_label=f'Outliers ({n_outliers})'
+                #     )
+
+            # Plot average waveform (thick, opaque line)
+            fig.line(
+                x=samples,
+                y=avg_waveform,
+                line_width=3,
+                color=colors[0],
+                legend_label="Average",
+            )
+
+            # Set axis labels and styling
+            fig.xaxis.axis_label = "Waveform sample number"
             try:
-                waveforms[parentkey][childkey].yaxis.axis_label = y_axis_labels[
-                    parentkey
-                ]
+                fig.yaxis.axis_label = y_axis_labels[parentkey]
             except ValueError:
-                waveforms[parentkey][childkey].yaxis.axis_label = ""
+                fig.yaxis.axis_label = ""
             except KeyError:
-                waveforms[parentkey][childkey].yaxis.axis_label = ""
+                fig.yaxis.axis_label = ""
 
-            waveforms[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
-            waveforms[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
-            waveforms[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
-            waveforms[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
-            waveforms[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
-            waveforms[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+            fig.xaxis.axis_label_text_font_size = "12pt"
+            fig.yaxis.axis_label_text_font_size = "12pt"
+            fig.xaxis.major_label_text_font_size = "10pt"
+            fig.yaxis.major_label_text_font_size = "10pt"
+            fig.xaxis.axis_label_text_font_style = "normal"
+            fig.yaxis.axis_label_text_font_style = "normal"
+
+            waveforms[parentkey][childkey] = fig
 
     logger.info(f"Successfully created waveform plots for run {runid}")
 
