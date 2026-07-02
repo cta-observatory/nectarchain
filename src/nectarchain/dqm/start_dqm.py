@@ -268,6 +268,7 @@ def main():
             p.process_event(evt, noped)
     read_time = time.time() - start_read
 
+    start_process = time.time()
     # for the rest of the event files
     for arg in args.input_files[1:]:
         path2 = f"{NectarPath}/runs/{arg}"
@@ -288,6 +289,7 @@ def main():
             for evt in looping_over:
                 for p in processors:
                     p.process_event(evt, noped)
+    process_time = time.time() - start_process
 
     start_finish = time.time()
     for p in processors:
@@ -327,6 +329,7 @@ def main():
     end = time.time()
     log.info(
         f"Read: {read_time:.2f}s, "
+        + f"Process: {process_time:.2f}s, "
         + f"Finish: {finish_time:.2f}s, "
         + f"Results: {results_time:.2f}s, "
         + f"Write: {write_time:.2f}s"
