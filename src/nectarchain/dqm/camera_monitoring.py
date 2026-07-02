@@ -61,8 +61,7 @@ class CameraMonitoring(DQMSummary):
 
         self.subarray = Reader1.subarray
 
-        for i, evt1 in enumerate(Reader1):
-            self.run_start1 = evt1.nectarcam.tel[self.tel_id].svc.date
+        self.run_start1 = next(iter(Reader1)).nectarcam.tel[self.tel_id].svc.date
 
         SqlFileDate = astropytime.Time(self.run_start1, format="unix").iso.split(" ")[0]
         log.debug(f"SqlFileDate is {SqlFileDate}")
@@ -75,9 +74,10 @@ class CameraMonitoring(DQMSummary):
         con = sqlite3.connect(SqlFileName)
         cursor = con.cursor()
         try:
-            cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
-            self.DrawerTemp = cursor.fetchall()
-            cursor.close()
+            with sqlite3.connect(SqlFileName) as con:
+                cursor = con.cursor()
+                cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
+                self.DrawerTemp = cursor.fetchall()
         except sqlite3.Error as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
