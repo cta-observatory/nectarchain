@@ -32,9 +32,6 @@ class CameraMonitoring(DQMSummary):
         self.run_start = None
         self.run_end = None
         self.DrawerTimes = None
-        self.DrawerTemp11 = None
-        self.DrawerTemp21 = None
-        self.DrawerNum1 = None
         self.DrawerTimes_new = None
         self.DrawerTemp12 = None
         self.DrawerTemp22 = None
@@ -43,6 +40,9 @@ class CameraMonitoring(DQMSummary):
         self.DrawerTemp2_mean = []
         self.DrawerTemp1_std = []
         self.DrawerTemp2_std = []
+        self.DrawerTemp_mean = []
+        self.DrawerTemp_std = []
+        self.DrawerTemp_trend = []
         self.CameraMonitoring_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
@@ -61,8 +61,7 @@ class CameraMonitoring(DQMSummary):
 
         self.subarray = Reader1.subarray
 
-        for i, evt1 in enumerate(Reader1):
-            self.run_start1 = evt1.nectarcam.tel[self.tel_id].svc.date
+        self.run_start1 = next(iter(Reader1)).nectarcam.tel[self.tel_id].svc.date
 
         SqlFileDate = astropytime.Time(self.run_start1, format="unix").iso.split(" ")[0]
         log.debug(f"SqlFileDate is {SqlFileDate}")
@@ -72,18 +71,11 @@ class CameraMonitoring(DQMSummary):
             SqlFilePath + "/nectarcam_monitoring_db_" + SqlFileDate + ".sqlite"
         )
         log.info(f"SqlFileName: {SqlFileName}")
-        con = sqlite3.connect(SqlFileName)
-        cursor = con.cursor()
         try:
-            # print(cursor.fetchall())
-            # cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
-            # TempData = cursor.execute(
-            #     """SELECT * FROM monitoring_drawer_temperatures"""
-            # )
-            # print(TempData.description)
-            self.DrawerTemp = cursor.fetchall()
-            cursor.close()
+            with sqlite3.connect(SqlFileName) as con:
+                cursor = con.cursor()
+                cursor.execute("SELECT * FROM monitoring_drawer_temperatures;")
+                self.DrawerTemp = cursor.fetchall()
         except sqlite3.Error as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
@@ -102,76 +94,64 @@ class CameraMonitoring(DQMSummary):
             self.event_id = np.array(self.event_id)
             self.event_times = np.array(self.event_times)
 
-            self.run_start = (
-                self.event_times[self.event_id == np.min(self.event_id)] - 100
-            )
+            min_evt_idx = np.argmin(self.event_id)
+            self.run_start = self.event_times[min_evt_idx] - 100
             self.run_end = np.max(self.event_times) + 100
 
             self.DrawerTemp = np.array(self.DrawerTemp)
-            self.DrawerTimes = np.array(self.DrawerTemp[:, 3])
+            self.DrawerTimes = astropytime.Time(
+                np.array(self.DrawerTemp[:, 3], dtype=str), format="iso"
+            ).unix
 
-            for i in range(len(self.DrawerTimes)):
-                self.DrawerTimes[i] = astropytime.Time(
-                    self.DrawerTimes[i], format="iso"
-                ).unix
+            run_mask = (self.DrawerTimes > self.run_start) & (
+                self.DrawerTimes < self.run_end
+            )
+            self.DrawerTimes_run = self.DrawerTimes[run_mask]
+            self.DrawerTemp12 = self.DrawerTemp[:, 4][run_mask]
+            self.DrawerTemp22 = self.DrawerTemp[:, 5][run_mask]
+            self.DrawerNum2 = self.DrawerTemp[:, 2][run_mask]
 
-            self.DrawerTemp11 = self.DrawerTemp[:, 4][self.DrawerTimes > self.run_start]
-            self.DrawerTemp21 = self.DrawerTemp[:, 5][self.DrawerTimes > self.run_start]
-            self.DrawerNum1 = self.DrawerTemp[:, 2][self.DrawerTimes > self.run_start]
+            TotalDrawers = int(np.max(self.DrawerNum2))
+            n_drawers = TotalDrawers + 1
+            PIXELS_PER_DRAWER = 7  # NectarCAM has 7 pixels per drawer
 
-            self.DrawerTimes_new = self.DrawerTimes[self.DrawerTimes > self.run_start]
+            drawer_temp1_mean = np.zeros(n_drawers)
+            drawer_temp2_mean = np.zeros(n_drawers)
+            drawer_temp1_std = np.zeros(n_drawers)
+            drawer_temp2_std = np.zeros(n_drawers)
 
-            self.DrawerTemp12 = self.DrawerTemp11[self.DrawerTimes_new < self.run_end]
-            self.DrawerTemp22 = self.DrawerTemp21[self.DrawerTimes_new < self.run_end]
-            self.DrawerNum2 = self.DrawerNum1[self.DrawerTimes_new < self.run_end]
+            for i in range(n_drawers):
+                mask = self.DrawerNum2 == i
+                temp1 = self.DrawerTemp12[mask]
+                temp2 = self.DrawerTemp22[mask]
 
-            self.DrawerTimes_run = self.DrawerTimes_new[
-                self.DrawerTimes_new < self.run_end
-            ]
+                if len(temp1) > 0:
+                    drawer_temp1_mean[i] = np.mean(temp1)
+                    drawer_temp1_std[i] = np.std(temp1)
+                    drawer_temp2_mean[i] = np.mean(temp2)
+                    drawer_temp2_std[i] = np.std(temp2)
+                else:
+                    drawer_temp1_mean[i] = np.nan
+                    drawer_temp1_std[i] = np.nan
+                    drawer_temp2_mean[i] = np.nan
+                    drawer_temp2_std[i] = np.nan
 
-            TotalDrawers = np.max(self.DrawerNum2)
-
-            for i in range(TotalDrawers + 1):
-                for j in range(7):
-                    self.DrawerTemp1_mean.append(
-                        np.mean(self.DrawerTemp12[self.DrawerNum2 == i])
-                    )
-                    self.DrawerTemp1_std.append(
-                        np.std(self.DrawerTemp12[self.DrawerNum2 == i])
-                    )
-                    self.DrawerTemp2_mean.append(
-                        np.mean(self.DrawerTemp22[self.DrawerNum2 == i])
-                    )
-                    self.DrawerTemp2_std.append(
-                        np.std(self.DrawerTemp22[self.DrawerNum2 == i])
-                    )
+            self.DrawerTemp1_mean = np.repeat(drawer_temp1_mean, PIXELS_PER_DRAWER)
+            self.DrawerTemp2_mean = np.repeat(drawer_temp2_mean, PIXELS_PER_DRAWER)
+            self.DrawerTemp1_std = np.repeat(drawer_temp1_std, PIXELS_PER_DRAWER)
+            self.DrawerTemp2_std = np.repeat(drawer_temp2_std, PIXELS_PER_DRAWER)
 
             self.DrawerTemp1_trend = np.array(
-                [
-                    self.DrawerTemp12[self.DrawerNum2 == ii]
-                    for ii in range(TotalDrawers + 1)
-                ]
+                [self.DrawerTemp12[self.DrawerNum2 == ii] for ii in range(n_drawers)]
             )
             self.DrawerTemp2_trend = np.array(
-                [
-                    self.DrawerTemp22[self.DrawerNum2 == ii]
-                    for ii in range(TotalDrawers + 1)
-                ]
+                [self.DrawerTemp22[self.DrawerNum2 == ii] for ii in range(n_drawers)]
             )
-            self.DrawerTemp1_mean = np.array(self.DrawerTemp1_mean)
-            self.DrawerTemp2_mean = np.array(self.DrawerTemp2_mean)
-            self.DrawerTemp1_std = np.array(self.DrawerTemp1_std)
-            self.DrawerTemp2_std = np.array(self.DrawerTemp2_std)
 
-            # this 2D array has shape (n_drawers, n_time_points)
-            self.DrawerTemp_trend = np.array(
-                [
-                    (self.DrawerTemp1_trend[ii] + self.DrawerTemp2_trend[ii]) / 2.0
-                    for ii in range(TotalDrawers + 1)
-                ]
-            )
+            self.DrawerTemp_trend = (
+                self.DrawerTemp1_trend + self.DrawerTemp2_trend
+            ) / 2.0
             self.DrawerTemp_mean = (self.DrawerTemp1_mean + self.DrawerTemp2_mean) / 2
-            # std of drawer temperatures as mean of std of temp FEB1 and temp FEB2
             self.DrawerTemp_std = (self.DrawerTemp1_std + self.DrawerTemp2_std) / 2
 
         except Exception as err:
@@ -199,172 +179,127 @@ class CameraMonitoring(DQMSummary):
 
         return self.CameraMonitoring_Results_Dict
 
+    def _create_camera_display_figure(
+        self, data, title, label, key_prefix, filename_suffix, name, fig_path
+    ):
+        """Create a camera display figure with consistent styling."""
+
+        fig, _ = plt.subplots()
+        disp = CameraDisplay(self.camera)
+        disp.image = data
+        disp.cmap = self.cmap
+        disp.axes.text(1.8, -0.3, label, fontsize=12, rotation=90)
+        disp.add_colorbar()
+        plt.title(title)
+
+        full_name = f"{name}_CameraTemperature_{filename_suffix}.png"
+        full_path = os.path.join(fig_path, full_name)
+
+        self.ChargeInt_Figures_Dict[key_prefix] = fig
+        self.ChargeInt_Figures_Names_Dict[key_prefix] = full_path
+
+        plt.close()
+        return fig, full_path
+
+    def _create_trend_figure(
+        self, data, title, filename_suffix, name, fig_path, drawer_times
+    ):
+        """Create a trend plot figure."""
+
+        fig, _ = plt.subplots()
+        for ii in range(data.shape[0]):
+            plt.plot(
+                drawer_times[ii],
+                data[ii],
+                color="blue",
+                alpha=0.5,
+            )
+        plt.xlabel("Time")
+        plt.ylabel("Temperature (°C)")
+        plt.title(title)
+
+        full_name = f"{name}_CameraTemperature_{filename_suffix}.png"
+        full_path = os.path.join(fig_path, full_name)
+
+        self.ChargeInt_Figures_Dict[
+            f"CAMERA-TEMPERATURE-IMAGE-{filename_suffix.upper()}"
+        ] = fig
+        self.ChargeInt_Figures_Names_Dict[
+            f"CAMERA-TEMPERATURE-IMAGE-{filename_suffix.upper()}"
+        ] = full_path
+
+        plt.close()
+        return fig, full_path
+
     def plot_results(self, name, fig_path):
         try:
-            fig_mean, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp_mean
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature average")
-            full_name = name + "_CameraTemperature_Mean.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig_mean
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE"
-            ] = full_path
+            # Camera display plots (6 figures)
+            camera_plots = [
+                (
+                    self.DrawerTemp_mean,
+                    "Camera temperature average",
+                    "Temperature",
+                    "CAMERA-TEMPERATURE-IMAGE-AVERAGE",
+                    "Mean",
+                ),
+                (
+                    self.DrawerTemp1_mean,
+                    "Camera temperature average 1",
+                    "Temperature 1",
+                    "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1",
+                    "average1",
+                ),
+                (
+                    self.DrawerTemp2_mean,
+                    "Camera temperature average 2",
+                    "Temperature 2",
+                    "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2",
+                    "average2",
+                ),
+                (
+                    self.DrawerTemp_std,
+                    "Camera temperature std",
+                    "Temperature",
+                    "CAMERA-TEMPERATURE-IMAGE-STD",
+                    "Std",
+                ),
+                (
+                    self.DrawerTemp1_std,
+                    "Camera temperature std 1",
+                    "Temperature 1",
+                    "CAMERA-TEMPERATURE-IMAGE-STD-1",
+                    "Std1",
+                ),
+                (
+                    self.DrawerTemp2_std,
+                    "Camera temperature std 2",
+                    "Temperature 2",
+                    "CAMERA-TEMPERATURE-IMAGE-STD-2",
+                    "Std2",
+                ),
+            ]
 
-            plt.close()
-
-            fig1_mean, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp1_mean
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature average 1")
-            full_name = name + "_CameraTemperature_average1.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
-            ] = fig1_mean
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
-            ] = full_path
-
-            plt.close()
-
-            fig2_mean, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp2_mean
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature average 2")
-            full_name = name + "_CameraTemperature_average2.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
-            ] = fig2_mean
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
-            ] = full_path
-
-            plt.close()
-
-            fig_std, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp_std
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature std")
-            full_name = name + "_CameraTemperature_Std.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD"] = fig_std
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-STD"
-            ] = full_path
-
-            plt.close()
-
-            fig1_std, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp1_std
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature std 1")
-            full_name = name + "_CameraTemperature_Std1.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-1"] = fig1_std
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-STD-1"
-            ] = full_path
-
-            plt.close()
-
-            fig2_std, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp2_std
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature std 2")
-            full_name = name + "_CameraTemperature_Std2.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-2"] = fig2_std
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-STD-2"
-            ] = full_path
-
-            plt.close()
+            for data, title, label, key, suffix in camera_plots:
+                self._create_camera_display_figure(
+                    data, title, label, key, suffix, name, fig_path
+                )
 
             drawer_times = self.DrawerTimes_run.reshape(self.DrawerTemp1_trend.shape)
             drawer_times = np.tile(
                 np.unique(drawer_times), (self.DrawerTemp_trend.shape[0], 1)
             )
 
-            fig_trend, _ = plt.subplots()
-            for ii in range(self.DrawerTemp_trend.shape[0]):
-                plt.plot(
-                    drawer_times[ii],
-                    self.DrawerTemp_trend[ii],
-                    color="blue",
-                    alpha=0.5,
+            # Trend plots (3 figures)
+            trend_plots = [
+                (self.DrawerTemp_trend, "Camera temperature trend", "Trend"),
+                (self.DrawerTemp1_trend, "Camera temperature trend 1", "Trend1"),
+                (self.DrawerTemp2_trend, "Camera temperature trend 2", "Trend2"),
+            ]
+
+            for data, title, suffix in trend_plots:
+                self._create_trend_figure(
+                    data, title, suffix, name, fig_path, drawer_times
                 )
-            plt.xlabel("Time")
-            plt.ylabel("Temperature (°C)")
-            plt.title("Camera temperature trend")
-            full_name = name + "_CameraTemperature_Trend.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND"] = fig_trend
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-TREND"
-            ] = full_path
-
-            plt.close()
-
-            fig1_trend, _ = plt.subplots()
-            for ii in range(self.DrawerTemp1_trend.shape[0]):
-                plt.plot(
-                    drawer_times[ii],
-                    self.DrawerTemp1_trend[ii],
-                    color="blue",
-                    alpha=0.5,
-                )
-            plt.xlabel("Time")
-            plt.ylabel("Temperature (°C)")
-            plt.title("Camera temperature trend 1")
-            full_name = name + "_CameraTemperature_Trend1.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND-1"] = fig1_trend
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-TREND-1"
-            ] = full_path
-
-            plt.close()
-
-            fig2_trend, _ = plt.subplots()
-            for ii in range(self.DrawerTemp2_trend.shape[0]):
-                plt.plot(
-                    drawer_times[ii],
-                    self.DrawerTemp2_trend[ii],
-                    color="blue",
-                    alpha=0.5,
-                )
-            plt.xlabel("Time")
-            plt.ylabel("Temperature (°C)")
-            plt.title("Camera temperature trend 2")
-            full_name = name + "_CameraTemperature_Trend2.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND-2"] = fig2_trend
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-TREND-2"
-            ] = full_path
-
-            plt.close()
 
         except Exception as err:
             log.error(f"Received error code: {err}")
