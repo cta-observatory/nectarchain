@@ -179,172 +179,127 @@ class CameraMonitoring(DQMSummary):
 
         return self.CameraMonitoring_Results_Dict
 
+    def _create_camera_display_figure(
+        self, data, title, label, key_prefix, filename_suffix, name, fig_path
+    ):
+        """Create a camera display figure with consistent styling."""
+
+        fig, _ = plt.subplots()
+        disp = CameraDisplay(self.camera)
+        disp.image = data
+        disp.cmap = self.cmap
+        disp.axes.text(1.8, -0.3, label, fontsize=12, rotation=90)
+        disp.add_colorbar()
+        plt.title(title)
+
+        full_name = f"{name}_CameraTemperature_{filename_suffix}.png"
+        full_path = os.path.join(fig_path, full_name)
+
+        self.ChargeInt_Figures_Dict[key_prefix] = fig
+        self.ChargeInt_Figures_Names_Dict[key_prefix] = full_path
+
+        plt.close()
+        return fig, full_path
+
+    def _create_trend_figure(
+        self, data, title, filename_suffix, name, fig_path, drawer_times
+    ):
+        """Create a trend plot figure."""
+
+        fig, _ = plt.subplots()
+        for ii in range(data.shape[0]):
+            plt.plot(
+                drawer_times[ii],
+                data[ii],
+                color="blue",
+                alpha=0.5,
+            )
+        plt.xlabel("Time")
+        plt.ylabel("Temperature (°C)")
+        plt.title(title)
+
+        full_name = f"{name}_CameraTemperature_{filename_suffix}.png"
+        full_path = os.path.join(fig_path, full_name)
+
+        self.ChargeInt_Figures_Dict[
+            f"CAMERA-TEMPERATURE-IMAGE-{filename_suffix.upper()}"
+        ] = fig
+        self.ChargeInt_Figures_Names_Dict[
+            f"CAMERA-TEMPERATURE-IMAGE-{filename_suffix.upper()}"
+        ] = full_path
+
+        plt.close()
+        return fig, full_path
+
     def plot_results(self, name, fig_path):
         try:
-            fig_mean, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp_mean
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature average")
-            full_name = name + "_CameraTemperature_Mean.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-AVERAGE"] = fig_mean
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE"
-            ] = full_path
+            # Camera display plots (6 figures)
+            camera_plots = [
+                (
+                    self.DrawerTemp_mean,
+                    "Camera temperature average",
+                    "Temperature",
+                    "CAMERA-TEMPERATURE-IMAGE-AVERAGE",
+                    "Mean",
+                ),
+                (
+                    self.DrawerTemp1_mean,
+                    "Camera temperature average 1",
+                    "Temperature 1",
+                    "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1",
+                    "average1",
+                ),
+                (
+                    self.DrawerTemp2_mean,
+                    "Camera temperature average 2",
+                    "Temperature 2",
+                    "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2",
+                    "average2",
+                ),
+                (
+                    self.DrawerTemp_std,
+                    "Camera temperature std",
+                    "Temperature",
+                    "CAMERA-TEMPERATURE-IMAGE-STD",
+                    "Std",
+                ),
+                (
+                    self.DrawerTemp1_std,
+                    "Camera temperature std 1",
+                    "Temperature 1",
+                    "CAMERA-TEMPERATURE-IMAGE-STD-1",
+                    "Std1",
+                ),
+                (
+                    self.DrawerTemp2_std,
+                    "Camera temperature std 2",
+                    "Temperature 2",
+                    "CAMERA-TEMPERATURE-IMAGE-STD-2",
+                    "Std2",
+                ),
+            ]
 
-            plt.close()
-
-            fig1_mean, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp1_mean
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature average 1")
-            full_name = name + "_CameraTemperature_average1.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
-            ] = fig1_mean
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-1"
-            ] = full_path
-
-            plt.close()
-
-            fig2_mean, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp2_mean
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature average 2")
-            full_name = name + "_CameraTemperature_average2.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
-            ] = fig2_mean
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-AVERAGE-2"
-            ] = full_path
-
-            plt.close()
-
-            fig_std, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp_std
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature std")
-            full_name = name + "_CameraTemperature_Std.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD"] = fig_std
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-STD"
-            ] = full_path
-
-            plt.close()
-
-            fig1_std, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp1_std
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 1", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature std 1")
-            full_name = name + "_CameraTemperature_Std1.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-1"] = fig1_std
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-STD-1"
-            ] = full_path
-
-            plt.close()
-
-            fig2_std, _ = plt.subplots()
-            disp = CameraDisplay(self.camera)
-            disp.image = self.DrawerTemp2_std
-            disp.cmap = plt.cm.coolwarm
-            disp.axes.text(1.8, -0.3, "Temperature 2", fontsize=12, rotation=90)
-            disp.add_colorbar()
-            plt.title("Camera temperature std 2")
-            full_name = name + "_CameraTemperature_Std2.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-STD-2"] = fig2_std
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-STD-2"
-            ] = full_path
-
-            plt.close()
+            for data, title, label, key, suffix in camera_plots:
+                self._create_camera_display_figure(
+                    data, title, label, key, suffix, name, fig_path
+                )
 
             drawer_times = self.DrawerTimes_run.reshape(self.DrawerTemp1_trend.shape)
             drawer_times = np.tile(
                 np.unique(drawer_times), (self.DrawerTemp_trend.shape[0], 1)
             )
 
-            fig_trend, _ = plt.subplots()
-            for ii in range(self.DrawerTemp_trend.shape[0]):
-                plt.plot(
-                    drawer_times[ii],
-                    self.DrawerTemp_trend[ii],
-                    color="blue",
-                    alpha=0.5,
+            # Trend plots (3 figures)
+            trend_plots = [
+                (self.DrawerTemp_trend, "Camera temperature trend", "Trend"),
+                (self.DrawerTemp1_trend, "Camera temperature trend 1", "Trend1"),
+                (self.DrawerTemp2_trend, "Camera temperature trend 2", "Trend2"),
+            ]
+
+            for data, title, suffix in trend_plots:
+                self._create_trend_figure(
+                    data, title, suffix, name, fig_path, drawer_times
                 )
-            plt.xlabel("Time")
-            plt.ylabel("Temperature (°C)")
-            plt.title("Camera temperature trend")
-            full_name = name + "_CameraTemperature_Trend.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND"] = fig_trend
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-TREND"
-            ] = full_path
-
-            plt.close()
-
-            fig1_trend, _ = plt.subplots()
-            for ii in range(self.DrawerTemp1_trend.shape[0]):
-                plt.plot(
-                    drawer_times[ii],
-                    self.DrawerTemp1_trend[ii],
-                    color="blue",
-                    alpha=0.5,
-                )
-            plt.xlabel("Time")
-            plt.ylabel("Temperature (°C)")
-            plt.title("Camera temperature trend 1")
-            full_name = name + "_CameraTemperature_Trend1.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND-1"] = fig1_trend
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-TREND-1"
-            ] = full_path
-
-            plt.close()
-
-            fig2_trend, _ = plt.subplots()
-            for ii in range(self.DrawerTemp2_trend.shape[0]):
-                plt.plot(
-                    drawer_times[ii],
-                    self.DrawerTemp2_trend[ii],
-                    color="blue",
-                    alpha=0.5,
-                )
-            plt.xlabel("Time")
-            plt.ylabel("Temperature (°C)")
-            plt.title("Camera temperature trend 2")
-            full_name = name + "_CameraTemperature_Trend2.png"
-            full_path = os.path.join(fig_path, full_name)
-            self.ChargeInt_Figures_Dict["CAMERA-TEMPERATURE-IMAGE-TREND-2"] = fig2_trend
-            self.ChargeInt_Figures_Names_Dict[
-                "CAMERA-TEMPERATURE-IMAGE-TREND-2"
-            ] = full_path
-
-            plt.close()
 
         except Exception as err:
             log.error(f"Received error code: {err}")
