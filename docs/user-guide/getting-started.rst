@@ -48,7 +48,7 @@ Using ``pip``
 
 .. code-block:: console
 
-   $ mamba create -n nectarchain python=3.11
+   $ mamba create -n nectarchain python=3.14
    $ mamba activate nectarchain
    $ pip install nectarchain
 
@@ -56,7 +56,7 @@ To install a specific version of ``nectarchain``, you can use the following comm
 
 .. code-block:: console
 
-   $ pip install nectarchain==0.1.8
+   $ pip install nectarchain==0.3.2
 
 .. _as-a-container:
 
