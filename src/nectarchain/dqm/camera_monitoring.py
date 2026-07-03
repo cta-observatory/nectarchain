@@ -6,6 +6,7 @@ import numpy as np
 from astropy import time as astropytime
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.visualization import CameraDisplay
+from ctapipe_io_nectarcam import constants
 from matplotlib import pyplot as plt
 
 from .dqm_summary_processor import DQMSummary
@@ -113,7 +114,6 @@ class CameraMonitoring(DQMSummary):
 
             TotalDrawers = int(np.max(self.DrawerNum2))
             n_drawers = TotalDrawers + 1
-            PIXELS_PER_DRAWER = 7  # NectarCAM has 7 pixels per drawer
 
             drawer_temp1_mean = np.zeros(n_drawers)
             drawer_temp2_mean = np.zeros(n_drawers)
@@ -136,10 +136,19 @@ class CameraMonitoring(DQMSummary):
                     drawer_temp2_mean[i] = np.nan
                     drawer_temp2_std[i] = np.nan
 
-            self.DrawerTemp1_mean = np.repeat(drawer_temp1_mean, PIXELS_PER_DRAWER)
-            self.DrawerTemp2_mean = np.repeat(drawer_temp2_mean, PIXELS_PER_DRAWER)
-            self.DrawerTemp1_std = np.repeat(drawer_temp1_std, PIXELS_PER_DRAWER)
-            self.DrawerTemp2_std = np.repeat(drawer_temp2_std, PIXELS_PER_DRAWER)
+            # NectarCAM has 7 pixels per drawer
+            self.DrawerTemp1_mean = np.repeat(
+                drawer_temp1_mean, constants.N_PIXELS_MODULE
+            )
+            self.DrawerTemp2_mean = np.repeat(
+                drawer_temp2_mean, constants.N_PIXELS_MODULE
+            )
+            self.DrawerTemp1_std = np.repeat(
+                drawer_temp1_std, constants.N_PIXELS_MODULE
+            )
+            self.DrawerTemp2_std = np.repeat(
+                drawer_temp2_std, constants.N_PIXELS_MODULE
+            )
 
             self.DrawerTemp1_trend = np.array(
                 [self.DrawerTemp12[self.DrawerNum2 == ii] for ii in range(n_drawers)]
