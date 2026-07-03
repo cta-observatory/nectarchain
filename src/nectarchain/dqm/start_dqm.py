@@ -314,6 +314,7 @@ def main():
         else:
             db.abort_and_close()
 
+    start_plotting = time.time()
     # if plot option in arguments, it will construct the figures and save them
     if PlotFig:
         figures_to_save = []
@@ -325,6 +326,7 @@ def main():
         for fig, path in figures_to_save:
             fig.savefig(path)
             plt.close(fig)
+    plotting_time = time.time() - start_plotting
 
     end = time.time()
     log.info(
@@ -332,7 +334,8 @@ def main():
         + f"Process: {process_time:.2f}s, "
         + f"Finish: {finish_time:.2f}s, "
         + f"Results: {results_time:.2f}s, "
-        + f"Write: {write_time:.2f}s"
+        + f"Write: {write_time:.2f}s, "
+        + f"Plotting: {plotting_time:.2f}s"
     )
     log.info(f"Processing time: {end-start:.2f} s.")
 
