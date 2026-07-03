@@ -48,7 +48,7 @@ Using ``pip``
 
 .. code-block:: console
 
-   $ mamba create -n nectarchain python=3.14
+   $ mamba create -n nectarchain python=3.12
    $ mamba activate nectarchain
    $ pip install nectarchain
 

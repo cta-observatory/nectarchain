@@ -87,7 +87,7 @@ autodoc_mock_imports = [
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.14", None),
+    "python": ("https://docs.python.org/3.12", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),
