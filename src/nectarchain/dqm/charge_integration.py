@@ -146,6 +146,10 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         image = output[0]
         peakpos = output[1]
+        if np.any(np.isnan(image) | np.isinf(image)):
+            image[np.isnan(image) | np.isinf(image)] = np.zeros_like(
+                image[np.isnan(image) | np.isinf(image)]
+            )
 
         if evt.trigger.event_type == EventType.SKY_PEDESTAL:
             # count sky peds, event id 2
@@ -244,7 +248,8 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
     def _plot_camera_image(self, image, title, text, filename, key, fig_path):
         fig, disp = plt.subplots()
-        disp = CameraDisplay(geometry=self.camera[~self.pixelBADplot[0]])
+        image[self.pixelBADplot[0]] = 0
+        disp = CameraDisplay(geometry=self.camera)
         disp.image = image
         disp.cmap = plt.cm.coolwarm
         disp.axes.text(2, -0.8, text, fontsize=12, rotation=90)
@@ -318,22 +323,30 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             key = f"CHARGE-INTEGRATION-IMAGE-PED-RMS-{self.gain_c.upper()}-GAIN"
             self._plot_camera_image(image, title, text, filename, key, fig_path)
 
+        indexes_bad_pixels = np.where(self.pixelBADplot[0] == True)[0]
+
         # Charge integration SPECTRUM
         if self.counter_evt > 0:
             fig, _ = plt.subplots()
             for i in range(len(self.pixels)):
-                plt.hist(
-                    self.image_all[:, i],
-                    100,
-                    fill=False,
-                    density=True,
-                    stacked=True,
-                    linewidth=1,
-                    log=True,
-                    alpha=0.01,
-                )
+                if i not in indexes_bad_pixels:
+                    plt.hist(
+                        self.image_all[:, i],
+                        100,
+                        fill=False,
+                        density=True,
+                        stacked=True,
+                        linewidth=1,
+                        log=True,
+                        alpha=0.01,
+                    )
             plt.hist(
-                np.mean(self.image_all, axis=1),
+                np.mean(
+                    self.image_all[
+                        :, ~np.isin(np.arange(len(self.pixels)), indexes_bad_pixels)
+                    ],
+                    axis=1,
+                ),
                 100,
                 color="r",
                 linewidth=1,
@@ -360,18 +373,24 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.counter_ped > 0:
             fig, _ = plt.subplots()
             for i in range(len(self.pixels)):
-                plt.hist(
-                    self.image_ped[:, i],
-                    100,
-                    fill=False,
-                    density=True,
-                    stacked=True,
-                    linewidth=1,
-                    log=True,
-                    alpha=0.01,
-                )
+                if i not in indexes_bad_pixels:
+                    plt.hist(
+                        self.image_ped[:, i],
+                        100,
+                        fill=False,
+                        density=True,
+                        stacked=True,
+                        linewidth=1,
+                        log=True,
+                        alpha=0.01,
+                    )
             plt.hist(
-                np.mean(self.image_ped, axis=1),
+                np.mean(
+                    self.image_ped[
+                        :, ~np.isin(np.arange(len(self.pixels)), indexes_bad_pixels)
+                    ],
+                    axis=1,
+                ),
                 100,
                 color="r",
                 linewidth=1,
