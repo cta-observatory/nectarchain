@@ -49,6 +49,8 @@ extensions = [
     "sphinx_qt_documentation",
 ]
 
+suppress_warnings = ["misc.copy_overwrite"]
+
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = (
