@@ -19,7 +19,10 @@ from scipy.optimize import curve_fit
 from nectarchain.data.container import NectarCAMContainer
 from nectarchain.makers import DelimiterLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import get_bad_pixels_list, linear_fit_function
+from nectarchain.trr_verification_package.utils import (
+    get_bad_pixels_list,
+    linear_fit_function,
+)
 from nectarchain.utils.constants import ALLOWED_CAMERAS, GAIN_DEFAULT
 
 logging.basicConfig(

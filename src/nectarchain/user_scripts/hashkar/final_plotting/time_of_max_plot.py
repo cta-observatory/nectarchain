@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from nectarchain.trr_test_suite.utils import pe2photons, photons2pe
+from nectarchain.trr_verification_package.utils import pe2photons, photons2pe
 
 plt.style.use("../../../utils/plot_style.mpltstyle")
 
