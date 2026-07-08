@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
     QWidgetItem,
 )
 
-from nectarchain.trr_test_suite import (
+from nectarchain.trr_verification_package import (
     charge_resolution,
     deadtime,
     flatfield_source_characterization,

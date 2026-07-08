@@ -11,7 +11,7 @@ from ctapipe.core import run_tool
 from ctapipe.utils import get_dataset_path
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
-from nectarchain.trr_test_suite.tools_components import ToMPairsTool
+from nectarchain.trr_verification_package.tools_components import ToMPairsTool
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(

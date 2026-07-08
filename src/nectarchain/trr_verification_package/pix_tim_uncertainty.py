@@ -12,8 +12,10 @@ import numpy as np
 from ctapipe.core import run_tool
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
-from nectarchain.trr_test_suite.tools_components import TimingResolutionTestTool
-from nectarchain.trr_test_suite.utils import pe2photons, photons2pe
+from nectarchain.trr_verification_package.tools_components import (
+    TimingResolutionTestTool,
+)
+from nectarchain.trr_verification_package.utils import pe2photons, photons2pe
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
