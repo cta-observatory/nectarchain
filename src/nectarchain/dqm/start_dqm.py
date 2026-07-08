@@ -212,8 +212,8 @@ def main():
 
     # LIST OF PROCESSES TO RUN
     ####################################################################################
+
     processors = [
-        PingPongMonitoring(HIGH_GAIN, args.r0),
         TriggerStatistics(HIGH_GAIN, args.r0),
         WaveFormsHighLowGain(HIGH_GAIN, args.r0),
         WaveFormsHighLowGain(LOW_GAIN, args.r0),
@@ -232,7 +232,6 @@ def main():
     NESTED_DICT = {}  # The final results dictionary
 
     NESTED_DICT_KEYS = [
-        "Results_PingPongChanges",
         "Results_TriggerStatistics",
         "Results_WaveForms_HighGain",
         "Results_WaveForms_LowGain",
@@ -246,6 +245,11 @@ def main():
         "Results_PixelTimeline_HighGain",
         "Results_PixelTimeline_LowGain",
     ]
+
+    # Only include the ping pong monitoring if the run was acquired with FEB v6:
+    if not reader1.pre_v6_data:
+        processors.extend([PingPongMonitoring(HIGH_GAIN, args.r0)])
+        NESTED_DICT_KEYS.extend(["Results_PingPongChanges"])
 
     # START
     for p in processors:
