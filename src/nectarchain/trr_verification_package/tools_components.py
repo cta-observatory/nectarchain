@@ -13,7 +13,7 @@ from ctapipe.core.traits import ComponentNameList, Float
 from nectarchain.data.container import SPEfitContainer
 from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
-from nectarchain.trr_test_suite.utils import get_bad_pixels_list
+from nectarchain.trr_verification_package.utils import get_bad_pixels_list
 from nectarchain.utils.constants import GAIN_DEFAULT
 
 

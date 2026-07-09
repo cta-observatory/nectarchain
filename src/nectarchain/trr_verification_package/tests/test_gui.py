@@ -1,11 +1,13 @@
 import unittest
 from unittest.mock import patch
 
-from nectarchain.trr_test_suite import TestRunner
+from nectarchain.trr_verification_package import TestRunner
 
 
 class TestTestRunner(unittest.TestCase):
-    @patch("nectarchain.trr_test_suite.gui.TestRunner.init_ui", return_value=None)
+    @patch(
+        "nectarchain.trr_verification_package.gui.TestRunner.init_ui", return_value=None
+    )
     def test_init_pyqt5(self, mock_init_ui):
         try:
             from PyQt5.QtWidgets import QWidget  # noqa: F401

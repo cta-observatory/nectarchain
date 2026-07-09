@@ -12,7 +12,7 @@ import numpy as np
 from ctapipe_io_nectarcam import N_PIXELS, N_SAMPLES
 
 from nectarchain.makers.calibration import PedestalNectarCAMCalibrationTool
-from nectarchain.trr_test_suite.utils import photons2ADC
+from nectarchain.trr_verification_package.utils import photons2ADC
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(

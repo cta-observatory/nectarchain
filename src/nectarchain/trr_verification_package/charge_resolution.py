@@ -16,8 +16,14 @@ from nectarchain.makers.calibration import (
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
     PedestalNectarCAMCalibrationTool,
 )
-from nectarchain.trr_test_suite.tools_components import ChargeResolutionTestTool
-from nectarchain.trr_test_suite.utils import err_ratio, get_gain_run, plot_parameters
+from nectarchain.trr_verification_package.tools_components import (
+    ChargeResolutionTestTool,
+)
+from nectarchain.trr_verification_package.utils import (
+    err_ratio,
+    get_gain_run,
+    plot_parameters,
+)
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
 logging.basicConfig(
