@@ -15,10 +15,12 @@ from astropy import units as u
 from ctapipe.containers import EventType
 from iminuit import Minuit
 
-from nectarchain.trr_test_suite.tools_components import DeadtimeTestTool
-from nectarchain.trr_test_suite.utils import ExponentialFitter
-from nectarchain.trr_test_suite.utils import deadtime_labels as deadtime_labels_trr
-from nectarchain.trr_test_suite.utils import (
+from nectarchain.trr_verification_package.tools_components import DeadtimeTestTool
+from nectarchain.trr_verification_package.utils import ExponentialFitter
+from nectarchain.trr_verification_package.utils import (
+    deadtime_labels as deadtime_labels_trr,
+)
+from nectarchain.trr_verification_package.utils import (
     plot_deadtime_and_expo_fit,
     source_ids_deadtime,
 )
@@ -55,7 +57,7 @@ def get_labels():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Construct the absolute path to the JSON file
     json_path = os.path.join(
-        script_dir, "../trr_test_suite/resources/source_type_labels.json"
+        script_dir, "../trr_verification_package/resources/source_type_labels.json"
     )
 
     with open(json_path, "r") as f:
