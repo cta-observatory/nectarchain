@@ -42,6 +42,7 @@ NOTINCAMERADISPLAY = [
     "START-TIMES",
     "WF-.*",
     ".*PIXTIMELINE-.*",
+    "CAMERA-TEMPERATURE-TREND",
 ]
 TEST_PATTERN = "(?:% s)" % "|".join(NOTINCAMERADISPLAY)
 
@@ -1049,7 +1050,8 @@ def make_camera_display(source, parent_key, child_key):
         display._color_mapper.high = max_colorbar
         # for pixels that are outside the colorbar range, like bad pixels,
         # set displayed color to white
-        if not all(~mask_high_gain):
+        # if not all(~mask_high_gain):
+        if mask_high_gain.any():
             display._color_mapper.low_color = "white"
 
     # add colorbar
