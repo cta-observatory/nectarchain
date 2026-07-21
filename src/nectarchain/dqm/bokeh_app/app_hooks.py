@@ -13,6 +13,7 @@ from bokeh.models import (
     ColorBar,
     ColumnDataSource,
     CustomJS,
+    DatetimeTickFormatter,
     HoverTool,
     Label,
     Node,
@@ -178,6 +179,132 @@ def get_run_times(source):
     )
 
     return run_start_time_dt, first_event_time_dt, last_event_time_dt
+
+
+def make_trigger_timestamps_vs_ids(source, runid=None):
+    """Make trigger event timestamps plots
+
+    Parameters
+    ----------
+    source : dict
+        Dictionary returned by `get_rundata`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
+        By default None
+
+    Returns
+    -------
+    dict
+        Nested dictionary containing line plots
+        for the trigger event timestamps
+    """
+
+    with open(labels_path, "r", encoding="utf-8") as file:
+        y_axis_labels = json.load(file)["y_axis_labels_trig_timestamps"]
+
+    trig_timestamps = collections.defaultdict(dict)
+    for parentkey in source.keys():
+        if re.match(r"TRIGGER-EVENTS-(?!WRONG).*", parentkey):
+            # TODO: need to understand what we want to do with TRIGGER-EVENTS-WRONG
+            logger.info(f"Run id {runid}, preparing plot for {parentkey}")
+
+            trig_timestamps[parentkey] = figure(title=parentkey)
+
+            evts_ids = source[parentkey]["IDs"]
+            evts_timestamps = source[parentkey]["Timestamps"][np.argsort(evts_ids)]
+            evts_ids = np.sort(evts_ids)
+            evts_diff_timestamps = np.array([0] + np.diff(evts_timestamps).tolist())
+            negative_diff = evts_diff_timestamps < 0
+
+            trig_timestamps[parentkey] = figure(
+                title=parentkey,
+                x_range=(np.min(evts_ids), np.max(evts_ids)),
+                y_range=(
+                    np.min(evts_timestamps * 1000),
+                    np.max(evts_timestamps * 1000),
+                ),
+                # Convert to ms
+            )
+            trig_timestamps[parentkey].yaxis.formatter = DatetimeTickFormatter(
+                seconds="%H:%M:%S",
+                minutes="%H:%M:%S",
+                hourmin="%H:%M:%S",
+                hours="%H:%M:%S",
+                days="%H:%M:%S",
+                months="%H:%M:%S",
+                years="%H:%M:%S",
+            )
+            trig_timestamps[parentkey].scatter(
+                x=evts_ids, y=evts_timestamps * 1000, size=2, alpha=0.6, color="blue"
+            )
+            trig_timestamps[parentkey].scatter(
+                x=evts_ids[negative_diff],
+                y=evts_timestamps[negative_diff] * 1000,
+                size=4,
+                alpha=0.6,
+                color="red",
+                legend_label="# of negative Timestamp[i+1] - Timestamp[i]: "
+                + f"{len(evts_timestamps[negative_diff])}",
+            )
+            trig_timestamps[parentkey].legend.location = "top_left"
+            trig_timestamps[parentkey].xaxis.axis_label = "Event ID"
+
+            try:
+                trig_timestamps[parentkey].yaxis.axis_label = y_axis_labels[parentkey]
+            except ValueError:
+                trig_timestamps[parentkey].yaxis.axis_label = ""
+            except KeyError:
+                trig_timestamps[parentkey].yaxis.axis_label = ""
+
+            trig_timestamps[parentkey].xaxis.axis_label_text_font_size = "12pt"
+            trig_timestamps[parentkey].yaxis.axis_label_text_font_size = "12pt"
+            trig_timestamps[parentkey].xaxis.major_label_text_font_size = "10pt"
+            trig_timestamps[parentkey].yaxis.major_label_text_font_size = "10pt"
+            trig_timestamps[parentkey].xaxis.axis_label_text_font_style = "normal"
+            trig_timestamps[parentkey].yaxis.axis_label_text_font_style = "normal"
+
+    logger.info(f"Successfully created trigger timestamps plots for run {runid}")
+
+    return dict(trig_timestamps)
+
+
+def update_trigger_timestamps_vs_ids(data, runid=None):
+    """Reset each trigger timestamp plot previously
+       created by `make_trigger_timestamps_vs_ids`
+
+    Parameters
+    ----------
+    data : dict
+        Dictionary returned by `get_rundata`
+    runid : str
+        Identifier for dictionary extracted from the database,
+        containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
+        By default None
+
+    Returns
+    -------
+    bokeh.models.TabPanel
+        Updated TabPanel containing the bokeh layout for the trigger timestamp plots
+    """
+
+    # Make new trigger timestamp plots
+    trig_timestamps = make_trigger_timestamps_vs_ids(data, runid)
+
+    list_trig_timestamps = [
+        trig_timestamps[parentkey] for parentkey in trig_timestamps.keys()
+    ]
+
+    layout_trig_timestamps = column(
+        list_trig_timestamps,
+        sizing_mode="scale_width",
+    )
+
+    tab_trig_timestamps = TabPanel(
+        child=layout_trig_timestamps, title="Trigger Timestamps"
+    )
+
+    return tab_trig_timestamps
 
 
 def extract_waveforms_from_source(source):
