@@ -37,6 +37,14 @@ test_dict = {
                 [0, 1, 2] + [0] * (geom.n_pixels - 3)
             ),
         },
+        "TRIGGER-EVENTS-PHY": {
+            "Timestamps": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            "IDs": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        },
+        "TRIGGER-EVENTS-PED": {
+            "Timestamps": np.array([2, 1, 3, 4, 5, 7, 6, 8, 9, 10]),
+            "IDs": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        },
     }
 }
 # Renders the second image incomplete
@@ -130,6 +138,13 @@ def test_make_waveforms():
         make_waveforms(source=test_dict[runid], runid=runid)
 
 
+def test_make_trigger_timestamps_vs_ids():
+    from nectarchain.dqm.bokeh_app.app_hooks import make_trigger_timestamps_vs_ids
+
+    for runid in list(test_dict.keys()):
+        make_trigger_timestamps_vs_ids(source=test_dict[runid], runid=runid)
+
+
 def test_get_run_ids_for_camera():
     from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
 
@@ -210,6 +225,7 @@ def test_bokeh(tmp_path):
         get_rundata,
         make_camera_displays,
         make_timelines,
+        make_trigger_timestamps_vs_ids,
         make_waveforms,
     )
 
@@ -229,6 +245,7 @@ def test_bokeh(tmp_path):
     displays = make_camera_displays(source, runid)
     timelines = make_timelines(source, runid)
     waveforms = make_waveforms(source, runid)
+    trig_timestamps = make_trigger_timestamps_vs_ids(source, runid)
 
     camera_displays = [
         column(
@@ -259,6 +276,10 @@ def test_bokeh(tmp_path):
         for childkey in waveforms[parentkey].keys()
     ]
 
+    list_trig_timestamps = [
+        trig_timestamps[parentkey] for parentkey in trig_timestamps.keys()
+    ]
+
     layout_camera_displays = column(
         camera_displays,
         sizing_mode="scale_width",
@@ -274,6 +295,11 @@ def test_bokeh(tmp_path):
         sizing_mode="scale_width",
     )
 
+    layout_trig_timestamps = column(
+        list_trig_timestamps,
+        sizing_mode="scale_width",
+    )
+
     # Create different tabs
     tab_camera_displays = TabPanel(
         child=layout_camera_displays, title="Camera displays"
@@ -282,9 +308,13 @@ def test_bokeh(tmp_path):
 
     tab_waveforms = TabPanel(child=layout_waveforms, title="Waveforms")
 
+    tab_trig_timestamps = TabPanel(
+        child=layout_trig_timestamps, title="Trigger Timestamps"
+    )
+
     # Combine panels into tabs
     tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+        tabs=[tab_camera_displays, tab_timelines, tab_waveforms, tab_trig_timestamps],
         sizing_mode="scale_width",
     )
 

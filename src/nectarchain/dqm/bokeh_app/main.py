@@ -5,9 +5,11 @@ from app_hooks import (
     get_rundata,
     make_camera_displays,
     make_timelines,
+    make_trigger_timestamps_vs_ids,
     make_waveforms,
     update_camera_displays,
     update_timelines,
+    update_trigger_timestamps_vs_ids,
     update_waveforms,
 )
 
@@ -71,6 +73,7 @@ def get_layout_per_camera(source, runids, camera_code):
         tab_camera_displays = update_camera_displays(source, runid)
         tab_timelines = update_timelines(source, runid)
         tab_waveforms = update_waveforms(source, runid)
+        tab_trig_timestamps = update_trigger_timestamps_vs_ids(source, runid)
         run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(
             source
         )
@@ -93,7 +96,12 @@ def get_layout_per_camera(source, runids, camera_code):
 
         # Combine panels into tabs
         tabs = Tabs(
-            tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+            tabs=[
+                tab_camera_displays,
+                tab_timelines,
+                tab_waveforms,
+                tab_trig_timestamps,
+            ],
             sizing_mode="scale_width",
         )
 
@@ -126,6 +134,7 @@ def get_layout_per_camera(source, runids, camera_code):
     displays = make_camera_displays(source, runid)
     timelines = make_timelines(source, runid)
     waveforms = make_waveforms(source, runid)
+    trig_timestamps = make_trigger_timestamps_vs_ids(source, runid)
 
     run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
     run_times_string = Div(
@@ -180,6 +189,10 @@ def get_layout_per_camera(source, runids, camera_code):
         for childkey in waveforms[parentkey].keys()
     ]
 
+    list_trig_timestamps = [
+        trig_timestamps[parentkey] for parentkey in trig_timestamps.keys()
+    ]
+
     layout_camera_displays = column(
         camera_displays,
         sizing_mode="scale_width",
@@ -195,6 +208,11 @@ def get_layout_per_camera(source, runids, camera_code):
         sizing_mode="scale_width",
     )
 
+    layout_trig_timestamps = column(
+        list_trig_timestamps,
+        sizing_mode="scale_width",
+    )
+
     # Create different tabs
     tab_camera_displays = TabPanel(
         child=layout_camera_displays, title="Camera displays"
@@ -203,9 +221,13 @@ def get_layout_per_camera(source, runids, camera_code):
 
     tab_waveforms = TabPanel(child=layout_waveforms, title="Waveforms")
 
+    tab_trig_timestamps = TabPanel(
+        child=layout_trig_timestamps, title="Trigger Timestamps"
+    )
+
     # Combine panels into tabs
     tabs = Tabs(
-        tabs=[tab_camera_displays, tab_timelines, tab_waveforms],
+        tabs=[tab_camera_displays, tab_timelines, tab_waveforms, tab_trig_timestamps],
         sizing_mode="scale_width",
     )
 
