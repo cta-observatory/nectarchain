@@ -13,6 +13,7 @@ from bokeh.models import (
     ColorBar,
     ColumnDataSource,
     CustomJS,
+    DatetimeTickFormatter,
     HoverTool,
     Label,
     Node,
@@ -218,14 +219,27 @@ def make_trigger_timestamps_vs_ids(source, runid=None):
             trig_timestamps[parentkey] = figure(
                 title=parentkey,
                 x_range=(np.min(evts_ids), np.max(evts_ids)),
-                y_range=(np.min(evts_timestamps), np.max(evts_timestamps)),
+                y_range=(
+                    np.min(evts_timestamps * 1000),
+                    np.max(evts_timestamps * 1000),
+                ),
+                # Convert to ms
+            )
+            trig_timestamps[parentkey].yaxis.formatter = DatetimeTickFormatter(
+                seconds="%H:%M:%S",
+                minutes="%H:%M:%S",
+                hourmin="%H:%M:%S",
+                hours="%H:%M:%S",
+                days="%H:%M:%S",
+                months="%H:%M:%S",
+                years="%H:%M:%S",
             )
             trig_timestamps[parentkey].scatter(
-                x=evts_ids, y=evts_timestamps, size=2, alpha=0.6, color="blue"
+                x=evts_ids, y=evts_timestamps * 1000, size=2, alpha=0.6, color="blue"
             )
             trig_timestamps[parentkey].scatter(
                 x=evts_ids[negative_diff],
-                y=evts_timestamps[negative_diff],
+                y=evts_timestamps[negative_diff] * 1000,
                 size=4,
                 alpha=0.6,
                 color="red",
