@@ -402,12 +402,11 @@ class TestRunner(QWidget):
                     widget = widget_list[0]
                     params.append(f"--{param}")
                     params.extend(widget.text().split(" "))
-                    if param == "output":
-                        params.append(f"--output={widget.text()}")
-
-                    params.append(f"--temp_output={self.temp_output}")
                 else:
                     print(f"Widget with name {param} not found")
+
+            # Add temp_output only once (after the loop)
+            params.append(f"--temp_output={self.temp_output}")
 
             test_script_path = os.path.abspath(module.__file__)
             command = [sys.executable, test_script_path] + params
