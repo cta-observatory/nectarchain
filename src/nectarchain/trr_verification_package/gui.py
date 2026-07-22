@@ -84,6 +84,10 @@ class TestRunner(QWidget):
         # Generate temporary output path
         self.temp_output = tempfile.gettempdir()
         # print(f"Temporary output dir: {self.temp_output}")  # Debug print
+        # State for chained execution
+        self.is_running_all = False
+        self.tests_queue = []
+        self.test_queue_index = 0
         self.plot_files = []  # Store the list of plot files
         self.current_plot_index = 0  # Index to track which plot is being displayed
         self.figure = Figure(figsize=(8, 6))
@@ -324,17 +328,57 @@ class TestRunner(QWidget):
     def show_help(self, help_text):
         QMessageBox.information(self, "Parameter Help", help_text)
 
-    def run_all_tests(self):
-        # Method to chain all tests
+    def _set_controls_enabled(self, enabled):
+        """Enable or disable interactive controls while a test is running."""
+        self.run_button.setEnabled(enabled)
+        self.run_all_button.setEnabled(enabled)
+        self.test_selector.setEnabled(enabled)
+        # Also disable parameter editing when running
+        for i in range(self.param_layout.count()):
+            item = self.param_layout.itemAt(i)
+            if isinstance(item, QWidgetItem):
+                w = item.widget()
+                if isinstance(w, QLineEdit):
+                    w.setEnabled(enabled)
 
-        # Drop index 0, which corresponds to our placeholder "Select test"
-        for index in range(1, self.test_selector.count()):
-            # TODO: Not yet there: the list of module parameters are not updated from
-            #  one test to the other, to be fixed !
-            self.test_selector.setCurrentIndex(index)
-            self.update_parameters()
-            print("Currently processing test" f" {self.test_selector.currentText()}")
-            self.run_test()
+    def run_all_tests(self):
+        """Run all tests sequentially without freezing the GUI."""
+        if self.is_running_all:
+            return  # already running a chain
+
+        self.is_running_all = True
+        self._set_controls_enabled(False)
+
+        # queue all test indices (skip index 0, which corresponds to our placeholder
+        # "Select test")
+        self.tests_queue = list(range(1, self.test_selector.count()))
+        self.test_queue_index = 0
+        self._run_next_test_in_queue()
+
+    def _run_next_test_in_queue(self):
+        """Start the next test in the queue."""
+        if self.test_queue_index >= len(self.tests_queue):
+            # all tests finished
+            self.is_running_all = False
+            self._set_controls_enabled(True)
+            QMessageBox.information(
+                self, "All Tests", "All tests completed successfully!"
+            )
+            # display the last test's plots
+            QTimer.singleShot(1000, self.check_and_display_plot)
+            return
+
+        index = self.tests_queue[self.test_queue_index]
+        self.test_selector.setCurrentIndex(
+            index
+        )  # triggers update_parameters via signal
+        print(f"Currently processing test {self.test_selector.currentText()}")
+        self.run_test()
+
+    def _advance_queue(self):
+        """Called after a test in the chain finishes successfully."""
+        self.test_queue_index += 1
+        self._run_next_test_in_queue()
 
     def run_test(self):
         # Clean up old plot files to avoid loading leftover files
@@ -348,6 +392,9 @@ class TestRunner(QWidget):
             params = []
             self.update()
             self.repaint()
+
+            # Disable controls while the test runs
+            self._set_controls_enabled(False)
 
             for param, _ in self.params.items():
                 widget_list = self.param_widgets.findChildren(QLineEdit, param)
@@ -377,14 +424,12 @@ class TestRunner(QWidget):
                 self.process.finished.connect(self.process_finished)
 
                 self.process.start(sys.executable, [test_script_path] + params)
-                # wait for the process to get started
-                # self.process.waitForStarted()
-                self.process.waitForFinished(-1)
-                # process application events while waiting for it to finish
-                # while self.process.state() == QProcess.Running:
-                #    QApplication.processEvents(self)
+                # NOTE: waitForFinished removed – the process runs asynchronously
+                # Application events are processed via the event loop while the
+                # subprocess runs in the background.
 
             except Exception as e:
+                self._set_controls_enabled(True)
                 QMessageBox.critical(self, "Error", f"Failed to run the test: {e}")
         else:
             QMessageBox.critical(
@@ -400,15 +445,34 @@ class TestRunner(QWidget):
 
     def process_finished(self):
         """Handle the process when it finishes."""
-        if self.process.exitCode() == 0:
-            QMessageBox.information(self, "Test Output", "Test completed successfully.")
+        exit_code = self.process.exitCode()
 
-            # Delay to ensure file creation is complete
-            QTimer.singleShot(1000, self.check_and_display_plot)
+        if exit_code != 0:
+            if self.is_running_all:
+                self.is_running_all = False
+                self._set_controls_enabled(True)
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Test '{self.test_selector.currentText()}' failed "
+                    f"with exit code {exit_code}. Aborting chain.",
+                )
+            else:
+                self._set_controls_enabled(True)
+                QMessageBox.critical(
+                    self, "Error", f"Test failed with exit code {exit_code}"
+                )
+            return
+
+        # Test completed successfully
+        if self.is_running_all:
+            # advance to the next test after a short delay
+            # (allows plot files to be written)
+            QTimer.singleShot(1000, self._advance_queue)
         else:
-            QMessageBox.critical(
-                self, "Error", f"Test failed with exit code {self.process.exitCode()}"
-            )
+            self._set_controls_enabled(True)
+            QMessageBox.information(self, "Test Output", "Test completed successfully.")
+            QTimer.singleShot(1000, self.check_and_display_plot)
 
     def check_and_display_plot(self):
         self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
