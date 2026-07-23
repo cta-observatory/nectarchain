@@ -16,6 +16,11 @@ geom = geom.transform_to(EngineeringCameraFrame())
 
 test_dict = {
     "run1": {
+        "START-TIMES": {
+            "Run start time": np.array([1609459200]),  # 2021-01-01 00:00:00 UTC
+            "First event": np.array([1609459260]),  # 2021-01-01 00:01:00 UTC
+            "Last event": np.array([1609462800]),  # 2021-01-01 01:00:00 UTC
+        },
         "mykey1": {
             "mysubkey1": np.random.normal(size=geom.n_pixels),
             "mysubkey2": np.random.normal(size=geom.n_pixels),
@@ -37,6 +42,9 @@ test_dict = {
                 [0, 1, 2] + [0] * (geom.n_pixels - 3)
             ),
         },
+        # TODO: these two entries may actually need update
+        # considering the conversion to UTC time
+        # in the dedicated maker function
         "TRIGGER-EVENTS-PHY": {
             "Timestamps": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
             "IDs": np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
@@ -79,70 +87,42 @@ def test_get_bad_pixels_position():
 
 def test_make_camera_displays():
     from nectarchain.dqm.bokeh_app.app_hooks import make_camera_displays
+    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
 
     for runid in list(test_dict.keys()):
-        make_camera_displays(source=test_dict[runid], runid=runid)
-
-
-def test_get_run_times():
-    from datetime import datetime
-
-    from nectarchain.dqm.bokeh_app.app_hooks import get_run_times
-
-    # Create a test source dict with START-TIMES data
-    # Using np.array to simulate the structure expected by the function
-    run_start_time_ts = 1609459200  # 2021-01-01 00:00:00 UTC
-    first_event_time_ts = 1609459260  # 2021-01-01 00:01:00 UTC
-    last_event_time_ts = 1609462800  # 2021-01-01 01:00:00 UTC
-
-    source_with_times = {
-        "START-TIMES": {
-            "Run start time": np.array([run_start_time_ts]),
-            "First event": np.array([first_event_time_ts]),
-            "Last event": np.array([last_event_time_ts]),
-        }
-    }
-
-    run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(
-        source_with_times
-    )
-
-    # Verify the returned strings are in the correct format
-    assert isinstance(run_start_time_dt, str)
-    assert isinstance(first_event_time_dt, str)
-    assert isinstance(last_event_time_dt, str)
-
-    # Verify the format is YYYY-MM-DD HH:MM:SS
-    expected_format = "%Y-%m-%d %H:%M:%S"
-    datetime.strptime(run_start_time_dt, expected_format)
-    datetime.strptime(first_event_time_dt, expected_format)
-    datetime.strptime(last_event_time_dt, expected_format)
-
-    # Verify the values match the input timestamps
-    assert run_start_time_dt == "2021-01-01 00:00:00"
-    assert first_event_time_dt == "2021-01-01 00:01:00"
-    assert last_event_time_dt == "2021-01-01 01:00:00"
+        categorized = categorize_source_data(test_dict[runid])
+        make_camera_displays(
+            camera_displays_data=categorized["camera_displays"], runid=runid
+        )
 
 
 def test_make_timelines():
     from nectarchain.dqm.bokeh_app.app_hooks import make_timelines
+    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
 
     for runid in list(test_dict.keys()):
-        make_timelines(source=test_dict[runid], runid=runid)
+        categorized = categorize_source_data(test_dict[runid])
+        make_timelines(timelines_data=categorized["timelines"], runid=runid)
 
 
 def test_make_waveforms():
     from nectarchain.dqm.bokeh_app.app_hooks import make_waveforms
+    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
 
     for runid in list(test_dict.keys()):
-        make_waveforms(source=test_dict[runid], runid=runid)
+        categorized = categorize_source_data(test_dict[runid])
+        make_waveforms(waveforms_data=categorized["waveforms"], runid=runid)
 
 
 def test_make_trigger_timestamps_vs_ids():
     from nectarchain.dqm.bokeh_app.app_hooks import make_trigger_timestamps_vs_ids
+    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
 
     for runid in list(test_dict.keys()):
-        make_trigger_timestamps_vs_ids(source=test_dict[runid], runid=runid)
+        categorized = categorize_source_data(test_dict[runid])
+        make_trigger_timestamps_vs_ids(
+            trigger_events_data=categorized["trigger_events"], runid=runid
+        )
 
 
 def test_get_run_ids_for_camera():
@@ -228,6 +208,7 @@ def test_bokeh(tmp_path):
         make_trigger_timestamps_vs_ids,
         make_waveforms,
     )
+    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
 
     db = DB(None)
     conn = db.open()
@@ -242,10 +223,13 @@ def test_bokeh(tmp_path):
     run_select = Select(value=runid, title="NectarCAM run number", options=runids)
 
     source = get_rundata(root, run_select.value)
-    displays = make_camera_displays(source, runid)
-    timelines = make_timelines(source, runid)
-    waveforms = make_waveforms(source, runid)
-    trig_timestamps = make_trigger_timestamps_vs_ids(source, runid)
+    categorized = categorize_source_data(source)
+    displays = make_camera_displays(categorized["camera_displays"], runid)
+    timelines = make_timelines(categorized["timelines"], runid)
+    waveforms = make_waveforms(categorized["waveforms"], runid)
+    trig_timestamps = make_trigger_timestamps_vs_ids(
+        categorized["trigger_events"], runid
+    )
 
     camera_displays = [
         column(
