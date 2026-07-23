@@ -22,6 +22,8 @@ from bokeh.plotting import curdoc
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
+
+# import categorize_source_data
 from extract_data import categorize_source_data
 
 from nectarchain.dqm.bokeh_app.logging_config import setup_logger
