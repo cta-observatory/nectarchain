@@ -48,6 +48,8 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         self.image_ped_stats = None
         self.ped_all_stats = None
         self.ped_ped_stats = None
+        self.peakpos_all_stats = None
+        self.peakpos_ped_stats = None
         self.ChargeInt_Results_Dict = {}
         self.ChargeInt_Figures_Dict = {}
         self.ChargeInt_Figures_Names_Dict = {}
@@ -174,8 +176,19 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
     def finish_run(self):
         self.peakpos_all = np.array(self.peakpos_all, dtype=float)
+        if self.peakpos_all.size:
+            self.peakpos_all_stats = {
+                "average": np.mean(self.peakpos_all, axis=0),
+                "std": np.std(self.peakpos_all, axis=0),
+            }
+
         if self.counter_ped > 0:
             self.peakpos_ped = np.array(self.peakpos_ped, dtype=float)
+            if self.peakpos_ped.size:
+                self.peakpos_ped_stats = {
+                    "average": np.mean(self.peakpos_ped, axis=0),
+                    "std": np.std(self.peakpos_ped, axis=0),
+                }
 
         # rms, percentile, mean deviation, median, mean,
         self.image_all = np.array(self.image_all, dtype=float)
@@ -230,6 +243,11 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                     f"PED-INTEGRATION-IMAGE-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
                 ] = v
 
+            for k, v in self.peakpos_all_stats.items():
+                self.ChargeInt_Results_Dict[
+                    f"PEAKPOS-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
+                ] = v
+
         if self.counter_ped > 0:
             for k, v in self.image_ped_stats.items():
                 self.ChargeInt_Results_Dict[
@@ -242,6 +260,11 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             for k, v in self.ped_ped_stats.items():
                 self.ChargeInt_Results_Dict[
                     f"PED-INTEGRATION-PED-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
+                ] = v
+
+            for k, v in self.peakpos_ped_stats.items():
+                self.ChargeInt_Results_Dict[
+                    f"PEAKPOS-PED-ALL-{k.upper()}-{self.gain_c.upper()}-GAIN"
                 ] = v
 
         return self.ChargeInt_Results_Dict
@@ -294,6 +317,22 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             key = f"CHARGE-INTEGRATION-IMAGE-ALL-RMS-{self.gain_c.upper()}-GAIN"
             self._plot_camera_image(image, title, text, filename, key, fig_path)
 
+            # Peak position MEAN plot
+            image = self.peakpos_all_stats["average"]
+            text = f"{self.gain_c} gain peak time (s)"
+            title = f"Peak time position Mean {self.gain_c} Gain (ALL)"
+            filename = name + f"_PeakPos_Mean_{self.gain_c}Gain_All.png"
+            key = f"PEAKPOS-ALL-AVERAGE-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
+
+            # Peak position STD plot
+            image = self.peakpos_all_stats["std"]
+            text = f"{self.gain_c} gain peak time (s)"
+            title = f"Peak time position Std {self.gain_c} Gain (ALL)"
+            filename = name + f"_PeakPos_Std_{self.gain_c}Gain_All.png"
+            key = f"PEAKPOS-ALL-STD-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
+
         if self.counter_ped > 0:
             image = self.image_ped_stats["average"]
             text = f"{self.gain_c} gain integrated charge (DC)"
@@ -321,6 +360,20 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             title = f"Charge Integration RMS {self.gain_c} Gain (PED)"
             filename = name + f"_ChargeInt_Rms_{self.gain_c}Gain_Ped.png"
             key = f"CHARGE-INTEGRATION-IMAGE-PED-RMS-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
+
+            image = self.peakpos_ped_stats["average"]
+            text = f"{self.gain_c} gain peak time (s)"
+            title = f"Peak time position Mean {self.gain_c} Gain (ALL)"
+            filename = name + f"_PeakPos_Mean_{self.gain_c}Gain_All.png"
+            key = f"PEAKPOS-PED-ALL-AVERAGE-{self.gain_c.upper()}-GAIN"
+            self._plot_camera_image(image, title, text, filename, key, fig_path)
+
+            image = self.peakpos_ped_stats["std"]
+            text = f"{self.gain_c} gain peak time (s)"
+            title = f"Peak time position Std {self.gain_c} Gain (ALL)"
+            filename = name + f"_PeakPos_Std_{self.gain_c}Gain_All.png"
+            key = f"PEAKPOS-PED-ALL-STD-{self.gain_c.upper()}-GAIN"
             self._plot_camera_image(image, title, text, filename, key, fig_path)
 
         indexes_bad_pixels = np.where(self.pixelBADplot[0] == True)[0]
