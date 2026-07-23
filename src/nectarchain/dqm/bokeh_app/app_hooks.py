@@ -2,7 +2,6 @@ import collections
 import json
 import os
 import re
-from datetime import datetime, timezone
 
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -140,54 +139,14 @@ def get_rundata(src, runid):
     return run_data
 
 
-def get_run_times(source):
-    """Extract important time stamps for the provided run data
-
-    Parameters
-    ----------
-    source : dict
-        Dictionary returned by `get_rundata`
-
-    Returns
-    -------
-    run_start_time_dt : datetime.datetime
-        Time of the start of the run in %Y-%m-%d %H:%M:%S format
-    first_event_time_dt : datetime.datetime
-        Time when the first event was recorded in %Y-%m-%d %H:%M:%S format
-    last_event_time_dt : datetime.datetime
-        Time when the last event was recorded in %Y-%m-%d %H:%M:%S format
-    """
-
-    run_start_time = int(source["START-TIMES"]["Run start time"].flatten()[0])
-    run_start_time_dt = datetime.fromtimestamp(
-        run_start_time, tz=timezone.utc
-    ).strftime("%Y-%m-%d %H:%M:%S")
-    first_event_time = int(source["START-TIMES"]["First event"].flatten()[0])
-    first_event_time_dt = datetime.fromtimestamp(
-        first_event_time, tz=timezone.utc
-    ).strftime("%Y-%m-%d %H:%M:%S")
-    last_event_time = int(source["START-TIMES"]["Last event"].flatten()[0])
-    last_event_time_dt = datetime.fromtimestamp(
-        last_event_time, tz=timezone.utc
-    ).strftime("%Y-%m-%d %H:%M:%S")
-
-    logger.info(
-        f"Successfully extracted run times: "
-        f"run start time {run_start_time_dt}, "
-        f"first event time {first_event_time_dt}, "
-        f"last event time {last_event_time_dt}"
-    )
-
-    return run_start_time_dt, first_event_time_dt, last_event_time_dt
-
-
-def make_trigger_timestamps_vs_ids(source, runid=None):
+def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
     """Make trigger event timestamps plots
 
     Parameters
     ----------
-    source : dict
-        Dictionary returned by `get_rundata`
+    trigger_events_data : dict
+        Dictionary containing trigger event data extracted from source.
+        Each value is a dict with 'IDs' and 'Timestamps' arrays.
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -204,79 +163,79 @@ def make_trigger_timestamps_vs_ids(source, runid=None):
         y_axis_labels = json.load(file)["y_axis_labels_trig_timestamps"]
 
     trig_timestamps = collections.defaultdict(dict)
-    for parentkey in source.keys():
-        if re.match(r"TRIGGER-EVENTS-(?!WRONG).*", parentkey):
-            # TODO: need to understand what we want to do with TRIGGER-EVENTS-WRONG
-            logger.info(f"Run id {runid}, preparing plot for {parentkey}")
+    for parentkey, data in trigger_events_data.items():
+        # TODO: need to understand what we want to do with TRIGGER-EVENTS-WRONG
+        logger.info(f"Run id {runid}, preparing plot for {parentkey}")
 
-            trig_timestamps[parentkey] = figure(title=parentkey)
+        trig_timestamps[parentkey] = figure(title=parentkey)
 
-            evts_ids = source[parentkey]["IDs"]
-            evts_timestamps = source[parentkey]["Timestamps"][np.argsort(evts_ids)]
-            evts_ids = np.sort(evts_ids)
-            evts_diff_timestamps = np.array([0] + np.diff(evts_timestamps).tolist())
-            negative_diff = evts_diff_timestamps < 0
+        evts_ids = data["IDs"]
+        evts_timestamps = data["Timestamps"][np.argsort(evts_ids)]
+        evts_ids = np.sort(evts_ids)
+        evts_diff_timestamps = np.array([0] + np.diff(evts_timestamps).tolist())
+        negative_diff = evts_diff_timestamps < 0
 
-            trig_timestamps[parentkey] = figure(
-                title=parentkey,
-                x_range=(np.min(evts_ids), np.max(evts_ids)),
-                y_range=(
-                    np.min(evts_timestamps * 1000),
-                    np.max(evts_timestamps * 1000),
-                ),
-                # Convert to ms
-            )
-            trig_timestamps[parentkey].yaxis.formatter = DatetimeTickFormatter(
-                seconds="%H:%M:%S",
-                minutes="%H:%M:%S",
-                hourmin="%H:%M:%S",
-                hours="%H:%M:%S",
-                days="%H:%M:%S",
-                months="%H:%M:%S",
-                years="%H:%M:%S",
-            )
-            trig_timestamps[parentkey].scatter(
-                x=evts_ids, y=evts_timestamps * 1000, size=2, alpha=0.6, color="blue"
-            )
-            trig_timestamps[parentkey].scatter(
-                x=evts_ids[negative_diff],
-                y=evts_timestamps[negative_diff] * 1000,
-                size=4,
-                alpha=0.6,
-                color="red",
-                legend_label="# of negative Timestamp[i+1] - Timestamp[i]: "
-                + f"{len(evts_timestamps[negative_diff])}",
-            )
-            trig_timestamps[parentkey].legend.location = "top_left"
-            trig_timestamps[parentkey].xaxis.axis_label = "Event ID"
+        trig_timestamps[parentkey] = figure(
+            title=parentkey,
+            x_range=(np.min(evts_ids), np.max(evts_ids)),
+            y_range=(
+                np.min(evts_timestamps * 1000),
+                np.max(evts_timestamps * 1000),
+            ),
+            # Convert to ms
+        )
+        trig_timestamps[parentkey].yaxis.formatter = DatetimeTickFormatter(
+            seconds="%H:%M:%S",
+            minutes="%H:%M:%S",
+            hourmin="%H:%M:%S",
+            hours="%H:%M:%S",
+            days="%H:%M:%S",
+            months="%H:%M:%S",
+            years="%H:%M:%S",
+        )
+        trig_timestamps[parentkey].scatter(
+            x=evts_ids, y=evts_timestamps * 1000, size=2, alpha=0.6, color="blue"
+        )
+        trig_timestamps[parentkey].scatter(
+            x=evts_ids[negative_diff],
+            y=evts_timestamps[negative_diff] * 1000,
+            size=4,
+            alpha=0.6,
+            color="red",
+            legend_label="# of negative Timestamp[i+1] - Timestamp[i]: "
+            + f"{len(evts_timestamps[negative_diff])}",
+        )
+        trig_timestamps[parentkey].legend.location = "top_left"
+        trig_timestamps[parentkey].xaxis.axis_label = "Event ID"
 
-            try:
-                trig_timestamps[parentkey].yaxis.axis_label = y_axis_labels[parentkey]
-            except ValueError:
-                trig_timestamps[parentkey].yaxis.axis_label = ""
-            except KeyError:
-                trig_timestamps[parentkey].yaxis.axis_label = ""
+        try:
+            trig_timestamps[parentkey].yaxis.axis_label = y_axis_labels[parentkey]
+        except ValueError:
+            trig_timestamps[parentkey].yaxis.axis_label = ""
+        except KeyError:
+            trig_timestamps[parentkey].yaxis.axis_label = ""
 
-            trig_timestamps[parentkey].xaxis.axis_label_text_font_size = "12pt"
-            trig_timestamps[parentkey].yaxis.axis_label_text_font_size = "12pt"
-            trig_timestamps[parentkey].xaxis.major_label_text_font_size = "10pt"
-            trig_timestamps[parentkey].yaxis.major_label_text_font_size = "10pt"
-            trig_timestamps[parentkey].xaxis.axis_label_text_font_style = "normal"
-            trig_timestamps[parentkey].yaxis.axis_label_text_font_style = "normal"
+        trig_timestamps[parentkey].xaxis.axis_label_text_font_size = "12pt"
+        trig_timestamps[parentkey].yaxis.axis_label_text_font_size = "12pt"
+        trig_timestamps[parentkey].xaxis.major_label_text_font_size = "10pt"
+        trig_timestamps[parentkey].yaxis.major_label_text_font_size = "10pt"
+        trig_timestamps[parentkey].xaxis.axis_label_text_font_style = "normal"
+        trig_timestamps[parentkey].yaxis.axis_label_text_font_style = "normal"
 
     logger.info(f"Successfully created trigger timestamps plots for run {runid}")
 
     return dict(trig_timestamps)
 
 
-def update_trigger_timestamps_vs_ids(data, runid=None):
+def update_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
     """Reset each trigger timestamp plot previously
        created by `make_trigger_timestamps_vs_ids`
 
     Parameters
     ----------
-    data : dict
-        Dictionary returned by `get_rundata`
+    trigger_events_data : dict
+        Dictionary containing trigger event data extracted from source.
+        Each value is a dict with 'IDs' and 'Timestamps' arrays.
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -289,7 +248,7 @@ def update_trigger_timestamps_vs_ids(data, runid=None):
     """
 
     # Make new trigger timestamp plots
-    trig_timestamps = make_trigger_timestamps_vs_ids(data, runid)
+    trig_timestamps = make_trigger_timestamps_vs_ids(trigger_events_data, runid)
 
     list_trig_timestamps = [
         trig_timestamps[parentkey] for parentkey in trig_timestamps.keys()
@@ -307,46 +266,15 @@ def update_trigger_timestamps_vs_ids(data, runid=None):
     return tab_trig_timestamps
 
 
-def extract_waveforms_from_source(source):
-    """Extract waveforms from the provided run data
-
-    Parameters
-    ----------
-    source : dict
-        Dictionary returned by `get_rundata`
-
-    Returns
-    -------
-    dict
-        Dictionaries containing waveforms extracted from the run data
-    """
-
-    average_waveforms = {}
-    all_waveforms = {}
-    for parentkey in source.keys():
-        if re.search(r"WF.*AVERAGE", parentkey):
-            average_waveforms[parentkey] = {}
-            for childkey in source[parentkey].keys():
-                average_waveforms[parentkey][childkey] = source[parentkey][childkey]
-        if re.match(r"WF-(?!.*AVERAGE).*", parentkey):
-            all_waveforms[parentkey] = {}
-            for childkey in source[parentkey].keys():
-                all_waveforms[parentkey][childkey] = source[parentkey][childkey]
-
-    logger.info(
-        "Successfully extracted average, and pixel-wise, waveforms from run data"
-    )
-
-    return average_waveforms, all_waveforms
-
-
-def make_waveforms(source, runid=None):
+def make_waveforms(waveforms_data, runid=None):
     """Make waveform plots with both average and individual pixel waveforms
 
     Parameters
     ----------
-    source : dict
-        Dictionary returned by `get_rundata`
+    waveforms_data : dict
+        Dictionary containing categorized waveform data with two keys:
+        - 'average': dict of average waveforms
+        - 'all': dict of all (non-average) waveforms
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAQM_Run6310'.
@@ -362,7 +290,8 @@ def make_waveforms(source, runid=None):
         y_axis_labels = json.load(file)["y_axis_labels_waveforms"]
 
     waveforms = collections.defaultdict(dict)
-    average_waveforms, all_waveforms = extract_waveforms_from_source(source)
+    average_waveforms = waveforms_data["average"]
+    all_waveforms = waveforms_data["all"]
 
     LOWER_PERCENTILE = 2.5  # For 95% confidence band
     UPPER_PERCENTILE = 97.5
@@ -381,7 +310,7 @@ def make_waveforms(source, runid=None):
 
             all_childkey = childkey.replace("-AVERAGE-PIX", "")
 
-            samples = np.arange(len(source[parentkey][childkey]))
+            samples = np.arange(len(average_waveforms[parentkey][childkey]))
             avg_waveform = average_waveforms[parentkey][childkey]
 
             # Determine y-range from average waveform first
@@ -497,13 +426,15 @@ def make_waveforms(source, runid=None):
     return dict(waveforms)
 
 
-def update_waveforms(data, runid=None):
+def update_waveforms(waveforms_data, runid=None):
     """Reset each waveform previously created by `make_waveforms`
 
     Parameters
     ----------
-    data : dict
-        Dictionary returned by `get_rundata`
+    waveforms_data : dict
+        Dictionary containing categorized waveform data with two keys:
+        - 'average': dict of average waveforms
+        - 'all': dict of all (non-average) waveforms
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -515,8 +446,8 @@ def update_waveforms(data, runid=None):
         Updated TabPanel containing the bokeh layout for the waveform plots
     """
 
-    # Make new timeline plots
-    waveforms = make_waveforms(data, runid)
+    # Make new waveform plots
+    waveforms = make_waveforms(waveforms_data, runid)
 
     list_waveforms = [
         waveforms[parentkey][childkey]
@@ -534,13 +465,14 @@ def update_waveforms(data, runid=None):
     return tab_waveforms
 
 
-def make_timelines(source, runid=None):
+def make_timelines(timelines_data, runid=None):
     """Make timeline plots for pixel quantities evolving with time
 
     Parameters
     ----------
-    source : dict
-        Dictionary returned by `get_rundata`
+    timelines_data : dict
+        Dictionary containing timeline data extracted from source.
+        Each value is a dict with child keys containing timeline arrays.
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -556,56 +488,52 @@ def make_timelines(source, runid=None):
         y_axis_labels = json.load(file)["y_axis_labels_timelines"]
 
     timelines = collections.defaultdict(dict)
-    for parentkey in source.keys():
-        # Prepare timeline line plots only for pixel quantities evolving with time
-        if re.match("(?:.*PIXTIMELINE-.*)", parentkey):
-            for childkey in source[parentkey].keys():
-                logger.info(
-                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
-                )
-                timelines[parentkey][childkey] = figure(title=childkey)
-                evts = np.arange(len(source[parentkey][childkey]))
-                timelines[parentkey][childkey] = figure(
-                    title=childkey,
-                    x_range=(0, np.max(evts) + 50),
-                    y_range=(0, 1),
-                    # A fraction is plotted:
-                    # y-range values are between 0 and 1 because
-                )
-                timelines[parentkey][childkey].line(
-                    x=evts,
-                    y=source[parentkey][childkey],
-                    line_width=3,
-                )
-            timelines[parentkey][childkey].xaxis.axis_label = "Event number"
-            try:
-                timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[
-                    parentkey
-                ]
-            except ValueError:
-                timelines[parentkey][childkey].yaxis.axis_label = ""
-            except KeyError:
-                timelines[parentkey][childkey].yaxis.axis_label = ""
+    for parentkey, parent_data in timelines_data.items():
+        # parent_data is the dict for this parentkey
+        for childkey, child_data in parent_data.items():
+            logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
+            timelines[parentkey][childkey] = figure(title=childkey)
+            evts = np.arange(len(child_data))
+            timelines[parentkey][childkey] = figure(
+                title=childkey,
+                x_range=(0, np.max(evts) + 50),
+                y_range=(0, 1),
+                # A fraction is plotted:
+                # y-range values are between 0 and 1 because
+            )
+            timelines[parentkey][childkey].line(
+                x=evts,
+                y=child_data,
+                line_width=3,
+            )
+        timelines[parentkey][childkey].xaxis.axis_label = "Event number"
+        try:
+            timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[parentkey]
+        except ValueError:
+            timelines[parentkey][childkey].yaxis.axis_label = ""
+        except KeyError:
+            timelines[parentkey][childkey].yaxis.axis_label = ""
 
-            timelines[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
-            timelines[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
-            timelines[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
-            timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
-            timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
-            timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+        timelines[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
+        timelines[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
+        timelines[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
+        timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
+        timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
+        timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
 
     logger.info(f"Successfully created timeline plots for run {runid}")
 
     return dict(timelines)
 
 
-def update_timelines(data, runid=None):
+def update_timelines(timelines_data, runid=None):
     """Reset each timeline previously created by `make_timelines`
 
     Parameters
     ----------
-    data : dict
-        Dictionary returned by `get_rundata`
+    timelines_data : dict
+        Dictionary containing timeline data extracted from source.
+        Each value is a dict with child keys containing timeline arrays.
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -618,7 +546,7 @@ def update_timelines(data, runid=None):
     """
 
     # Make new timeline plots
-    timelines = make_timelines(data, runid)
+    timelines = make_timelines(timelines_data, runid)
 
     list_timelines = [
         timelines[parentkey][childkey]
@@ -636,14 +564,16 @@ def update_timelines(data, runid=None):
     return tab_timelines
 
 
-def make_camera_displays(source, runid):
+def make_camera_displays(camera_displays_data, runid):
     """Make camera display plots using `make_camera_display`,
        `make_pixel_val_vs_id` and `make_pixel_vals_histo`
 
     Parameters
     ----------
-    source : dict
-        Dictionary returned by `get_rundata`
+    camera_displays_data : dict
+        Dictionary containing camera display data extracted from source.
+        Each value is a dict with child keys containing 2D image arrays.
+        This should also include BADPIX data which is needed for masking.
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -655,43 +585,42 @@ def make_camera_displays(source, runid):
     """
 
     displays = collections.defaultdict(dict)
-    for parentkey in source.keys():
-        if not re.match(TEST_PATTERN, parentkey):
-            for childkey in source[parentkey].keys():
-                logger.info(
-                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
-                )
-                camera_display, range_slider = make_camera_display(
-                    source, parent_key=parentkey, child_key=childkey
-                )
-                displays_to_show = [camera_display]
+    for parentkey, parent_data in camera_displays_data.items():
+        for childkey in parent_data.keys():
+            logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
+            camera_display, range_slider = make_camera_display(
+                camera_displays_data, parent_key=parentkey, child_key=childkey
+            )
+            displays_to_show = [camera_display]
 
-                if "BADPIX" not in parentkey:
-                    if range_slider is not None:
-                        displays_to_show.append(range_slider)
-                    camera_pixel_val_vs_id = make_pixel_val_vs_id(
-                        source, parent_key=parentkey, child_key=childkey
-                    )
-                    displays_to_show.append(camera_pixel_val_vs_id)
-                    camera_pixel_vals_histo = make_pixel_vals_histo(
-                        source, parent_key=parentkey, child_key=childkey
-                    )
-                    displays_to_show.append(camera_pixel_vals_histo)
+            if "BADPIX" not in parentkey:
+                if range_slider is not None:
+                    displays_to_show.append(range_slider)
+                camera_pixel_val_vs_id = make_pixel_val_vs_id(
+                    camera_displays_data, parent_key=parentkey, child_key=childkey
+                )
+                displays_to_show.append(camera_pixel_val_vs_id)
+                camera_pixel_vals_histo = make_pixel_vals_histo(
+                    camera_displays_data, parent_key=parentkey, child_key=childkey
+                )
+                displays_to_show.append(camera_pixel_vals_histo)
 
-                displays[parentkey][childkey] = displays_to_show
+            displays[parentkey][childkey] = displays_to_show
 
     logger.info(f"Successfully created camera display plots for run {runid}")
 
     return dict(displays)
 
 
-def update_camera_displays(data, runid=None):
+def update_camera_displays(camera_displays_data, runid=None):
     """Reset each display previously created by `make_camera_displays`
 
     Parameters
     ----------
-    data : dict
-        Dictionary returned by `get_rundata`
+    camera_displays_data : dict
+        Dictionary containing camera display data extracted from source.
+        Each value is a dict with child keys containing 2D image arrays.
+        This should also include BADPIX data which is needed for masking.
     runid : str, optional
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
@@ -704,7 +633,7 @@ def update_camera_displays(data, runid=None):
     """
 
     # Make new camera display plots
-    displays = make_camera_displays(data, runid)
+    displays = make_camera_displays(camera_displays_data, runid)
 
     camera_displays = [
         (

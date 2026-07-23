@@ -1,7 +1,8 @@
+import time
+
 from app_hooks import (
     get_available_cameras_from_db_keys,
     get_run_ids_for_camera,
-    get_run_times,
     get_rundata,
     make_camera_displays,
     make_timelines,
@@ -21,6 +22,9 @@ from bokeh.plotting import curdoc
 # ctapipe imports
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
+
+# import categorize_source_data
+from extract_data import categorize_source_data
 
 from nectarchain.dqm.bokeh_app.logging_config import setup_logger
 from nectarchain.dqm.db_utils import DQMDB
@@ -67,16 +71,30 @@ def get_layout_per_camera(source, runids, camera_code):
         """
 
         runid = new
+
+        requested_at_time = time.time()
         logger.info(f"Requested to display information for run: {runid}")
         source = get_rundata(db, runid)
+        categorized = categorize_source_data(source)
 
-        tab_camera_displays = update_camera_displays(source, runid)
-        tab_timelines = update_timelines(source, runid)
-        tab_waveforms = update_waveforms(source, runid)
-        tab_trig_timestamps = update_trigger_timestamps_vs_ids(source, runid)
-        run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(
-            source
+        tab_camera_displays = update_camera_displays(
+            categorized["camera_displays"], runid
         )
+        tab_timelines = update_timelines(categorized["timelines"], runid)
+        tab_waveforms = update_waveforms(categorized["waveforms"], runid)
+        tab_trig_timestamps = update_trigger_timestamps_vs_ids(
+            categorized["trigger_events"], runid
+        )
+        # Get times - use categorized if available, otherwise fall back to get_run_times
+        times = categorized.get("times", [None, None, None])
+        if times[0] is None:
+            run_start_time_dt, first_event_time_dt, last_event_time_dt = [
+                "Not provided",
+                "Not provided",
+                "Not provided",
+            ]
+        else:
+            run_start_time_dt, first_event_time_dt, last_event_time_dt = times
 
         run_times_string = Div(
             text=f"""
@@ -108,7 +126,10 @@ def get_layout_per_camera(source, runids, camera_code):
         page_layout.children[1] = tabs
         page_layout.children[0].children[1] = run_times_string
 
-        logger.info("Updated layouts and TabPanel objects for tabs.")
+        request_processed = time.time() - requested_at_time
+        logger.info(
+            f"Updated layouts and TabPanel objects for tabs in {request_processed:.2f}s"
+        )
 
     # First, get the run id with the most populated result dictionary
     # On the full DB, this takes an awful lot of time, and saturates the RAM on the host
@@ -130,13 +151,27 @@ def get_layout_per_camera(source, runids, camera_code):
     )
 
     logger.info(f"Getting data for run {run_select.value}")
-    source = get_rundata(db, run_select.value)
-    displays = make_camera_displays(source, runid)
-    timelines = make_timelines(source, runid)
-    waveforms = make_waveforms(source, runid)
-    trig_timestamps = make_trigger_timestamps_vs_ids(source, runid)
 
-    run_start_time_dt, first_event_time_dt, last_event_time_dt = get_run_times(source)
+    requested_at_time = time.time()
+    source = get_rundata(db, run_select.value)
+    categorized = categorize_source_data(source)
+    displays = make_camera_displays(categorized["camera_displays"], runid)
+    timelines = make_timelines(categorized["timelines"], runid)
+    waveforms = make_waveforms(categorized["waveforms"], runid)
+    trig_timestamps = make_trigger_timestamps_vs_ids(
+        categorized["trigger_events"], runid
+    )
+    # Get times - use categorized if available, otherwise fall back to get_run_times
+    times = categorized.get("times", [None, None, None])
+    if times[0] is None:
+        run_start_time_dt, first_event_time_dt, last_event_time_dt = [
+            "Not provided",
+            "Not provided",
+            "Not provided",
+        ]
+    else:
+        run_start_time_dt, first_event_time_dt, last_event_time_dt = times
+
     run_times_string = Div(
         text=f"""
         <div style="
@@ -233,10 +268,11 @@ def get_layout_per_camera(source, runids, camera_code):
 
     # TODO: may want to add a list to the logging of all created tabs,
     # to keep track of what is being displayed
+    request_processed = time.time() - requested_at_time
     logger.info(
-        f"Created layouts and TabPanel objects for tabs, for camera {camera_code}"
+        "Created layouts and TabPanel objects for tabs, "
+        + f"for camera {camera_code} in {request_processed:.2f}s"
     )
-
     page_layout = column([controls, tabs], sizing_mode="scale_width")
 
     run_select.on_change("value", update)
