@@ -87,7 +87,6 @@ def get_args():
         "--output",
         type=str,
         help="Output base directory",
-        required=False,
         default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
