@@ -83,6 +83,8 @@ class TestRunner(QWidget):
         self.process = None
         # Generate temporary output path
         self.temp_output = tempfile.gettempdir()
+        # Accumulator for plot files across a chain
+        self.all_plot_files = []
         # print(f"Temporary output dir: {self.temp_output}")  # Debug print
         # State for chained execution
         self.is_running_all = False
@@ -361,10 +363,14 @@ class TestRunner(QWidget):
             # all tests finished
             self.is_running_all = False
             self._set_controls_enabled(True)
+
+            # Use all accumulated plots from every test in the chain
+            self.plot_files = list(self.all_plot_files)
+
             QMessageBox.information(
                 self, "All Tests", "All tests completed successfully!"
             )
-            # display the last test's plots
+            # display the accumulated plots
             QTimer.singleShot(1000, self.check_and_display_plot)
             return
 
@@ -381,9 +387,6 @@ class TestRunner(QWidget):
         self._run_next_test_in_queue()
 
     def run_test(self):
-        # Clean up old plot files to avoid loading leftover files
-        self.cleanup_tempdir()
-
         selected_test = self.test_selector.currentText()
 
         module = self.test_modules.get(selected_test)
@@ -395,6 +398,12 @@ class TestRunner(QWidget):
 
             # Disable controls while the test runs
             self._set_controls_enabled(False)
+
+            # Create a unique subdirectory for this test's plots
+            self.current_test_plot_dir = tempfile.mkdtemp(
+                prefix=f"test_{self.test_queue_index}_",
+                dir=self.temp_output,
+            )
 
             for param, _ in self.params.items():
                 widget_list = self.param_widgets.findChildren(QLineEdit, param)
@@ -446,6 +455,13 @@ class TestRunner(QWidget):
         """Handle the process when it finishes."""
         exit_code = self.process.exitCode()
 
+        # Collect plot files created by this test
+        test_plots = []
+        if self.current_test_plot_dir and os.path.isdir(self.current_test_plot_dir):
+            test_plots = sorted(
+                glob(os.path.join(self.current_test_plot_dir, "plot*.pkl"))
+            )
+
         if exit_code != 0:
             if self.is_running_all:
                 self.is_running_all = False
@@ -465,16 +481,22 @@ class TestRunner(QWidget):
 
         # Test completed successfully
         if self.is_running_all:
+            # Accumulate plots from this test
+            self.all_plot_files.extend(test_plots)
             # advance to the next test after a short delay
             # (allows plot files to be written)
             QTimer.singleShot(1000, self._advance_queue)
         else:
             self._set_controls_enabled(True)
+            self.plot_files = test_plots  # single test — just these plots
             QMessageBox.information(self, "Test Output", "Test completed successfully.")
             QTimer.singleShot(1000, self.check_and_display_plot)
 
     def check_and_display_plot(self):
-        self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
+        """Load plots from self.plot_files (already set) or glob the temp dir."""
+        if not self.plot_files:
+            # Fallback for backward compatibility (single test without subdir)
+            self.plot_files = sorted(glob(f"{self.temp_output}/plot*.pkl"))
         self.display_plot([f for f in self.plot_files if os.path.exists(f)])
 
     def display_plot(self, plot_files):
