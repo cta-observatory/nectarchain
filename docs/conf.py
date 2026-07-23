@@ -7,15 +7,10 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import datetime
 import os
-import sys
+import tomllib
 from pathlib import Path
 
 import nectarchain
-
-if sys.version_info < (3, 11):
-    import tomli as tomllib
-else:
-    import tomllib
 
 pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = tomllib.loads(pyproject_path.read_text())
@@ -53,6 +48,8 @@ extensions = [
     "sphinx_design",
     "sphinx_qt_documentation",
 ]
+
+suppress_warnings = ["misc.copy_overwrite"]
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
@@ -92,7 +89,7 @@ autodoc_mock_imports = [
 
 # intersphinx allows referencing other packages sphinx docs
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.11", None),
+    "python": ("https://docs.python.org/3.12", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "astropy": ("https://docs.astropy.org/en/latest/", None),

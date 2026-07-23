@@ -15,10 +15,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11"
+    "Programming Language :: Python :: 3.12"
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "ctapipe~=0.24",
     "ctapipe-io-nectarcam>0.1",
@@ -35,7 +34,7 @@ dependencies = [
     "h5py",
     "pyqt5",
     "pyqtgraph",
-    "tomli; python_version < '3.11'",
+    "setuptools<81",
     "watchdog",
 ]
 

@@ -29,7 +29,7 @@ jobs:
       - name: Set up Python environment
         uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Runs pre-commit hooks
         uses: pre-commit/action@v3.0.1
         with:
@@ -47,30 +47,22 @@ jobs:
       matrix:
         include:
           - os: "ubuntu-latest"
-            python-version: "3.10"
+            python-version: "3.12"
             ctapipe-version: "v0.24.0"
             install-method: "mamba"
           - os: "ubuntu-latest"
-            python-version: "3.10"
-            ctapipe-version: "v0.24.0"
-            install-method: "pip"
-          - os: "ubuntu-latest"
-            python-version: "3.11"
-            ctapipe-version: "v0.24.0"
-            install-method: "mamba"
-          - os: "ubuntu-latest"
-            python-version: "3.11"
+            python-version: "3.12"
             ctapipe-version: "v0.24.0"
             install-method: "pip"
             extra-args: ["codecov"]
           # macos 15 image, x86-based
           - os: "macos-15-intel"
-            python-version: "3.11"
+            python-version: "3.12"
             ctapipe-version: "v0.24.0"
             install-method: "mamba"
           # macos 14 image is arm64 based
           - os: "macos-14"
-            python-version: "3.11"
+            python-version: "3.12"
             ctapipe-version: "v0.24.0"
             install-method: "mamba"
 
@@ -157,20 +149,7 @@ jobs:
           pip install \
              "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION"
 
-          if [ "${{ matrix.os }}" == "macos-14" ]; then
-            # nectarchain installation with pip
-            if [ "${{ matrix.install-method }}" == "pip" ]; then
-              pip install -e .
-            else
-              pip install --no-deps -e .
-            fi
-            # install with pip dependencies for pytest (NB : when we will use python > 3.10 for all configs, use tomllib instead of toml)
-            pip install toml
-            python -c "import toml, sys; print('\n'.join(toml.load('pyproject.toml')['project']['optional-dependencies']['test']))" | xargs pip install 
-          else
-            echo "pip install -e ."
-            pip install -e .[test]
-          fi
+          pip install -e .[test]
 
       - name: Check pyqt version and installation
         run: |
@@ -228,7 +207,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: 3.11
+          python-version: 3.12
 
       - name: Install dependencies for Qt 5 on Ubuntu
         run: |
