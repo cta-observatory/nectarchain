@@ -266,14 +266,6 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_all = charge_container["charges_hg"]
         tom_no_fit_all = charge_container["peak_hg"]
         npixels = charge_container["npixels"]
-
-        # Guard against empty charge array (can happen when run in shared-process
-        # context)
-        charge_all = np.atleast_2d(charge_all)
-        if charge_all.shape[0] == 0:
-            self.log.warning("No charges found in container, returning empty results")
-            return np.array([]), np.array([]), 0.0
-
         good_evts = np.where(
             np.max(charge_all, axis=1)
             < self.mean_charge_threshold * np.mean(charge_all, axis=1)
