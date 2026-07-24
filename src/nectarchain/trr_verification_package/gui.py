@@ -379,7 +379,10 @@ class TestRunner(QWidget):
             index
         )  # triggers update_parameters via signal
         print(f"Currently processing test {self.test_selector.currentText()}")
-        self.run_test()
+
+        # Defer run_test() so that pending deleteLater() calls from
+        # update_parameters() are processed before we read widget values.
+        QTimer.singleShot(0, self.run_test)
 
     def _advance_queue(self):
         """Called after a test in the chain finishes successfully."""
