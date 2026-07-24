@@ -252,7 +252,12 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         for componentName in _cls.componentsList:
             class_name = ComponentUtils.get_class_name_from_ComponentName(componentName)
             configurable_traits = ComponentUtils.get_configurable_traits(class_name)
-            _cls.add_traits(**configurable_traits)
+            # Only add traits that don't already exist on the class
+            existing = set(cls.class_traits().keys())
+            new_traits = {
+                k: v for k, v in configurable_traits.items() if k not in existing
+            }
+            _cls.add_traits(**new_traits)
             _cls.aliases.update(
                 {key: f"{componentName}.{key}" for key in configurable_traits.keys()}
             )
