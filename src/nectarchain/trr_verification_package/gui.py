@@ -85,6 +85,9 @@ class TestRunner(QWidget):
         self.temp_output = tempfile.gettempdir()
         # Accumulator for plot files across a chain
         self.all_plot_files = []
+        # Track TemporaryDirectory objects so we can clean them on close
+        self.plot_temp_dirs = []
+        self.current_temp_dir = None
         # print(f"Temporary output dir: {self.temp_output}")  # Debug print
         # State for chained execution
         self.is_running_all = False
@@ -351,6 +354,9 @@ class TestRunner(QWidget):
         self.is_running_all = True
         self._set_controls_enabled(False)
 
+        # Reset the accumulator for this new chain
+        self.all_plot_files = []
+
         # queue all test indices (skip index 0, which corresponds to our placeholder
         # "Select test")
         self.tests_queue = list(range(1, self.test_selector.count()))
@@ -402,11 +408,18 @@ class TestRunner(QWidget):
             # Disable controls while the test runs
             self._set_controls_enabled(False)
 
-            # Create a unique subdirectory for this test's plots
-            self.current_test_plot_dir = tempfile.mkdtemp(
-                prefix=f"test_{self.test_queue_index}_",
+            # ── Clean up previous standalone test's directory ──
+            if not self.is_running_all and self.current_temp_dir is not None:
+                self.current_temp_dir.cleanup()
+                self.current_temp_dir = None
+                self.plot_files = []
+
+            # ── Create a unique subdirectory for this test's plots ──
+            self.current_temp_dir = tempfile.TemporaryDirectory(
+                prefix=f"test_{selected_test.replace(' ', '_')}_",
                 dir=self.temp_output,
             )
+            self.plot_temp_dirs.append(self.current_temp_dir)
 
             for param, _ in self.params.items():
                 widget_list = self.param_widgets.findChildren(QLineEdit, param)
@@ -417,8 +430,8 @@ class TestRunner(QWidget):
                 else:
                     print(f"Widget with name {param} not found")
 
-            # Add temp_output only once (after the loop)
-            params.append(f"--temp_output={self.temp_output}")
+            # Point --temp_output to the unique subdirectory
+            params.append(f"--temp_output={self.current_temp_dir.name}")
 
             test_script_path = os.path.abspath(module.__file__)
             command = [sys.executable, test_script_path] + params
@@ -447,6 +460,24 @@ class TestRunner(QWidget):
                 self, "Error", "No parameters found for the selected test"
             )
 
+    def closeEvent(self, event):
+        """Clean up all temporary plot artifacts when the window is closed."""
+        # Clean up every TemporaryDirectory we created
+        for td in self.plot_temp_dirs:
+            try:
+                td.cleanup()
+            except OSError:
+                pass
+
+        # Also remove any leftover plot*.pkl directly in the temp dir
+        for f in glob(os.path.join(self.temp_output, "plot*.pkl")):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
+        super().closeEvent(event)
+
     def read_process_output(self):
         """Reads and displays the process output in real-time."""
         if self.process:
@@ -460,9 +491,11 @@ class TestRunner(QWidget):
 
         # Collect plot files created by this test
         test_plots = []
-        if self.current_test_plot_dir and os.path.isdir(self.current_test_plot_dir):
+        if self.current_temp_dir is not None and os.path.isdir(
+            self.current_temp_dir.name
+        ):
             test_plots = sorted(
-                glob(os.path.join(self.current_test_plot_dir, "plot*.pkl"))
+                glob(os.path.join(self.current_temp_dir.name, "plot*.pkl"))
             )
 
         if exit_code != 0:
