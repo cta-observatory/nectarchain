@@ -7,7 +7,7 @@ logger = setup_logger()
 
 
 NOTINCAMERADISPLAY = [
-    "CAMERA-PING-PONG-.*",
+    "CAMERA-PING-PONG-CHANGES-TIMES",
     "TRIGGER-.*",
     "PED-INTEGRATION-.*",
     "START-TIMES",
