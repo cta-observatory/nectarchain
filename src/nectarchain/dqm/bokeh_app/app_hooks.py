@@ -998,6 +998,88 @@ def compile_hover_tool(display, camgeom):
     return display
 
 
+class CameraDisplayNectarCAM(CameraDisplay):
+    """Overrides the pixel picker callback to customize handling"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.colorbar_label = ""
+        self.figure_title = ""
+        self.selected_pixel_waveform = column(sizing_mode="scale_width")
+        self.source = None
+        self.parent_key = None
+        self.child_key = None
+
+    def pixel_picker_callback(self, attr, old, new):
+        """Callback for when pixels are selected
+
+        Parameters
+        ----------
+        attr : str
+            Attribute name (always 'indices')
+        old : list
+            Previously selected pixel indices
+        new : list
+            Currently selected pixel indices
+        """
+        with open(labels_path, "r", encoding="utf-8") as file:
+            y_axis_labels = json.load(file)["y_axis_labels_waveforms"]
+
+        for pix_id in new:
+            logger.info(
+                f"{self.figure_title} - {pix_id=} has value"
+                + f" {self.image[pix_id]:.2f} [{self.colorbar_label}]"
+            )
+
+            # Create or update a plot that is shown next to the tapped camera display.
+            # This is the right pattern: update an existing placeholder inside the
+            # layout instead of adding a new root at the bottom of the document.
+            samples = np.arange(len(self.source[self.parent_key][self.child_key]))
+            waveform = self.source[self.parent_key][self.child_key]
+            waveform_plot = figure(
+                title=self.child_key + f", selected pixel {pix_id}",
+                x_range=(np.min(samples) - 5, np.max(samples) + 5),
+                y_range=(
+                    np.min(waveform) - np.min(waveform) / 100,
+                    np.max(waveform) + np.max(waveform) / 100,
+                ),
+            )
+            waveform_plot.line(
+                x=samples,
+                y=waveform,
+                line_width=3,
+            )
+            try:
+                waveform_plot.yaxis.axis_label = y_axis_labels[self.parent_key]
+            except ValueError:
+                waveform_plot.yaxis.axis_label = ""
+            except KeyError:
+                waveform_plot.yaxis.axis_label = ""
+
+            waveform_plot.xaxis.axis_label_text_font_size = "12pt"
+            waveform_plot.yaxis.axis_label_text_font_size = "12pt"
+            waveform_plot.xaxis.major_label_text_font_size = "10pt"
+            waveform_plot.yaxis.major_label_text_font_size = "10pt"
+            waveform_plot.xaxis.axis_label_text_font_style = "normal"
+            waveform_plot.yaxis.axis_label_text_font_style = "normal"
+
+            self.selected_pixel_waveform.children = [waveform_plot]
+
+        # TODO: possible workflow could be:
+        # 1. access to the data and plots (waveforms, timelines, etc.)
+        # from within the callback adding self.source parent and child keys
+        # as attributes
+        # 2. modify the callback to generate plots, for instance the waveform
+        # plot for the selected pixel
+        # 3. add plots to the root self.document.add_root(p)
+        # 4. clear old plots whenever a new pixel is tapped
+        # for p in self.pixel_plots.values(): self.document.remove_root(p)
+        # 5. understand where to place these plots, either in another tab,
+        # or show this plot in
+        # the same row as the Camera Display only when it is not empty....
+        # CHECK THE CONVERSATION WITH MISTRAL
+
+
 # TODO: some more explanation about the parent and child keys
 # may help the user, if needed
 def make_camera_display(camera_displays_data, parent_key, child_key):
@@ -1073,7 +1155,8 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
                 max_slider = 1.0
             image[mask_low_gain] = 0.0
 
-    display = CameraDisplay(geometry=geom)
+    # display = CameraDisplay(geometry=geom)
+    display = CameraDisplayNectarCAM(geom)
     try:
         display.image = image
     except ValueError as e:
@@ -1124,12 +1207,22 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
 
     try:
         color_bar.title = colorbar_labels[parent_key]
+        display.colorbar_label = colorbar_labels[parent_key]
     except ValueError:
         color_bar.title = ""
+        display.colorbar_label = ""
     except KeyError:
         color_bar.title = ""
+        display.colorbar_label = ""
 
     display.figure.title = child_key
+    display.figure_title = child_key
+    display.selected_pixel_waveform = column(sizing_mode="scale_width")
+    display.source = source
+    display.parent_key = "WF-PHY-AVERAGE-PIX-HIGH-GAIN"
+    display.child_key = "WF-PHY-AVERAGE-PIX-HIGH-GAIN"
+
+    display.enable_pixel_picker(display.pixel_picker_callback)
 
     # Create RangeSlider for dynamic color range control
     range_slider = define_dynamic_color_range(
