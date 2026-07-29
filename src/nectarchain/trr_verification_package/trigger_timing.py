@@ -81,9 +81,8 @@ def get_args():
         "-o",
         "--output",
         type=str,
-        help="Output directory. If none, plot will be saved in current directory",
-        required=False,
-        default="./",
+        help="Output directory",
+        default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
         "-t",

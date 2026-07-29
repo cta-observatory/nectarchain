@@ -7,24 +7,29 @@ import pickle
 import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from ctapipe.core import run_tool
+# Force non-interactive Matplotlib backend BEFORE any other imports
+import matplotlib
 
-from nectarchain.makers.calibration import (
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt  # noqa E402
+import numpy as np  # noqa E402
+import pandas as pd  # noqa E402
+from ctapipe.core import run_tool  # noqa E402
+
+from nectarchain.makers.calibration import (  # noqa E402
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
     PedestalNectarCAMCalibrationTool,
 )
-from nectarchain.trr_verification_package.tools_components import (
+from nectarchain.trr_verification_package.tools_components import (  # noqa E402
     ChargeResolutionTestTool,
 )
-from nectarchain.trr_verification_package.utils import (
+from nectarchain.trr_verification_package.utils import (  # noqa E402
     err_ratio,
     get_gain_run,
     plot_parameters,
 )
-from nectarchain.utils.constants import ALLOWED_CAMERAS
+from nectarchain.utils.constants import ALLOWED_CAMERAS  # noqa E402
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -98,9 +103,8 @@ number of pixels used (default 1000).
         "-o",
         "--output",
         type=str,
-        help="Output directory. If none, plot will be saved in current directory",
-        required=False,
-        default="./",
+        help="Output directory",
+        default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
 
     parser.add_argument(
