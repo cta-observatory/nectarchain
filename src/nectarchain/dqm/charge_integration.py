@@ -103,6 +103,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             broken_pixels_hg,
             broken_pixels_lg,
         ) = ArrayDataComponent._compute_broken_pixels_event(evt, self.pixels)
+        self.all_pixel_ids = np.arange(0, constants.N_PIXELS, step=1)
 
         if self.k == 0:
             self.pixelBAD = broken_pixels_hg
@@ -118,6 +119,9 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
             # (1, 1855, 60) for single-gain channel
             waveform = evt.r1.tel[self.tel_id].waveform
+
+        missing_or_bad_pixels = np.setdiff1d(self.all_pixel_ids, self.pixels)
+
         waveform = waveform[self.pixels]
 
         ped = np.mean(waveform[:, 20])
@@ -146,6 +150,14 @@ class ChargeIntegrationHighLowGain(DQMSummary):
 
         image = output[0]
         peakpos = output[1]
+
+        if len(missing_or_bad_pixels) > 0:
+            # Sort the indices in ascending order
+            sorted_indices = np.sort(missing_or_bad_pixels)
+            # Insert zeros at all specified indices in one call
+            image = np.insert(image, sorted_indices, 0)
+            peakpos = np.insert(peakpos, sorted_indices, 0)
+
         if np.any(np.isnan(image) | np.isinf(image)):
             image[np.isnan(image) | np.isinf(image)] = np.zeros_like(
                 image[np.isnan(image) | np.isinf(image)]
@@ -342,9 +354,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                     )
             plt.hist(
                 np.mean(
-                    self.image_all[
-                        :, ~np.isin(np.arange(len(self.pixels)), indexes_bad_pixels)
-                    ],
+                    self.image_all[:, ~np.isin(self.all_pixel_ids, indexes_bad_pixels)],
                     axis=1,
                 ),
                 100,
@@ -386,9 +396,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                     )
             plt.hist(
                 np.mean(
-                    self.image_ped[
-                        :, ~np.isin(np.arange(len(self.pixels)), indexes_bad_pixels)
-                    ],
+                    self.image_ped[:, ~np.isin(self.all_pixel_ids, indexes_bad_pixels)],
                     axis=1,
                 ),
                 100,
