@@ -44,7 +44,8 @@
         "CHARGE-INTEGRATION-IMAGE-ALL-RMS-HIGH-GAIN": "ADC counts",
         "CHARGE-INTEGRATION-IMAGE-ALL-RMS-LOW-GAIN": "ADC counts",
         "CHARGE-INTEGRATION-IMAGE-ALL-STD-HIGH-GAIN": "ADC counts",
-        "CHARGE-INTEGRATION-IMAGE-ALL-STD-LOW-GAIN": "ADC counts"
+        "CHARGE-INTEGRATION-IMAGE-ALL-STD-LOW-GAIN": "ADC counts",
+        "CAMERA-PING-PONG-CHANGES": "# of ping pong changes"
     },
     "section_titles_camera_display": {
         "TEMPERATURE": "Camera Temperature",

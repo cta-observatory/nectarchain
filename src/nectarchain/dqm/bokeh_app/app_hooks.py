@@ -593,7 +593,7 @@ def make_camera_displays(camera_displays_data, runid):
             )
             displays_to_show = [camera_display]
 
-            if "BADPIX" not in parentkey:
+            if "BADPIX" not in parentkey and "PING-PONG" not in parentkey:
                 if range_slider is not None:
                     displays_to_show.append(range_slider)
                 camera_pixel_val_vs_id = make_pixel_val_vs_id(
@@ -692,16 +692,12 @@ def make_pixel_vals_histo(camera_displays_data, parent_key, child_key):
 
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
 
-    if "BADPIX" in parent_key:
-        image = set_bad_pixels_cap_value(image)
-        data_for_hist = image
-    else:
-        mask_high_gain, mask_low_gain = get_bad_pixels_position(
-            camera_displays_data=camera_displays_data, image_shape=image.shape
-        )
-        data_for_hist = image[
-            ~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain
-        ]
+    mask_high_gain, mask_low_gain = get_bad_pixels_position(
+        camera_displays_data=camera_displays_data, image_shape=image.shape
+    )
+    data_for_hist = image[
+        ~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain
+    ]
 
     # Use adaptive binning on full data to include outliers
     hist, bins = np.histogram(data_for_hist, bins="fd")
@@ -819,25 +815,17 @@ def make_pixel_val_vs_id(camera_displays_data, parent_key, child_key):
     """
 
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
-    if "BADPIX" in parent_key:
-        image = set_bad_pixels_cap_value(image)
-        min_val, max_val = 0.0, 1.0
-    else:
-        mask_high_gain, mask_low_gain = get_bad_pixels_position(
-            camera_displays_data=camera_displays_data, image_shape=image.shape
-        )
-        min_val = (
-            np.min(
-                image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
-            )
-            * 0.99
-        )
-        max_val = (
-            np.max(
-                image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
-            )
-            * 1.01
-        )
+    mask_high_gain, mask_low_gain = get_bad_pixels_position(
+        camera_displays_data=camera_displays_data, image_shape=image.shape
+    )
+    min_val = (
+        np.min(image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain])
+        * 0.99
+    )
+    max_val = (
+        np.max(image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain])
+        * 1.01
+    )
 
     with open(labels_path, "r", encoding="utf-8") as file:
         colorbar_labels = json.load(file)["colorbar_labels_camera_display"]
@@ -881,7 +869,7 @@ def make_pixel_val_vs_id(camera_displays_data, parent_key, child_key):
     return scatter_value_vs_id
 
 
-def define_dymanic_color_range(
+def define_dynamic_color_range(
     parent_key, display, min_max_slider, min_max_colorbar, color_bar
 ):
     """Define dynamic color range for the camera displays using a RangeSlider widget
@@ -903,10 +891,11 @@ def define_dymanic_color_range(
     Returns
     -------
     bokeh.models.RangeSlider or None
-        RangeSlider widget for dynamic color range control (None for BADPIX displays)
+        RangeSlider widget for dynamic color range control
+        (None for BADPIX and PING-PONG displays)
     """
 
-    if "BADPIX" not in parent_key:
+    if "BADPIX" not in parent_key and "PING-PONG" not in parent_key:
         min_slider, max_slider = min_max_slider
         min_colorbar, max_colorbar = min_max_colorbar
 
@@ -1049,31 +1038,40 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
         mask_high_gain, mask_low_gain = get_bad_pixels_position(
             camera_displays_data=camera_displays_data, image_shape=image.shape
         )
-        # plotting by default range with 99.5% of all events, so that
-        # outliers do not prevent us from seing the bulk of the data
-        min_colorbar = np.nanquantile(
-            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
-            0.005,
-        )
-        max_colorbar = np.nanquantile(
-            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
-            0.995,
-        )
-        min_slider = np.min(
-            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
-        )
-        max_slider = np.max(
-            image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
-        )
-        if max_colorbar == min_colorbar:
-            # avoid problems with bokeh display
-            max_colorbar *= 1.05
-            min_colorbar *= 0.95
-        if max_slider == min_slider:
-            # avoid problems with the slider definition
-            max_slider *= 1.05
-            min_slider *= 0.95
-        image[mask_low_gain if "LOW-GAIN" in parent_key else mask_high_gain] = 0.0
+        if "PING-PONG" not in parent_key:
+            # plotting by default range with 99.5% of all events, so that
+            # outliers do not prevent us from seing the bulk of the data
+            min_colorbar = np.nanquantile(
+                image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
+                0.005,
+            )
+            max_colorbar = np.nanquantile(
+                image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain],
+                0.995,
+            )
+            min_slider = np.min(
+                image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+            )
+            max_slider = np.max(
+                image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain]
+            )
+            if max_colorbar == min_colorbar:
+                # avoid problems with bokeh display
+                max_colorbar *= 1.05
+                min_colorbar *= 0.95
+            if max_slider == min_slider:
+                # avoid problems with the slider definition
+                max_slider *= 1.05
+                min_slider *= 0.95
+            image[mask_low_gain if "LOW-GAIN" in parent_key else mask_high_gain] = 0.0
+        else:
+            min_colorbar, max_colorbar = 0, np.max(image)
+            if max_colorbar == min_colorbar:
+                max_colorbar = 1.0
+            min_slider, max_slider = 0, np.max(image)
+            if max_slider == min_slider:
+                max_slider = 1.0
+            image[mask_low_gain] = 0.0
 
     display = CameraDisplay(geometry=geom)
     try:
@@ -1134,7 +1132,7 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
     display.figure.title = child_key
 
     # Create RangeSlider for dynamic color range control
-    range_slider = define_dymanic_color_range(
+    range_slider = define_dynamic_color_range(
         parent_key=parent_key,
         display=display,
         min_max_slider=(min_slider, max_slider),
