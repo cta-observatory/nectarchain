@@ -869,7 +869,7 @@ def make_pixel_val_vs_id(camera_displays_data, parent_key, child_key):
     return scatter_value_vs_id
 
 
-def define_dymanic_color_range(
+def define_dynamic_color_range(
     parent_key, display, min_max_slider, min_max_colorbar, color_bar
 ):
     """Define dynamic color range for the camera displays using a RangeSlider widget
@@ -1132,7 +1132,7 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
     display.figure.title = child_key
 
     # Create RangeSlider for dynamic color range control
-    range_slider = define_dymanic_color_range(
+    range_slider = define_dynamic_color_range(
         parent_key=parent_key,
         display=display,
         min_max_slider=(min_slider, max_slider),
