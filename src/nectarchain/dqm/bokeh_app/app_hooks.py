@@ -693,7 +693,7 @@ def make_pixel_vals_histo(camera_displays_data, parent_key, child_key):
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
 
     mask_high_gain, mask_low_gain = get_bad_pixels_position(
-        source=camera_displays_data, image_shape=image.shape
+        camera_displays_data=camera_displays_data, image_shape=image.shape
     )
     data_for_hist = image[
         ~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain
@@ -816,7 +816,7 @@ def make_pixel_val_vs_id(camera_displays_data, parent_key, child_key):
 
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
     mask_high_gain, mask_low_gain = get_bad_pixels_position(
-        source=camera_displays_data, image_shape=image.shape
+        camera_displays_data=camera_displays_data, image_shape=image.shape
     )
     min_val = (
         np.min(image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain])
@@ -1036,7 +1036,7 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
         min_slider, max_slider = 0.0, 1.0
     else:
         mask_high_gain, mask_low_gain = get_bad_pixels_position(
-            source=camera_displays_data, image_shape=image.shape
+            camera_displays_data=camera_displays_data, image_shape=image.shape
         )
         if "PING-PONG" not in parent_key:
             # plotting by default range with 99.5% of all events, so that
@@ -1166,14 +1166,16 @@ def set_bad_pixels_cap_value(image):
     return image
 
 
-def get_bad_pixels_position(source, image_shape):
+def get_bad_pixels_position(camera_displays_data, image_shape):
     """Get the positions of the bad pixels
        in the camera as boolean masks
 
     Parameters
     ----------
-    source : dict
-        Dictionary returned by `get_rundata`
+    camera_displays_data : dict
+        Dictionary containing camera display data extracted from source.
+        Each value is a dict with child keys containing 2D image arrays.
+        This should also include BADPIX data which is needed for masking.
     image_shape : tuple
         Shape of the display image
         for the quantity called in `make_camera_display`
@@ -1189,20 +1191,20 @@ def get_bad_pixels_position(source, image_shape):
     """
 
     try:
-        if "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN" in source.keys():
-            image_badpix_high_gain = source[
+        if "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN" in camera_displays_data.keys():
+            image_badpix_high_gain = camera_displays_data[
                 "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"
             ]["CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"]
-            image_badpix_low_gain = source[
+            image_badpix_low_gain = camera_displays_data[
                 "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN"
             ]["CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"]
-        elif "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN" in source.keys():
-            image_badpix_high_gain = source["CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN"][
-                "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"
-            ]
-            image_badpix_low_gain = source["CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN"][
-                "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"
-            ]
+        elif "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN" in camera_displays_data.keys():
+            image_badpix_high_gain = camera_displays_data[
+                "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN"
+            ]["CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"]
+            image_badpix_low_gain = camera_displays_data[
+                "CAMERA-BADPIX-PHY-OVEREVENTS-HIGH-GAIN"
+            ]["CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"]
 
         mask_bad_pixels_high_gain = image_badpix_high_gain >= 1.0
         # FIXME: bad pixels for High and Low gain may be the same
