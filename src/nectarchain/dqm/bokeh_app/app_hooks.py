@@ -693,7 +693,7 @@ def make_pixel_vals_histo(camera_displays_data, parent_key, child_key):
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
 
     mask_high_gain, mask_low_gain = get_bad_pixels_position(
-        camera_displays_data=camera_displays_data, image_shape=image.shape
+        source=camera_displays_data, image_shape=image.shape
     )
     data_for_hist = image[
         ~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain
@@ -816,7 +816,7 @@ def make_pixel_val_vs_id(camera_displays_data, parent_key, child_key):
 
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
     mask_high_gain, mask_low_gain = get_bad_pixels_position(
-        camera_displays_data=camera_displays_data, image_shape=image.shape
+        source=camera_displays_data, image_shape=image.shape
     )
     min_val = (
         np.min(image[~mask_low_gain if "LOW-GAIN" in parent_key else ~mask_high_gain])
@@ -1036,7 +1036,7 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
         min_slider, max_slider = 0.0, 1.0
     else:
         mask_high_gain, mask_low_gain = get_bad_pixels_position(
-            camera_displays_data=camera_displays_data, image_shape=image.shape
+            source=camera_displays_data, image_shape=image.shape
         )
         if "PING-PONG" not in parent_key:
             # plotting by default range with 99.5% of all events, so that
