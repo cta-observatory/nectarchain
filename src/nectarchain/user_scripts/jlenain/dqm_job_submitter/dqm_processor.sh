@@ -119,6 +119,11 @@ echo "Running"
 cmd="\$CALLER exec --home $PWD $CONTAINER /opt/conda/envs/nectarchain/bin/python /opt/cta/nectarchain/src/nectarchain/dqm/start_dqm.py --r0 --runnb $runnb --camera $camera $NECTARCAMDATA $NECTARDIR"
 echo \$cmd
 eval \$cmd
+
+# Clean Singularity/Apptainer cache behind us:
+cmd="\$CALLER cache clean --days 3 --force"
+echo \$cmd
+eval \$cmd
 EOF
 
 chmod u+x $WRAPPER || exit_script $?
