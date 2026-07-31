@@ -340,6 +340,37 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             "flatfield": self._FF_output_path,
         }
 
+        # Set up the correct telescope ID
+        if not self.all_default:
+            self._setup_tel_id()
+
+    def _setup_tel_id(self):
+        # NOTE: This is a cumbersome implementation to set up the correct tel id.
+        # Need to load the event source to access tel_id.
+        # Not the cleanest but ensures that all runs have the same tel_id
+        # before running the tools. Might be worth revisiting.
+
+        self.pedestal_tool._load_eventsource()
+        self.gain_tool._load_eventsource()
+        self.hilo_tool._load_eventsource()
+        self.flatfield_tool._load_eventsource()
+
+        tel_ids = {
+            "pedestal": self.pedestal_tool.tel_id,
+            "gain": self.gain_tool.tel_id,
+            "hilo": self.hilo_tool.tel_id,
+            "flatfield": self.flatfield_tool.tel_id,
+        }
+
+        if len(set(tel_ids.values())) != 1:
+            raise ValueError(
+                f"Inconsistent tel_id for different subtools: {tel_ids}"
+                f"Check corresponding run numbers!"
+            )
+
+        self.event_source = self.pedestal_tool.event_source
+        self.log.debug(f"Set up tel_id: {self.tel_id}")
+
     def start(self):
         if self.all_default:
             return
