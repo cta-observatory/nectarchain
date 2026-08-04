@@ -78,7 +78,9 @@ def get_layout_per_camera(source, runids, camera_code):
         categorized = categorize_source_data(source)
 
         tab_camera_displays = update_camera_displays(
-            categorized["camera_displays"], runid
+            categorized["camera_displays"],
+            runid,
+            waveforms_data=categorized["waveforms"],
         )
         tab_timelines = update_timelines(categorized["timelines"], runid)
         tab_waveforms = update_waveforms(categorized["waveforms"], runid)
@@ -155,7 +157,9 @@ def get_layout_per_camera(source, runids, camera_code):
     requested_at_time = time.time()
     source = get_rundata(db, run_select.value)
     categorized = categorize_source_data(source)
-    displays = make_camera_displays(categorized["camera_displays"], runid)
+    displays = make_camera_displays(
+        categorized["camera_displays"], runid, waveforms_data=categorized["waveforms"]
+    )
     timelines = make_timelines(categorized["timelines"], runid)
     waveforms = make_waveforms(categorized["waveforms"], runid)
     trig_timestamps = make_trigger_timestamps_vs_ids(
@@ -204,10 +208,14 @@ def get_layout_per_camera(source, runids, camera_code):
                     displays[parentkey][childkey][2],
                     displays[parentkey][childkey][3],
                 ),
+                displays[parentkey][childkey][0].selected_pixel_waveform,
             ]
         )
         if len(displays[parentkey][childkey]) == 4
-        else displays[parentkey][childkey][0].figure
+        else column(
+            displays[parentkey][childkey][0].figure,
+            displays[parentkey][childkey][0].selected_pixel_waveform,
+        )
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
