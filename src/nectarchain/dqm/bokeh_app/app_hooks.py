@@ -564,7 +564,7 @@ def update_timelines(timelines_data, runid=None):
     return tab_timelines
 
 
-def make_camera_displays(camera_displays_data, runid):
+def make_camera_displays(camera_displays_data, runid, waveforms_data=None):
     """Make camera display plots using `make_camera_display`,
        `make_pixel_val_vs_id` and `make_pixel_vals_histo`
 
@@ -577,6 +577,10 @@ def make_camera_displays(camera_displays_data, runid):
     runid : str
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
+    waveforms_data : dict, optional
+        Dictionary containing categorized waveform data with 'average' and 'all' keys.
+        Used to display individual pixel waveforms when a pixel is tapped.
+        By default None
 
     Returns
     -------
@@ -589,7 +593,10 @@ def make_camera_displays(camera_displays_data, runid):
         for childkey in parent_data.keys():
             logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
             camera_display, range_slider = make_camera_display(
-                camera_displays_data, parent_key=parentkey, child_key=childkey
+                camera_displays_data,
+                parent_key=parentkey,
+                child_key=childkey,
+                waveforms_data=waveforms_data,
             )
             displays_to_show = [camera_display]
 
@@ -612,7 +619,7 @@ def make_camera_displays(camera_displays_data, runid):
     return dict(displays)
 
 
-def update_camera_displays(camera_displays_data, runid=None):
+def update_camera_displays(camera_displays_data, runid=None, waveforms_data=None):
     """Reset each display previously created by `make_camera_displays`
 
     Parameters
@@ -625,6 +632,10 @@ def update_camera_displays(camera_displays_data, runid=None):
         Identifier for dictionary extracted from the database,
         containing the NectarCAM run number. Example: 'NectarCAMQM_Run6310'.
         By default None
+    waveforms_data : dict, optional
+        Dictionary containing categorized waveform data with 'average' and 'all' keys.
+        Used to display individual pixel waveforms when a pixel is tapped.
+        By default None
 
     Returns
     -------
@@ -633,7 +644,9 @@ def update_camera_displays(camera_displays_data, runid=None):
     """
 
     # Make new camera display plots
-    displays = make_camera_displays(camera_displays_data, runid)
+    displays = make_camera_displays(
+        camera_displays_data, runid, waveforms_data=waveforms_data
+    )
 
     camera_displays = [
         (
@@ -645,10 +658,14 @@ def update_camera_displays(camera_displays_data, runid=None):
                         displays[parentkey][childkey][2],
                         displays[parentkey][childkey][3],
                     ),
+                    displays[parentkey][childkey][0].selected_pixel_waveform,
                 ]
             )
             if len(displays[parentkey][childkey]) == 4
-            else displays[parentkey][childkey][0].figure
+            else column(
+                displays[parentkey][childkey][0].figure,
+                displays[parentkey][childkey][0].selected_pixel_waveform,
+            )
         )
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
@@ -998,9 +1015,152 @@ def compile_hover_tool(display, camgeom):
     return display
 
 
+class CameraDisplayNectarCAM(CameraDisplay):
+    """Overrides the pixel picker callback to customize handling"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.colorbar_label = ""
+        self.figure_title = ""
+        self.selected_pixel_waveform = row(sizing_mode="scale_width")
+        self.camera_displays_data = None
+        self.parent_key = None
+        self.child_key = None
+        self.waveforms_data = None
+
+    def pixel_picker_callback(self, attr, old, new):
+        """Callback for when pixels are selected
+
+        Parameters
+        ----------
+        attr : str
+            Attribute name (always 'indices')
+        old : list
+            Previously selected pixel indices
+        new : list
+            Currently selected pixel indices
+        """
+        with open(labels_path, "r", encoding="utf-8") as file:
+            y_axis_labels = json.load(file)["y_axis_labels_waveforms"]
+
+        for pix_id in new:
+            logger.info(
+                f"{self.figure_title} - {pix_id=} has value"
+                + f" {self.image[pix_id]:.2f} [{self.colorbar_label}]"
+            )
+            selected_waveform_plots = []
+
+            # Create or update a plot that is shown next to the tapped camera display.
+            # This is the right pattern: update an existing placeholder inside the
+            # layout instead of adding a new root at the bottom of the document.
+            if self.waveforms_data:
+                # get average waveform from waveforms_data
+                avg_waveforms_dict = self.waveforms_data["average"]
+                all_waveforms_dict = self.waveforms_data["all"]
+
+                colors_phy = ["blue", "turquoise"]
+                colors_ped = ["red", "orange"]
+
+                for parentkey in avg_waveforms_dict.keys():
+                    colors = colors_phy if "PHY" in parentkey else colors_ped
+
+                    # Find corresponding all_waveforms key by removing -AVERAGE-
+                    all_parentkey = parentkey.replace("-AVERAGE-PIX", "")
+
+                    for childkey in avg_waveforms_dict[parentkey].keys():
+                        all_childkey = childkey.replace("-AVERAGE-PIX", "")
+
+                        samples = np.arange(
+                            len(avg_waveforms_dict[parentkey][childkey])
+                        )
+                        avg_waveform = avg_waveforms_dict[parentkey][childkey]
+
+                        # Determine y-range from average waveform first
+                        y_min = (
+                            np.min(avg_waveform) - np.abs(np.min(avg_waveform)) * 0.1
+                        )
+                        y_max = (
+                            np.max(avg_waveform) + np.abs(np.max(avg_waveform)) * 0.1
+                        )
+
+                        pixel_waveform = all_waveforms_dict[all_parentkey][
+                            all_childkey
+                        ][pix_id]
+                        y_min = min(
+                            y_min,
+                            np.min(pixel_waveform)
+                            - np.abs(np.min(pixel_waveform)) * 0.1,
+                        )
+                        y_max = max(
+                            y_max,
+                            np.max(pixel_waveform)
+                            + np.abs(np.max(pixel_waveform)) * 0.1,
+                        )
+
+                        waveform_plot = figure(
+                            title=all_childkey + f", selected pixel {pix_id}",
+                            x_range=(np.min(samples) - 5, np.max(samples) + 5),
+                            y_range=(y_min, y_max),
+                            width=400,
+                            height=400,
+                        )
+
+                        # Plot average waveform
+                        waveform_plot.line(
+                            x=samples,
+                            y=avg_waveform,
+                            line_width=3,
+                            color=colors[0],
+                            legend_label="Average",
+                        )
+                        waveform_plot.line(
+                            x=samples,
+                            y=pixel_waveform,
+                            line_width=2,
+                            color=colors[1],
+                            legend_label=f"Pixel {pix_id}",
+                        )
+
+                        waveform_plot.xaxis.axis_label = "Waveform sample number"
+
+                        try:
+                            waveform_plot.yaxis.axis_label = y_axis_labels[parentkey]
+                        except ValueError:
+                            waveform_plot.yaxis.axis_label = ""
+                        except KeyError:
+                            waveform_plot.yaxis.axis_label = ""
+
+                        waveform_plot.xaxis.axis_label_text_font_size = "12pt"
+                        waveform_plot.yaxis.axis_label_text_font_size = "12pt"
+                        waveform_plot.xaxis.major_label_text_font_size = "10pt"
+                        waveform_plot.yaxis.major_label_text_font_size = "10pt"
+                        waveform_plot.xaxis.axis_label_text_font_style = "normal"
+                        waveform_plot.yaxis.axis_label_text_font_style = "normal"
+
+                        waveform_plot.outline_line_color = "navy"
+
+                        logger.info(
+                            f"Added {parentkey} and {childkey} "
+                            + f"for {pix_id=}, to the display"
+                        )
+
+                        selected_waveform_plots.append(waveform_plot)
+
+                self.selected_pixel_waveform.children = selected_waveform_plots
+
+            else:
+                avg_waveform = None
+
+            if avg_waveform is None:
+                logger.warning("No waveform data found to add to the display")
+                return
+
+
 # TODO: some more explanation about the parent and child keys
 # may help the user, if needed
-def make_camera_display(camera_displays_data, parent_key, child_key):
+def make_camera_display(
+    camera_displays_data, parent_key, child_key, waveforms_data=None
+):
     """Make camera display plot to fill the nested dict
        created by `make_camera_displays`
        along with the 1D plot of camera pixel values vs pixel id
@@ -1016,6 +1176,10 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
         Parent key to extract quantity from the dict
     child_key : str
         Child key to extract quantity from the dict
+    waveforms_data : dict, optional
+        Dictionary containing categorized waveform data with 'average' and 'all' keys.
+        Used to display individual pixel waveforms when a pixel is tapped.
+        By default None
 
     Returns
     -------
@@ -1073,7 +1237,8 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
                 max_slider = 1.0
             image[mask_low_gain] = 0.0
 
-    display = CameraDisplay(geometry=geom)
+    # display = CameraDisplay(geometry=geom)
+    display = CameraDisplayNectarCAM(geom)
     try:
         display.image = image
     except ValueError as e:
@@ -1124,12 +1289,24 @@ def make_camera_display(camera_displays_data, parent_key, child_key):
 
     try:
         color_bar.title = colorbar_labels[parent_key]
+        display.colorbar_label = colorbar_labels[parent_key]
     except ValueError:
         color_bar.title = ""
+        display.colorbar_label = ""
     except KeyError:
         color_bar.title = ""
+        display.colorbar_label = ""
 
     display.figure.title = child_key
+    display.figure_title = child_key
+    display.selected_pixel_waveform = row(sizing_mode="scale_width")
+    display.selected_pixel_waveform_plots = []
+    display.camera_displays_data = camera_displays_data
+    display.parent_key = parent_key
+    display.child_key = child_key
+    display.waveforms_data = waveforms_data
+
+    display.enable_pixel_picker(display.pixel_picker_callback)
 
     # Create RangeSlider for dynamic color range control
     range_slider = define_dynamic_color_range(
