@@ -24,12 +24,12 @@ test_dict = {
         "mykey1": {
             "mysubkey1": np.random.normal(size=geom.n_pixels),
             "mysubkey2": np.random.normal(size=geom.n_pixels),
-            "FOOPIXTIMELINE-HIGH": np.random.normal(size=1000),
+            "FOOPIXTIMELINE-HIGH": np.random.normal(size=1855),
         },
         "mykey2": {
             "mysubkey1": np.random.normal(size=geom.n_pixels),
             "mysubkey2": np.random.normal(size=geom.n_pixels),
-            "FOOPIXTIMELINE-HIGH": np.random.normal(size=1000),
+            "FOOPIXTIMELINE-HIGH": np.random.normal(size=1855),
         },
         # BADPIX keys for testing
         "CAMERA-BADPIX-PED-PHY-OVEREVENTS-HIGH-GAIN": {
@@ -41,6 +41,10 @@ test_dict = {
             "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN": np.array(
                 [0, 1, 2] + [0] * (geom.n_pixels - 3)
             ),
+        },
+        "CAMERA-TEMPERATURE-TREND": {
+            # 265 drawers, 5 time samples
+            "CAMERA-TEMPERATURE-TREND": np.random.normal(size=(265, 5)),
         },
         # TODO: these two entries may actually need update
         # considering the conversion to UTC time
@@ -376,8 +380,10 @@ def test_compile_hover_tool():
     assert tooltip_fields == expected_tooltip_fields
 
 
-def test_compile_hover_tool_val_vs_id():
-    from nectarchain.dqm.bokeh_app.app_hooks import compile_hover_tool_val_vs_id
+def test_compile_hover_tool_val_vs_id_or_sample():
+    from nectarchain.dqm.bokeh_app.app_hooks import (  # noqa
+        compile_hover_tool_val_vs_id_or_sample,
+    )
 
     fig = figure()
     data_source = ColumnDataSource(
@@ -385,7 +391,7 @@ def test_compile_hover_tool_val_vs_id():
     )
     scatter = fig.scatter(x="pix_id", y="value", source=data_source)
 
-    result = compile_hover_tool_val_vs_id(pixel_data=scatter, figure=fig)
+    result = compile_hover_tool_val_vs_id_or_sample(pixel_data=scatter, figure=fig)
 
     assert result is fig
 

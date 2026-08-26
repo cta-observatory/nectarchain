@@ -492,21 +492,54 @@ def make_timelines(timelines_data, runid=None):
         # parent_data is the dict for this parentkey
         for childkey, child_data in parent_data.items():
             logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
-            timelines[parentkey][childkey] = figure(title=childkey)
-            evts = np.arange(len(child_data))
-            timelines[parentkey][childkey] = figure(
-                title=childkey,
-                x_range=(0, np.max(evts) + 50),
-                y_range=(0, 1),
-                # A fraction is plotted:
-                # y-range values are between 0 and 1 because
-            )
-            timelines[parentkey][childkey].line(
-                x=evts,
-                y=child_data,
-                line_width=3,
-            )
-        timelines[parentkey][childkey].xaxis.axis_label = "Event number"
+            if "CAMERA-TEMPERATURE-TREND" not in childkey:
+                timelines[parentkey][childkey] = figure(title=childkey)
+                evts = np.arange(len(child_data))
+                timelines[parentkey][childkey] = figure(
+                    title=childkey,
+                    x_range=(0, np.max(evts) + 50),
+                    y_range=(0, 1),
+                    # A fraction is plotted:
+                    # y-range values are between 0 and 1 because
+                )
+                timelines[parentkey][childkey].line(
+                    x=evts,
+                    y=child_data,
+                    line_width=3,
+                )
+                timelines[parentkey][childkey].xaxis.axis_label = "Event number"
+            else:
+                timelines[parentkey][childkey] = figure(title=childkey)
+                samples = np.arange(child_data.shape[1]) + 1
+                # shape[1] is the number of samples
+                # shape[0] is the number of drawers
+                # TODO: this samples shall be extracted from the child_data
+                # once the timestamps are exported by the DQM
+                # (see isse #372 on nectarchain)
+                timelines[parentkey][childkey] = figure(
+                    title=childkey,
+                    x_range=(samples.min(), samples.max()),
+                    y_range=(np.min(child_data) - 1, np.max(child_data) + 1),
+                )
+                for nd in range(child_data.shape[0]):  # loop over drawers
+                    # TODO: this is part of the code that
+                    # could be used if we manage to compile the HoverTool
+                    # via `compile_hover_tool_val_vs_id_or_sample`
+                    # for trend data
+                    # data_source = ColumnDataSource(
+                    #     data=dict(
+                    #         drawer_id=nd,
+                    #         sample=samples,
+                    #         value=child_data[nd]
+                    # ))
+                    timelines[parentkey][childkey].line(
+                        x=samples,
+                        y=child_data[nd],
+                        line_width=1,
+                        alpha=0.7,
+                    )
+                timelines[parentkey][childkey].xaxis.axis_label = "Sample number"
+
         try:
             timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[parentkey]
         except ValueError:
@@ -778,14 +811,17 @@ def make_pixel_vals_histo(camera_displays_data, parent_key, child_key):
     return histo_values
 
 
-def compile_hover_tool_val_vs_id(pixel_data, figure):
+def compile_hover_tool_val_vs_id_or_sample(figure, pixel_data=None, trend_data=None):
     """Compile the HoverTool for the
-       input scatter figure with additional information
+       input scatter or line figure with additional information
 
     Parameters
     ----------
-    pixel_data : bokeh.plotting.figure.scatter
+    pixel_data : bokeh.plotting.figure.scatter, optional
         Scatter plot defined and already filled
+        in the corresponding function
+    trend_data : bokeh.plotting.figure.line, optional
+        Line plot defined and already filled
         in the corresponding function
     figure : bokeh.plotting.figure
         Figure object to add the HoverTool to
@@ -796,14 +832,31 @@ def compile_hover_tool_val_vs_id(pixel_data, figure):
         Figure object with the HoverTool added
     """
 
-    figure.add_tools(
-        HoverTool(
-            tooltips=[("(pix_id, value)", "(@pix_id, @value)")],
-            mode="mouse",
-            point_policy="snap_to_data",
-            renderers=[pixel_data],
+    if pixel_data is not None:
+        figure.add_tools(
+            HoverTool(
+                tooltips=[("(pix_id, value)", "(@pix_id, @value)")],
+                mode="mouse",
+                point_policy="snap_to_data",
+                renderers=[pixel_data],
+            )
         )
-    )
+    elif trend_data is not None:
+        # TODO: this clause is not used yet, but
+        # could be used if we manage to compile this HoverTool
+        # for trend data in make_timelines
+        figure.add_tools(
+            HoverTool(
+                tooltips=[
+                    ("drawer_id", "@drawer_id"),
+                    ("sample", "$sample"),
+                    ("value", "$value"),
+                ],
+                mode="mouse",
+                point_policy="snap_to_data",
+                renderers=[trend_data],
+            )
+        )
 
     return figure
 
@@ -879,8 +932,8 @@ def make_pixel_val_vs_id(camera_displays_data, parent_key, child_key):
     scatter_value_vs_id.xaxis.axis_label_text_font_style = "normal"
     scatter_value_vs_id.yaxis.axis_label_text_font_style = "normal"
 
-    scatter_value_vs_id = compile_hover_tool_val_vs_id(
-        pixel_data=pixel_data, figure=scatter_value_vs_id
+    scatter_value_vs_id = compile_hover_tool_val_vs_id_or_sample(
+        figure=scatter_value_vs_id, pixel_data=pixel_data
     )
 
     return scatter_value_vs_id

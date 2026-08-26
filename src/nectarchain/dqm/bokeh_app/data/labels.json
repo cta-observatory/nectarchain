@@ -9,8 +9,9 @@
         "CAMERA-BADPIXTIMELINE-PED-HIGH-GAIN": "Fraction of bad pixels",
         "CAMERA-BADPIXTIMELINE-PED-LOW-GAIN": "Fraction of bad pixels",
         "CAMERA-BADPIXTIMELINE-PHY-HIGH-GAIN": "Fraction of bad pixels",
-        "CAMERA-BADPIXTIMELINE-PHY-LOW-GAIN": "Fraction of bad pixels"
-    }, 
+        "CAMERA-BADPIXTIMELINE-PHY-LOW-GAIN": "Fraction of bad pixels",
+        "CAMERA-TEMPERATURE-TREND": "$$^{\\circ}$$C"
+    },
     "y_axis_labels_trig_timestamps": {
         "TRIGGER-EVENTS-ALL": "Timestamps [UTC]",
         "TRIGGER-EVENTS-PHY": "Timestamps [UTC]",

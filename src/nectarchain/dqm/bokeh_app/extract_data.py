@@ -44,6 +44,7 @@ def categorize_source_data(source):
 
     logger.info("Extracting data...")
     for key in source.keys():
+        logger.info(key)
         # Trigger events (excluding WRONG)
         if re.match(r"TRIGGER-EVENTS-(?!WRONG).*", key):
             categorized["trigger_events"][key] = source[key]
@@ -63,6 +64,11 @@ def categorize_source_data(source):
         elif re.match(r".*PIXTIMELINE-.*", key):
             categorized["timelines"][key] = source[key]
             logger.info("- got timelines")
+
+        # Timelines
+        elif re.match("CAMERA-TEMPERATURE-TREND", key):
+            categorized["timelines"][key] = source[key]
+            logger.info("- got temperature trends")
 
         # Camera displays (everything not excluded by TEST_PATTERN)
         elif not re.match(TEST_PATTERN, key):
