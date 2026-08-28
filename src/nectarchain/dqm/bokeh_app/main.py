@@ -36,6 +36,23 @@ logger = setup_logger()
 
 
 def get_layout_per_camera(source, runids, camera_code):
+    """Build the per-camera dashboard layout for a given run and camera.
+
+    Parameters
+    ----------
+    source : dict
+        Data source dictionary containing camera and waveform data.
+    runids : list of str
+        Available run identifiers for the run selector widget.
+    camera_code : str
+        Camera code string used to select the relevant data subset.
+
+    Returns
+    -------
+    column
+        A Bokeh column layout containing the run selector and camera display tabs.
+    """
+
     def update(attr, old, new):
         """Callback that refreshes the dashboard whenever the selected run changes.
 

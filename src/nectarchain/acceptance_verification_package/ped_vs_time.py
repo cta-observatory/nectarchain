@@ -35,6 +35,28 @@ def run_ped_tool(
     output_dir: str,
     log=logging.INFO,
 ):
+    """Run the pedestal calibration tool and extract results.
+
+    Parameters
+    ----------
+    run_number : list
+        List of run numbers to process.
+    camera : str
+        Camera identifier (e.g. "NectarCAM-QUAD").
+    events_per_slice : int
+        Number of events per calibration slice.
+    output_dir : str
+        Directory where the output HDF5 file will be saved.
+    log : int, optional
+        Logging level (default: logging.INFO).
+
+    Returns
+    -------
+    tuple
+        (output_dir, ped_cam, ped_cam_std, ped_w_cam, ped_w_cam_std,
+         var_ped, tmean, tmin, tmax) containing camera-averaged pedestal
+        means, standard deviations, widths, and timing information.
+    """
     outfile = f"{output_dir}Pedestal_run_{run_number}.h5"
     ped_tool = PedestalNectarCAMCalibrationTool(
         progress_bar=True,
@@ -185,6 +207,14 @@ def get_args():
 
 
 def main():
+    """Run the pedestal vs. time analysis workflow.
+
+    Parses command-line arguments, runs the pedestal calibration tool
+    via ``run_ped_tool``, and produces a figure showing the camera-level
+    pedestal mean and width evolution over time. The plot is saved to the
+    output directory and optionally pickled for GUI display.
+    """
+
     parser = get_args()
     args = parser.parse_args()
     log.setLevel(args.log.upper())

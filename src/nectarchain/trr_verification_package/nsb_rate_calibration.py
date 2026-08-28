@@ -127,7 +127,24 @@ class NSBRateContainer(NectarCAMContainer):
 
 
 class NSBRateComponent(NectarCAMComponent):
+    """Component that estimates NSB rate from pedestal waveform fluctuations."""
+
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """Initialise the NSBRateComponent.
+
+        Parameters
+        ----------
+        subarray : ctapipe.io.SubarrayDescription
+            The subarray description.
+        config : traitlets.config.Config, optional
+            Configuration object.
+        parent : ctapipe.core.Component, optional
+            Parent component.
+        *args : tuple
+            Additional positional arguments passed to the parent.
+        **kwargs : dict
+            Additional keyword arguments passed to the parent.
+        """
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
@@ -137,6 +154,18 @@ class NSBRateComponent(NectarCAMComponent):
         self.__wf_sum__ = []
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """Process an event: accumulate waveform sums for SKY_PEDESTAL events
+        and compute pedestal mean/std at UNKNOWN event boundaries.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event container to process.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
         if event.trigger.event_type == EventType.SKY_PEDESTAL:
             self.__wf_sum__.append(event.r0.tel[self.tel_id].waveform[0].T.sum(axis=0))
 
@@ -148,6 +177,15 @@ class NSBRateComponent(NectarCAMComponent):
             self.__wf_sum__ = []
 
     def finish(self):
+        """Finalise processing and return an NSBRateContainer with the
+        accumulated pedestal statistics.
+
+        Returns
+        -------
+        output : NSBRateContainer
+            Container holding the run number, pedestal standard deviation,
+            and pedestal mean arrays.
+        """
         output = NSBRateContainer(
             run_number=NSBRateContainer.fields["run_number"].type(self._run_number),
             pedestal_std=NSBRateContainer.fields["pedestal_std"].dtype.type(
@@ -161,6 +199,8 @@ class NSBRateComponent(NectarCAMComponent):
 
 
 class NSBRateTestTool(DelimiterLoopNectarCAMCalibrationTool):
+    """Tool that processes NSB calibration runs using the NSBRateComponent."""
+
     componentsList = ComponentNameList(
         NectarCAMComponent,
         default_value=["NSBRateComponent"],
@@ -168,6 +208,21 @@ class NSBRateTestTool(DelimiterLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
+        """Finalise processing and extract pedestal standard deviations from
+        the output HDF5 file.
+
+        Parameters
+        ----------
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        pedestal_std : list
+            List of pedestal standard deviation values for each step.
+        """
         # super().finish(return_output_component=False, *args, **kwargs)
         output_file = h5py.File(self.output_path)
 

@@ -22,6 +22,18 @@ log = logging.getLogger(__name__)
 
 
 def to_datetime(t):
+    """Convert a datetime-like object to a timezone-aware UTC datetime.
+
+    Parameters
+    ----------
+    t : datetime.datetime, astropy.time.Time, iterable, or None
+        Input time to convert.
+
+    Returns
+    -------
+    datetime.datetime or list or np.ndarray
+        Converted datetime(s) in UTC.
+    """
     if t is None:
         t_corr = None
     elif isinstance(t, datetime.datetime):
@@ -46,10 +58,36 @@ def to_datetime(t):
 
 
 def GetDefaultDataPath(default_path="./"):
+    """Get the default data path from the NECTARCAMDATA environment variable.
+
+    Parameters
+    ----------
+    default_path : str, optional
+        Fallback path if the environment variable is not set.
+
+    Returns
+    -------
+    str
+        Data directory path.
+    """
     return os.environ.get("NECTARCAMDATA", default_path)
 
 
 def GetRunURL(run, path):
+    """Build a glob pattern for run files in a given path.
+
+    Parameters
+    ----------
+    run : int
+        Run number.
+    path : str
+        Root directory to search.
+
+    Returns
+    -------
+    str
+        Glob pattern matching the run's FITS files.
+    """
     pattern = f"NectarCAM.Run{run:04}."
     runpath = ""
     for dirpath, dirnames, filenames in os.walk(path):
@@ -61,6 +99,20 @@ def GetRunURL(run, path):
 
 
 def GetFirstLastEventTime(run, path=None):
+    """Get the first and last event timestamps for a given run.
+
+    Parameters
+    ----------
+    run : int
+        Run number.
+    path : str, optional
+        Data directory path. Defaults to the NECTARCAMDATA path.
+
+    Returns
+    -------
+    tuple of astropy.time.Time or None
+        First and last event times, or None if no files are found.
+    """
     if path is None:
         path = GetDefaultDataPath()
 
@@ -93,12 +145,44 @@ def GetFirstLastEventTime(run, path=None):
 
 
 def FindFile(filename, path):
+    """Find a file by name in a directory tree.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file to find.
+    path : str
+        Root directory to search.
+
+    Returns
+    -------
+    str or None
+        Full path to the file, or None if not found.
+    """
     for dirpath, _, filenames in os.walk(path):
         if filename in filenames:
             return os.path.join(dirpath, filename)
 
 
 def FindFiles(filename, path, recursive=True, remove_hidden_files=True):
+    """Find files matching a regex pattern in a directory tree.
+
+    Parameters
+    ----------
+    filename : str
+        Regex pattern to match file names against.
+    path : str
+        Root directory to search.
+    recursive : bool, optional
+        Whether to search subdirectories recursively.
+    remove_hidden_files : bool, optional
+        Whether to exclude hidden files (starting with '.').
+
+    Returns
+    -------
+    list
+        Sorted list of absolute paths to matching files.
+    """
     # As it is regular expression, you should not use * but .* , etc...
     filename = filename.replace(".*", "*").replace(
         "*", ".*"
@@ -118,6 +202,18 @@ def FindFiles(filename, path, recursive=True, remove_hidden_files=True):
 
 
 def GetDAQTimeFromTime(t):
+    """Convert a time to the DAQ noon-anchored datetime.
+
+    Parameters
+    ----------
+    t : astropy.time.Time or datetime.datetime
+        Input time.
+
+    Returns
+    -------
+    datetime.datetime
+        DAQ datetime (noon of the same or previous day).
+    """
     if isinstance(t, astropy.time.core.Time):
         log.info("GetDAQTimeFromTime> converting to datetime")
         t = t.to_datetime()
@@ -132,7 +228,20 @@ def GetDAQTimeFromTime(t):
 
 
 def GetDAQDateFromTime(t):
-    # A datetime is expected
+    """Get the DAQ date string from a datetime.
+
+    A datetime is expected.
+
+    Parameters
+    ----------
+    t : datetime.datetime
+        Input datetime.
+
+    Returns
+    -------
+    str
+        DAQ date in YYYY-MM-DD format.
+    """
 
     if t.hour >= 12:
         str_time = t.strftime("%Y-%m-%d")
@@ -144,4 +253,16 @@ def GetDAQDateFromTime(t):
 
 
 def GetDBNameFromTime(t):
+    """Get the SQLite database file name for a given time.
+
+    Parameters
+    ----------
+    t : datetime.datetime
+        Input datetime.
+
+    Returns
+    -------
+    str
+        Database file name.
+    """
     return "nectarcam_monitoring_db_" + GetDAQDateFromTime(t) + ".sqlite"

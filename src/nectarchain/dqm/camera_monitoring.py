@@ -19,7 +19,22 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class CameraMonitoring(DQMSummary):
+    """Monitor camera drawer temperatures from a SQLite monitoring database.
+
+    Retrieves drawer temperature data, computes per-pixel statistics
+    (mean, std, trend), and produces camera display and trend figures.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialize camera monitoring attributes.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain index (0 for high gain, 1 for low gain).
+        r0 : bool, optional
+            Whether to use r0 waveforms (default False).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -50,6 +65,21 @@ class CameraMonitoring(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
+        """Configure the monitoring processor for a new run.
+
+        Parameters
+        ----------
+        path : str
+            Path to the input data file.
+        Pix : int
+            Number of pixels.
+        Samp : int
+            Number of waveform samples.
+        Reader1 : ctapipe_io_nectarcam.NectarCAMEventSource
+            Event reader providing subarray and camera geometry.
+        **kwargs
+            Additional keyword arguments (unused).
+        """
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -84,6 +114,15 @@ class CameraMonitoring(DQMSummary):
             )
 
     def process_event(self, evt, noped):
+        """Record trigger time and event ID for the current event.
+
+        Parameters
+        ----------
+        evt : ctapipe.io.DataEventContainer
+            The event container.
+        noped : bool
+            Whether to subtract pedestal (unused here).
+        """
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
 
@@ -91,6 +130,12 @@ class CameraMonitoring(DQMSummary):
         self.event_id.append(trigger_id)
 
     def finish_run(self):
+        """Compute per-pixel drawer temperature statistics.
+
+        Calculates the mean, standard deviation, and time trend of
+        drawer temperatures, expanding drawer-level values to all
+        pixels in each module.
+        """
         try:
             self.event_id = np.array(self.event_id)
             self.event_times = np.array(self.event_times)
@@ -170,6 +215,14 @@ class CameraMonitoring(DQMSummary):
             )
 
     def get_results(self):
+        """Return the camera temperature results dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary with keys CAMERA-TEMPERATURE-AVERAGE,
+            CAMERA-TEMPERATURE-STD, and CAMERA-TEMPERATURE-TREND.
+        """
         try:
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-AVERAGE"
@@ -241,6 +294,21 @@ class CameraMonitoring(DQMSummary):
         return fig, full_path
 
     def plot_results(self, name, fig_path):
+        """Generate camera temperature display and trend figures.
+
+        Parameters
+        ----------
+        name : str
+            Run name prefix for output filenames.
+        fig_path : str
+            Directory path for saving figure files.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping plot keys to
+            matplotlib figures and their save paths.
+        """
         try:
             # Camera display plots (6 figures)
             camera_plots = [

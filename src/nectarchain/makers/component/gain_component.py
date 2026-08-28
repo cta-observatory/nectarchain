@@ -12,6 +12,21 @@ __all__ = ["GainNectarCAMComponent"]
 
 
 class GainNectarCAMComponent(NectarCAMComponent):
+    """
+    Abstract base class for gain-related components.
+
+    Subclasses must implement the `finish` method to finalize
+    the gain computation.
+    """
+
     @abstractmethod
     def finish(self):
+        """
+        Finalize the gain computation.
+
+        Returns
+        -------
+        gain_container
+            The container with the computed gain values.
+        """
         pass

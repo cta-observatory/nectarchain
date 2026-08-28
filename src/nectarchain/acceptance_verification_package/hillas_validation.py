@@ -76,6 +76,12 @@ def get_args():
 
 
 def main():
+    """Run the Hillas parameters validation workflow.
+
+    Parses command-line arguments, generates a placeholder validation plot,
+    saves it to the output directory, and optionally pickles the figure for GUI use.
+    """
+
     parser = get_args()
     args = parser.parse_args()
     log.setLevel(args.log.upper())

@@ -46,9 +46,27 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     )
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the ChargesNectarCAMCalibrationTool.
+
+        Parameters
+        ----------
+        args
+            Positional arguments passed to the parent class.
+        kwargs
+            Keyword arguments passed to the parent class.
+        """
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
+        """
+        Initialize the output file path for the charges HDF5 file.
+
+        The filename includes the tool name, run number, extraction method,
+        extractor keyword arguments, and optionally the maximum number of events.
+        The file is placed under ``$NECTARCAMDATA/runs/charges/`` (or ``/tmp/``
+        if the environment variable is not set).
+        """
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
             extractor_kwargs=self.extractor_kwargs,
@@ -76,6 +94,28 @@ class ChargesNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
         *args,
         **kwargs,
     ):
+        """
+        Extract charges from waveforms.
+
+        If ``from_computed_waveforms`` is ``True``, the method first searches
+        for pre-computed waveforms on disk and creates charges from them,
+        falling back to the event-loop extraction if no matching files are
+        found. Otherwise, the standard event-loop extraction from the parent
+        class is used.
+
+        Parameters
+        ----------
+        n_events : int, optional
+            Maximum number of events to process. Default is np.inf.
+        restart_from_begining : bool, optional
+            Whether to restart the event source from the beginning.
+            Default is False.
+        args
+            Additional positional arguments passed to the parent ``start``.
+        kwargs
+            Additional keyword arguments passed to the parent ``start``.
+        """
+
         # cette implémentation est complétement nulle
         if self.from_computed_waveforms:
             try:

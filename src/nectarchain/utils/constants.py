@@ -1,4 +1,11 @@
 def get_allowed_cameras():
+    """Get the list of allowed camera names.
+
+    Returns
+    -------
+    list
+        Allowed camera names from NectarCAMQM to NectarCAM9.
+    """
     prefix = "NectarCAM"
     allowed_cameras = [f"{prefix}" + "QM"]
     allowed_cameras.extend([f"{prefix + str(i)}" for i in range(2, 10)])

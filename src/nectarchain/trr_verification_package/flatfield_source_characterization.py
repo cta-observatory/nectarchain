@@ -113,6 +113,37 @@ def get_args():
 
 
 def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
+    """Pre-process HDF5 photostatistics data, fill missing pixels, and compute
+    illumination maps.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the HDF5 photostatistics file.
+    camera : ctapipe.instrument.CameraGeometry
+        Camera geometry in the EngineeringCameraFrame.
+    output_dir : str, optional
+        Directory to save diagnostic plots.
+    temp_output : str, optional
+        Temporary directory for GUI plot pickling.
+
+    Returns
+    -------
+    n_pe : numpy.ma.MaskedArray
+        Number of photoelectrons per pixel.
+    std_n_pe : numpy.ndarray
+        Standard deviation of the number of photoelectrons.
+    sigma_masked : numpy.ma.MaskedArray
+        Masked standard deviation of photoelectrons.
+    dict_missing_pix : dict
+        Dictionary with counts of missing pixels and zero-gain pixels.
+    high_gain : numpy.ndarray
+        High-gain values per pixel.
+    low_gain : numpy.ndarray
+        Low-gain values per pixel.
+    charge_hg : numpy.ndarray
+        High-gain charge values per pixel.
+    """
     with HDF5TableReader(filename) as h5_table:
         assert h5_table._h5file.isopen == True
         for container in h5_table.read(
@@ -272,6 +303,22 @@ def pre_process_fits(filename, camera, output_dir=None, temp_output=None):
 # Fit using ctapipe
 # First step of the fitting process
 def Gaussian_model(camera, array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
+    """Build a symmetric 2D Gaussian model from ctapipe's Gaussian toy model.
+
+    Parameters
+    ----------
+    camera : ctapipe.instrument.CameraGeometry
+        Camera geometry used to evaluate the Gaussian PDF.
+    array : list of float, optional
+        Model parameters [amplitude, center_x, center_y, sigma_x, sigma_y].
+        The last two are kept equal (symmetric Gaussian). Defaults to
+        [1000.0, 0.0, 0.0, 1.5, 1.5].
+
+    Returns
+    -------
+    model : numpy.ndarray
+        The evaluated Gaussian model at each pixel position.
+    """
     A, x, y, std_x, std_y = array
     model = A * (
         Gaussian(x * u.m, y * u.m, std_x * u.m, std_y * u.m, psi="0d").pdf(
@@ -282,6 +329,24 @@ def Gaussian_model(camera, array=[1000.0, 0.0, 0.0, 1.5, 1.5]):
 
 
 def define_delete_out(sigma, data):
+    """Mask outlier data points based on a 3-sigma criterion around the mean.
+
+    Parameters
+    ----------
+    sigma : numpy.ndarray
+        Uncertainty array to be masked.
+    data : numpy.ndarray
+        Data array to be masked.
+
+    Returns
+    -------
+    data : numpy.ma.MaskedArray
+        Masked data array.
+    sigma : numpy.ma.MaskedArray
+        Masked uncertainty array.
+    outliers : list
+        Boolean mask of outlier positions.
+    """
     mean = np.mean(data)
     std = np.std(data)
     outliers = [np.abs(data - mean) > 3 * std]
@@ -293,8 +358,54 @@ def define_delete_out(sigma, data):
 def optimize_with_outlier_rejection(
     sigma, data, camera, output_dir=None, temp_output=None
 ):
+    """Fit a symmetric 2D Gaussian to illumination data with iterative outlier
+    rejection using Minuit.
+
+    Parameters
+    ----------
+    sigma : numpy.ma.MaskedArray
+        Uncertainty on the data.
+    data : numpy.ma.MaskedArray
+        Illumination data (number of photoelectrons per pixel).
+    camera : ctapipe.instrument.CameraGeometry
+        Camera geometry in the EngineeringCameraFrame.
+    output_dir : str, optional
+        Directory to save diagnostic plots.
+    temp_output : str, optional
+        Temporary directory for GUI plot pickling.
+
+    Returns
+    -------
+    n_pe : numpy.ma.MaskedArray
+        Outlier-masked illumination data.
+    model : numpy.ndarray
+        Best-fit 2D Gaussian model evaluated at each pixel.
+    minuit : iminuit.Minuit
+        Minuit fit result object.
+    residuals : numpy.ndarray
+        Normalised residuals (data - model) / model.
+    """
+
     # least-squares score function = sum of data residuals squared
     def lsq(a0, a1, a2, a3):
+        """Least-squares score function for the 2D Gaussian fit.
+
+        Parameters
+        ----------
+        a0 : float
+            Amplitude.
+        a1 : float
+            Gaussian center x-coordinate.
+        a2 : float
+            Gaussian center y-coordinate.
+        a3 : float
+            Gaussian width (sigma_x = sigma_y).
+
+        Returns
+        -------
+        float
+            Sum of squared residuals weighted by pixel uncertainties.
+        """
         # We assume that the 2D-Gaussian is symmetric, thus the last two arguments of
         # Gaussian_model are the same
         return np.sum(
@@ -394,6 +505,19 @@ def propagate_scipy_compatible(model, params, cov, camera):
     """
 
     def model_(parameters):
+        """Build the 2D Gaussian model from a parameter vector.
+
+        Parameters
+        ----------
+        parameters : list of float
+            Model parameters [amplitude, mu_x, mu_y, sigma].  sigma_x = sigma_y
+            is enforced.
+
+        Returns
+        -------
+        numpy.ndarray
+            The evaluated model at each pixel position.
+        """
         # params = [A, mu_x, mu_y, sigma]
         log.debug(f"Model parameters: {parameters}")
         sigma_y = parameters[3]  # enforce sigma_x = sigma_y
@@ -425,6 +549,18 @@ def error_propagation_compute(
     """Compute both parameter uncertainties and per-pixel uncertainties of the model."""
 
     def model(params):
+        """Build the 2D Gaussian model for error propagation.
+
+        Parameters
+        ----------
+        params : list of float
+            Model parameters [amplitude, mu_x, mu_y, sigma].
+
+        Returns
+        -------
+        numpy.ndarray
+            The evaluated model at each pixel position.
+        """
         # params = [A, mu_x, mu_y, sigma]
         sigma_y = params[3]  # enforce sigma_x = sigma_y
         return params[0] * (
@@ -658,11 +794,48 @@ def characterize_peak(minuit, camera):
 
 # values for minuit are taken from the first fit without any
 def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
+    """Fit a 2D Gaussian with an additional intrinsic variance term V_int,
+    using iterative outlier rejection.
+
+    Parameters
+    ----------
+    sigma : numpy.ma.MaskedArray
+        Uncertainty on the data.
+    data : numpy.ma.MaskedArray
+        Illumination data.
+    minuit : iminuit.Minuit or list
+        Initial parameter values for the fit.
+    camera : ctapipe.instrument.CameraGeometry
+        Camera geometry in the EngineeringCameraFrame.
+
+    Returns
+    -------
+    n_pe_var : numpy.ma.MaskedArray
+        Outlier-masked illumination data.
+    model : numpy.ndarray
+        Best-fit 2D Gaussian model.
+    minuit_new : iminuit.Minuit
+        Minuit fit result including V_int.
+    residuals : numpy.ndarray
+        Normalised residuals.
+    """
     # Update data, sigma, and mask
     n_pe_var, sigma_masked_var, mask_upd = define_delete_out(sigma, data)
 
     # Define the least-squares function
     def lsq_wrap_var(array_parameters):
+        """Least-squares function for the variance-aware fit.
+
+        Parameters
+        ----------
+        array_parameters : list of float
+            Parameters [amplitude, center_x, center_y, sigma, V_int].
+
+        Returns
+        -------
+        float
+            Loss value including the log term from the likelihood.
+        """
         A, x, y, std_x, v_int = array_parameters  # changed
         std_y = std_x  # changed
         return np.sum(
@@ -710,6 +883,25 @@ def optimize_with_outlier_rejection_variance(sigma, data, minuit, camera):
 
 
 def compute_ff_coefs(charges, gains, output_dir=None, temp_output=None):
+    """Compute flat-field coefficients using a model-independent approach
+    based on the ratio of charge to gain.
+
+    Parameters
+    ----------
+    charges : numpy.ndarray
+        Pixel charge values.
+    gains : numpy.ndarray
+        Pixel gain values (first column used as high-gain).
+    output_dir : str, optional
+        Directory to save the coefficient distribution histogram.
+    temp_output : str, optional
+        Temporary directory for GUI plot pickling.
+
+    Returns
+    -------
+    eff : numpy.ma.MaskedArray
+        Relative flat-field coefficients (normalised to unity mean).
+    """
     log.debug(f"gains shape: {gains.shape}")
     masked_charges = np.ma.masked_where(np.ma.getmask(charges), charges)
     masked_gains = np.ma.masked_where(np.ma.getmask(charges), gains)
@@ -763,6 +955,31 @@ def compute_ff_coefs(charges, gains, output_dir=None, temp_output=None):
 def compute_ff_coefs_model(
     data, data_std, model, model_std, output_dir=None, temp_output=None
 ):
+    """Compute flat-field coefficients using a model-based approach, dividing
+    the measured data by the fitted model.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Measured pixel data.
+    data_std : numpy.ndarray
+        Uncertainty on the measured data.
+    model : numpy.ndarray
+        Fitted model values.
+    model_std : numpy.ndarray
+        Uncertainty on the fitted model.
+    output_dir : str, optional
+        Directory to save the coefficient distribution histogram.
+    temp_output : str, optional
+        Temporary directory for GUI plot pickling.
+
+    Returns
+    -------
+    FF_coefs : numpy.ndarray
+        Model-based flat-field coefficients.
+    std_FF : numpy.ndarray
+        Propagated uncertainty on the flat-field coefficients.
+    """
     FF_coefs = np.divide(data, model, where=model != 0)
     mean = np.mean(FF_coefs)
     std = np.std(FF_coefs)
@@ -808,6 +1025,25 @@ def compute_ff_coefs_model(
 def get_spefilenames(
     spe_config=None, spe_run_number=None, method=None, extractor_kwargs=None
 ):
+    """Retrieve SPE fit result filenames for a given configuration.
+
+    Parameters
+    ----------
+    spe_config : str, optional
+        SPE configuration name, one of ``"HHVfree"``, ``"HHVfixed"``,
+        or ``"nominal"``.
+    spe_run_number : int, optional
+        SPE run number.
+    method : str, optional
+        Charge extraction method name.
+    extractor_kwargs : str, optional
+        String representation of extractor keyword arguments.
+
+    Returns
+    -------
+    spe_filenames : list of str or None
+        List of SPE result file paths, or None if no matching file is found.
+    """
     spe_filenames = None
     if spe_config == "HHVfree":
         try:

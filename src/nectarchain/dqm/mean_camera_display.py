@@ -12,7 +12,22 @@ __all__ = ["MeanCameraDisplayHighLowGain"]
 
 
 class MeanCameraDisplayHighLowGain(DQMSummary):
+    """Compute and display mean camera images for physics and pedestal events.
+
+    Averages waveform sums across events and samples to produce
+    per-pixel mean charge maps.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialize mean camera display processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain index (0 for high gain, 1 for low gain).
+        r0 : bool, optional
+            Whether to use r0 waveforms (default False).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -49,6 +64,21 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
+        """Configure the processor for a new run.
+
+        Parameters
+        ----------
+        path : str
+            Path to the input data file.
+        Pix : int
+            Number of pixels.
+        Samp : int
+            Number of waveform samples.
+        Reader1 : ctapipe_io_nectarcam.NectarCAMEventSource
+            Event reader providing subarray and camera geometry.
+        **kwargs
+            Additional keyword arguments (unused).
+        """
         self.Pix = Pix
         self.Samp = Samp
 
@@ -72,7 +102,19 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         self.pixel_ids = None
 
     def process_event(self, evt, noped):
-        # Extract pixel information from event
+        """Sum waveform amplitudes for the current event.
+
+        Separates physics and sky-pedestal events into distinct
+        accumulators.
+
+        Parameters
+        ----------
+        evt : ctapipe.io.DataEventContainer
+            The event container.
+        noped : bool
+            Whether to subtract pedestal (unused here).
+        """
+
         pixel_bad = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels
         pixel_ids = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
@@ -126,6 +168,7 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         return None
 
     def finish_run(self):
+        """Compute mean camera images averaged over events and samples."""
         if self.counter_evt > 0:
             # Compute mean over events
             self.camera_average_over_events = self.camera_average / self.counter_evt
@@ -145,6 +188,15 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
             )
 
     def get_results(self):
+        """Return the mean camera display results dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary with keys like CAMERA-AVERAGE-PHY-OverEVENTS-OverSamp-HIGH-GAIN
+            containing per-pixel mean charge arrays.
+        """
+
         if self.counter_evt > 0:
             # Handle NaN/Inf values (following waveforms.py pattern)
             valid_mask = ~(
@@ -174,6 +226,22 @@ class MeanCameraDisplayHighLowGain(DQMSummary):
         return self.MeanCameraDisplay_Results_Dict
 
     def plot_results(self, name, fig_path):
+        """Generate mean camera display figures for physics and pedestal data.
+
+        Parameters
+        ----------
+        name : str
+            Run name prefix for output filenames.
+        fig_path : str
+            Directory path for saving figure files.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping plot keys to
+            matplotlib figures and their save paths.
+        """
+
         if self.counter_evt > 0:
             fig_key = self.figure_keys["physical"]
             full_name = name + self.figure_filenames["physical"]

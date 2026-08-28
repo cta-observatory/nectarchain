@@ -78,6 +78,11 @@ class TestRunner(QWidget):
     }
 
     def __init__(self):
+        """Initialise the TestRunner GUI application.
+
+        Sets up internal state, data directories, plot tracking variables,
+        and calls :meth:`init_ui` to build the interface.
+        """
         super().__init__()
         self.params = {}
         self.process = None
@@ -99,6 +104,14 @@ class TestRunner(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        """Build the user interface: test controls, plot canvas, navigation
+        buttons, and output text area.
+
+        The layout is organised as a vertical split:
+        - Top row: control panel (left) and plot canvas (right).
+        - Middle row: previous / next plot navigation buttons.
+        - Bottom row: read-only output log.
+        """
         # Main layout: vertical, dividing into two sections (top for controls/plot
         # , bottom for output)
         main_layout = QVBoxLayout()
@@ -217,6 +230,25 @@ class TestRunner(QWidget):
         self.show()
 
     def get_parameters_from_module(self, module):
+        """Extract command-line parameter definitions from a test module.
+
+        Parameters
+        ----------
+        module : module
+            A Python module that defines a ``get_args`` function returning
+            an ``ArgumentParser``.
+
+        Returns
+        -------
+        params : dict
+            Dictionary mapping each parameter name to its ``default`` and
+            ``help`` text.
+
+        Raises
+        ------
+        RuntimeError
+            If the module does not have a ``get_args`` function.
+        """
         # Fetch parameters from the module
         if hasattr(module, "get_args"):
             parser = module.get_args()
@@ -232,6 +264,9 @@ class TestRunner(QWidget):
             raise RuntimeError("No get_args function found in module.")
 
     def debug_layout(self):
+        """Print the object names of all widgets currently in the parameter
+        layout for debugging purposes.
+        """
         for i in range(self.param_layout.count()):
             item = self.param_layout.itemAt(i)
             widget = item.widget()
@@ -239,6 +274,13 @@ class TestRunner(QWidget):
                 print(f"Widget in layout: {widget.objectName()}")
 
     def update_parameters(self):
+        """Update the parameter input fields based on the currently selected
+        test module.
+
+        Clears any existing fields, reads the parameter definitions from the
+        selected test's ``get_args``, and creates a labelled input field with
+        a help button for each parameter.
+        """
         # Clear existing parameter fields
         for i in reversed(range(self.param_layout.count())):
             item = self.param_layout.itemAt(i)
@@ -331,6 +373,13 @@ class TestRunner(QWidget):
             QMessageBox.critical(self, "Error", "No test selected or test not found")
 
     def show_help(self, help_text):
+        """Display a help message box with information about a parameter.
+
+        Parameters
+        ----------
+        help_text : str
+            The help text to show in the message box.
+        """
         QMessageBox.information(self, "Parameter Help", help_text)
 
     def _set_controls_enabled(self, enabled):
@@ -396,6 +445,13 @@ class TestRunner(QWidget):
         self._run_next_test_in_queue()
 
     def run_test(self):
+        """Execute the currently selected test as a subprocess.
+
+        Collects parameter values from the input fields, creates a temporary
+        output directory for plots, and launches the test module as a
+        background QProcess.  Output is streamed to the log area in real
+        time.
+        """
         selected_test = self.test_selector.currentText()
 
         module = self.test_modules.get(selected_test)
@@ -593,6 +649,7 @@ class TestRunner(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to load plot: {e}")
 
     def show_next_plot(self):
+        """Advance to the next plot in the plot list, if available."""
         if self.current_plot_index < len(self.plots) - 1:
             self.current_plot_index += 1
             self.update_plot_canvas()
@@ -603,6 +660,7 @@ class TestRunner(QWidget):
             self.next_button.setEnabled(False)
 
     def show_previous_plot(self):
+        """Go back to the previous plot in the plot list, if available."""
         if self.current_plot_index > 0:
             self.current_plot_index -= 1
             self.update_plot_canvas()

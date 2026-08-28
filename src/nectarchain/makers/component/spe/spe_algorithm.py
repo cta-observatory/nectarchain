@@ -47,6 +47,14 @@ __all__ = [
 
 
 class ContextFit:
+    """Context manager for setting up and tearing down global variables
+    used by multiprocessing processes during SPE fitting.
+
+    On enter, it initializes global arrays (charge, counts, minuit parameters)
+    and the chi2 cost function via `init_processes`. On exit, it cleans up
+    the globals to free memory.
+    """
+
     def __init__(
         self,
         _class,
@@ -54,17 +62,32 @@ class ContextFit:
         charge: np.ndarray,
         counts: np.ndarray,
     ):
+        """Initialise the fit context manager.
+
+        Parameters
+        ----------
+        _class : type
+            The SPE algorithm class to use for the chi2 function.
+        minuitParameters_array : np.ndarray
+            Array of Minuit parameter objects for each pixel.
+        charge : np.ndarray
+            Charge histogram bin centres (masked array).
+        counts : np.ndarray
+            Charge histogram bin counts (masked array).
+        """
         self._class = _class
         self.minuitParameters_array = minuitParameters_array
         self.charge = charge
         self.counts = counts
 
     def __enter__(self):
+        """Initialize global variables for multiprocessed SPE fitting."""
         init_processes(
             self._class, self.minuitParameters_array, self.charge, self.counts
         )
 
     def __exit__(self, type, value, traceback):
+        """Clean up global variables after SPE fitting completes."""
         del globals()["_minuitParameters_array"]
         del globals()["_charge"]
         del globals()["_counts"]
@@ -84,6 +107,32 @@ def init_processes(
     _counts = counts
 
     def chi2(pedestal, pp, luminosity, resolution, mean, n, pedestalWidth, index):
+        """Chi-squared cost function wrapping ``_NG_Likelihood_Chi2``.
+
+        Parameters
+        ----------
+        pedestal : float
+            The pedestal parameter.
+        pp : float
+            The pp parameter.
+        luminosity : float
+            The luminosity parameter.
+        resolution : float
+            The resolution parameter.
+        mean : float
+            The mean parameter.
+        n : float
+            The n parameter.
+        pedestalWidth : float
+            The pedestal width parameter.
+        index : float
+            The pixel index (used to select the appropriate charge/counts array).
+
+        Returns
+        -------
+        float
+            The chi-squared (negative log-likelihood) value.
+        """
         return _class._NG_Likelihood_Chi2(
             pp,
             resolution,
@@ -100,6 +149,13 @@ def init_processes(
 
 
 class SPEalgorithm(Component):
+    """Base class for SPE fitting algorithms.
+
+    Holds the pixel-dependent parameters (pedestal, mean, etc.) and
+    an `SPEfitContainer` result table. Subclasses implement the actual
+    fitting logic with different parameter configurations.
+    """
+
     window_length = Integer(
         40,
         read_only=True,
@@ -121,6 +177,19 @@ class SPEalgorithm(Component):
     def __init__(
         self, pixels_id: np.ndarray, config=None, parent=None, **kwargs
     ) -> None:
+        """Initialise the SPE algorithm with pixel IDs.
+
+        Parameters
+        ----------
+        pixels_id : np.ndarray
+            Array of pixel identifiers.
+        config : optional
+            Component configuration.
+        parent : optional
+            Parent component.
+        ``**kwargs``
+            Additional keyword arguments passed to the Component base class.
+        """
         super().__init__(config=config, parent=parent, **kwargs)
         self.__pixels_id = pixels_id
         self.__pedestal = Parameter(
@@ -147,30 +216,37 @@ class SPEalgorithm(Component):
 
     @property
     def parameters(self):
+        """Returns a deep copy of the internal `Parameters` object."""
         return copy.deepcopy(self.__parameters)
 
     @property
     def _parameters(self):
+        """Returns the internal `Parameters` object (no copy)."""
         return self.__parameters
 
     @property
     def results(self):
+        """Returns a deep copy of the `SPEfitContainer` result table."""
         return copy.deepcopy(self.__results)
 
     @property
     def _results(self):
+        """Returns the internal `SPEfitContainer` result table (no copy)."""
         return self.__results
 
     @property
     def pixels_id(self):
+        """Returns a deep copy of the pixel ID array."""
         return copy.deepcopy(self.__pixels_id)
 
     @property
     def _pixels_id(self):
+        """Returns the internal pixel ID array (no copy)."""
         return self.__pixels_id
 
     @property
     def npixels(self):
+        """Returns the total number of pixels."""
         return len(self.__pixels_id)
 
     # methods
@@ -436,6 +512,12 @@ class SPEalgorithm(Component):
 
 
 class SPEnominalalgorithm(SPEalgorithm):
+    """SPE fitting algorithm at nominal voltage.
+
+    Runs a multi-pixel SPE fit using ``iminuit`` with ``pp`` and ``n`` as
+    free parameters. Supports both single-process and multi-process execution.
+    """
+
     parameters_file = Unicode(
         "parameters_SPEnominal.yaml",
         read_only=True,
@@ -777,6 +859,22 @@ class SPEnominalalgorithm(SPEalgorithm):
         pixels_id: np.ndarray = None,
         **kwargs,
     ) -> np.ndarray:
+        """Run the SPE fit for the specified (or all) pixels.
+
+        Parameters
+        ----------
+        pixels_id : np.ndarray, optional
+            Array of pixel IDs to fit. If None, all pixels are fitted.
+        ``**kwargs``
+            Additional keyword arguments passed to the fit machinery.
+            Accepted keys include ``tol`` (Minuit tolerance),
+            ``nproc`` (number of processes), and ``chunksize``.
+
+        Returns
+        -------
+        np.ndarray
+            Array of fit status objects for each fitted pixel.
+        """
         self.log.info("running maker")
         self.log.info("checking asked pixels id")
         if pixels_id is None:
@@ -889,6 +987,40 @@ class SPEnominalalgorithm(SPEalgorithm):
         luminosity: float,
         likelihood: float,
     ) -> tuple:
+        """Plot the SPE fit result for a single pixel using pyqtgraph.
+
+        Parameters
+        ----------
+        pixel_id : int
+            The pixel ID.
+        charge : np.ndarray
+            Charge bin centres.
+        counts : np.ndarray
+            Event counts per charge bin.
+        pp : float
+            The pp parameter.
+        resolution : float
+            The resolution parameter.
+        gain : float
+            The SPE gain.
+        gain_error : float
+            The error on the SPE gain.
+        n : float
+            The n parameter.
+        pedestal : float
+            The pedestal value.
+        pedestalWidth : float
+            The pedestal width.
+        luminosity : float
+            The luminosity parameter.
+        likelihood : float
+            The fit likelihood value.
+
+        Returns
+        -------
+        pyqtgraph.GraphicsLayoutWidget
+            The generated pyqtgraph window containing the plot.
+        """
         # from pyqtgraph.Qt import QtCore, QtGui
 
         # app = pg.mkQApp(name="minimal")
@@ -1166,6 +1298,13 @@ class SPEnominalStdalgorithm(SPEnominalalgorithm):
 
 
 class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
+    """SPE fitting algorithm for very-high-voltage data with ``n`` and ``pp`` fixed.
+
+    Inherits from ``SPEnominalStdalgorithm`` and uses its own YAML parameters file
+    (``parameters_SPEHHVStd.yaml``) and a larger Minuit tolerance suitable for HHV
+    data.
+    """
+
     parameters_file = Unicode(
         "parameters_SPEHHVStd.yaml",
         read_only=True,
@@ -1179,6 +1318,14 @@ class SPEHHVStdalgorithm(SPEnominalStdalgorithm):
 
 
 class SPECombinedalgorithm(SPEnominalalgorithm):
+    """SPE fitting algorithm that combines information from very-high-voltage and
+    nominal voltage data.
+
+    Fixes ``pp``, ``n``, ``resolution`` (and optionally ``luminosity``) to values
+    obtained from a previous very-high-voltage SPE fit. Only the remaining
+    parameters (pedestal, pedestalWidth, mean) are fitted to the current data.
+    """
+
     parameters_file = Unicode(
         "parameters_SPECombined_fromHHVFit.yaml",
         read_only=True,
@@ -1354,6 +1501,24 @@ class SPECombinedalgorithm(SPEnominalalgorithm):
         pixels_id: np.ndarray = None,
         **kwargs,
     ) -> np.ndarray:
+        """Run the combined SPE fit, using previously fitted HHV parameters.
+
+        By default, only pixels that were successfully fitted in the prior HHV
+        run are included in the fit.
+
+        Parameters
+        ----------
+        pixels_id : np.ndarray, optional
+            Array of pixel IDs to fit. If None, only pixels whose HHV fit was
+            valid are used.
+        ``**kwargs``
+            Additional keyword arguments forwarded to the parent ``run`` method.
+
+        Returns
+        -------
+        np.ndarray
+            Array of fit status objects for each fitted pixel.
+        """
         if pixels_id is None:
             pixels_id = self._nectarGainSPEresult.pixels_id[
                 self._nectarGainSPEresult.is_valid

@@ -27,6 +27,21 @@ class CtapipeExtractor:
         return cameraContainer.image, cameraContainer.peak_time
 
     def get_extractor_kwargs_str(method: str, extractor_kwargs: dict):
+        """Build a short string summarising non-default extractor keyword arguments.
+
+        Parameters
+        ----------
+        method : str
+            Name of the ctapipe extractor class.
+        extractor_kwargs : dict
+            Keyword arguments to pass to the extractor.
+
+        Returns
+        -------
+        str
+            Concatenation of ``trait_value`` pairs for arguments that differ
+            from the default, or ``"default"`` if all are at their defaults.
+        """
         ctapipe_extractor_module = importlib.import_module("ctapipe.image.extractor")
         extractor = getattr(ctapipe_extractor_module, method)
         str_extractor_kwargs = ""
