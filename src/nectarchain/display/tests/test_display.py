@@ -6,31 +6,19 @@ from nectarchain.data.container import WaveformsContainer
 from nectarchain.display.display import ContainerDisplay
 from nectarchain.makers.core import BaseNectarCAMCalibrationTool
 
-# Use pixel IDs from the real camera geometry for a NectarCAM run
+# Load the real camera geometry from a NectarCAM test dataset
 _RUN_FILE = get_dataset_path("NectarCAM.Run3938.30events.fits.fz")
 _eventsource = BaseNectarCAMCalibrationTool.load_run(
     3938, max_events=1, run_file=_RUN_FILE
 )
 _tel_id = list(_eventsource.subarray.tel_ids)[0]
-_geom = _eventsource.subarray.tel[_tel_id].camera.geometry
-REAL_PIXEL_IDS = _geom.pix_id.astype(np.uint16)
-N_PIXELS_REAL = len(REAL_PIXEL_IDS)
-
-
-class MockGeometry:
-    class PixId:
-        value = REAL_PIXEL_IDS
-
-    pix_id = PixId()
-
-    def rotate(self, rotation):
-        pass
+GEOMETRY = _eventsource.subarray.tel[_tel_id].camera.geometry
 
 
 class TestContainerDisplay:
     def test_display_invalid_container(self):
         with pytest.raises(Exception, match="container can't be displayed"):
-            ContainerDisplay.display(object(), evt=0, geometry=MockGeometry())
+            ContainerDisplay.display(object(), evt=0, geometry=GEOMETRY)
 
     def test_plot_waveform(self):
         c = WaveformsContainer(
