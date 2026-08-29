@@ -33,12 +33,13 @@ class Parameter:
     @classmethod
     def from_instance(cls, parameter):
         return cls(
-            parameter.name,
-            parameter.value,
-            parameter.min,
-            parameter.max,
-            parameter.unit,
-            parameter.frozen,
+            name=parameter.name,
+            value=parameter.value,
+            min=parameter.min,
+            max=parameter.max,
+            error=parameter.error,
+            unit=parameter.unit,
+            frozen=parameter.frozen,
         )
 
     def __str__(self):
