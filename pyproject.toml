@@ -29,6 +29,7 @@ dependencies = [
     "pandas",
     "persistent<6.2",
     "scipy",
+    "setuptools<81",
     "zodb",
     "zeo",
     "lmfit",
