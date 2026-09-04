@@ -49,9 +49,9 @@ class ContainerDisplay(ABC):
             )
 
         highlighten_pixels = np.array([], dtype=int)
-        if geometry.pix_id.value.shape[0] != image.shape[1]:
-            mask = np.array([_id in pixels_id for _id in geometry.pix_id.value])
-            missing_pixels = np.array(geometry.pix_id.value[~mask], dtype=int)
+        if geometry.pix_id.shape[0] != image.shape[1]:
+            mask = np.array([_id in pixels_id for _id in geometry.pix_id])
+            missing_pixels = np.array(geometry.pix_id[~mask], dtype=int)
 
             missing_values = np.empty((image.shape[0], missing_pixels.shape[0]))
             missing_values.fill(np.nan)
@@ -59,7 +59,7 @@ class ContainerDisplay(ABC):
 
             image = np.concatenate((missing_values, image), axis=1)
             pixels_id = np.concatenate((missing_pixels, pixels_id))
-        sort_index = [np.where(pixels_id == pix)[0][0] for pix in geometry.pix_id.value]
+        sort_index = [np.where(pixels_id == pix)[0][0] for pix in geometry.pix_id]
         image = image.T[sort_index].T
 
         disp = CameraDisplay(geometry=geometry, image=image[evt], cmap=cmap)
