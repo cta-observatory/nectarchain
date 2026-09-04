@@ -674,6 +674,7 @@ def make_histogram_sections(
 
     # callback: recompute all displays' histograms using current slider value
     def _on_runs_change(attr, old, new):
+        """Recompute histogram displays when the number of averaged runs changes."""
         current_runs = slider_runs.value
         n_bins = slider_bins.value
         for key in childkeys_avg.keys():
@@ -707,6 +708,17 @@ def make_histogram_sections(
 
     # callback: recompute all displays' histograms using current slider value
     def _on_bins_change(attr, old, new):
+        """Recompute histogram displays when the number of bins changes.
+
+        Parameters
+        ----------
+        attr : str
+            Bokeh attribute name that triggered the callback.
+        old :
+            Previous state.
+        new :
+            New state.
+        """
         current_bins = slider_bins.value
         current_runs = slider_runs.value
         for key in childkeys_avg.keys():

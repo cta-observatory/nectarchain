@@ -10,7 +10,18 @@ __all__ = ["WaveFormsHighLowGain"]
 
 
 class WaveFormsHighLowGain(DQMSummary):
+    """Accumulate and plot mean waveforms for physical and pedestal events."""
+
     def __init__(self, gaink, r0=False):
+        """Initialise the mean-waveforms processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain channel index (0 = high gain, 1 = low gain).
+        r0 : bool, optional
+            Whether to use R0 waveforms (skip R1 corrections).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -65,6 +76,15 @@ class WaveFormsHighLowGain(DQMSummary):
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
+        """Process a single event and accumulate waveform sums.
+
+        Parameters
+        ----------
+        evt : NectarCAMDataContainer
+            The event to process.
+        noped : bool
+            Whether pedestal subtraction should be skipped (unused).
+        """
         is_ped = evt.trigger.event_type == EventType.SKY_PEDESTAL
         is_phy = evt.trigger.event_type == EventType.SUBARRAY
 
@@ -145,6 +165,22 @@ class WaveFormsHighLowGain(DQMSummary):
         return self.MeanWaveForms_Results_Dict
 
     def plot_results(self, name, fig_path):
+        """Generate and save mean-waveform plots.
+
+        Creates per-type (physical, pedestal) and combined waveform plots.
+
+        Parameters
+        ----------
+        name : str
+            Base name for the plot files.
+        fig_path : str
+            Directory where plots should be saved.
+
+        Returns
+        -------
+        tuple of (dict, dict)
+            Mapping from figure keys to figure objects and filenames.
+        """
         wf_list = np.array(self.wf_list_plot)
 
         colors = ["black", "red"]

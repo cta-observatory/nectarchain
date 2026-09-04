@@ -19,6 +19,12 @@ __all__ = ["PedestalNectarCAMCalibrationTool"]
 
 
 class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
+    """Calibration tool for pedestal data processing.
+
+    Estimates pedestal mean and standard deviation per pixel and per
+    sample from dedicated pedestal runs.
+    """
+
     name = "PedestalNectarCAMCalibrationTool"
 
     componentsList = ComponentNameList(
@@ -28,6 +34,15 @@ class PedestalNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     ).tag(config=True)
 
     def __init__(self, *args, **kwargs):
+        """Initialize the pedestal calibration tool.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent initializer.
+        **kwargs : dict
+            Keyword arguments passed to the parent initializer.
+        """
         super().__init__(*args, **kwargs)
 
     @staticmethod

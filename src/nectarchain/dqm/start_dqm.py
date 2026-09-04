@@ -163,12 +163,38 @@ def main():
     log.info(f"charges_kwargs: {charges_kwargs}")
 
     def GetName(RunFile):
+        """Extract a short run name from a file path.
+
+        Parameters
+        ----------
+        RunFile : str
+            Path to the run file.
+
+        Returns
+        -------
+        str
+            Concatenation of the first two dot-delimited components.
+        """
         name = RunFile.split("/")[-1]
         name = name.split(".")[0] + "_" + name.split(".")[1]
         log.debug(name)
         return name
 
     def CreateFigFolder(name, type):
+        """Create and return output folder paths for a given run.
+
+        Parameters
+        ----------
+        name : str
+            Short run name.
+        type : int
+            Figure type (0 = calibration plots).
+
+        Returns
+        -------
+        tuple of (str, str, str)
+            Parent folder name, children folder name, and full folder path.
+        """
         if type == 0:
             folder = "Plots"
 

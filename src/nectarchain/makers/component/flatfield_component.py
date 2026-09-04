@@ -121,6 +121,18 @@ class FlatFieldComponent(NectarCAMComponent):
     ).tag(config=True)
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """
+        Initialize the FlatFieldComponent.
+
+        Parameters
+        ----------
+        subarray : ctapipe.instrument.SubarrayDescription
+            The subarray description.
+        config : traitlets.config.loader.Config, optional
+            Configuration object.
+        parent : object, optional
+            Parent component.
+        """
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
@@ -154,6 +166,13 @@ class FlatFieldComponent(NectarCAMComponent):
         log.info(f"window for pedestal estimation : {self.window_pedestal} ns")
 
     def _init_pedestal_container(self):
+        """
+        Initialize the pedestal container from a file or set to None.
+
+        If a pedestal file is provided, the container is loaded from HDF5
+        and missing pixels are filled with default values. Otherwise the
+        pedestal is computed from the first samples of the waveform.
+        """
         self.__pedestal_container = None
 
         if self.pedestal_file is not None:
@@ -178,6 +197,12 @@ of the waveform"
             )
 
     def _init_gain_container(self):
+        """
+        Initialize the gain container from an HDF5 file.
+
+        If a gain file is provided, the container is loaded and missing
+        pixels are filled with the default gain value.
+        """
         self.__gain_container = None
 
         if self.gain_file is not None:
@@ -193,6 +218,12 @@ of the waveform"
                 log.warning(e)
 
     def _init_gain(self):
+        """
+        Initialize the gain values.
+
+        Prioritizes the gain from the input file if available, otherwise
+        falls back to the default gain and high/low gain ratio constants.
+        """
         self._init_gain_container()
         # Prioritize gain from input file
         if self.__gain_container is not None:
@@ -219,6 +250,14 @@ of the waveform"
             self.gain = gain  # .tolist()
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """
+        Process a flat-field event.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event to process. Only FLATFIELD events are handled.
+        """
         log.debug(
             f"charge extraction method type: {type(self.charge_extraction_method)}"
         )
@@ -430,6 +469,15 @@ of the waveform"
         return badpix_mask
 
     def finish(self):
+        """
+        Finalize the flat-field computation.
+
+        Returns
+        -------
+        FlatFieldContainer
+            Container with the flat-field coefficients, event metadata,
+            integrated charges, efficiency coefficients, and bad pixel mask.
+        """
         log.info(f"number of events of type FLATFIELD: {len(self.__event_id)}")
         log.warning(
             f"number of discarded events: {self.__bad_events} ~ \

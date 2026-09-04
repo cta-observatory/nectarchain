@@ -12,7 +12,22 @@ __all__ = ["PixelParticipationHighLowGain"]
 
 
 class PixelParticipationHighLowGain(DQMSummary):
+    """Compute and track bad-pixel participation per gain channel.
+
+    Accumulates hardware-failing-pixel status over physical and pedestal
+    events, and produces camera-display figures of the resulting masks.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialize the pixel-participation processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain channel index (0 = high gain, 1 = low gain).
+        r0 : bool, optional
+            Whether to use R0 waveforms (skip R1 corrections).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -29,7 +44,21 @@ class PixelParticipationHighLowGain(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
-        # define number of pixels and samples
+        """Configure the processor for a new run.
+
+        Parameters
+        ----------
+        path : str
+            Path to the run file (unused by this processor).
+        Pix : int
+            Number of pixels in the camera.
+        Samp : int
+            Number of waveform samples (unused by this processor).
+        Reader1 : ctapipe_io_nectarcam.LightNectarCAMEventSource
+            Event source used to retrieve subarray and camera geometry.
+        **kwargs
+            Additional keyword arguments (ignored).
+        """
         self.Pix = Pix
         self.Samp = Samp
         self.counter_evt = 0
@@ -42,6 +71,15 @@ class PixelParticipationHighLowGain(DQMSummary):
         )
 
     def process_event(self, evt, noped):
+        """Process a single event, accumulating bad-pixel masks.
+
+        Parameters
+        ----------
+        evt : ctapipe EventSource event
+            The event container.
+        noped : bool
+            Whether pedestal subtraction is enabled (unused).
+        """
         pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels[self.k]
         pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
@@ -68,11 +106,19 @@ class PixelParticipationHighLowGain(DQMSummary):
             self.BadPixels += bad_pixels
 
     def finish_run(self):
+        """Finalise accumulated bad-pixel arrays by converting to ndarray."""
         self.BadPixels_ped = np.array(self.BadPixels_ped)
         self.BadPixels = np.array(self.BadPixels)
 
     def get_results(self):
-        # ASSIGN RESUTLS TO DICT
+        """Store bad-pixel masks in the results dictionary per gain.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping result keys to bad-pixel arrays.
+        """
+
         if self.k == 0:
             if self.counter_evt > 0:
                 self.PixelParticipation_Results_Dict[
@@ -98,7 +144,22 @@ class PixelParticipationHighLowGain(DQMSummary):
         return self.PixelParticipation_Results_Dict
 
     def plot_results(self, name, fig_path):
-        # titles = ['All', 'Pedestals']
+        """Generate camera-display figures of bad-pixel masks.
+
+        Parameters
+        ----------
+        name : str
+            Base name for output figure files.
+        fig_path : str
+            Directory where figure files will be saved.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping result keys to
+            matplotlib figures and their save paths.
+        """
+
         if self.k == 0:
             gain_c = "High"
         if self.k == 1:

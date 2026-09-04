@@ -10,6 +10,12 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class NectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
+    """Calibration tool for NectarCAM data processing.
+
+    Provides the base class for all NectarCAM calibration tools, managing
+    pixel selection and the core calibration workflow.
+    """
+
     name = "CalibrationTool"
     # PIXELS_ID_COLUMN = "pixels_id"
     # NP_PIXELS = "npixels"

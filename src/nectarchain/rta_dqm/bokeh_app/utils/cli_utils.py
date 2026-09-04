@@ -42,6 +42,13 @@ logging.basicConfig(
 # CLI argument parser
 # ============================================================
 def parse_server_cli():
+    """Parse command-line arguments for the RTA Bokeh application.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments with fields ``test_interface`` and ``output_dir``.
+    """
     parser = argparse.ArgumentParser(
         prog="bokeh_app", description="RTA NectarCAM Bokeh interface"
     )

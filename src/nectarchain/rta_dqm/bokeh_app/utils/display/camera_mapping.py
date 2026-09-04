@@ -301,6 +301,17 @@ def make_tab_camera_displays(
     widgets["hillas_switch"] = hillas_switch
 
     def callback(attr, old, new):
+        """Toggle Hillas ellipse visibility on all camera displays.
+
+        Parameters
+        ----------
+        attr : str
+            Bokeh attribute name that triggered the callback (``"active"``).
+        old : list
+            Previous toggle state.
+        new : list
+            Current toggle state.
+        """
         for display in displays:
             for r in display.renderers:
                 if isinstance(r.glyph, Ellipse):

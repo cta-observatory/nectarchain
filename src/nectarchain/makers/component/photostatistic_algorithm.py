@@ -20,6 +20,33 @@ __all__ = ["PhotoStatisticAlgorithm"]
 
 
 class PhotoStatisticAlgorithm(Component):
+    """Algorithm for photo-statistic gain estimation from flat-field and pedestal
+    charges.
+
+    Parameters
+    ----------
+    pixels_id : np.ndarray
+        Array of pixel IDs.
+    FFcharge_hg : np.ndarray
+        High-gain flat-field charges.
+    FFcharge_lg : np.ndarray
+        Low-gain flat-field charges.
+    Pedcharge_hg : np.ndarray
+        High-gain pedestal charges.
+    Pedcharge_lg : np.ndarray
+        Low-gain pedestal charges.
+    coefCharge_FF_Ped : float
+        Coefficient relating flat-field and pedestal charges.
+    SPE_resolution : np.ndarray
+        SPE resolution values.
+    SPE_high_gain : np.ndarray
+        SPE high-gain values.
+    config : ctapipe.core.Config or None, optional
+        Configuration instance.
+    parent : Component or None, optional
+        Parent component.
+    """
+
     def __init__(
         self,
         pixels_id: np.ndarray,
@@ -34,7 +61,31 @@ class PhotoStatisticAlgorithm(Component):
         parent=None,
         **kwargs,
     ) -> None:
-        # constructors
+        """Initialise the photo-statistic algorithm with charge and SPE data.
+
+        Parameters
+        ----------
+        pixels_id : np.ndarray
+            Array of pixel IDs.
+        FFcharge_hg : np.ndarray
+            High-gain flat-field charges.
+        FFcharge_lg : np.ndarray
+            Low-gain flat-field charges.
+        Pedcharge_hg : np.ndarray
+            High-gain pedestal charges.
+        Pedcharge_lg : np.ndarray
+            Low-gain pedestal charges.
+        coefCharge_FF_Ped : float
+            Coefficient relating flat-field and pedestal charges.
+        SPE_resolution : np.ndarray
+            SPE resolution values.
+        SPE_high_gain : np.ndarray
+            SPE high-gain values.
+        config : ctapipe.core.Config or None, optional
+            Configuration instance.
+        parent : Component or None, optional
+            Parent component.
+        """
         super().__init__(config=config, parent=parent, **kwargs)
 
         self._pixels_id = pixels_id
@@ -69,6 +120,24 @@ class PhotoStatisticAlgorithm(Component):
         coefCharge_FF_Ped: float,
         **kwargs,
     ):
+        """Create a PhotoStatisticAlgorithm instance from charge and SPE containers.
+
+        Parameters
+        ----------
+        FFcharge : ChargesContainer
+            Flat-field charges container.
+        Pedcharge : ChargesContainer
+            Pedestal charges container.
+        SPE_result : SPEfitContainer
+            SPE fit results container.
+        coefCharge_FF_Ped : float
+            Coefficient relating flat-field and pedestal charges.
+
+        Returns
+        -------
+        PhotoStatisticAlgorithm
+            The initialised algorithm instance.
+        """
         kwargs_init = __class__.__get_charges_FF_Ped_reshaped(
             FFcharge, Pedcharge, SPE_result
         )
@@ -82,6 +151,23 @@ class PhotoStatisticAlgorithm(Component):
         Pedcharge: ChargesContainer,
         SPE_result: SPEfitContainer,
     ) -> dict:
+        """Reshape charges and SPE data based on the intersection of valid pixel IDs.
+
+        Parameters
+        ----------
+        FFcharge : ChargesContainer
+            Flat-field charges container.
+        Pedcharge : ChargesContainer
+            Pedestal charges container.
+        SPE_result : SPEfitContainer
+            SPE fit results container.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the reshaped arrays (pixels_id, SPE_resolution,
+            SPE_high_gain, FFcharge_hg/lg, Pedcharge_hg/lg).
+        """
         log.info("reshape of SPE, Ped and FF data with intersection of pixel ids")
         out = {}
 
@@ -128,6 +214,23 @@ class PhotoStatisticAlgorithm(Component):
             raise e
 
     def run(self, pixels_id: np.ndarray = None, **kwargs) -> None:
+        """Run the photo-statistic algorithm for the specified pixels.
+
+        Parameters
+        ----------
+        pixels_id : np.ndarray or None, optional
+            Pixel IDs to process. If None, all pixels are used.
+
+        Returns
+        -------
+        int
+            0 on success.
+
+        Other Parameters
+        ----------------
+        figpath : str or False, optional
+            If provided, save a correlation plot to this directory.
+        """
         log.info("running photo statistic method")
         if pixels_id is None:
             pixels_id = self._pixels_id
@@ -400,12 +503,33 @@ class PhotoStatisticAlgorithm(Component):
 
     @property
     def results(self):
+        """A deep copy of the photo-statistic results container.
+
+        Returns
+        -------
+        PhotostatContainer
+            The results container.
+        """
         return copy.deepcopy(self.__results)
 
     @property
     def _results(self):
+        """A direct reference to the internal results container.
+
+        Returns
+        -------
+        PhotostatContainer
+            The internal results container.
+        """
         return self.__results
 
     @property
     def npixels(self):
+        """The number of pixels.
+
+        Returns
+        -------
+        int
+            Number of pixels.
+        """
         return len(self._pixels_id)

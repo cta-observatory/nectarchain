@@ -15,6 +15,12 @@ __all__ = ["ContainerDisplay"]
 
 
 class ContainerDisplay(ABC):
+    """Container display for NectarCAM data.
+
+    Provides static methods to visualize charge/waveform containers
+    on a camera geometry display.
+    """
+
     @staticmethod
     def display(container: ArrayDataContainer, evt, geometry, cmap="gnuplot2"):
         """plot camera display for HIGH GAIN channel
