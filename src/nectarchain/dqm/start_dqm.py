@@ -134,14 +134,8 @@ def main():
         log.error("Input files should be provided, exiting...")
         sys.exit(1)
 
-    # OTHERWISE READ THE RUNS FROM ARGS
-    path1 = args.input_files[0]
-
-    # THE PATH OF INPUT FILES
-    path = f"{NectarPath}/runs/{path1}"
-    log.debug(f"Input files:\n{path}")
-    for arg in args.input_files[1:]:
-        log.debug(arg)
+    all_paths = [f"{NectarPath}/runs/{arg}" for arg in args.input_files]
+    log.debug(f"Input files:\n{all_paths}")
 
     # Defining and printing the options
     PlotFig = args.plot
@@ -209,10 +203,6 @@ def main():
 
     start = time.time()
 
-    # INITIATE
-    path = path
-    log.debug(path)
-
     # Read and seek
     config = None
     if args.r0:
@@ -228,11 +218,12 @@ def main():
             )
         )
 
-    reader = EventSource(input_url=path, config=config, max_events=args.max_events)
-    reader1 = EventSource(input_url=path, config=config, max_events=1)
-    # print(reader.file_list)
+    reader = EventSource(
+        input_filelist=all_paths, config=config, max_events=args.max_events
+    )
+    reader1 = EventSource(input_filelist=all_paths, config=config, max_events=1)
 
-    name = GetName(path)
+    name = GetName(all_paths[0])
     ParentFolderName, ChildrenFolderName, fig_path = CreateFigFolder(name, 0)
     ResPath = f"{output_path}/output/{ChildrenFolderName}/{name}"
 
@@ -278,14 +269,18 @@ def main():
         NESTED_DICT_KEYS.extend(["Results_PingPongChanges"])
 
     # START
+    start_define = time.time()
     for p in processors:
         Pix, Samp = p.define_for_run(reader1)
         break
+    define_time = time.time() - start_define
 
+    start_configure = time.time()
     for p in processors:
-        p.configure_for_run(path, Pix, Samp, reader1, **charges_kwargs)
+        p.configure_for_run(all_paths[0], Pix, Samp, reader1, **charges_kwargs)
+    configure_time = time.time() - start_configure
 
-    start_read = time.time()
+    start_process = time.time()
     looping_over = (
         tqdm(
             reader, total=args.max_events if args.max_events else len(reader), unit="ev"
@@ -296,29 +291,6 @@ def main():
     for evt in looping_over:
         for p in processors:
             p.process_event(evt, noped)
-    read_time = time.time() - start_read
-
-    start_process = time.time()
-    # for the rest of the event files
-    for arg in args.input_files[1:]:
-        path2 = f"{NectarPath}/runs/{arg}"
-        log.debug(path2)
-
-        with EventSource(
-            input_url=path2, config=config, max_events=args.max_events
-        ) as reader:
-            looping_over = (
-                tqdm(
-                    reader,
-                    total=args.max_events if args.max_events else len(reader),
-                    unit="ev",
-                )
-                if args.verbose
-                else reader
-            )
-            for evt in looping_over:
-                for p in processors:
-                    p.process_event(evt, noped)
     process_time = time.time() - start_process
 
     start_finish = time.time()
@@ -360,7 +332,8 @@ def main():
 
     end = time.time()
     log.info(
-        f"Read: {read_time:.2f}s, "
+        f"Define: {define_time:.2f}s, "
+        + f"Configure: {configure_time:.2f}s, "
         + f"Process: {process_time:.2f}s, "
         + f"Finish: {finish_time:.2f}s, "
         + f"Results: {results_time:.2f}s, "
