@@ -5,7 +5,6 @@ import logging
 import os
 import pickle
 import sys
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +20,7 @@ from nectarchain.trr_verification_package.utils import (
     plot_parameters,
     transmission_390ns,
 )
-from nectarchain.utils.constants import ALLOWED_CAMERAS
+from nectarchain.utils.constants import GAIN_LINEAR_RANGE
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -29,15 +28,6 @@ logging.basicConfig(
     handlers=[logging.getLogger("__main__").handlers],
 )
 log = logging.getLogger(__name__)
-
-try:
-    plt.style.use(
-        os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
-        )
-    )
-except FileNotFoundError as e:
-    raise e
 
 
 def get_args():
@@ -70,14 +60,6 @@ def get_args():
         help="List of runs (numbers separated by space)",
         required=False,
         default=[i for i in range(3404, 3424)] + [i for i in range(3435, 3444)],
-    )
-    parser.add_argument(
-        "-c",
-        "--camera",
-        choices=ALLOWED_CAMERAS,
-        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
-        help="Process data for a specific NectarCAM camera.",
-        type=str,
     )
     parser.add_argument(
         "-t",
@@ -140,25 +122,31 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
-    camera = args.camera
-
     runlist = args.runlist
     transmission = args.trans  # corresponding transmission for above data
 
     nevents = args.evts
 
-    output_dir = os.path.join(
-        os.path.abspath(args.output),
-        f"trr_camera_{camera}/{Path(__file__).stem}",
-    )
-    os.makedirs(output_dir, exist_ok=True)
-    log.debug(f"Output directory: {output_dir}")
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
-    log.debug(f"Temporary output directory: {temp_output}")
+    output_dir = os.path.abspath(args.output)
+
+    log.info(f"Output directory: {output_dir}")  # Debug print
+    # print(f"Temporary output file: {temp_output}")  # Debug print
 
     sys.argv = sys.argv[:1]
 
     # runlist = [3441]
+    run_linearity(runlist, transmission, nevents, output_dir, args.temp_output)
+
+
+def run_linearity(
+    runlist,
+    transmission,
+    temperature=14,
+    nevents=500,
+    output_dir="./",
+    temp_output_args=None,
+):
+    temp_output = os.path.abspath(temp_output_args) if temp_output_args else None
 
     charge = np.zeros((len(runlist), 2))
     std = np.zeros((len(runlist), 2))
@@ -166,12 +154,11 @@ def main():
 
     index = 0
     for run in runlist:
-        log.info(f"PROCESSING RUN {run}")
+        print("PROCESSING RUN {}".format(run))
         pedestal_tool = PedestalNectarCAMCalibrationTool(
             progress_bar=True,
             run_number=run,
-            camera=camera,
-            max_events=12000,
+            max_events=nevents,
             events_per_slice=5000,
             log_level=20,
             output_path=output_dir + f"/pedestal_{run}.h5",
@@ -183,12 +170,11 @@ def main():
         tool = LinearityTestTool(
             progress_bar=True,
             run_number=run,
-            camera=camera,
-            events_per_slice=999,
+            events_per_slice=5000,
             max_events=nevents,
             log_level=20,
             method="LocalPeakWindowSum",
-            extractor_kwargs={"window_width": 14, "window_shift": 6},
+            extractor_kwargs={"window_width": 16, "window_shift": 4},
             pedestal_file=output_dir + f"/pedestal_{run}.h5",
             overwrite=True,
         )
@@ -200,15 +186,19 @@ def main():
         charge[index], std[index], std_err[index], npixels = output
         index += 1
 
+    # print("FINAL",charge)
+
     # we assume that they overlap at 0.01 so they should have the same value
     # normalise high gain and low gain using charge value at 0.01
     transmission = np.array(transmission)
     norm_factor_hg = charge[
         np.argwhere((transmission < 1.1e-2) & (transmission > 9e-3)), 0
     ][0]
+    # print(norm_factor_hg)
     norm_factor_lg = charge[
         np.argwhere((transmission < 1.1e-2) & (transmission > 9e-3)), 1
     ][0]
+    # print(norm_factor_lg)
     charge_norm_hg = charge[:, 0] / norm_factor_hg
     charge_norm_lg = charge[:, 1] / norm_factor_lg
     std_norm_hg = std[:, 0] / norm_factor_hg
@@ -243,6 +233,7 @@ def main():
     axs[2].axvspan(10, 1000, alpha=0.2, color="orange")
     axs[2].set_xlabel("Illumination charge [p.e.]")
 
+    fit_parameters = []
     for _, (channel_charge, channel_std, name) in enumerate(
         zip(
             [charge_norm_hg, charge_norm_lg],
@@ -255,41 +246,40 @@ def main():
         )  # sort by true charge
 
         ch_sorted = np.array(sorted(yx))
+        # print(ch_sorted)
 
         # linearity
         model = Model(linear_fit_function)
-        params = model.make_params(a=100, b=0)
+        params = model.make_params(a=1, b=0)
         true = ch_sorted[:, 0]
 
         ch_charge = ch_sorted[:, 1] * norm_factor_hg[0]
         ch_std = ch_sorted[:, 2] * norm_factor_hg[0]
         ch_err = ch_std / np.sqrt(npixels)
 
-        ch_fit = model.fit(
-            ch_charge[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            params,
-            weights=1
-            / ch_err[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            x=true[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-        )
+        mask_LG = (ch_charge > 10) & (ch_charge < 3000)  # LG
+        mask_HG = (ch_charge > 1) & (ch_charge < 200)  # HG
+
+        if str(plot_parameters[name]["initials"]) == "HG":
+            ch_charge_inp = ch_charge[mask_HG]
+            true_inp = true[mask_HG]
+            ch_err_inp = ch_err[mask_HG]
+
+        else:
+            ch_charge_inp = ch_charge[mask_LG]
+            true_inp = true[mask_LG]
+            ch_err_inp = ch_err[mask_LG]
+
+        ch_fit = model.fit(ch_charge_inp, params, x=true_inp, weights=1.0 / ch_err_inp)
+
+        # print(ch_fit.fit_report())
 
         a = ch_fit.params["a"].value
         b = ch_fit.params["b"].value
         a_err = ch_fit.params["a"].stderr
         b_err = ch_fit.params["b"].stderr
 
+        fit_parameters.append((a, b, a_err, b_err))
         axs[0].errorbar(
             true,
             ch_charge,
@@ -299,21 +289,11 @@ def main():
             marker="o",
             color=plot_parameters[name]["color"],
         )
+
+        # print("after fit : ",true_inp, a*true_inp + b)
         axs[0].plot(
-            true[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            linear_fit_function(
-                true[
-                    plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                        "linearity_range"
-                    ][1]
-                ],
-                a,
-                b,
-            ),
+            true_inp,
+            linear_fit_function(true_inp, a, b),
             color=plot_parameters[name]["color"],
         )
 
@@ -388,19 +368,34 @@ def main():
     ratio = ratio_sorted[:, 1]
     ratio_std = ratio_sorted[:, 2]
 
-    model = model = Model(linear_fit_function)
-    params = model.make_params(a=100, b=0)
-    ratio_fit = model.fit(
-        ratio[10:-4], params, weights=1 / ratio_std[10:-4], x=true[10:-4]
-    )
+    model = Model(linear_fit_function)
+    params = model.make_params(a=10, b=0)
 
     axs[2].set_ylabel("hg/lg")
     axs[2].set_xlabel("charge(p.e.)")
     axs[2].errorbar(true, ratio, yerr=ratio_std, ls="", color="C1", marker="o")
-    axs[2].plot(
-        true[10:-4],
+
+    mask_linear = (true > GAIN_LINEAR_RANGE[0]) & (true < 300)
+    ratio_fit = model.fit(
+        ratio[mask_linear],
+        params,
+        weights=1 / ratio_std[mask_linear],
+        x=true[mask_linear],
+    )
+    """
+    print(
+        "true === ",
+        true[mask_linear],
         linear_fit_function(
-            true[10:-4], ratio_fit.params["a"].value, ratio_fit.params["b"].value
+            true[mask_linear], ratio_fit.params["a"].value, ratio_fit.params["b"].value
+        ),
+    )
+    """
+
+    axs[2].plot(
+        true[mask_linear],
+        linear_fit_function(
+            true[mask_linear], ratio_fit.params["a"].value, ratio_fit.params["b"].value
         ),
         ls="-",
         color="C1",
@@ -433,13 +428,12 @@ def main():
         alpha=0.9,
     )
 
-    fig_name = "linearity_test"
-    plot_path = os.path.join(output_dir, f"{fig_name}.png")
-    plt.savefig(plot_path)
-
+    plt.savefig(os.path.join(output_dir, f"linearity_test_T{temperature}.png"))
+    """
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(args.temp_output, "plot1.pkl"), "wb") as f:
             pickle.dump(fig, f)
+    """
 
     # charge resolution
     charge_hg = charge[:, 0]
@@ -499,15 +493,13 @@ def main():
 
     plt.xlim(3e-2, 4e3)
     plt.legend(frameon=False)
-
-    fig_name = "charge_resolution"
-    plot_path = os.path.join(output_dir, f"{fig_name}.png")
-    plt.savefig(plot_path)
-
+    plt.savefig(os.path.join(output_dir, "charge_resolution.png"))
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output_args, "plot2.pkl"), "wb") as f:
             pickle.dump(fig, f)
     plt.close("all")
+
+    return fit_parameters, ratio, ratio_std
 
 
 if __name__ == "__main__":

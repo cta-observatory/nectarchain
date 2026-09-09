@@ -22,7 +22,6 @@ from nectarchain.trr_verification_package.utils import (
 )
 from nectarchain.trr_verification_package.utils import (
     plot_deadtime_and_expo_fit,
-    source_ids_deadtime,
 )
 from nectarchain.utils.constants import ALLOWED_CAMERAS
 
@@ -60,10 +59,7 @@ def get_labels():
         script_dir, "../trr_verification_package/resources/source_type_labels.json"
     )
 
-    with open(json_path, "r") as f:
-        source_labels = json.load(f)
-
-    return source_labels
+default_camera = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0]
 
 
 def plot_deadtime_vs_collected_trigger_rate(
@@ -316,7 +312,9 @@ def plot_fitted_rate_vs_collected_trigger_rate(
             pickle.dump(fig, f)
 
 
-def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
+def fit_rate_per_run(
+    runlist: list, deadtime_us: np.ndarray, collected_trigger_rates: np.ndarray
+):
     """Fit the exponential function over the provided run list
 
     Parameters
@@ -325,9 +323,8 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
         NectarCAM run numbers
     deadtime_us : np.ndarray
         Deadtime values in mus
-
-    histograms_deadtime, bin_edges_hist,
-    results
+    collected_trigger_rates : np.ndarray
+        Collected trigger rate values from the camera client counters
 
     Returns
     -------
@@ -367,10 +364,13 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
 
         deadtime_mus = deadtime_us[ii].value[deadtime_us[ii].value > 0] * 1e-6
 
-        lim_low_mus, lim_high_mus = 0.001e-6, 120 * 1e-6
-
-        # lower and upper limits for the deadtime binning in mus
-        nr_bins = 100
+        lim_low_mus = 0.001e-6
+        if collected_trigger_rates[ii] < 3000.0:
+            lim_high_mus = 100000 * 1e-8
+            nr_bins = 8000
+        else:
+            lim_high_mus = 50000 * 1e-7
+            nr_bins = 10000
 
         rate_initial_guess = 40000  # in Hz
 
@@ -457,12 +457,11 @@ def fit_rate_per_run(runlist: list, deadtime_us: np.ndarray):
 
 def run_deadtime_test_tool_process(
     runlist: list,
-    camera: str,
     nevents: int,
     ids: np.ndarray,
-    test_type: str = "trr",
+    camera=default_camera,
 ):
-    """Run `DeadtimeTestTool` from `tools_components.py` over the provided run list
+    """Run `DeadtimeTestTool` from `utils.py` over the provided run list
 
     Parameters
     ----------
@@ -473,11 +472,9 @@ def run_deadtime_test_tool_process(
     nevents : int
         max number of events
     ids : np.ndarray
-        Source ids for all the runs
-    test_type : str
-        Test type to specify the source ids.
-        Accepted options are 'trr' and 'av',
-        for 'Test-Readiness Review' and 'Acceptance Verification'.
+        Source ids for all the runs.
+    camera : str
+        camera for which the data should be processed.
 
     Returns
     -------
@@ -497,6 +494,8 @@ def run_deadtime_test_tool_process(
         The deadtime values computed as the deltaT between recorded events
     deadtime_pc : list
         The deadtime percentage value computed with the counters for each run
+    camera_numbers : list
+        The camera number for each run
     """
 
     if test_type not in ["trr", "av"]:
@@ -508,6 +507,7 @@ def run_deadtime_test_tool_process(
     collected_trigger_rates = []
     time_tot = []
     deadtime_us, deadtime_pc = [], []
+    camera_numbers = []
 
     log.info(f"Starting `DeadtimeTestTool` for test {test_type}")
 
@@ -542,6 +542,8 @@ def run_deadtime_test_tool_process(
         deadtime_pc.append(output[6])
         deadtime_us.append((output[1] * u.ns).to(u.us))
 
+        camera_numbers.append(output[7])
+
     return (
         ucts_timestamps,
         ucts_deltat,
@@ -551,6 +553,145 @@ def run_deadtime_test_tool_process(
         time_tot,
         deadtime_us,
         deadtime_pc,
+        camera_numbers,
+    )
+
+
+def run_deadtime(
+    nevents,
+    runlist,
+    ids,
+    camera=default_camera,
+    output_dir=None,
+    temp_output=None,
+):
+    (
+        _,
+        _,
+        event_counter,
+        busy_counter,
+        collected_trigger_rates,
+        time_tot,
+        deadtime_us,
+        deadtime_pc,
+        camera_numbers,
+    ) = run_deadtime_test_tool_process(
+        runlist=runlist,
+        nevents=nevents,
+        ids=ids,
+        camera=camera,
+    )
+
+    camera_numbers = np.unique(camera_numbers)
+    if len(camera_numbers) > 1:
+        log.warning(
+            f"Multiple camera numbers found in the runs: {camera_numbers}."
+            + "The plots will not be saved."
+        )
+    else:
+        if output_dir:
+            output_dir = os.path.join(
+                output_dir, f"trr_camera_{camera_numbers[0]}/deadtime"
+            )
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            log.info(f"The plots will be saved at: {output_dir}")
+
+    results = fit_rate_per_run(
+        runlist=runlist,
+        deadtime_us=deadtime_us,
+        collected_trigger_rates=collected_trigger_rates,
+    )[-1]
+
+    avg_deadtime_pc = []
+
+    log.info(f"Output directory: {output_dir}")
+    log.info(f"Temporary output file: {temp_output}")
+    log.info(f"N max events to be considered: {nevents}")
+    log.info("-" * 40)
+    for ii, (key, values) in enumerate(results.items()):
+        log.info(f"For run {key}, source: {ids[ii]},")
+        log.info(
+            "Dead-Time extracted from the tool process: "
+            f"{np.min(deadtime_us[ii]):.3f}"
+        )
+        log.info("Dead-Time from the fit: " f"{values[0]:.3f} us")
+        log.info(f"Collected rate: {collected_trigger_rates[ii]:.2f} Hz")
+        log.info(f"Rate from the fit: {values[2]:.2f} Hz")
+        log.info(f"Dead-Time percentage from the tool process: {deadtime_pc[ii]} %")
+        log.info(f"Expected run duration from the fit: {values[4]:.2f} s")
+        log.info("-" * 40)
+        if collected_trigger_rates[ii] < 8500 or collected_trigger_rates[ii] > 6500:
+            avg_deadtime_pc.append(deadtime_pc[ii])
+            # compute average deadtime % with only runs at 7 kHz for the thermal test
+    log.info(
+        "Average Dead-Time percentage"
+        + f"for runs at ~7 kHz: {np.mean(avg_deadtime_pc):.3f} %"
+    )
+    log.info("-" * 40)
+
+    ids = np.array(ids)
+    runlist = np.array(runlist)
+
+    error_deadtime_pc = []
+    for run_id in range(np.array(busy_counter).shape[0]):
+        error_deadtime_pc.append(
+            np.sqrt(
+                (busy_counter[run_id][-1] * event_counter[run_id][-1])
+                / ((busy_counter[run_id][-1] + event_counter[run_id][-1]) ** 3)
+            )
+        )
+    error_deadtime_pc = np.array(error_deadtime_pc)
+
+    deadtime, deadtime_err = [], []
+    fitted_trigger_rates, fitted_trigger_rates_err = [], []
+
+    for ii, run_num in enumerate(runlist):
+        plot_results = plot_deadtime_and_expo_fit(
+            total_delta_t_for_busy_time=time_tot[ii],
+            deadtime_us=np.array(deadtime_us[ii].value),
+            run=run_num,
+            output_plot=output_dir,
+        )
+        deadtime.append(plot_results[0])
+        deadtime_err.append(np.abs(plot_results[2]) * 1e-3)
+        fit_trigger_rate = results[run_num][2] / 1e3  # convert to kHz
+        fit_trigger_rate_plot = ((-1 * plot_results[6]) * (1 / u.us)).to(u.kHz).value
+        if np.abs(fit_trigger_rate - collected_trigger_rates[ii] / 1e3) < np.abs(
+            fit_trigger_rate_plot - collected_trigger_rates[ii] / 1e3
+        ):
+            fitted_trigger_rates.append(fit_trigger_rate)
+        else:
+            fitted_trigger_rates.append(fit_trigger_rate_plot)
+        fitted_trigger_rates_err.append(
+            ((plot_results[8]) * (1 / u.us)).to(u.kHz).value
+        )
+        plt.close()
+
+    deadtime = np.array(deadtime)
+    fitted_trigger_rates = np.array(fitted_trigger_rates)
+    fitted_trigger_rates_err = np.array(fitted_trigger_rates_err)
+
+    deadtime_pc_fit = np.array(
+        [
+            # the parameter_lambda is a rate value in kHz,
+            # so one needs to compare the deadtime in mus with the rate in kHz
+            # and finally make it a percentage value
+            deadtime[ii] * rate * 1e2 * 1e-3
+            for ii, rate in enumerate(fitted_trigger_rates)
+        ]
+    )
+
+    return (
+        collected_trigger_rates,
+        fitted_trigger_rates,
+        fitted_trigger_rates_err,
+        deadtime,
+        deadtime_err,
+        deadtime_pc,
+        error_deadtime_pc,
+        deadtime_pc_fit,
+        camera_numbers,
     )
 
 
@@ -627,7 +768,7 @@ def get_args():
         "-c",
         "--camera",
         choices=ALLOWED_CAMERAS,
-        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        default=default_camera,
         help="Process data for a specific NectarCAM camera.",
         type=str,
     )
@@ -635,7 +776,9 @@ def get_args():
         "-o",
         "--output",
         type=str,
-        help="Output directory",
+        help="Output directory. "
+        "If none, plot will be saved in the deadtime_results directory",
+        required=False,
         default=f"{os.environ.get('NECTARCHAIN_FIGURES', f'/tmp/{os.getpid()}')}",
     )
     parser.add_argument(
@@ -650,24 +793,19 @@ def main():
     """Runs the deadtime test script, which performs deadtime tests B-TEL-1260 and
     B-TEL-1270, and event rate test B-MST-1280.
 
-    The script takes command-line arguments to specify a run number, \
-        corresponding event source, the camera tag, and, optionally, \
-        the number of events to consider for the test and an output directory. \
-            It is also possible to choose between two test types: 'trr' and 'av', \
-                for 'Test-Readiness Review' and 'Acceptance Verification'. \
-            It then processes the data for each run, performs an exponential \
-                fit to the deadtime distribution, and generates three plots:
+    The script takes command-line arguments to specify the path to the file with the
+    list of runs, corresponding source ids, number of events to process, and output
+    directory. It then processes the data for each run, performs an exponential fit
+    to the deadtime distribution, and generates three plots:
 
-    1. A plot of the exponential function fit on the deadtime\
-        distribution for each run.
-    2. A plot of deadtime percentage vs. collected trigger rate, with the CTAO\
+    1. A plot of the exponential function fit on the deadtime distribution for each run.
+    2. A plot of deadtime percentage vs. collected trigger rate, with the CTA
         requirement indicated.
-    3. A plot of the rate from the fit vs. the collected trigger rate, with the\
+    3. A plot of the rate from the fit vs. the collected trigger rate, with the
         relative difference shown in the bottom panel.
 
-    The script also saves the generated plots to the specified output directory, and\
-        optionally saves the last two to a temporary output directory for use\
-            in a GUI.
+    The script also saves the generated plots to the specified output directory,
+    and optionally saves the last two to a temporary output directory for use in a GUI.
     """
 
     parser = get_args()
@@ -725,33 +863,35 @@ def main():
         labels = deadtime_labels_av
 
     nevents = args.evts
-
-    kwargs = copy.deepcopy(vars(args))
-    kwargs.pop("camera")
     camera = args.camera
 
     output_dir = os.path.join(
         os.path.abspath(args.output),
-        f"{test_type}_camera_{camera}/{Path(__file__).stem}",
+        f"trr_camera_{camera}/{Path(__file__).stem}",
     )
     os.makedirs(output_dir, exist_ok=True)
-
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
     # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
 
     (
-        _,
-        _,
-        event_counter,
-        busy_counter,
         collected_trigger_rates,
-        time_tot,
-        deadtime_us,
+        fitted_trigger_rates,
+        fitted_trigger_rates_err,
+        _,
+        _,
         deadtime_pc,
-    ) = run_deadtime_test_tool_process(
-        runlist=runlist, camera=camera, nevents=nevents, ids=ids, test_type=test_type
+        error_deadtime_pc,
+        deadtime_pc_fit,
+        _,
+    ) = run_deadtime(
+        nevents=nevents,
+        runlist=runlist,
+        ids=ids,
+        camera=camera,
+        output_dir=output_dir,
+        temp_output=temp_output,
     )
 
     results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]

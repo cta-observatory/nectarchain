@@ -236,13 +236,6 @@ intensity_to_charge = np.array(
     ]
 )
 
-
-source_ids_deadtime = (
-    [0 for i in range(3332, 3342)]
-    + [1 for i in range(3342, 3351)]
-    + [2 for i in range(3552, 3563)]
-)
-
 deadtime_labels = {
     0: {"source": "FFCLS", "color": "red"},
     1: {"source": "NSB", "color": "blue"},
@@ -695,7 +688,6 @@ def plot_deadtime_and_expo_fit(
     max_x_value_for_plot = max_x_values_for_plot[
         np.argmin(np.abs(max(deadtime_us) - max_x_values_for_plot))
     ]
-
     entries, bin_edges = np.histogram(
         deadtime_us, bins=100, range=(0, max_x_value_for_plot + 20)
     )
@@ -707,7 +699,7 @@ def plot_deadtime_and_expo_fit(
     first_nonempty_bin = np.where(entries > 0)[0][0]
     deadtime_err = (
         bin_edges[first_nonempty_bin] - bin_edges[first_nonempty_bin - 1]
-    ) / np.sqrt(entries[first_nonempty_bin])
+    ) / (2 * np.sqrt(3 * entries[first_nonempty_bin]))
 
     deadtime_bin = bin_edges[first_nonempty_bin]
     deadtime_bin_length = (
@@ -715,8 +707,8 @@ def plot_deadtime_and_expo_fit(
     )
 
     # the bins should be of integer width, because poisson is an integer distribution
-    x_steps_for_bins = np.arange(0, max_x_value_for_plot + 20, step=5)
-    x_steps_for_bins = x_steps_for_bins[1:] - 5
+    x_steps_for_bins = np.arange(0, max_x_value_for_plot + 20, step=2)
+    x_steps_for_bins = x_steps_for_bins[1:] - 2
 
     entries, bin_edges = np.histogram(
         deadtime_us, bins=x_steps_for_bins, range=[0, total_delta_t_for_busy_time]

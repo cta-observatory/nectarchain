@@ -113,6 +113,7 @@ def get_available_cameras_from_db_keys(src):
     return available_cameras
 
 
+# TODO: check actual output type and content
 def get_rundata(src, runid):
     """Get run data to populate plots on the Bokeh displays
 
@@ -592,6 +593,7 @@ def update_timelines(timelines_data, runid=None):
         sizing_mode="scale_width",
     )
 
+    # Recreate TabPanel layout
     tab_timelines = TabPanel(child=layout_timelines, title="Timelines")
 
     return tab_timelines

@@ -41,7 +41,8 @@ log = logging.getLogger(__name__)
 try:
     plt.style.use(
         os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+            os.path.abspath(os.path.dirname(__file__)),
+            "../utils/plot_style_new.mpltstyle",
         )
     )
 except FileNotFoundError as e:
@@ -147,21 +148,19 @@ def main():
     parser = get_args()
     args = parser.parse_args()
 
+    df = pd.read_json(args.run_file)
+    temperature = args.temperature
+    nevents = args.evts
     camera = args.camera
-
     output_dir = os.path.join(
         os.path.abspath(args.output),
         f"trr_camera_{camera}/{Path(__file__).stem}",
     )
     os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
-    log.debug(f"Temporary output directory: {temp_output}")
 
     if not os.path.isfile(args.run_file):
         raise FileNotFoundError(f"Run file not found: {args.run_file}")
-
-    df = pd.read_json(args.run_file)
 
     # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
@@ -169,6 +168,33 @@ def main():
     NSB = df["NSB"].values
     runs_list = df["runs"].tolist()
     ff_v_list = df["ff_v"].tolist()
+
+    run_charge_resolution(
+        NSB=NSB,
+        runs_list=runs_list,
+        ff_v_list=ff_v_list,
+        temperature=temperature,
+        nevents=nevents,
+        camera=camera,
+        output_dir=output_dir,
+        temp_output_args=args.temp_output,
+    )
+
+
+def run_charge_resolution(
+    NSB,
+    runs_list,
+    ff_v_list,
+    temperature=14,
+    nevents=1000,
+    camera="NectarCAMQM",
+    output_dir="./",
+    temp_output_args=None,
+):
+    temp_output = os.path.abspath(temp_output_args) if temp_output_args else None
+
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output directory: {temp_output}")
 
     color = ["black", "red", "blue", "green", "yellow"]
     log.info("NSB Run FF", NSB, runs_list, ff_v_list)
@@ -179,8 +205,6 @@ def main():
     mean_resolution_nsb_err = []
     mean_charge_err = []
     log.info(f"NSB: length {len(NSB)}, NSB rate {NSB} MHz")
-    temperature = args.temperature
-    nevents = args.evts
 
     window_shift = 4
     window_width = 16
@@ -191,6 +215,8 @@ def main():
         runlist = runs_list[iNSB]
         ff_volt = ff_v_list[iNSB]
 
+        log.info(f"runlist: {runlist}, ff_volt: {ff_volt}")
+
         charge = np.zeros((len(runlist), 2))
         std = np.zeros((len(runlist), 2))
         std_err = np.zeros((len(runlist), 2))
@@ -198,27 +224,27 @@ def main():
         ratio_hglg = np.zeros(len(runlist))
         index = 0
         for run in runlist:
-            log.info(f"PROCESSING RUN {run}")
+            log.info(f"PROCESSING RUN {run} for {iNSB}")
             pedestal_tool = PedestalNectarCAMCalibrationTool(
                 progress_bar=True,
                 run_number=run,
-                camera=camera,
-                max_events=1000,
-                events_per_slice=max_events,
+                max_events=nevents,
+                events_per_slice=999,
                 log_level=20,
                 overwrite=True,
                 filter_method=None,
                 method="FullWaveformSum",  # charges over entire window
             )
             run_tool(pedestal_tool)
-
             gain_run = int(get_gain_run(temperature))
+            log.info(f"Gain for the run: {gain_run}")
             gain_file_name = (
-                "FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
+                "resources/FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
                 "{}_window_shift_{}_window_width_{}.h5".format(
                     gain_run, max_events, method, window_shift, window_width
                 )
             )
+            log.info(f"Gain file name: {gain_file_name}")
 
             if not os.path.exists(gain_file_name):
                 gain_tool = FlatFieldSPENominalStdNectarCAMCalibrationTool(
@@ -236,10 +262,20 @@ def main():
                 run_tool(gain_tool)
 
             log.info(f"gain_file_name: {gain_file_name}")
+            log.info(
+                "charge resolution run: ",
+                run,
+                nevents,
+                window_shift,
+                window_width,
+                type(run),
+            )
+            output_file_name = Path(
+                f"{output_dir}/ChargeResolutionTestTool_run{str(run)}.h5"
+            )
             tool = ChargeResolutionTestTool(
                 progress_bar=True,
                 run_number=run,
-                camera=camera,
                 max_events=nevents,
                 method=method,
                 extractor_kwargs={
@@ -248,6 +284,7 @@ def main():
                 },
                 pedestal_file=pedestal_tool.output_path,
                 overwrite=True,
+                output_path=output_file_name,
             )
             tool.initialize()
             tool.setup()
@@ -292,16 +329,9 @@ def main():
         # ax.grid()
         ax.legend()
         ax.set_ylim(-1, 600)
-
-        fig_name = f"Charge_FF_V_final_cuts_{runlist[0]}_{runlist[len(runlist)-1]}.png"
+        fig_name = f"Charge_FF_V_final_cuts_{runlist[0]}_{runlist[len(runlist)-1]}"
         plot_path = os.path.join(output_dir, f"{fig_name}.png")
         plt.savefig(plot_path)
-
-        if temp_output:
-            with open(
-                os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb"
-            ) as f:
-                pickle.dump(fig, f)
 
         ratio_lghg_nsb.append(ratio_hglg)
 
@@ -391,7 +421,7 @@ def main():
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     charge_plot = np.linspace(20, 1000)
@@ -427,24 +457,33 @@ def main():
             ls="",
             marker="o",
             label="NSB = {} MHz".format(NSB[iNSB]),
-            color=color[iNSB],
         )
+        # print(iNSB, mean_charge[iNSB], mean_resolution_nsb[iNSB])
 
     ax.set_xlabel(r"Charge $\overline{Q}$ [p.e.]")
-    ax.set_ylabel(r"Charge resolution $\frac{\sigma_{Q}}{\overline{Q}}$")
-    ax.set_title("T={} degrees".format(temperature))
+    ax.set_ylabel(
+        r"Charge resolution $\langle \frac{\sigma_{Q}}{\overline{Q}} \rangle$"
+    )
+    # ax.set_title("T={} degrees".format(temperature))
     ax.set_xlim(20, 1000)
-    ax.legend()
-
+    ax.legend(fontsize=8)
     fig_name = f"charge_resolution_T{temperature}"
     plot_path = os.path.join(output_dir, f"{fig_name}.png")
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
+
+    return (
+        mean_charge,
+        mean_charge_err,
+        mean_resolution_nsb,
+        mean_resolution_nsb_err,
+        ratio_hglg,
+    )
 
 
 if __name__ == "__main__":
