@@ -20,10 +20,26 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class ComponentUtils:
+    """Utility methods for working with ctapipe Components."""
+
     @staticmethod
     def is_in_non_abstract_subclasses(
         component: Component, motherClass="NectarCAMComponent"
     ):
+        """Check if a component is an instance of or equals a non-abstract subclass.
+
+        Parameters
+        ----------
+        component : Component
+            The component to check.
+        motherClass : str, optional
+            Name of the parent class.
+
+        Returns
+        -------
+        bool
+            True if the component matches.
+        """
         from nectarchain.makers.component.core import NectarCAMComponent  # noqa: F401
 
         # module = importlib.import_module(f'nectarchain.makers.component.core')
@@ -37,6 +53,18 @@ class ComponentUtils:
 
     @staticmethod
     def get_specific_traits(component: Component):
+        """Get the specific traits of a component, including sub-components.
+
+        Parameters
+        ----------
+        component : Component
+            The component whose traits to retrieve.
+
+        Returns
+        -------
+        dict
+            Dictionary of trait names and values.
+        """
         importlib.import_module(f"{component.__module__}")
         traits_dict = component.class_traits()
         if ComponentUtils.is_in_non_abstract_subclasses(
@@ -54,6 +82,18 @@ class ComponentUtils:
 
     @staticmethod
     def get_configurable_traits(component: Component):
+        """Get the configurable (non-read-only) traits of a component.
+
+        Parameters
+        ----------
+        component : Component
+            The component whose configurable traits to retrieve.
+
+        Returns
+        -------
+        dict
+            Dictionary of configurable trait names and values.
+        """
         traits_dict = ComponentUtils.get_specific_traits(component)
         output_traits_dict = traits_dict.copy()
         for key, item in traits_dict.items():
@@ -63,6 +103,23 @@ class ComponentUtils:
 
     @staticmethod
     def get_class_name_from_ComponentName(componentName: str):
+        """Get the class corresponding to a component name.
+
+        Parameters
+        ----------
+        componentName : str
+            Name of the component.
+
+        Returns
+        -------
+        type
+            The component class.
+
+        Raises
+        ------
+        ValueError
+            If the component name is not a valid NectarCAMComponent child.
+        """
         from nectarchain.makers.component.core import NectarCAMComponent
 
         for class_name, _class in NectarCAMComponent.non_abstract_subclasses().items():
@@ -76,6 +133,8 @@ class ComponentUtils:
 
 
 class ContainerUtils:
+    """Utility methods for working with NectarCAMContainer objects."""
+
     @staticmethod
     def add_missing_pixels_to_container(
         container: NectarCAMContainer, pad_value=np.nan
@@ -233,19 +292,46 @@ class ContainerUtils:
 
 
 class multiprocessing:
+    """Namespace for multiprocessing utility functions."""
+
     @staticmethod
     def custom_error_callback(error):
+        """Log an error from a multiprocessing worker.
+
+        Parameters
+        ----------
+        error : Exception
+            The error raised by the worker.
+        """
         log.error(f"Got an error: {error}")
         log.error(error, exc_info=True)
 
 
 class Statistics:
+    """Statistical utility functions."""
+
     @staticmethod
     def chi2_pvalue(ndof: int, likelihood: float):
+        """Compute the p-value from a chi-squared distribution.
+
+        Parameters
+        ----------
+        ndof : int
+            Number of degrees of freedom.
+        likelihood : float
+            The likelihood value.
+
+        Returns
+        -------
+        float
+            The p-value.
+        """
         return 1 - chi2(df=ndof).cdf(likelihood)
 
 
 class UtilsMinuit:
+    """Utility functions for creating and configuring Minuit instances."""
+
     @staticmethod
     def make_minuit_par_kwargs(parameters):
         """Create *Parameter Keyword Arguments* for the `Minuit` constructor.
@@ -284,16 +370,71 @@ class UtilsMinuit:
 
 # Useful functions for the fit
 def gaussian(x, mu, sig):
+    """Gaussian (normal) probability density function.
+
+    Parameters
+    ----------
+    x : array-like
+        Points at which to evaluate the PDF.
+    mu : float
+        Mean of the Gaussian.
+    sig : float
+        Standard deviation of the Gaussian.
+
+    Returns
+    -------
+    array-like
+        PDF values.
+    """
+
     # return (1./(sig*np.sqrt(2*math.pi))) *
     # np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     return norm.pdf(x, loc=mu, scale=sig)
 
 
 def weight_gaussian(x, N, mu, sig):
+    """Weighted Gaussian (normal) PDF scaled by N.
+
+    Parameters
+    ----------
+    x : array-like
+        Points at which to evaluate.
+    N : float
+        Scaling factor.
+    mu : float
+        Mean of the Gaussian.
+    sig : float
+        Standard deviation of the Gaussian.
+
+    Returns
+    -------
+    array-like
+        Scaled PDF values.
+    """
     return N * gaussian(x, mu, sig)
 
 
 def doubleGauss(x, sig1, mu2, sig2, p):
+    """Double Gaussian model with a low- and a high-charge component.
+
+    Parameters
+    ----------
+    x : array-like
+        Points at which to evaluate.
+    sig1 : float
+        Width of the low-charge Gaussian.
+    mu2 : float
+        Mean of the high-charge Gaussian.
+    sig2 : float
+        Width of the high-charge Gaussian.
+    p : float
+        Proportion of the low-charge component.
+
+    Returns
+    -------
+    array-like
+        Evaluated double Gaussian.
+    """
     return p * 2 * gaussian(x, 0, sig1) + (1 - p) * gaussian(x, mu2, sig2)
 
 
@@ -472,6 +613,35 @@ def sigma2(n, p, res, mu2):
 
 
 def MPE2(x, pp, res, mu2, n, muped, sigped, lum, **kwargs):
+    """Multi-photo-electron (MPE) model summing nPEPDF contributions.
+
+    Parameters
+    ----------
+    x : array-like
+        Points at which to evaluate.
+    pp : float
+        Parameter p' for the constrained double Gaussian.
+    res : float
+        SPE resolution.
+    mu2 : float
+        Position of the high-charge Gaussian.
+    n : float
+        Parameter n for sigma2.
+    muped : float
+        Pedestal mean.
+    sigped : float
+        Pedestal width.
+    lum : float
+        Luminosity parameter (mean number of photo-electrons).
+    **kwargs
+        Additional keyword arguments. If ``ntotalPE`` is provided, it
+        specifies the maximum number of photo-electrons to sum.
+
+    Returns
+    -------
+    array-like
+        Evaluated MPE model.
+    """
     log.debug(
         f"pp = {pp}, res = {res}, mu2 = {mu2}, n = {n}, muped = {muped}, "
         f"sigped = {sigped}, lum = {lum}"
@@ -507,6 +677,26 @@ def MPE2(x, pp, res, mu2, n, muped, sigped, lum, **kwargs):
 
 # Fnal model shape/function (for one SPE)
 def doubleGaussConstrained(x, pp, res, mu2, n):
+    """Constrained double Gaussian model for a single SPE.
+
+    Parameters
+    ----------
+    x : array-like
+        Points at which to evaluate.
+    pp : float
+        Parameter p' controlling the low-charge proportion.
+    res : float
+        SPE resolution.
+    mu2 : float
+        Position of the high-charge Gaussian.
+    n : float
+        Parameter n controlling sigma2.
+
+    Returns
+    -------
+    array-like
+        Evaluated constrained double Gaussian.
+    """
     p = pp * PMax(res)
     sig2 = sigma2(n, p, res, mu2)
     sig1 = sigma1(p, res, sig2, mu2)
@@ -532,6 +722,34 @@ def Gain(pp, res, mu2, n):
 
 
 def nPEPDF(x, pp, res, mu2, n, muped, sigped, nph, size_charge):
+    """Compute the PDF for n photo-electrons.
+
+    Parameters
+    ----------
+    x : array-like
+        Points at which to evaluate the PDF.
+    pp : float
+        Parameter p' for the constrained double Gaussian.
+    res : float
+        SPE resolution.
+    mu2 : float
+        Position of the high-charge Gaussian.
+    n : float
+        Parameter n for sigma2.
+    muped : float
+        Pedestal mean.
+    sigped : float
+        Pedestal width.
+    nph : int
+        Number of photo-electrons.
+    size_charge : int
+        Size of the charge range for the evaluation grid.
+
+    Returns
+    -------
+    array-like
+        Normalized PDF values.
+    """
     allrange = np.linspace(-1 * size_charge, size_charge, size_charge * 2)
     spe = []
     # about 2 sec this is the main pb

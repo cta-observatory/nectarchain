@@ -30,6 +30,11 @@ except Exception as e:
 
 
 class DataManagement:
+    """Management of NectarCAM data files: locating runs on disk and on the
+    GRID via DIRAC, and finding computed data products (waveforms, charges,
+    photo-statistics, SPE fits).
+    """
+
     @staticmethod
     def findrun(
         run_number: int,
@@ -178,6 +183,21 @@ class DataManagement:
     def __get_GRID_location_DIRAC(
         run_number: int, basepath="/vo.cta.in2p3.fr/nectarcam/"
     ):
+        """Locate a run on the GRID using the DIRAC FileCatalog.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        basepath : str, optional
+            Base path in the DIRAC FileCatalog. Defaults to
+            ``/vo.cta.in2p3.fr/nectarcam/``.
+
+        Returns
+        -------
+        list
+            List of LFN paths matching the run number.
+        """
         with KeepLoggingUnchanged():
             from contextlib import redirect_stdout
 
@@ -201,6 +221,26 @@ class DataManagement:
     def __get_GRID_location_ELog(
         run_number: int, output_lfns=True, username=None, password=None
     ):
+        """Locate a run on the GRID by reading the NectarCAM Elog.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        output_lfns : bool, optional
+            If True return LFN paths, else return the raw URL data.
+            Defaults to True.
+        username : str, optional
+            Username for Elog login. Defaults to None.
+        password : str, optional
+            Password for Elog login. Defaults to None.
+
+        Returns
+        -------
+        list or str
+            List of LFN paths or the raw URL data, depending on
+            ``output_lfns``.
+        """
         import browser_cookie3
         import mechanize
         import requests
@@ -286,6 +326,20 @@ class DataManagement:
 
     @staticmethod
     def find_waveforms(run_number, max_events=None):
+        """Find waveform HDF5 files for a given run.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        max_events : int, optional
+            Maximum number of events to filter by. Defaults to None.
+
+        Returns
+        -------
+        list
+            List of matching file paths.
+        """
         return __class__.__find_computed_data(
             run_number=run_number, max_events=max_events, data_type="waveforms"
         )
@@ -294,6 +348,24 @@ class DataManagement:
     def find_charges(
         run_number, method="FullWaveformSum", str_extractor_kwargs="", max_events=None
     ):
+        """Find charges HDF5 files for a given run and extraction method.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        method : str, optional
+            Charge extraction method. Defaults to ``FullWaveformSum``.
+        str_extractor_kwargs : str, optional
+            Extractor keyword arguments string. Defaults to ``""``.
+        max_events : int, optional
+            Maximum number of events to filter by. Defaults to None.
+
+        Returns
+        -------
+        list
+            List of matching file paths.
+        """
         return __class__.__find_computed_data(
             run_number=run_number,
             max_events=max_events,
@@ -309,6 +381,29 @@ class DataManagement:
         ped_method="FullWaveformSum",
         str_extractor_kwargs="",
     ):
+        """Find the photo-statistics HDF5 file for a given flat-field /
+        pedestal run pair.
+
+        Parameters
+        ----------
+        FF_run_number : int
+            Flat-field run number.
+        ped_run_number : int
+            Pedestal run number.
+        FF_method : str, optional
+            Charge extraction method for the flat-field run.
+            Defaults to ``FullWaveformSum``.
+        ped_method : str, optional
+            Charge extraction method for the pedestal run.
+            Defaults to ``FullWaveformSum``.
+        str_extractor_kwargs : str, optional
+            Extractor keyword arguments string. Defaults to ``""``.
+
+        Returns
+        -------
+        list
+            List containing the single matching file path.
+        """
         path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/PhotoStat/"
             f"PhotoStatisticNectarCAM_FFrun{FF_run_number}_{FF_method}"
@@ -326,6 +421,22 @@ class DataManagement:
     def find_SPE_combined(
         run_number, method="FullWaveformSum", str_extractor_kwargs=""
     ):
+        """Find the combined flat-field SPE fit HDF5 file for a given run.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        method : str, optional
+            Charge extraction method. Defaults to ``FullWaveformSum``.
+        str_extractor_kwargs : str, optional
+            Extractor keyword arguments string. Defaults to ``""``.
+
+        Returns
+        -------
+        list
+            List of matching file paths.
+        """
         return __class__.find_SPE_HHV(
             run_number=run_number,
             method=method,
@@ -337,6 +448,25 @@ class DataManagement:
     def find_SPE_nominal(
         run_number, method="FullWaveformSum", str_extractor_kwargs="", free_pp_n=False
     ):
+        """Find the nominal flat-field SPE fit HDF5 file for a given run.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        method : str, optional
+            Charge extraction method. Defaults to ``FullWaveformSum``.
+        str_extractor_kwargs : str, optional
+            Extractor keyword arguments string. Defaults to ``""``.
+        free_pp_n : bool, optional
+            Whether the ``pp_n`` parameter was free in the fit.
+            Defaults to False.
+
+        Returns
+        -------
+        list
+            List of matching file paths.
+        """
         return __class__.find_SPE_HHV(
             run_number=run_number,
             method=method,
@@ -353,6 +483,29 @@ class DataManagement:
         free_pp_n=False,
         **kwargs,
     ):
+        """Find the HHV SPE fit HDF5 file for a given run.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        method : str, optional
+            Charge extraction method. Defaults to ``FullWaveformSum``.
+        str_extractor_kwargs : str, optional
+            Extractor keyword arguments string. Defaults to ``""``.
+        free_pp_n : bool, optional
+            Whether the ``pp_n`` parameter was free in the fit.
+            Defaults to False.
+        **kwargs
+            Additional keyword arguments. If ``keyword`` is provided it
+            overrides the default file keyword (``FlatFieldSPEHHV``).
+
+        Returns
+        -------
+        list
+            List of matching file paths. When multiple candidates exist,
+            returns the one with the largest number of events.
+        """
         keyword = kwargs.get("keyword", "FlatFieldSPEHHV")
         std_key = "" if free_pp_n else "Std"
         path = pathlib.Path(
@@ -402,6 +555,35 @@ class DataManagement:
     def __find_computed_data(
         run_number, max_events=None, ext=".h5", data_type="waveforms"
     ):
+        """Find a computed data product file (waveforms, charges, etc.) for a
+        given run.
+
+        Parameters
+        ----------
+        run_number : int
+            The run number.
+        max_events : int, optional
+            Maximum number of events to filter by. Defaults to None.
+        ext : str, optional
+            File extension. Defaults to ``.h5``.
+        data_type : str, optional
+            Subdirectory name under ``$NECTARCAMDATA/runs/``. Defaults to
+            ``waveforms``.
+
+        Returns
+        -------
+        list
+            List of matching file paths. When ``max_events`` is given and
+            several candidates exist, returns the one with the smallest
+            number of events that is still >= ``max_events``.
+
+        Raises
+        ------
+        FileNotFoundError
+            If no matching file is found.
+        FileExistsError
+            If ``max_events`` is None and multiple files are found.
+        """
         if max_events is not None:
             path = pathlib.Path(
                 f"{os.environ.get('NECTARCAMDATA','/tmp')}/runs/"
