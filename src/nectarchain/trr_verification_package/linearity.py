@@ -21,7 +21,7 @@ from nectarchain.trr_verification_package.utils import (
     plot_parameters,
     transmission_390ns,
 )
-from nectarchain.utils.constants import ALLOWED_CAMERAS
+from nectarchain.utils.constants import ALLOWED_CAMERAS, GAIN_LINEAR_RANGE
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -159,6 +159,26 @@ def main():
     sys.argv = sys.argv[:1]
 
     # runlist = [3441]
+    run_linearity(
+        runlist=runlist,
+        transmission=transmission,
+        nevents=nevents,
+        camera=camera,
+        output_dir=output_dir,
+        temp_output_args=temp_output,
+    )
+
+
+def run_linearity(
+    runlist,
+    transmission,
+    temperature=14,
+    nevents=500,
+    camera="NectarCAMQM",
+    output_dir="./",
+    temp_output_args=None,
+):
+    temp_output = os.path.abspath(temp_output_args) if temp_output_args else None
 
     charge = np.zeros((len(runlist), 2))
     std = np.zeros((len(runlist), 2))
@@ -188,7 +208,7 @@ def main():
             max_events=nevents,
             log_level=20,
             method="LocalPeakWindowSum",
-            extractor_kwargs={"window_width": 14, "window_shift": 6},
+            extractor_kwargs={"window_width": 16, "window_shift": 4},
             pedestal_file=output_dir + f"/pedestal_{run}.h5",
             overwrite=True,
         )
@@ -265,25 +285,20 @@ def main():
         ch_std = ch_sorted[:, 2] * norm_factor_hg[0]
         ch_err = ch_std / np.sqrt(npixels)
 
-        ch_fit = model.fit(
-            ch_charge[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            params,
-            weights=1
-            / ch_err[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-            x=true[
-                plot_parameters[name]["linearity_range"][0] : plot_parameters[name][
-                    "linearity_range"
-                ][1]
-            ],
-        )
+        mask_LG = (ch_charge > 10) & (ch_charge < 3000)  # LG
+        mask_HG = (ch_charge > 1) & (ch_charge < 200)  # HG
+
+        if str(plot_parameters[name]["initials"]) == "HG":
+            ch_charge_inp = ch_charge[mask_HG]
+            true_inp = true[mask_HG]
+            ch_err_inp = ch_err[mask_HG]
+
+        else:
+            ch_charge_inp = ch_charge[mask_LG]
+            true_inp = true[mask_LG]
+            ch_err_inp = ch_err[mask_LG]
+
+        ch_fit = model.fit(ch_charge_inp, params, x=true_inp, weights=1.0 / ch_err_inp)
 
         a = ch_fit.params["a"].value
         b = ch_fit.params["b"].value
@@ -390,8 +405,13 @@ def main():
 
     model = model = Model(linear_fit_function)
     params = model.make_params(a=100, b=0)
+
+    mask_linear = (true > GAIN_LINEAR_RANGE[0]) & (true < 300)
     ratio_fit = model.fit(
-        ratio[10:-4], params, weights=1 / ratio_std[10:-4], x=true[10:-4]
+        ratio[mask_linear],
+        params,
+        weights=1 / ratio_std[mask_linear],
+        x=true[mask_linear],
     )
 
     axs[2].set_ylabel("hg/lg")
@@ -438,7 +458,7 @@ def main():
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     # charge resolution
@@ -505,7 +525,7 @@ def main():
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
     plt.close("all")
 
