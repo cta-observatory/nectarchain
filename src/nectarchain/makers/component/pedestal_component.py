@@ -222,7 +222,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
 
         Parameters
         ----------
-        containers : `~nectarchain.data.container`
+        container : `~nectarchain.data.container`
             Waveforms or Charges container
         mask : `numpy.ndarray`
             Mask to apply to exclude outliers with shape (n_events,n_pixels,n_samples)
@@ -279,7 +279,7 @@ class PedestalEstimationComponent(NectarCAMComponent):
             A dictionary containing 3D (n_chan,n_pixels,n_samples) arrays for each
             statistic
         nevents : `np.ndarray`
-            An array that contains the numbber of events used to calculate the
+            An array that contains the number of events used to calculate the
             statistics for each pixel
 
         Returns
@@ -347,7 +347,13 @@ class PedestalEstimationComponent(NectarCAMComponent):
         return pixel_mask
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
-        """Fill the waveform container looping over the events of type SKY_PEDESTAL."""
+        """Fill the waveform container looping over the events of type SKY_PEDESTAL.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event data container to process.
+        """
 
         if event.trigger.event_type == EventType.SKY_PEDESTAL:
             self.waveformsComponent(event=event, *args, **kwargs)

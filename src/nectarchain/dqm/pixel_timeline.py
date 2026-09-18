@@ -15,7 +15,23 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class PixelTimelineHighLowGain(DQMSummary):
+    """Track the fraction of bad pixels over time per gain channel.
+
+    Accumulates the per-event count of hardware-failing pixels separately
+    for physical and pedestal events, then normalises by total pixel count
+    to produce a timeline of bad-pixel fraction.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialise the pixel-timeline processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain channel index (0 = high gain, 1 = low gain).
+        r0 : bool, optional
+            Whether to use R0 waveforms (skip R1 corrections).
+        """
         self.k = gaink
         self.gain_c = "High" if gaink == 0 else "Low"
 
@@ -48,7 +64,21 @@ class PixelTimelineHighLowGain(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
-        # define number of pixels and samples
+        """Configure the processor for a new run.
+
+        Parameters
+        ----------
+        path : str
+            Path to the run file (unused).
+        Pix : int
+            Number of pixels in the camera.
+        Samp : int
+            Number of waveform samples (unused).
+        Reader1 : ctapipe_io_nectarcam.LightNectarCAMEventSource
+            Event source used to retrieve the telescope ID.
+        **kwargs
+            Additional keyword arguments (ignored).
+        """
         self.Pix = Pix
         self.Samp = Samp
         self.counter_evt = 0
@@ -56,6 +86,15 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.tel_id = Reader1.subarray.tel_ids[0]
 
     def process_event(self, evt, noped):
+        """Process a single event, updating the bad-pixel count timeline.
+
+        Parameters
+        ----------
+        evt : ctapipe EventSource event
+            The event container.
+        noped : bool
+            Whether pedestal subtraction is enabled (unused).
+        """
         pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels[self.k]
         pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
@@ -84,6 +123,7 @@ class PixelTimelineHighLowGain(DQMSummary):
         return None
 
     def finish_run(self):
+        """Normalise accumulated bad-pixel counts by the number of pixels."""
         self.BadPixelTimeline_ped = (
             np.array(self.SumBadPixels_ped, dtype=float) / self.Pix
         )
@@ -119,6 +159,21 @@ class PixelTimelineHighLowGain(DQMSummary):
         return self.PixelTimeline_Results_Dict
 
     def plot_results(self, name, fig_path):
+        """Generate timeline plots of bad-pixel fraction.
+
+        Parameters
+        ----------
+        name : str
+            Base name for output figure files.
+        fig_path : str
+            Directory where figure files will be saved.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping result keys to
+            matplotlib figures and their save paths.
+        """
         for key, data, count, label in [
             ("all", self.BadPixelTimeline, self.counter_evt, "Physical events"),
             ("ped", self.BadPixelTimeline_ped, self.counter_ped, "Pedestal events"),

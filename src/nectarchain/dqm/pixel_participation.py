@@ -28,7 +28,6 @@ class PixelParticipationHighLowGain(DQMSummary):
         r0 : bool, optional
             Whether to use R0 waveforms (skip R1 corrections).
         """
-
         self.k = gaink
         # For results dict keys (all caps)
         self.gain_key = "HIGH" if gaink == 0 else "LOW"
@@ -64,7 +63,6 @@ class PixelParticipationHighLowGain(DQMSummary):
         **kwargs
             Additional keyword arguments (ignored).
         """
-        # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
         self.counter_evt = 0

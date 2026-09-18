@@ -72,14 +72,15 @@ class CalibrationHDF5Writer(Tool):
     )
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         """
-        Tool that generates a HDF5 file with camera calibration coefficients.
-        Input file must contain interleaved pedestal and flat-field events.
+        Initialize the calibration writer tool.
 
-        For getting help, run:
-        python calc_camera_calibration.py --help
+        Parameters
+        ----------
+        **kwargs
+            Keyword arguments forwarded to the parent Tool constructor.
         """
+        super().__init__(**kwargs)
         self.eventsource = None
         self.flatfield = None
         self.pedestal = None
@@ -88,6 +89,12 @@ class CalibrationHDF5Writer(Tool):
         self.tel_id = None
 
     def setup(self):
+        """
+        Configure the event source, calibration components, and output writer.
+
+        Initialises the EventSource, FlatFieldCalculator, PedestalCalculator, and
+        the HDF5TableWriter from the tool configuration.
+        """
         kwargs = dict(parent=self)
         self.eventsource = EventSource.from_config(**kwargs)
 
@@ -212,11 +219,19 @@ class CalibrationHDF5Writer(Tool):
                         self.writer.write("calibration", calib_data)
 
     def finish(self):
+        """
+        Register the output file with the provenance system and close the writer.
+        """
         Provenance().add_output_file(self.output_file, role="mon.tel.calibration")
         self.writer.close()
 
 
 def main():
+    """
+    Entry point for the CalibrationHDF5Writer tool.
+
+    Instantiates the tool and runs it via ``tool.run()``.
+    """
     exe = CalibrationHDF5Writer()
 
     exe.run()

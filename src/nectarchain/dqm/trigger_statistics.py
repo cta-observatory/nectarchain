@@ -12,7 +12,23 @@ __all__ = ["TriggerStatistics"]
 
 
 class TriggerStatistics(DQMSummary):
+    """Analyse trigger-type distributions and event timing.
+
+    Collects per-event trigger types, timestamps, and IDs, computes
+    summary statistics, and produces histograms of trigger types,
+    event rates, and event IDs.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialise the trigger-statistics processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain channel index (unused by this processor).
+        r0 : bool, optional
+            Whether to use R0 waveforms (skip R1 corrections).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -37,12 +53,36 @@ class TriggerStatistics(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
+        """Configure the processor for a new run.
+
+        Parameters
+        ----------
+        path : str
+            Path to the run file (unused).
+        Pix : int
+            Number of pixels in the camera.
+        Samp : int
+            Number of waveform samples (unused).
+        Reader1 : ctapipe_io_nectarcam.LightNectarCAMEventSource
+            Event source used to retrieve the telescope ID.
+        **kwargs
+            Additional keyword arguments (ignored).
+        """
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
         self.tel_id = Reader1.subarray.tel_ids[0]
 
     def process_event(self, evt, noped):
+        """Process a single event and record trigger information.
+
+        Parameters
+        ----------
+        evt : NectarCAMDataContainer
+            The event to process.
+        noped : bool
+            Whether pedestal subtraction should be skipped (unused).
+        """
         trigger_type = evt.trigger.event_type.value
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
@@ -54,6 +94,7 @@ class TriggerStatistics(DQMSummary):
         self.run_times.append(trigger_run_time)
 
     def finish_run(self):
+        """Finalise per-run accumulations and compute event-type masks."""
         self.triggers = np.unique(self.event_type)
 
         self.event_id = np.array(self.event_id)
@@ -89,6 +130,14 @@ class TriggerStatistics(DQMSummary):
         self._other_mask = ~self._ped_mask & ~self._phy_mask
 
     def get_results(self):
+        """Return aggregated trigger statistics.
+
+        Returns
+        -------
+        dict
+            Dictionary containing trigger-type histograms, event tables,
+            and run start/end times.
+        """
         self.TriggerStat_Results_Dict["TRIGGER-TYPES"] = self.triggers
 
         # Count using masks (no array creation)
@@ -158,6 +207,23 @@ class TriggerStatistics(DQMSummary):
         return self.TriggerStat_Results_Dict
 
     def plot_results(self, name, fig_path):
+        """Generate and save trigger statistics plots.
+
+        Produces histograms of trigger types, event rates over time,
+        and event IDs.
+
+        Parameters
+        ----------
+        name : str
+            Base name for the plot files.
+        fig_path : str
+            Directory where plots should be saved.
+
+        Returns
+        -------
+        tuple of (dict, dict)
+            Mapping from figure keys to figure objects and filenames.
+        """
         w = 1
         n1 = np.array(self.event_times.max() - self.event_times.min(), dtype=object)
         n = math.ceil(n1 / w)

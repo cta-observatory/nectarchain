@@ -17,6 +17,12 @@ __all__ = ["HiLoNectarCAMCalibrationTool"]
 
 
 class HiLoNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
+    """Calibrate the low-gain channel by computing the HiLo ratio.
+
+    Determines the ratio between high-gain and low-gain signals in the
+    linear regime to produce a corrected low-gain calibration.
+    """
+
     name = "HiLoNectarCAMCalibrationTool"
     description = (
         "Calibrate the gain of the low-gain channel. "
@@ -30,9 +36,23 @@ class HiLoNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def __init__(self, *args, **kwargs):
+        """Initialize the HiLo calibration tool.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent initializer.
+        **kwargs : dict
+            Keyword arguments passed to the parent initializer.
+        """
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
+        """Set the output path for HiLo-corrected calibration.
+
+        Appends ``_hilo_corrected`` to the gain file stem, or falls back
+        to the parent path if no gain file is set.
+        """
         if self.gain_file is not None:
             self.output_path = self.gain_file.with_name(
                 f"{self.gain_file.stem}_hilo_corrected{self.gain_file.suffix}"
@@ -42,6 +62,21 @@ class HiLoNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
             super()._init_output_path()
 
     def start(self, n_events=np.inf, *args, **kwargs):
+        """Run the HiLo calibration.
+
+        Attempts to load pre-computed charges from disk. If none are found
+        or ``reload_events`` is True, processes events through the event
+        loop.
+
+        Parameters
+        ----------
+        n_events : int, optional
+            Number of events to process (default is ``np.inf``).
+        *args : tuple
+            Additional positional arguments passed to the parent start.
+        **kwargs : dict
+            Additional keyword arguments passed to the parent start.
+        """
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
             extractor_kwargs=self.extractor_kwargs,

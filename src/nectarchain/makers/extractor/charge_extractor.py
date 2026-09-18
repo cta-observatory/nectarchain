@@ -14,10 +14,38 @@ __all__ = ["gradient_extractor"]
 
 
 class gradient_extractor(ImageExtractor):
+    """Image extractor using gradient-based adaptive window integration.
+
+    Attributes
+    ----------
+    fixed_window : np.uint8
+        Width of the fixed integration window.
+    height_peak : np.uint8
+        Minimum peak height for peak detection.
+    """
+
     fixed_window = np.uint8(16)
     height_peak = np.uint8(10)
 
     def __call__(self, waveforms, telid, selected_gain_channel, substract_ped=False):
+        """Extract charge and peak time from waveforms.
+
+        Parameters
+        ----------
+        waveforms : ndarray
+            Raw waveform data.
+        telid : int
+            Telescope ID.
+        selected_gain_channel : int
+            Selected gain channel index.
+        substract_ped : bool, optional
+            Whether to subtract pedestal before extraction.
+
+        Returns
+        -------
+        tuple
+            Peak time and charge integral arrays.
+        """
         shape = waveforms.shape
         waveforms = waveforms.reshape(shape[0] * shape[1], shape[2])
 
@@ -57,6 +85,24 @@ class gradient_extractor(ImageExtractor):
     cache=True,
 )
 def extract_charge(y, height_peak, fixed_window):
+    """Extract charge features from a waveform using spline interpolation and gradient
+    analysis.
+
+    Parameters
+    ----------
+    y : ndarray
+        Input waveform.
+    height_peak : int
+        Minimum peak height for peak detection.
+    fixed_window : int
+        Width of the fixed integration window.
+
+    Returns
+    -------
+    tuple
+        Adaptive window size, charge integral, charge sum,
+        charge integral (fixed window), charge sum (fixed window).
+    """
     x = np.linspace(0, len(y), len(y))
     xi = np.linspace(0, len(y), 251)
     ius = InterpolatedUnivariateSpline(x, y)

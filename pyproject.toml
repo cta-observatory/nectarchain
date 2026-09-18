@@ -29,6 +29,7 @@ dependencies = [
     "pandas",
     "persistent<6.2",
     "scipy",
+    "setuptools<81",
     "zodb",
     "zeo",
     "lmfit",
@@ -57,7 +58,6 @@ dev = [
 ]
 docs = [
     "sphinx",
-    "sphinx-autodoc-typehints",
     "sphinx-automodapi",
     "sphinx-design",
     "sphinx-qt-documentation",

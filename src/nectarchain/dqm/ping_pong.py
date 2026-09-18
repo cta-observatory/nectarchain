@@ -16,7 +16,22 @@ log.handlers = logging.getLogger("__main__").handlers
 
 
 class PingPongMonitoring(DQMSummary):
+    """Monitor ping-pong (first-cell-id bit flips) across NectarCAM pixels.
+
+    Detects unexpected bit-11 changes in the first cell ID to identify
+    potential synchronisation issues, and counts mismatches per pixel.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialize ping-pong monitoring processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain index (0 for high gain, 1 for low gain).
+        r0 : bool, optional
+            Whether to use r0 waveforms (default False).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -41,6 +56,21 @@ class PingPongMonitoring(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **kwargs):
+        """Configure the processor and establish the initial ping-pong state.
+
+        Parameters
+        ----------
+        path : str
+            Path to the input data file.
+        Pix : int
+            Number of pixels.
+        Samp : int
+            Number of waveform samples.
+        Reader1 : ctapipe_io_nectarcam.NectarCAMEventSource
+            Event reader providing subarray and camera geometry.
+        **kwargs
+            Additional keyword arguments (unused).
+        """
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -85,6 +115,15 @@ class PingPongMonitoring(DQMSummary):
         evt,
         noped,
     ):
+        """Check ping-pong bit for consistency and count mismatches.
+
+        Parameters
+        ----------
+        evt : ctapipe.io.DataEventContainer
+            The event container.
+        noped : bool
+            Whether to subtract pedestal (unused here).
+        """
         trigger_time = evt.trigger.time.value
         trigger_id = evt.index.event_id
         cell_id = evt.nectarcam.tel[self.tel_id].evt.first_cell_id
@@ -114,6 +153,7 @@ class PingPongMonitoring(DQMSummary):
             )
 
     def finish_run(self):
+        """Finalise ping-pong change counters and event arrays."""
         try:
             self.change = np.array(self.change)
             self.event_id = np.array(self.event_id)
@@ -127,6 +167,14 @@ class PingPongMonitoring(DQMSummary):
             log.error(f"Data could not be retrieved. Received error code: {err}")
 
     def get_results(self):
+        """Return the ping-pong monitoring results dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary with keys CAMERA-PING-PONG-CHANGES (per-pixel
+            change counts) and CAMERA-PING-PONG-CHANGES-TIMES.
+        """
         try:
             self.PingPongMonitoring_Results_Dict[
                 "CAMERA-PING-PONG-CHANGES"
@@ -140,6 +188,21 @@ class PingPongMonitoring(DQMSummary):
         return self.PingPongMonitoring_Results_Dict
 
     def plot_results(self, name, fig_path):
+        """Generate a camera display figure of ping-pong change counts.
+
+        Parameters
+        ----------
+        name : str
+            Run name prefix for output filenames.
+        fig_path : str
+            Directory path for saving figure files.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping plot keys to
+            matplotlib figures and their save paths.
+        """
         try:
             fig_pipo, disp = plt.subplots()
             disp = CameraDisplay(self.camera)

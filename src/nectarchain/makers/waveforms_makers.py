@@ -27,9 +27,27 @@ class WaveformsNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the WaveformsNectarCAMCalibrationTool.
+
+        Parameters
+        ----------
+        args
+            Positional arguments passed to the parent class.
+        kwargs
+            Keyword arguments passed to the parent class.
+        """
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
+        """
+        Initialize the output file path for the waveforms HDF5 file.
+
+        The filename includes the tool name and run number, and optionally the
+        maximum number of events. The file is placed under
+        ``$NECTARCAMDATA/runs/waveforms/`` (or ``/tmp/`` if the environment
+        variable is not set).
+        """
         if self.max_events is None:
             filename = f"{self.name}_run{self.run_number}.h5"
         else:

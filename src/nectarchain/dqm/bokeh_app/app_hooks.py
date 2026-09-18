@@ -1072,6 +1072,15 @@ class CameraDisplayNectarCAM(CameraDisplay):
     """Overrides the pixel picker callback to customize handling"""
 
     def __init__(self, *args, **kwargs):
+        """Initialize the camera display with additional metadata attributes.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded to CameraDisplay.
+        **kwargs
+            Keyword arguments forwarded to CameraDisplay.
+        """
         super().__init__(*args, **kwargs)
         self.colorbar_label = ""
         self.figure_title = ""

@@ -8,7 +8,11 @@ from nectarchain.trr_verification_package.gui import TestRunner
 
 
 class AcceptanceTestRunner(TestRunner):
-    # redefine list of test modules
+    """GUI test runner for acceptance verification tests.
+
+    Inherits from the TRR verification tests GUI.
+    """
+
     test_modules = {
         "Hillas parameter validation": hillas_validation,
         "Pedestal evolution in time": ped_vs_time,

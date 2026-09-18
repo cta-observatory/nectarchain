@@ -13,6 +13,12 @@ __all__ = ["GainNectarCAMCalibrationTool"]
 
 
 class GainNectarCAMCalibrationTool(NectarCAMCalibrationTool):
+    """Base calibration tool for gain data processing.
+
+    Provides a common base for gain-related calibration tools, with a
+    flag to force re-computation of charges from raw data.
+    """
+
     reload_events = Bool(
         default_value=False, help="a flag to re compute the charge from raw data"
     )
