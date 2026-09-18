@@ -33,7 +33,10 @@ class PixelTimelineHighLowGain(DQMSummary):
             Whether to use R0 waveforms (skip R1 corrections).
         """
         self.k = gaink
-        self.gain_c = "High" if gaink == 0 else "Low"
+        # For results dict keys (all caps)
+        self.gain_key = "HIGH" if gaink == 0 else "LOW"
+        # For plot titles and filenames (title case)
+        self.gain_display = "High" if gaink == 0 else "Low"
 
         self.Pix = None
         self.Samp = None
@@ -41,8 +44,8 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.counter_evt = None
         self.counter_ped = None
 
-        self.SumBadPixels_ped = []
-        self.SumBadPixels = []
+        self.SumBadPixels_ped = None
+        self.SumBadPixels = None
 
         self.BadPixelTimeline_ped = None
         self.BadPixelTimeline = None
@@ -52,13 +55,13 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.PixelTimeline_Figures_Names_Dict = {}
 
         self.figure_keys = {
-            "all": f"BPX-TIMELINE-ALL-{self.gain_c}-GAIN",
-            "ped": f"BPX-TIMELINE-PED-{self.gain_c}-GAIN",
+            "all": f"BPX-TIMELINE-ALL-{self.gain_display}-GAIN",
+            "ped": f"BPX-TIMELINE-PED-{self.gain_display}-GAIN",
         }
 
         self.figure_filenames = {
-            "all": f"_BPX_Timeline_{self.gain_c}Gain_All.png",
-            "ped": f"_BPX_Timeline_{self.gain_c}Gain_Ped.png",
+            "all": f"_BPX_Timeline_{self.gain_display}Gain_All.png",
+            "ped": f"_BPX_Timeline_{self.gain_display}Gain_Ped.png",
         }
 
         super().__init__(r0)
@@ -85,6 +88,9 @@ class PixelTimelineHighLowGain(DQMSummary):
         self.counter_ped = 0
         self.tel_id = Reader1.subarray.tel_ids[0]
 
+        self.SumBadPixels_ped = []
+        self.SumBadPixels = []
+
     def process_event(self, evt, noped):
         """Process a single event, updating the bad-pixel count timeline.
 
@@ -98,9 +104,7 @@ class PixelTimelineHighLowGain(DQMSummary):
         pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels[self.k]
         pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
-        status = np.zeros(self.Pix, dtype=int)
-        np.put(status, pixels, pixelBAD[pixels])
-        bad_count = np.sum(status)
+        bad_count = int(np.sum(pixelBAD[pixels]))
 
         if evt.trigger.event_type == EventType.SKY_PEDESTAL:
             # count sky peds, event id 2
@@ -132,29 +136,22 @@ class PixelTimelineHighLowGain(DQMSummary):
         log.debug(f"BadPixelTimeline_ped is:\n{self.BadPixelTimeline_ped}")
 
     def get_results(self):
-        """Store results to output dictionary"""
+        """Store results to output dictionary.
 
-        if self.k == 0:
-            if self.counter_evt > 0:
-                self.PixelTimeline_Results_Dict[
-                    "CAMERA-BadPixTimeline-PHY-HIGH-GAIN"
-                ] = self.BadPixelTimeline
+        Returns
+        -------
+        dict
+            Dictionary containing bad-pixel timeline results.
+        """
+        if self.counter_evt > 0:
+            self.PixelTimeline_Results_Dict[
+                f"CAMERA-BadPixTimeline-PHY-{self.gain_key}-GAIN"
+            ] = self.BadPixelTimeline
 
-            if self.counter_ped > 0:
-                self.PixelTimeline_Results_Dict[
-                    "CAMERA-BadPixTimeline-PED-HIGH-GAIN"
-                ] = self.BadPixelTimeline_ped
-
-        if self.k == 1:
-            if self.counter_evt > 0:
-                self.PixelTimeline_Results_Dict[
-                    "CAMERA-BadPixTimeline-PHY-LOW-GAIN"
-                ] = self.BadPixelTimeline
-
-            if self.counter_ped > 0:
-                self.PixelTimeline_Results_Dict[
-                    "CAMERA-BadPixTimeline-PED-LOW-GAIN"
-                ] = self.BadPixelTimeline_ped
+        if self.counter_ped > 0:
+            self.PixelTimeline_Results_Dict[
+                f"CAMERA-BadPixTimeline-PED-{self.gain_key}-GAIN"
+            ] = self.BadPixelTimeline_ped
 
         return self.PixelTimeline_Results_Dict
 
@@ -185,7 +182,7 @@ class PixelTimelineHighLowGain(DQMSummary):
             ax.plot(np.arange(count), data * 100, label=label)
             ax.set_xlabel("Timeline")
             ax.set_ylabel("BPX fraction (%)")
-            ax.set_title(f"BPX Timeline {self.gain_c} gain ({key.capitalize()})")
+            ax.set_title(f"BPX Timeline {self.gain_display} gain ({key.capitalize()})")
             ax.legend(loc="upper right")
 
             key_id = self.figure_keys[key]
