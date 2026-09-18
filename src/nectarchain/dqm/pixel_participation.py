@@ -115,6 +115,13 @@ class PixelParticipationHighLowGain(DQMSummary):
         pass
 
     def get_results(self):
+        """Store bad-pixel masks in the results dictionary per gain.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping result keys to bad-pixel arrays.
+        """
         # ASSIGN RESULTS TO DICT
         # Use the pre-computed gain_key string for cleaner code
         if self.counter_evt > 0:
