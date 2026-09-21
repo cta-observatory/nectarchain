@@ -6,6 +6,7 @@ Auto-discovers fields in a MongoDB collection, builds appropriate filter
 controls for each field type, and displays matching documents in a DataTable.
 """
 
+import os
 from datetime import date, datetime
 
 import pandas as pd
@@ -26,8 +27,16 @@ from bokeh.models import (
 )
 from pymongo import MongoClient
 
-# Threshold: <= this many distinct values → Select, otherwise dual TextInput
+# ── Default configuration ────────────────────────────────────────────────────
+# These can be overridden via environment variables or passed directly to
+# MongoExplorer.
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://192.168.30.104:27017")
+MONGO_DB = os.getenv("MONGO_DB", "test")
+MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "runconfig")
+MAX_DOCS = 5000
 NUMERIC_SELECT_THRESHOLD = 15
+DEBOUNCE_MS = 400
 
 
 def get_collection(dburl, dbname, collname):
@@ -345,12 +354,18 @@ def _build_query(FIELD_META, controls: dict) -> dict:
 
 
 class MongoExplorer:
-    DEBOUNCE_MS = 400
-
-    def __init__(self, uri: str, db: str, collection: str, max_docs: int = 5000):
+    def __init__(
+        self,
+        uri: str = MONGO_URI,
+        db: str = MONGO_DB,
+        collection: str = MONGO_COLLECTION,
+        max_docs: int = MAX_DOCS,
+        debounce_ms: int = DEBOUNCE_MS,
+    ):
         self.db_name = db
         self.coll_name = collection
         self.max_docs = max_docs
+        self.DEBOUNCE_MS = debounce_ms
         self._debounce = None
         self._error = None
         self.collection = None
