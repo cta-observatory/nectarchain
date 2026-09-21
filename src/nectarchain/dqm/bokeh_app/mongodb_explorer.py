@@ -98,11 +98,11 @@ class NumericRangeControl:
 
     When the switch is OFF  → range mode (min/max inputs); query also includes
                                docs where the field is missing/null.
-    When the switch is ON   → exact mode (single value ±1%); only docs that
+    When the switch is ON   → exact mode (single value ±10%); only docs that
                                have the field and match the tolerance are returned.
     """
 
-    TOLERANCE = 0.010  # ±1 %
+    TOLERANCE = 0.10  # ±10 %
 
     def __init__(self, name: str, lo: float, hi: float):
         self.name = name
@@ -111,7 +111,7 @@ class NumericRangeControl:
 
         # ── Switch ──────────────────────────────────────────────────────────
         self.toggle = Switch(
-            label=f"{name}: exact value ±1 %",
+            label=f"{name}: exact value ±10 %",
             active=False,
             sizing_mode="stretch_width",
         )
@@ -348,31 +348,47 @@ class MongoExplorer:
     DEBOUNCE_MS = 400
 
     def __init__(self, uri: str, db: str, collection: str, max_docs: int = 5000):
-        self._client = MongoClient(uri)
-        self.collection = self._client[db][collection]
         self.db_name = db
         self.coll_name = collection
         self.max_docs = max_docs
         self._debounce = None
+        self._error = None
+        self.collection = None
 
-        self.FIELD_META = _infer_fields(self.collection)
-        self.controls = {
-            fname: _make_control(fname, fmeta)
-            for fname, fmeta in self.FIELD_META.items()
-        }
+        try:
+            self._client = MongoClient(uri)
+            # PyMongo uses lazy connections — accessing the db/collection just
+            # creates references.  Force the first actual network call here
+            # (e.g. _infer_fields → collection.find) so that connection errors
+            # are caught in this try/except block.
+            self.collection = self._client[db][collection]
+            self.FIELD_META = _infer_fields(self.collection)
+            self.controls = {
+                fname: _make_control(fname, fmeta)
+                for fname, fmeta in self.FIELD_META.items()
+            }
 
-        # Wire controls
-        for widget in self.controls.values():
-            if isinstance(widget, NumericRangeControl):
-                for w in [widget.exact_input, widget.min_input, widget.max_input]:
-                    w.on_change("value", self._schedule_update)
-            else:
-                widget.on_change("value", self._schedule_update)
+            # Wire controls
+            for widget in self.controls.values():
+                if isinstance(widget, NumericRangeControl):
+                    for w in [widget.exact_input, widget.min_input, widget.max_input]:
+                        w.on_change("value", self._schedule_update)
+                else:
+                    widget.on_change("value", self._schedule_update)
+        except Exception as e:
+            self._error = str(e)
+            self.collection = None
+            self._client = None
+            self.FIELD_META = {}
+            self.controls = {}
 
         self.source, self.status_div, self.panel = self._make_panel()
-        self._do_update()  # initial load
+        if self._error is None:
+            self._do_update()  # initial load
 
     def _schedule_update(self, attr, old, new):
+        if self.collection is None:
+            return
         if self._debounce is not None:
             try:
                 curdoc().remove_timeout_callback(self._debounce)
@@ -383,6 +399,8 @@ class MongoExplorer:
         )
 
     def _do_update(self):
+        if self.collection is None:
+            return
         self._debounce = None
         query = _build_query(self.FIELD_META, self.controls)
         cursor = self.collection.find(query, {"_id": 0}).limit(self.max_docs)
@@ -417,6 +435,27 @@ class MongoExplorer:
             }
 
     def _make_panel(self):
+        from bokeh.models import TabPanel
+
+        if self._error is not None:
+            error_div = Div(
+                text=(
+                    "<div style='color: #cc0000; padding: 20px;'>"
+                    "<h3>&#9888;&#65039; MongoDB Connection Error</h3>"
+                    "<p>Could not connect to "
+                    f"<b>{self.db_name}.{self.coll_name}</b>:</p>"
+                    "<pre style='background:#f5f5f5;padding:10px;"
+                    f"overflow-x:auto;'>{self._error}</pre>"
+                    "<p><em>Other tabs are unaffected.</em></p>"
+                    "</div>"
+                ),
+                sizing_mode="stretch_width",
+            )
+            source = ColumnDataSource(data={})
+            status_div = Div(text="")
+            panel = TabPanel(child=error_div, title=f"{self.db_name}.{self.coll_name}")
+            return source, status_div, panel
+
         header = Div(
             text=f"<h2 style='margin:0'>{self.db_name}.{self.coll_name} —   "
             f"<code>DB explorer </code></h2>",
@@ -459,8 +498,6 @@ class MongoExplorer:
             ),
             sizing_mode="stretch_both",
         )
-
-        from bokeh.models import TabPanel
 
         panel = TabPanel(child=layout, title=f"{self.db_name}.{self.coll_name}")
         return source, status_div, panel
