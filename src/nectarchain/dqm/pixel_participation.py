@@ -29,10 +29,10 @@ class PixelParticipationHighLowGain(DQMSummary):
             Whether to use R0 waveforms (skip R1 corrections).
         """
         self.k = gaink
-        # For results dict keys (all caps)
-        self.gain_key = "HIGH" if gaink == 0 else "LOW"
         # For plot titles and filenames (title case)
         self.gain_display = "High" if gaink == 0 else "Low"
+        # For results dict keys (all caps)
+        self.gain_key = self.gain_display.upper()
         self.Pix = None
         self.Samp = None
         self.tel_id = None
