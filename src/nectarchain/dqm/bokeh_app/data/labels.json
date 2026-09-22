@@ -46,7 +46,15 @@
         "CHARGE-INTEGRATION-IMAGE-ALL-RMS-LOW-GAIN": "ADC counts",
         "CHARGE-INTEGRATION-IMAGE-ALL-STD-HIGH-GAIN": "ADC counts",
         "CHARGE-INTEGRATION-IMAGE-ALL-STD-LOW-GAIN": "ADC counts",
-        "CAMERA-PING-PONG-CHANGES": "# of ping pong changes"
+        "CAMERA-PING-PONG-CHANGES": "# of ping pong changes",
+        "PEAKPOS-PED-ALL-AVERAGE-HIGH-GAIN": "s",
+        "PEAKPOS-PED-ALL-AVERAGE-LOW-GAIN": "s",
+        "PEAKPOS-PED-ALL-STD-HIGH-GAIN": "s",
+        "PEAKPOS-PED-ALL-STD-LOW-GAIN": "s",
+        "PEAKPOS-ALL-AVERAGE-HIGH-GAIN": "s",
+        "PEAKPOS-ALL-AVERAGE-LOW-GAIN": "s",
+        "PEAKPOS-ALL-STD-HIGH-GAIN": "s",
+        "PEAKPOS-ALL-STD-LOW-GAIN": "s"
     },
     "section_titles_camera_display": {
         "TEMPERATURE": "Camera Temperature",
