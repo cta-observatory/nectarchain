@@ -21,6 +21,7 @@ dependencies:
   - pydata-sphinx-theme
   - lmfit # needed into TRR
   - h5py # needed into TRR (should be removed to use I/O methods of containers)
+  - pymongo # needed for runconfig DB access
   - pyqt
   - pyqtgraph
   - protozfits
