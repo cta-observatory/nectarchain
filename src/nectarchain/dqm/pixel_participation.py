@@ -29,6 +29,10 @@ class PixelParticipationHighLowGain(DQMSummary):
             Whether to use R0 waveforms (skip R1 corrections).
         """
         self.k = gaink
+        # For plot titles and filenames (title case)
+        self.gain_display = "High" if gaink == 0 else "Low"
+        # For results dict keys (all caps)
+        self.gain_key = self.gain_display.upper()
         self.Pix = None
         self.Samp = None
         self.tel_id = None
@@ -63,8 +67,9 @@ class PixelParticipationHighLowGain(DQMSummary):
         self.Samp = Samp
         self.counter_evt = 0
         self.counter_ped = 0
-        self.BadPixels_ped = np.zeros(self.Pix)
-        self.BadPixels = np.zeros(self.Pix)
+        # Pre-allocate arrays with the correct dtype to avoid conversions
+        self.BadPixels_ped = np.zeros(self.Pix, dtype=np.int64)
+        self.BadPixels = np.zeros(self.Pix, dtype=np.int64)
         self.tel_id = Reader1.subarray.tel_ids[0]
         self.camera = Reader1.subarray.tel[self.tel_id].camera.geometry.transform_to(
             EngineeringCameraFrame()
@@ -83,12 +88,10 @@ class PixelParticipationHighLowGain(DQMSummary):
         pixelBAD = evt.mon.tel[self.tel_id].pixel_status.hardware_failing_pixels[self.k]
         pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
 
-        # Ensure 'pixels' is fixed length
-        if len(pixels) < self.Pix:
-            missing = np.arange(start=0, stop=self.Pix - len(pixels), step=1, dtype=int)
-            pixels = np.concatenate([missing, pixels])
-
-        bad_pixels = np.array(pixelBAD[pixels]).astype(int)
+        # Use np.put to efficiently place bad pixel values at their indices
+        # This avoids creating temporary arrays with concatenate
+        bad_pixels = np.zeros(self.Pix, dtype=np.int64)
+        np.put(bad_pixels, pixels, pixelBAD[pixels])
 
         if evt.trigger.event_type == EventType.SKY_PEDESTAL:
             # count sky peds, event id 2
@@ -106,9 +109,8 @@ class PixelParticipationHighLowGain(DQMSummary):
             self.BadPixels += bad_pixels
 
     def finish_run(self):
-        """Finalise accumulated bad-pixel arrays by converting to ndarray."""
-        self.BadPixels_ped = np.array(self.BadPixels_ped)
-        self.BadPixels = np.array(self.BadPixels)
+        # Arrays are already numpy arrays from pre-allocation, no conversion needed
+        pass
 
     def get_results(self):
         """Store bad-pixel masks in the results dictionary per gain.
@@ -118,28 +120,17 @@ class PixelParticipationHighLowGain(DQMSummary):
         dict
             Dictionary mapping result keys to bad-pixel arrays.
         """
+        # ASSIGN RESULTS TO DICT
+        # Use the pre-computed gain_key string for cleaner code
+        if self.counter_evt > 0:
+            self.PixelParticipation_Results_Dict[
+                f"CAMERA-BadPix-PHY-OverEVENTS-{self.gain_key}-GAIN"
+            ] = self.BadPixels
 
-        if self.k == 0:
-            if self.counter_evt > 0:
-                self.PixelParticipation_Results_Dict[
-                    "CAMERA-BadPix-PHY-OverEVENTS-HIGH-GAIN"
-                ] = self.BadPixels
-
-            if self.counter_ped > 0:
-                self.PixelParticipation_Results_Dict[
-                    "CAMERA-BadPix-PED-PHY-OverEVENTS-HIGH-GAIN"
-                ] = self.BadPixels_ped
-
-        if self.k == 1:
-            if self.counter_evt > 0:
-                self.PixelParticipation_Results_Dict[
-                    "CAMERA-BadPix-PHY-OverEVENTS-LOW-GAIN"
-                ] = self.BadPixels
-
-            if self.counter_ped > 0:
-                self.PixelParticipation_Results_Dict[
-                    "CAMERA-BadPix-PED-PHY-OverEVENTS-LOW-GAIN"
-                ] = self.BadPixels_ped
+        if self.counter_ped > 0:
+            self.PixelParticipation_Results_Dict[
+                f"CAMERA-BadPix-PED-PHY-OverEVENTS-{self.gain_key}-GAIN"
+            ] = self.BadPixels_ped
 
         return self.PixelParticipation_Results_Dict
 
@@ -160,53 +151,59 @@ class PixelParticipationHighLowGain(DQMSummary):
             matplotlib figures and their save paths.
         """
 
-        if self.k == 0:
-            gain_c = "High"
-        if self.k == 1:
-            gain_c = "Low"
-
+        # Only create plots if we have data
         if self.counter_evt > 0:
             entity = self.BadPixels
-            title = "Camera BPX %s gain (ALL)" % gain_c
+            title = f"Camera BPX {self.gain_display} gain (ALL)"
+            full_name = f"{name}_Camera_BPX_{self.gain_display}Gain.png"
+            key = f"CAMERA-BADPIX-PHY-DISPLAY-{self.gain_display}-GAIN"
+
+            fig = self._create_badpixels_plot(entity, title)
+            self.PixelParticipation_Figures_Dict[key] = fig
+            self.PixelParticipation_Figures_Names_Dict[key] = os.path.join(
+                fig_path, full_name
+            )
 
         if self.counter_ped > 0:
             entity = self.BadPixels_ped
-            title = "Camera BPX %s gain (PED)" % gain_c
+            title = f"Camera BPX {self.gain_display} gain (PED)"
+            full_name = f"{name}_Pedestal_BPX_{self.gain_display}Gain.png"
+            key = f"CAMERA-BADPIX-PED-DISPLAY-{self.gain_display}-GAIN"
 
-        fig, disp = plt.subplots()
-        disp = CameraDisplay(
-            geometry=self.camera,
-            image=entity,
-            cmap=self.cmap,
-        )
-        disp.cmap = self.cmap
-        disp.cmap = plt.cm.coolwarm
-        disp.add_colorbar()
-        disp.axes.text(2.0, 0, "Bad Pixels", rotation=90)
-        plt.title(title)
-
-        if self.counter_ped > 0:
-            self.PixelParticipation_Figures_Dict[
-                "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
-            ] = fig
-            full_name = name + "_Camera_BPX_%sGain.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.PixelParticipation_Figures_Names_Dict[
-                "CAMERA-BADPIX-PHY-DISPLAY-%s-GAIN" % gain_c
-            ] = FullPath
-        if self.counter_evt > 0:
-            self.PixelParticipation_Figures_Dict[
-                "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
-            ] = fig
-            full_name = name + "_Pedestal_BPX_%sGain.png" % gain_c
-            FullPath = os.path.join(fig_path, full_name)
-            self.PixelParticipation_Figures_Names_Dict[
-                "CAMERA-BADPIX-PED-DISPLAY-%s-GAIN" % gain_c
-            ] = FullPath
-
-            plt.close()
+            fig = self._create_badpixels_plot(entity, title)
+            self.PixelParticipation_Figures_Dict[key] = fig
+            self.PixelParticipation_Figures_Names_Dict[key] = os.path.join(
+                fig_path, full_name
+            )
 
         return (
             self.PixelParticipation_Figures_Dict,
             self.PixelParticipation_Figures_Names_Dict,
         )
+
+    def _create_badpixels_plot(self, entity, title):
+        """Create a CameraDisplay figure for bad-pixel visualization.
+
+        Parameters
+        ----------
+        entity : numpy.ndarray
+            2-D array of bad-pixel counts, one entry per pixel.
+        title : str
+            Title for the plot.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The generated figure, already closed to free memory.
+        """
+        fig, disp = plt.subplots()
+        disp = CameraDisplay(
+            geometry=self.camera,
+            image=entity,
+            cmap=plt.cm.coolwarm,
+        )
+        disp.add_colorbar()
+        disp.axes.text(2.0, 0, "Bad Pixels", rotation=90)
+        plt.title(title)
+        plt.close()
+        return fig
