@@ -1,9 +1,8 @@
 # don't forget to set environment variable NECTARCAMDATA
 
 import argparse
-
-# import copy
-# import json
+import copy
+import json
 import logging
 import os
 import pickle
@@ -55,11 +54,16 @@ def get_labels():
     """
 
     # Get the directory of the current script
-    # script_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     # Construct the absolute path to the JSON file
-    # json_path = os.path.join(
-    #    script_dir, "../trr_verification_package/resources/source_type_labels.json"
-    # )
+    json_path = os.path.join(
+        script_dir, "../trr_verification_package/resources/source_type_labels.json"
+    )
+
+    with open(json_path, "r") as f:
+        source_labels = json.load(f)
+
+    return source_labels
 
 
 default_camera = [camera for camera in ALLOWED_CAMERAS if "QM" in camera][0]
@@ -864,11 +868,14 @@ def main():
         labels = deadtime_labels_av
 
     nevents = args.evts
+
+    kwargs = copy.deepcopy(vars(args))
+    kwargs.pop("camera")
     camera = args.camera
 
     output_dir = os.path.join(
         os.path.abspath(args.output),
-        f"trr_camera_{camera}/{Path(__file__).stem}",
+        f"{test_type}_camera_{camera}/{Path(__file__).stem}",
     )
     os.makedirs(output_dir, exist_ok=True)
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
