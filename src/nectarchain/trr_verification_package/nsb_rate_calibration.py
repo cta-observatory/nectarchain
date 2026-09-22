@@ -23,7 +23,7 @@ from nectarchain.trr_verification_package.utils import (
     get_bad_pixels_list,
     linear_fit_function,
 )
-from nectarchain.utils.constants import ALLOWED_CAMERAS, GAIN_DEFAULT
+from nectarchain.utils.constants import ALLOWED_CAMERAS, ENF, GAIN_DEFAULT
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -300,7 +300,7 @@ def main():
 
     T_0 = 2.0  # Offset to be subtracted from N_SAMPLES
     NSB_rate = (pow(pedestal_std, 2) - Dark_std) / (
-        pow(GAIN_DEFAULT, 2) * (N_SAMPLES - T_0) * pow(10, -9)
+        pow(GAIN_DEFAULT * ENF, 2) * (N_SAMPLES - T_0) * pow(10, -9)
     )
 
     NSB_rate_mean = (np.nanmean(NSB_rate, axis=1)) * pow(10, -9)
@@ -343,9 +343,9 @@ def main():
     c_rounded = round(c_scaled, dec_c)
 
     s = (
-        rf"$m = ({m_rounded} \pm {m_err_rounded})\times 10^{{{exp_m}}}$"
+        rf"$m = ({m_rounded} \pm {m_err_rounded})\times 10^{{{exp_m}}}$ GHz/mA"
         "\n"
-        rf"$c = ({c_rounded} \pm {c_err_rounded})\times 10^{{{exp_c}}}$"
+        rf"$c = ({c_rounded} \pm {c_err_rounded})\times 10^{{{exp_c}}}$ GHz"
     )
     ax.text(
         0.05,

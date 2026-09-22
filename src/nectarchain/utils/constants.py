@@ -21,4 +21,8 @@ FLATFIELD_DEFAULT = 1.0
 
 GAIN_LINEAR_RANGE = [10, 200]  # p.e.
 
+# Excess Noise Factor, see CTA-NectarCAM internal note MST-CAM-TN-0060
+# "Gain estimation with a light pulser", S. Fegan, 2015
+ENF = 1.12
+
 GROUP_NAMES_PEDESTAL = ["data", "data_combined"]
