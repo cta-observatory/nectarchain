@@ -745,11 +745,11 @@ class ObservationTemperaturePipeline:
             deadtime_err,
             deadtime_pc,
             error_deadtime_pc,
-            deadtime_pc_fit,
             _,
         ) = run_deadtime(
             nevents=self.max_events,
             runlist=run_list,
+            camera=self.camera,
             ids=source_ids,
             output_dir=self.output_dir,
             temp_output=self.temp_output,
