@@ -208,7 +208,9 @@ class PingPongMonitoring(DQMSummary):
             disp = CameraDisplay(self.camera)
             disp.image = self.change
             disp.cmap = plt.cm.viridis
-            bounds = np.linspace(0, int(np.max(self.change)), int(self.nchanges) + 1)
+            bounds = np.linspace(
+                0, int(np.max(self.change)), min(20, self.nchanges + 1)
+            )
             disp.set_limits_minmax
             disp.axes.text(2.0, -0.3, "Number of changes", fontsize=12, rotation=90)
             disp.add_colorbar(ticks=bounds)
