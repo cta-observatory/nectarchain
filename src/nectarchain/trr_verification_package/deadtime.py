@@ -554,6 +554,126 @@ def run_deadtime_test_tool_process(
     )
 
 
+def run_deadtime(
+    nevents,
+    runlist,
+    ids,
+    camera,
+    output_dir=None,
+    temp_output=None,
+    test_type="trr",
+):
+    (
+        _,
+        _,
+        event_counter,
+        busy_counter,
+        collected_trigger_rates,
+        time_tot,
+        deadtime_us,
+        deadtime_pc,
+    ) = run_deadtime_test_tool_process(
+        runlist=runlist, nevents=nevents, ids=ids, camera=camera, test_type=test_type
+    )
+
+    log.info(f"The plots will be saved at: {output_dir}")
+
+    results = fit_rate_per_run(
+        runlist=runlist,
+        deadtime_us=deadtime_us,
+    )[-1]
+
+    avg_deadtime_pc = []
+
+    log.info(f"Output directory: {output_dir}")
+    log.info(f"Temporary output file: {temp_output}")
+    log.info(f"N max events to be considered: {nevents}")
+    log.info("-" * 40)
+    for ii, (key, values) in enumerate(results.items()):
+        log.info(f"For run {key}, source: {ids[ii]},")
+        log.info(
+            "Dead-Time extracted from the tool process: "
+            f"{np.min(deadtime_us[ii]):.3f}"
+        )
+        log.info("Dead-Time from the fit: " f"{values[0]:.3f} us")
+        log.info(f"Collected rate: {collected_trigger_rates[ii]:.2f} Hz")
+        log.info(f"Rate from the fit: {values[2]:.2f} Hz")
+        log.info(f"Dead-Time percentage from the tool process: {deadtime_pc[ii]} %")
+        log.info(f"Expected run duration from the fit: {values[4]:.2f} s")
+        log.info("-" * 40)
+        if collected_trigger_rates[ii] < 8500 or collected_trigger_rates[ii] > 6500:
+            avg_deadtime_pc.append(deadtime_pc[ii])
+            # compute average deadtime % with only runs at 7 kHz for the thermal test
+    log.info(
+        "Average Dead-Time percentage"
+        + f"for runs at ~7 kHz: {np.mean(avg_deadtime_pc):.3f} %"
+    )
+    log.info("-" * 40)
+
+    ids = np.array(ids)
+    runlist = np.array(runlist)
+
+    error_deadtime_pc = []
+    for run_id in range(np.array(busy_counter).shape[0]):
+        error_deadtime_pc.append(
+            np.sqrt(
+                (busy_counter[run_id][-1] * event_counter[run_id][-1])
+                / ((busy_counter[run_id][-1] + event_counter[run_id][-1]) ** 3)
+            )
+        )
+    error_deadtime_pc = np.array(error_deadtime_pc)
+
+    deadtime, deadtime_err = [], []
+    fitted_trigger_rates, fitted_trigger_rates_err = [], []
+
+    for ii, run_num in enumerate(runlist):
+        plot_results = plot_deadtime_and_expo_fit(
+            total_delta_t_for_busy_time=time_tot[ii],
+            deadtime_us=np.array(deadtime_us[ii].value),
+            run=run_num,
+            output_plot=output_dir,
+        )
+        deadtime.append(plot_results[0])
+        deadtime_err.append(np.abs(plot_results[2]) * 1e-3)
+        fit_trigger_rate = results[run_num][2] / 1e3  # convert to kHz
+        fit_trigger_rate_plot = ((-1 * plot_results[6]) * (1 / u.us)).to(u.kHz).value
+        if np.abs(fit_trigger_rate - collected_trigger_rates[ii] / 1e3) < np.abs(
+            fit_trigger_rate_plot - collected_trigger_rates[ii] / 1e3
+        ):
+            fitted_trigger_rates.append(fit_trigger_rate)
+        else:
+            fitted_trigger_rates.append(fit_trigger_rate_plot)
+        fitted_trigger_rates_err.append(
+            ((plot_results[8]) * (1 / u.us)).to(u.kHz).value
+        )
+        plt.close()
+
+    deadtime = np.array(deadtime)
+    fitted_trigger_rates = np.array(fitted_trigger_rates)
+    fitted_trigger_rates_err = np.array(fitted_trigger_rates_err)
+
+    deadtime_pc_fit = np.array(
+        [
+            # the parameter_lambda is a rate value in kHz,
+            # so one needs to compare the deadtime in mus with the rate in kHz
+            # and finally make it a percentage value
+            deadtime[ii] * rate * 1e2 * 1e-3
+            for ii, rate in enumerate(fitted_trigger_rates)
+        ]
+    )
+
+    return (
+        collected_trigger_rates,
+        fitted_trigger_rates,
+        fitted_trigger_rates_err,
+        deadtime,
+        deadtime_err,
+        deadtime_pc,
+        error_deadtime_pc,
+        deadtime_pc_fit,
+    )
+
+
 def get_args():
     """Parses command-line arguments for the deadtime test script.
 
@@ -735,83 +855,28 @@ def main():
         f"{test_type}_camera_{camera}/{Path(__file__).stem}",
     )
     os.makedirs(output_dir, exist_ok=True)
-
     temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
 
     # Drop arguments from the script after they are parsed, for the GUI to work properly
     sys.argv = sys.argv[:1]
 
     (
-        _,
-        _,
-        event_counter,
-        busy_counter,
         collected_trigger_rates,
-        time_tot,
-        deadtime_us,
+        fitted_trigger_rates,
+        fitted_trigger_rates_err,
+        _,
+        _,
         deadtime_pc,
-    ) = run_deadtime_test_tool_process(
-        runlist=runlist, camera=camera, nevents=nevents, ids=ids, test_type=test_type
-    )
-
-    results = fit_rate_per_run(runlist=runlist, deadtime_us=deadtime_us)[-1]
-
-    log.info(f"Output directory: {output_dir}")
-    log.info(f"Temporary output file: {temp_output}")
-    log.info(f"N max events to be considered: {nevents}")
-    log.info("-" * 40)
-    for ii, (key, values) in enumerate(results.items()):
-        log.info(f"For run {key}, source: {ids[ii]},")
-        log.info(
-            "Dead-Time extracted from the tool process: "
-            f"{np.min(deadtime_us[ii]):.3f}"
-        )
-        log.info(f"Dead-Time from the fit: {values[0]:.3f} +- " f"{values[1]:.3f} µs")
-        log.info(f"Rate from the fit: {values[2]:.2f} +- " f"{values[3]:.2f} Hz")
-        log.info("Expected run duration from the fit: " f"{values[4]:.2f} s")
-        log.info("-" * 40)
-
-    ids = np.array(ids)
-    runlist = np.array(runlist)
-
-    error_deadtime_pc = []
-    for run_id in range(np.array(busy_counter).shape[0]):
-        error_deadtime_pc.append(
-            np.sqrt(
-                (busy_counter[run_id][-1] * event_counter[run_id][-1])
-                / ((busy_counter[run_id][-1] + event_counter[run_id][-1]) ** 3)
-            )
-        )
-    error_deadtime_pc = np.array(error_deadtime_pc)
-
-    deadtime, fitted_trigger_rates, fitted_trigger_rates_err = [], [], []
-
-    for ii, run_num in enumerate(runlist):
-        results = plot_deadtime_and_expo_fit(
-            total_delta_t_for_busy_time=time_tot[ii],
-            deadtime_us=np.array(deadtime_us[ii].value),
-            run=run_num,
-            output_plot=output_dir,
-            run_type=EventType(ids[ii]).name,
-            temp_output=temp_output,
-        )
-        deadtime.append(results[0])
-        fitted_trigger_rates.append(((-1 * results[6]) * (1 / u.us)).to(u.kHz).value)
-        fitted_trigger_rates_err.append(((results[8]) * (1 / u.us)).to(u.kHz).value)
-        plt.close()
-
-    deadtime = np.array(deadtime)
-    fitted_trigger_rates = np.array(fitted_trigger_rates)
-    fitted_trigger_rates_err = np.array(fitted_trigger_rates_err)
-
-    deadtime_pc_fit = np.array(
-        [
-            # the parameter_lambda is a rate value in kHz,
-            # so one needs to compare the deadtime in mus with the rate in kHz
-            # and finally make it a percentage value
-            deadtime[ii] * rate * 1e2 * 1e-3
-            for ii, rate in enumerate(fitted_trigger_rates)
-        ]
+        error_deadtime_pc,
+        deadtime_pc_fit,
+    ) = run_deadtime(
+        nevents=nevents,
+        runlist=runlist,
+        camera=camera,
+        ids=ids,
+        output_dir=output_dir,
+        temp_output=temp_output,
+        test_type=test_type,
     )
 
     if len(runlist) > 1:

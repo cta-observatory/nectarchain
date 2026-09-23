@@ -148,6 +148,8 @@ def main():
     args = parser.parse_args()
 
     camera = args.camera
+    temperature = args.temperature
+    nevents = args.evts
 
     output_dir = os.path.join(
         os.path.abspath(args.output),
@@ -170,6 +172,33 @@ def main():
     runs_list = df["runs"].tolist()
     ff_v_list = df["ff_v"].tolist()
 
+    run_charge_resolution(
+        NSB=NSB,
+        runs_list=runs_list,
+        ff_v_list=ff_v_list,
+        temperature=temperature,
+        nevents=nevents,
+        camera=camera,
+        output_dir=output_dir,
+        temp_output_args=args.temp_output,
+    )
+
+
+def run_charge_resolution(
+    NSB,
+    runs_list,
+    ff_v_list,
+    temperature=14,
+    nevents=1000,
+    camera="NectarCAMQM",
+    output_dir="./",
+    temp_output_args=None,
+):
+    temp_output = os.path.abspath(temp_output_args) if temp_output_args else None
+
+    log.debug(f"Output directory: {output_dir}")
+    log.debug(f"Temporary output directory: {temp_output}")
+
     color = ["black", "red", "blue", "green", "yellow"]
     log.info("NSB Run FF", NSB, runs_list, ff_v_list)
 
@@ -179,8 +208,6 @@ def main():
     mean_resolution_nsb_err = []
     mean_charge_err = []
     log.info(f"NSB: length {len(NSB)}, NSB rate {NSB} MHz")
-    temperature = args.temperature
-    nevents = args.evts
 
     window_shift = 4
     window_width = 16
@@ -297,12 +324,6 @@ def main():
         plot_path = os.path.join(output_dir, f"{fig_name}.png")
         plt.savefig(plot_path)
 
-        if temp_output:
-            with open(
-                os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb"
-            ) as f:
-                pickle.dump(fig, f)
-
         ratio_lghg_nsb.append(ratio_hglg)
 
         ff_volt = np.array(ff_volt)
@@ -391,7 +412,7 @@ def main():
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output_args, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     charge_plot = np.linspace(20, 1000)
@@ -441,7 +462,7 @@ def main():
     plt.savefig(plot_path)
 
     if temp_output:
-        with open(os.path.join(args.temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
+        with open(os.path.join(temp_output, f"plot_{fig_name}.pkl"), "wb") as f:
             pickle.dump(fig, f)
 
     plt.close("all")
