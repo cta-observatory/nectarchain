@@ -1,5 +1,4 @@
 # PENSER A TRIER LES COMMANDES
-
 import argparse
 import logging
 
@@ -12,6 +11,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 # import pandas as pd
 import tables
@@ -20,14 +20,11 @@ import tables
 from ctapipe.core import run_tool
 from ctapipe_io_nectarcam.constants import N_PIXELS, PIXEL_INDEX
 from dateutil.parser import ParserError, parse
-from iminuit import Minuit
-from iminuit.cost import LeastSquares
 
 from nectarchain.makers.calibration import (
     FlatFieldSPENominalStdNectarCAMCalibrationTool,
     PedestalNectarCAMCalibrationTool,
 )
-from nectarchain.trr_test_suite.dbhandler import DBInfos, to_datetime
 
 # from nectarchain.makers.extractor.utils import CtapipeExtractor
 from nectarchain.trr_test_suite.tools_components import (
@@ -38,25 +35,33 @@ from nectarchain.trr_test_suite.utils import (  # pe2photons,; trasmission_390ns
     photons2pe,
     source_ids_deadtime,
 )
-
-# from nectarchain.utils.constants import ALLOWED_CAMERAS
+from nectarchain.utils.constants import ALLOWED_CAMERAS
+from nectarchain.utils.datautils import to_datetime
+from nectarchain.utils.dbhandler import DBInfos
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    level=logging.INFO,
+    filename=f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/{os.getpid()}/"
+    f"{Path(__file__).stem}_{os.getpid()}.log",
     handlers=[logging.getLogger("__main__").handlers],
 )
 log = logging.getLogger(__name__)
 
+plt.style.use(
+    os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "../utils/plot_style.mpltstyle"
+    )
+)
 #########################################################
 
 
 # PEDESTAL TOOL (everything works here)
 def run_ped_tool(
     run_number: list,
+    camera: str,
     max_events: int,
     events_per_slice: int,
-    output_plot,
+    output_dir,
     bad_pix,
     lenpix,
 ):
@@ -82,10 +87,13 @@ def run_ped_tool(
     Do not forget to use different runs for the dark pedestal,
     and the pedestal with NSB, if the NSB is constant!!!
     """
-    outfile = os.environ["NECTARCAMDATA"] + "/tests/pedestal_{}.h5".format(run_number)
+    # outfile = os.environ["NECTARCAMDATA"] + {output_plot} + "
+    # /pedestal_{}.h5".format(run_number)
+    outfile = f"{output_dir}Pedestal_run_{run_number}.h5"
     ped_tool = PedestalNectarCAMCalibrationTool(
         progress_bar=True,
         run_number=run_number,
+        camera=camera,
         max_events=max_events,
         events_per_slice=events_per_slice,
         log_level=20,
@@ -191,36 +199,6 @@ def run_ped_tool(
     ped_cam_std = np.array([x for _, x in sorted(zip(tmean, ped_cam_std))])
     print(f"{ped_cam_std=}")
 
-    # HERE IS A TIME DEPENDENT PLOT, MIGHT REMOVE LATER
-    plt.figure()
-    plt.title(f"Camera Pedestal through time for run {run_number}")
-    plt.xlabel("UCTS timestamp")
-    plt.ylabel("pedestal (ADC counts)")
-    plt.errorbar(
-        tmean,
-        ped_cam,
-        xerr=[tmean - tmin, tmax - tmean],
-        yerr=ped_cam_std,
-        fmt="o",
-        color="k",
-        capsize=0.0,
-    )
-    plt.savefig(os.path.join(output_plot, f"avg_cam_ped_{run_number}.png"))
-
-    plt.figure()
-    plt.title(f"Camera Pedestal width through time for run {run_number}")
-    plt.xlabel("UCTS timestamp")
-    plt.ylabel("pedestal (ADC counts)")
-    plt.errorbar(
-        tmean,
-        ped_w_cam,
-        xerr=[tmean - tmin, tmax - tmean],
-        yerr=ped_w_cam_std,
-        fmt="o",
-        color="k",
-        capsize=0.0,
-    )
-    plt.savefig(os.path.join(output_plot, f"avg_cam_ped_width_{run_number}.png"))
     return (
         outfile,
         ped_cam,
@@ -244,10 +222,8 @@ def run_long_run_test_tool(
     events_per_slice: int,
     temp_output,
     output_dir,
-    # temperature: int,
     ids: int,
     var_ped,
-    # telid,
     mean_charge_ts: int,
     bad_pix,
     lenpix,
@@ -431,15 +407,15 @@ def get_args():
         type=int,
         # nargs="+",
     )
-
     parser.add_argument(
         "-c",
         "--camera",
-        default=0,
-        help="""Process data for a specific NectarCAM camera.
-        Default: NectarCAMQM (Qualification Model).""",
-        type=int,
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
     )
+
     parser.add_argument(
         "-me",
         "--max_evnts",
@@ -469,15 +445,14 @@ def get_args():
         required=False,
         default=source_ids_deadtime,
     )
-    """parser.add_argument(
-        "-tr",
-        "--trans",
-        type=float,
-        nargs="+",
-        help="List of corresponding transmission for each run",
-        required=False,
-        default=trasmission_390ns,
-    )"""
+    parser.add_argument(
+        "-t",
+        "--telid",
+        type=int,
+        # nargs="+",
+        help="Camera id ",
+        default=0,
+    )
     parser.add_argument(
         "-mct",
         "--mean_charge_threshold",
@@ -520,17 +495,23 @@ def main():
     spe_run = args.spe_run
     nevents = args.max_evnts
     events_per_slice = args.evnts_per_slice
-    telid = args.camera
-    # print(f"{telid=}")
+    camera = args.camera
+    telid = args.telid
     ids = args.source
     # transmission = args.trans
     mean_charge_ts = args.mean_charge_threshold
     # temperature = args.temperature
-    output_dir = os.path.abspath(args.output)
-    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
+    os.makedirs(output_dir, exist_ok=True)
     log.debug(f"Output directory: {output_dir}")
-    log.debug(f"Temporary output file: {temp_output}")
+    temp_output = os.path.abspath(args.temp_output) if args.temp_output else None
+    log.debug(f"Temporary output directory: {temp_output}")
 
+    # Drop arguments from the script after they are parsed,
+    #  for the GUI to work properly
     sys.argv = sys.argv[:1]
 
     pixel_ids = PIXEL_INDEX
@@ -547,9 +528,10 @@ def main():
 
     outfile, ped, ped_std, ped_w, ped_w_std, var_ped, tmean, tmin, tmax = run_ped_tool(
         run_number=run_number,
+        camera=camera,
         max_events=nevents,
         events_per_slice=events_per_slice,
-        output_plot=output_dir,
+        output_dir=output_dir,
         bad_pix=bad_pix,
         lenpix=lenpix,
     )
@@ -599,7 +581,6 @@ def main():
     path = Path(os.environ["NECTARCAMDATA"] + "/runs")
     db_data_path = path
 
-    telid = telid
     run = run_number
     from datetime import datetime
 
@@ -661,98 +642,9 @@ def main():
     once evenything else will be plotted for the whole run\
     and everything else will be optimized on my part
     (removing bad pixels precisely)"""
-
-    # pedestal fit
-    def lin(t, a, b):
-        return a * t + b
-
-    y = (ped - ped[0]) / ped[0]
-    t = temp
-    sigma = np.sqrt(
-        (1 / ped[0]) ** 2 * ped_std**2 + (ped / ped[0] ** 2) ** 2 * ped_std[0] ** 2
-    )
-    least_squares = LeastSquares(t, y, sigma, lin)
-    m = Minuit(least_squares, a=y[0] - y[-1], b=y[-1])
-    m.migrad()
-    m.hesse()
-    print("Données du fit:", m.values, m.errors)
-
-    # Tracer les données et le modèle ajusté
-    fig, ax = plt.subplots(2, 1, figsize=(10, 7), gridspec_kw={"height_ratios": [3, 1]})
-    ax[0].errorbar(t, y, yerr=sigma, fmt="o", ms=3, label="Data")
-    ax[0].plot(t, lin(t, *m.values), label="Fitted Model", color="red")
-
-    fit_info_simple = [
-        f"$\\chi^2$/$n_\\mathrm{{dof}}$=\
-            {m.fval:.1f}/{m.ndof:.0f}=\
-                {m.fmin.reduced_chi2:.1f}",
-    ]
-    for p, v, e in zip(m.parameters, m.values, m.errors):
-        fit_info_simple.append(f"{p} = ${v:.5f} \\pm {e:.5f}$")
-    ax[0].legend(title="\n".join(fit_info_simple), frameon=False, fontsize="large")
-    ax[0].set_title(f"Pedestal Evolution for Run {run_number}")
-    ax[0].set_xlabel("T°C")
-    ax[0].set_ylabel("Baseline (%)")
-
-    residuals = y - lin(t, *m.values)
-    ax[1].errorbar(
-        t, residuals, yerr=sigma, fmt="o", ms=3, color="green", label="Residuals"
-    )
-    ax[1].axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-    ax[1].set_xlabel("T°C)")
-    ax[1].set_ylabel("Residuals (%)")
-    ax[1].set_title("Residuals of the Fit")
-    ax[1].legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"cam_ped_temp_run{run_number}.png"))
-
-    # pedestal width fit
-
-    y = (ped_w - ped_w[0]) / ped_w[0]
-    t = temp
-    sigma = np.sqrt(
-        (1 / ped_w[0]) ** 2 * ped_w_std**2
-        + (ped_w / ped_w[0] ** 2) ** 2 * ped_w_std[0] ** 2
-    )
-    # y=ped_w
-    # t=temp
-    # sigma_ped_w=ped_w_std
-
-    least_squares = LeastSquares(t, y, sigma, lin)
-
-    m = Minuit(least_squares, a=y[-1] - y[0], b=-y[-1])
-    m.migrad()
-    m.hesse()
-
-    print("Données du fit:", m.values, m.errors)
-
-    fig, ax = plt.subplots(2, 1, figsize=(10, 7), gridspec_kw={"height_ratios": [3, 1]})
-    ax[0].errorbar(t, y, yerr=sigma, fmt="o", ms=3, label="Data")
-    ax[0].plot(t, lin(t, *m.values), label="Fitted Model", color="red")
-
-    fit_info_simple = [
-        f"$\\chi^2$/$n_\\mathrm{{dof}}$=\
-            {m.fval:.1f}/{m.ndof:.0f}=\
-                {m.fmin.reduced_chi2:.1f}",
-    ]
-    for p, v, e in zip(m.parameters, m.values, m.errors):
-        fit_info_simple.append(f"{p} = ${v:.3f} \\pm {e:.3f}$")
-    ax[0].legend(title="\n".join(fit_info_simple), frameon=False, fontsize="large")
-    ax[0].set_title(f"Pedestal width evolution for Run {run_number}")
-    ax[0].set_xlabel("T°C")
-    ax[0].set_ylabel("pedestal_width (%)")
-
-    residuals = y - lin(t, *m.values)
-    ax[1].errorbar(
-        t, residuals, yerr=sigma, fmt="o", ms=3, color="green", label="Residuals"
-    )
-    ax[1].axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-    ax[1].set_xlabel("T°C")
-    ax[1].set_ylabel("Residuals (%)")
-    ax[1].set_title("Residuals of the Fit")
-    ax[1].legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"cam_ped_width_temp_run{run_number}.png"))
+    deadtime_rate = np.array(deadtime_rate)
+    deadtime_rate_err = np.array(deadtime_rate_err)
+    print(f"{deadtime_rate=}, {deadtime_rate_err}")
     mean_charge_hg = mean_charge_all[0]
     std_err_hg = std_err_all[0]
     mean_charge_lg = mean_charge_all[1]
@@ -761,6 +653,8 @@ def main():
     err_resolution_hg = err_resolution_all[0]
 
     curves = [
+        (temp, np.array(ped), np.array(ped_std)),
+        (temp, np.array(ped_w), np.array(ped_w_std)),
         (temp, np.array(mean_charge_hg), np.array(std_err_hg)),
         (temp, np.array(mean_charge_lg), np.array(std_err_lg)),
         (temp, np.array(ratio_hglg_all), None),
@@ -774,6 +668,8 @@ def main():
         (temp, np.array(collected_trigger_rate_all), None),
     ]
     y_labels = [
+        "Mean_pedestal_(ADC)",
+        "Mean_pedestal_width_(ADC)",
         "Mean_charge_hg_(p.e)",
         "Mean_charge_lg_(p.e)",
         "Ratio_high_gain_low_gain",
@@ -888,6 +784,84 @@ def main():
     plt.close()
 
     #####################################################
+
+    final_data = [
+        tmin,
+        tmax,
+        tmean,
+        temp,
+        ped,
+        ped_std,
+        ped_w,
+        ped_w_std,
+        mean_charge_hg,
+        std_err_hg,
+        mean_charge_lg,
+        std_err_lg,
+        ratio_hglg_all,
+        mean_resolution_hg,
+        err_resolution_hg,
+        tom_all,
+        tom_all_err,
+        rms_no_fit_all,
+        rms_no_fit_err_all,
+        trig_rms_all,
+        trig_err_all,
+        ucts_deltat_all,
+        deadtime_err,
+        deadtime_rate,
+        deadtime_rate_err,
+        deadtime_pc_all,
+        event_rate_all,
+        collected_trigger_rate_all,
+    ]
+    final_data_values = [
+        arr.value if hasattr(arr, "value") else arr for arr in final_data
+    ]
+
+    # Define column names
+    column_names = [
+        "tmin",
+        "tmax",
+        "tmean",
+        "temp",
+        "ped",
+        "ped_std",
+        "ped_w",
+        "ped_w_std",
+        "mean_charge_hg",
+        "std_err_hg",
+        "mean_charge_lg",
+        "std_err_lg",
+        "ratio_hglg_all",
+        "mean_resolution_hg",
+        "err_resolution_hg",
+        "tom_all",
+        "tom_all_err",
+        "rms_no_fit_all",
+        "rms_no_fit_err_all",
+        "trig_rms_all",
+        "trig_err_all",
+        "ucts_deltat_all",
+        "deadtime_err",
+        "deadtime_pc_all",
+        "deadtime_rate",
+        "deadtime_rate_err",
+        "event_rate_all",
+        "collected_trigger_rate_all",
+    ]
+
+    # Create a DataFrame (each array is a column)
+    df = pd.DataFrame(
+        {name: data for name, data in zip(column_names, final_data_values)}
+    )
+
+    # Save as an HDF5 table
+    h5_path = (
+        f"{os.environ.get('NECTARCAMDATA', '/tmp')}",
+        f"/tests/TempLongRunTestTool_run{run_number}_maxevents{nevents}.h5",
+    )
+    df.to_hdf(h5_path, key="plot_data", mode="a", format="table")
 
 
 if __name__ == "__main__":
