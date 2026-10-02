@@ -245,7 +245,9 @@ class ObservationTemperaturePipeline:
         plt.legend()
         plt.xlabel("FF voltage (V)")
         plt.ylabel("Charge (p.e)")
-        plt.savefig("Charge_ff_v_temp.png")
+        fig_name = "Charge_ff_v_temp"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        plt.savefig(plot_path)
 
         # Charge resolution as function of
         # temperature for different FF_voltages and NSBs.

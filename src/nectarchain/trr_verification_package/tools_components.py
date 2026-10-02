@@ -219,8 +219,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_pe_hg = charge_hg / (adc_to_pe)
         charge_pe_lg = charge_lg / (adc_to_pe)
 
-        n_events = len(charge_pe_hg)
-        print("n_events", n_events)
+        # print("n_events", n_events)
 
         """
         print(

@@ -241,7 +241,7 @@ def run_charge_resolution(
 
             gain_run = int(get_gain_run(temperature))
             gain_file_name = (
-                "FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
+                "resources/FlatFieldSPENominalStdNectarCAM_run{}_maxevents{}_"
                 "{}_window_shift_{}_window_width_{}.h5".format(
                     gain_run, max_events, method, window_shift, window_width
                 )
@@ -466,6 +466,14 @@ def run_charge_resolution(
             pickle.dump(fig, f)
 
     plt.close("all")
+
+    return (
+        mean_charge,
+        mean_charge_err,
+        mean_resolution_nsb,
+        mean_resolution_nsb_err,
+        ratio_hglg,
+    )
 
 
 if __name__ == "__main__":
