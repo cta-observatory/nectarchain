@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,6 +17,8 @@ from nectarchain.trr_verification_package.deadtime import run_deadtime
 from nectarchain.trr_verification_package.linearity import run_linearity
 from nectarchain.trr_verification_package.utils import linear_fit_function
 from nectarchain.utils.constants import ALLOWED_CAMERAS
+
+matplotlib.use("Qt5Agg")  # interactive Qt5 backend for showing plots
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
