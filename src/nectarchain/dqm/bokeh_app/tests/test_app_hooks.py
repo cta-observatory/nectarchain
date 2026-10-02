@@ -204,6 +204,237 @@ def test_get_available_cameras_from_db_keys():
     assert len(available_cameras) == 3
 
 
+def test_refresh_run_options():
+    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data with multiple cameras and runs
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM2_Run2000",
+        "NectarCAM2_Run2001",
+        "NectarCAM3_Run3000",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Create Select widgets for each camera
+    run_selects = {
+        "1": Select(value="NectarCAM1_Run1000", title="Camera 1", options=[]),
+        "2": Select(value="NectarCAM2_Run2000", title="Camera 2", options=[]),
+        "3": Select(value="NectarCAM3_Run3000", title="Camera 3", options=[]),
+    }
+
+    available_cameras = ["1", "2", "3"]
+
+    # Call refresh_run_options
+    refresh_run_options(root, available_cameras, run_selects)
+
+    # Verify that each Select widget has the correct runs
+    # Camera 1 should have Run1000 and Run1001
+    assert len(run_selects["1"].options) == 2
+    assert "NectarCAM1_Run1000" in run_selects["1"].options
+    assert "NectarCAM1_Run1001" in run_selects["1"].options
+
+    # Camera 2 should have Run2000 and Run2001
+    assert len(run_selects["2"].options) == 2
+    assert "NectarCAM2_Run2000" in run_selects["2"].options
+    assert "NectarCAM2_Run2001" in run_selects["2"].options
+
+    # Camera 3 should have Run3000
+    assert len(run_selects["3"].options) == 1
+    assert "NectarCAM3_Run3000" in run_selects["3"].options
+
+    # Verify runs are sorted in reverse order (newest first)
+    assert run_selects["1"].options[0] == "NectarCAM1_Run1001"
+    assert run_selects["1"].options[1] == "NectarCAM1_Run1000"
+
+
+def test_refresh_run_options_with_new_runs():
+    """Test that refresh_run_options correctly picks up newly added runs"""
+    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Initial runs
+    initial_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+    ]
+
+    for key in initial_keys:
+        root[key] = {"data": "initial"}
+
+    # Create Select widget with initial options
+    run_selects = {
+        "1": Select(value="NectarCAM1_Run1000", title="Camera 1", options=initial_keys),
+    }
+
+    available_cameras = ["1"]
+
+    # First refresh
+    refresh_run_options(root, available_cameras, run_selects)
+    assert len(run_selects["1"].options) == 2
+
+    # Add a new run
+    root["NectarCAM1_Run1002"] = {"data": "new"}
+
+    # Second refresh should pick up the new run
+    refresh_run_options(root, available_cameras, run_selects)
+    assert len(run_selects["1"].options) == 3
+    assert "NectarCAM1_Run1002" in run_selects["1"].options
+    # Newest should be first
+    assert run_selects["1"].options[0] == "NectarCAM1_Run1002"
+
+
+def test_refresh_run_options_with_no_matching_runs():
+    """Test refresh_run_options when a camera has no runs"""
+    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Only runs for camera 1
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Create Select widgets for cameras 1 and 2 (camera 2 has no runs)
+    run_selects = {
+        "1": Select(value="NectarCAM1_Run1000", title="Camera 1", options=[]),
+        "2": Select(value=None, title="Camera 2", options=[]),
+    }
+
+    available_cameras = ["1", "2"]
+
+    # Call refresh_run_options
+    refresh_run_options(root, available_cameras, run_selects)
+
+    # Camera 1 should have runs
+    assert len(run_selects["1"].options) == 2
+
+    # Camera 2 should have empty list
+    assert len(run_selects["2"].options) == 0
+    assert isinstance(run_selects["2"].options, list)
+
+
+def test_refresh_run_options_with_status_display():
+    """Test that refresh_run_options updates the refresh status Div"""
+    from bokeh.models import Div
+
+    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Test data
+    test_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+        "NectarCAM1_Run1002",
+    ]
+
+    for key in test_keys:
+        root[key] = {"data": "dummy"}
+
+    # Create Select widgets and status Divs
+    run_selects = {
+        "1": Select(value="NectarCAM1_Run1000", title="Camera 1", options=[]),
+    }
+    refresh_statuses = {
+        "1": Div(text=""),
+    }
+
+    available_cameras = ["1"]
+
+    # Call refresh_run_options with status displays
+    refresh_run_options(root, available_cameras, run_selects, refresh_statuses)
+
+    # Verify Select was updated
+    assert len(run_selects["1"].options) == 3
+
+    # Verify status Div was updated
+    assert "Runs last refreshed:" in refresh_statuses["1"].text
+    assert "Available runs: 3" in refresh_statuses["1"].text
+    # First call with no previous count should show 0 new runs
+    assert "New since last refresh: 0" in refresh_statuses["1"].text
+
+
+def test_refresh_run_options_with_delta():
+    """Test that refresh_run_options correctly shows new runs delta"""
+    from bokeh.models import Div
+
+    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
+
+    db = DB(None)
+    conn = db.open()
+    root = conn.root()
+
+    # Initial runs
+    initial_keys = [
+        "NectarCAM1_Run1000",
+        "NectarCAM1_Run1001",
+    ]
+
+    for key in initial_keys:
+        root[key] = {"data": "initial"}
+
+    # Create Select widgets and status Divs
+    run_selects = {
+        "1": Select(value="NectarCAM1_Run1000", title="Camera 1", options=[]),
+    }
+    refresh_statuses = {
+        "1": Div(text=""),
+    }
+    prev_run_counts = {}
+
+    available_cameras = ["1"]
+
+    # First refresh - establishes baseline
+    refresh_run_options(
+        root, available_cameras, run_selects, refresh_statuses, prev_run_counts
+    )
+    assert len(run_selects["1"].options) == 2
+    assert "Available runs: 2" in refresh_statuses["1"].text
+    assert "New since last refresh: 0" in refresh_statuses["1"].text
+
+    # Add a new run
+    root["NectarCAM1_Run1002"] = {"data": "new"}
+
+    # Second refresh should show +1 new run
+    refresh_run_options(
+        root, available_cameras, run_selects, refresh_statuses, prev_run_counts
+    )
+    assert len(run_selects["1"].options) == 3
+    assert "Available runs: 3" in refresh_statuses["1"].text
+    assert "New since last refresh: 1" in refresh_statuses["1"].text
+
+    # Add two more runs
+    root["NectarCAM1_Run1003"] = {"data": "new"}
+    root["NectarCAM1_Run1004"] = {"data": "new"}
+
+    # Third refresh should show +2 new runs
+    refresh_run_options(
+        root, available_cameras, run_selects, refresh_statuses, prev_run_counts
+    )
+    assert len(run_selects["1"].options) == 5
+    assert "Available runs: 5" in refresh_statuses["1"].text
+    assert "New since last refresh: 2" in refresh_statuses["1"].text
+
+
 def test_bokeh(tmp_path):
     from nectarchain.dqm.bokeh_app.app_hooks import (
         get_rundata,

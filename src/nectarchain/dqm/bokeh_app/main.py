@@ -8,6 +8,7 @@ from app_hooks import (
     make_timelines,
     make_trigger_timestamps_vs_ids,
     make_waveforms,
+    refresh_run_options,
     update_camera_displays,
     update_timelines,
     update_trigger_timestamps_vs_ids,
@@ -124,6 +125,7 @@ def get_layout_per_camera(source, runids, camera_code):
                 width: fit-content;
                 font-size: 14px;
             ">
+                <p>Now displayed run: <strong>{runid}</strong></p>
                 <p>Run start time: {run_start_time_dt}</p>
                 <p>First event recorded at: {first_event_time_dt}</p>
                 <p>Last event recorded at: {last_event_time_dt}</p>
@@ -202,6 +204,7 @@ def get_layout_per_camera(source, runids, camera_code):
             width: fit-content;
             font-size: 14px;
         ">
+            <p>Now displayed run: <strong>{runid}</strong></p>
             <p>Run start time: {run_start_time_dt}</p>
             <p>First event recorded at: {first_event_time_dt}</p>
             <p>Last event recorded at: {last_event_time_dt}</p>
@@ -209,7 +212,24 @@ def get_layout_per_camera(source, runids, camera_code):
         """
     )
 
-    controls = row(run_select, run_times_string)
+    # e6f7ff
+    # Create a Div for displaying refresh status
+    refresh_status = Div(
+        text="""
+        <div style="
+            background-color: moccasin;
+            border-radius: 10px;
+            padding: 10px;
+            width: fit-content;
+            font-size: 14px;
+            margin-left: 10px;
+        ">
+            <p>Runs last refreshed: never</p>
+        </div>
+        """
+    )
+
+    controls = row(run_select, run_times_string, refresh_status)
 
     # # TEST:
     # attr = 'value'
@@ -302,7 +322,7 @@ def get_layout_per_camera(source, runids, camera_code):
 
     run_select.on_change("value", update)
 
-    return page_layout, run_select
+    return page_layout, run_select, refresh_status
 
 
 logger.info("Opening connection to ZODB")
@@ -319,19 +339,48 @@ runs_for_available_cameras = {
 
 page_layouts_per_camera = {}
 run_selects_per_camera = {}
+refresh_status_per_camera = {}
+prev_run_counts = {}  # Cache for tracking previous run counts per camera
 tab_panels_for_layout = []
 
 for cam, runs in runs_for_available_cameras.items():
     logger.info(f"Camera {cam} has {len(runs)} runs in the database")
-    page_layout, run_select = get_layout_per_camera(db, runs, cam)
+    page_layout, run_select, refresh_status = get_layout_per_camera(db, runs, cam)
 
     page_layouts_per_camera[cam] = page_layout
     run_selects_per_camera[cam] = run_select
+    refresh_status_per_camera[cam] = refresh_status
 
     tab_panels_for_layout.append(TabPanel(child=page_layout, title=f"NectarCAM {cam}"))
 
 tabs_for_layout = Tabs(tabs=tab_panels_for_layout, sizing_mode="scale_width")
 
+
+def refresh_run_options_wrapper():
+    """Wrapper for refresh_run_options that uses the global variables from main.py.
+
+    This function is called periodically to update the available run list
+    without refreshing the entire application, allowing users to see newly
+    added runs without losing their current work.
+    """
+    start_time = time.time()
+    try:
+        refresh_run_options(
+            db=db,
+            available_cameras=available_cameras_in_db_keys,
+            run_selects=run_selects_per_camera,
+            refresh_statuses=refresh_status_per_camera,
+            prev_run_counts=prev_run_counts,
+        )
+        logger.info(
+            f"Refreshed run options for all cameras in {time.time() - start_time:.2f}s"
+        )
+    except Exception as e:
+        logger.error(f"Failed to refresh run options: {e}")
+
+
+# Add periodic callback to refresh run options every 5 minutes (300000 ms)
+curdoc().add_periodic_callback(refresh_run_options_wrapper, 300000)
 
 # Add to the Bokeh document
 curdoc().add_root(tabs_for_layout)
