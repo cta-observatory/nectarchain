@@ -632,6 +632,7 @@ def run_deadtime(
             deadtime_us=np.array(deadtime_us[ii].value),
             run=run_num,
             output_plot=output_dir,
+            temp_output=temp_output,
         )
         deadtime.append(plot_results[0])
         deadtime_err.append(np.abs(plot_results[2]) * 1e-3)
