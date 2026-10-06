@@ -108,7 +108,7 @@ for run in args.runs:
 
     try:
         hdu = fits.open(fits_file)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         log.warning(
             f"Could not locally open DQM FITS results file run {args.camera} {run}, received error {e}, skipping this run..."
         )
