@@ -106,7 +106,13 @@ for run in args.runs:
         f"NectarCAM_Run{run}_calib/NectarCAM_Run{run}_Results.fits"
     )
 
-    hdu = fits.open(fits_file)
+    try:
+        hdu = fits.open(fits_file)
+    except FileNotFoundError as e:
+        log.warning(
+            f"Could not locally open DQM FITS results file run {args.camera} {run}, received error {e}, skipping this run..."
+        )
+        continue
 
     # Explore FITS file structure
     hdu.info()
