@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +21,7 @@ from nectarchain.trr_verification_package.utils import (
     plot_parameters,
     transmission_390ns,
 )
-from nectarchain.utils.constants import GAIN_LINEAR_RANGE
+from nectarchain.utils.constants import ALLOWED_CAMERAS, GAIN_LINEAR_RANGE
 
 logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -62,14 +63,31 @@ def get_args():
         default=[i for i in range(3404, 3424)] + [i for i in range(3435, 3444)],
     )
     parser.add_argument(
+        "-c",
+        "--camera",
+        choices=ALLOWED_CAMERAS,
+        default=[camera for camera in ALLOWED_CAMERAS if "QM" in camera][0],
+        help="Process data for a specific NectarCAM camera.",
+        type=str,
+    )
+    parser.add_argument(
         "-t",
-        "--trans",
+        "--transmission",
         type=float,
         nargs="+",
         help="List of corresponding transmission for each run",
         required=False,
         default=transmission_390ns,
     )
+    parser.add_argument(
+        "-tt",
+        "--temperature",
+        type=int,
+        help="Temperature, default 14",
+        required=False,
+        default=14,
+    )
+
     parser.add_argument(
         "-e",
         "--evts",
@@ -124,11 +142,15 @@ def main():
     args = parser.parse_args()
 
     runlist = args.runlist
-    transmission = args.trans  # corresponding transmission for above data
+    transmission = args.transmission  # corresponding transmission for above data
 
     nevents = args.evts
-
-    output_dir = os.path.abspath(args.output)
+    camera = args.camera
+    temperature = args.temperature
+    output_dir = os.path.join(
+        os.path.abspath(args.output),
+        f"trr_camera_{camera}/{Path(__file__).stem}",
+    )
 
     log.info(f"Output directory: {output_dir}")  # Debug print
     # print(f"Temporary output file: {temp_output}")  # Debug print
@@ -136,7 +158,14 @@ def main():
     sys.argv = sys.argv[:1]
 
     # runlist = [3441]
-    run_linearity(runlist, transmission, nevents, output_dir, args.temp_output)
+    run_linearity(
+        runlist=runlist,
+        transmission=transmission,
+        temperature=temperature,
+        nevents=nevents,
+        output_dir=output_dir,
+        temp_output_args=args.temp_output,
+    )
 
 
 def run_linearity(
