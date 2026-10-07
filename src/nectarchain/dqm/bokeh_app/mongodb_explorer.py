@@ -67,7 +67,7 @@ def _infer_fields(collection, sample_size: int = 5000) -> dict:
 
     fields = {}
     for name, values in raw.items():
-        if name == "firstvar" or name == "secondvar" or name == "thirdvar":
+        if name in ["firstvar", "secondvar", "thirdvar"]:
             continue
         if not values:
             fields[name] = {"type": "string", "values": []}
@@ -151,7 +151,6 @@ class NumericRangeControl:
             self.exact_input.disabled = not search_by_exact_value
             self.min_input.disabled = search_by_exact_value
             self.max_input.disabled = search_by_exact_value
-            # on_change_cb(attr, old, new)
 
         # Wire switch input
         self.toggle.on_change("active", _on_toggle)
@@ -314,8 +313,6 @@ def _build_query(FIELD_META, controls: dict) -> dict:
             val = widget.value
             if val == "Any":
                 pass  # no filter
-            # elif val == "(missing)":
-            #     query[fname] = {"$or": [{"$exists": False}, {"$eq": None}]}
             elif val == "(missing)":
                 query["$or"] = query.get("$or", []) + [
                     {fname: {"$exists": False}},
