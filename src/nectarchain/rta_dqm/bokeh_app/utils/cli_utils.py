@@ -124,7 +124,8 @@ def create_app(doc):
         for filename in json_dict["EXAMPLE_DATA_FILES"]:
             filepath = ctapipe.utils.get_dataset_path(
                 filename,
-                url="http://cccta-dataserver.in2p3.fr/data/ctapipe-test-data/v1.1.0",
+                url="https://minio-cta.zeuthen.desy.de/dpps-testdata-public/data/"
+                "nectarcam-test-data",
             )
             shutil.move(filepath, os.path.join(RESOURCE_PATH, filename))
 
