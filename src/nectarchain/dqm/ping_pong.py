@@ -94,11 +94,8 @@ class PingPongMonitoring(DQMSummary):
 
         # Check bit 11 (0x400 = 1024) of first_cell_id
         ping = (cell_id & 0x400).astype(bool)
-
-        # Always initialize ref_state from first event (i == 0 in the original loop)
-        # Original condition was: if event_id == 1 or i == 0
         self.ref_parity = event_id % 2
-        # ping is already a numpy array from .astype(bool), no need for np.array()
+        # ping is already a numpy array from .astype(bool)
         self.ref_state = ping
 
         # Check for discrepancies in first event
@@ -201,7 +198,7 @@ class PingPongMonitoring(DQMSummary):
         max_change = int(np.max(self.change)) if self.nchanges > 0 else 1
         bounds = np.linspace(0, max_change, min(int(self.nchanges) + 1, max_change + 1))
 
-        disp.set_limits_minmax()
+        disp.set_limits_minmax(zmin=0, zmax=max_change)
         disp.axes.text(2.0, -0.3, "Number of changes", fontsize=12, rotation=90)
         disp.add_colorbar(ticks=bounds)
         plt.title("Camera Ping Pong changes")
