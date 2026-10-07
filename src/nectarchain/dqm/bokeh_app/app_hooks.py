@@ -542,17 +542,14 @@ def make_timelines(timelines_data, runid=None):
 
         try:
             timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[parentkey]
-        except ValueError:
-            timelines[parentkey][childkey].yaxis.axis_label = ""
+            timelines[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
+            timelines[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
+            timelines[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
+            timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
+            timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
+            timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
         except KeyError:
-            timelines[parentkey][childkey].yaxis.axis_label = ""
-
-        timelines[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
-        timelines[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
-        timelines[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
-        timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
-        timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
-        timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+            return dict()
 
     logger.info(f"Successfully created timeline plots for run {runid}")
 
