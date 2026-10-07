@@ -25,6 +25,7 @@ from ctapipe.instrument import CameraGeometry
 
 # import categorize_source_data
 from extract_data import categorize_source_data
+from mongodb_explorer import MongoExplorer
 
 from nectarchain.dqm.bokeh_app.logging_config import setup_logger
 from nectarchain.dqm.db_utils import DQMDB
@@ -329,6 +330,10 @@ for cam, runs in runs_for_available_cameras.items():
     run_selects_per_camera[cam] = run_select
 
     tab_panels_for_layout.append(TabPanel(child=page_layout, title=f"NectarCAM {cam}"))
+
+run_explorer = MongoExplorer()
+run_explorer.panel.title = "Run Config DB"
+tab_panels_for_layout.append(run_explorer.panel)
 
 tabs_for_layout = Tabs(tabs=tab_panels_for_layout, sizing_mode="scale_width")
 
