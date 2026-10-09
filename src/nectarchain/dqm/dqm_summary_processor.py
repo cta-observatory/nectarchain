@@ -171,7 +171,7 @@ class DQMSummary:
             try:
                 data[name] = content
             except Exception as e:
-                log.warning(f"Caught {type(e).__name__}. Details: {e}")
+                log.warning(f"{name}: Caught {type(e).__name__}. Details: {e}")
                 data = Table(content)
 
             hdu = fits.BinTableHDU(data)
