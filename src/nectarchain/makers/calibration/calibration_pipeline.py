@@ -93,6 +93,12 @@ PROV_OUTPUT_ROLES = {"create_calibration_file": "catA.r1.mon.tel.camera.calibrat
 
 
 class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
+    """Orchestrates pedestal, gain, HiLo, and flatfield calibrations in sequence.
+
+    Runs multiple calibration subtools and merges their outputs into a single
+    Category A calibration file.
+    """
+
     name = "PipelineNectarCAMCalibrationTool"
     description = "Run pedestal -> gain -> flatfield calibrations in sequence"
 
@@ -168,6 +174,15 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     ]
 
     def __init__(self, *args, **kwargs):
+        """Initialize the pipeline tool and set up subtool output directories.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent initializer.
+        **kwargs : dict
+            Keyword arguments passed to the parent initializer.
+        """
         super().__init__(*args, **kwargs)
 
         # Temporary directory to store the results of each step in the
@@ -198,6 +213,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         }
 
     def _init_output_path(self):
+        """Set the output path for the final Category A calibration file.
+
+        The filename includes run numbers for pedestal, flat-field, and
+        SPE-fit calibrations, or uses a default placeholder when
+        ``all_default`` is True.
+        """
         if self.all_default:
             calib_filename = f"{self.name}_DEFAULT_CALIB_VALUES{self.output_format}"
         else:
@@ -214,6 +235,19 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         )
 
     def setup(self, *args, **kwargs):
+        """Configure and initialize all calibration subtools.
+
+        Instantiates the pedestal, gain, HiLo, and flatfield tools with
+        their respective run numbers, validates the output format, and
+        ensures consistent telescope IDs across subtools.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent setup.
+        **kwargs : dict
+            Keyword arguments passed to the parent setup.
+        """
         # Default run_number = -1 will raise Exception
         self.run_number = 0
         self.log.warning(f"Set run_number = {self.run_number} to avoid exception")
@@ -345,6 +379,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             self._setup_tel_id()
 
     def _setup_tel_id(self):
+        """Ensure a consistent telescope ID across all subtools.
+
+        Loads the event source for each subtool and verifies that they all
+        refer to the same telescope ID. Raises ``ValueError`` if there is
+        a mismatch.
+        """
         # NOTE: This is a cumbersome implementation to set up the correct tel id.
         # Need to load the event source to access tel_id.
         # Not the cleanest but ensures that all runs have the same tel_id
@@ -372,6 +412,11 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
         self.log.debug(f"Set up tel_id: {self.tel_id}")
 
     def start(self):
+        """Run all calibration subtools in sequence.
+
+        Executes pedestal, gain, HiLo, and flatfield tools. When
+        ``all_default`` is True, no subtools are run.
+        """
         if self.all_default:
             return
         else:
@@ -381,6 +426,12 @@ class PipelineNectarCAMCalibrationTool(NectarCAMCalibrationTool):
             run_tool(self.flatfield_tool)
 
     def finish(self):
+        """Finalize the calibration pipeline.
+
+        Reads per-subtool results (or fills default values), converts them
+        to ctapipe containers, writes the Category A calibration file, and
+        optionally removes temporary subtool results.
+        """
         if self.all_default:
             self._fill_nectarcam_containers_with_default_values()
         else:

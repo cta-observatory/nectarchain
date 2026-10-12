@@ -33,6 +33,18 @@ class HiLoComponent(GainNectarCAMComponent):
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """
+        Initialize the HiLoComponent.
+
+        Parameters
+        ----------
+        subarray : ctapipe.instrument.SubarrayDescription
+            The subarray description.
+        config : traitlets.config.loader.Config, optional
+            Configuration object.
+        parent : object, optional
+            Parent component.
+        """
         chargesComponent_kwargs = {}
         other_kwargs = {}
         chargesComponent_configurable_traits = ComponentUtils.get_configurable_traits(
@@ -61,6 +73,16 @@ class HiLoComponent(GainNectarCAMComponent):
         self._init_gain_container()
 
     def _init_gain_container(self):
+        """
+        Initialize the gain container from an HDF5 file.
+
+        Raises
+        ------
+        ValueError
+            If no gain file is provided.
+        RuntimeError
+            If the gain container cannot be loaded from the file.
+        """
         self.__gain_container = None
 
         if self.gain_file is None:
@@ -80,11 +102,29 @@ class HiLoComponent(GainNectarCAMComponent):
             ) from e
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """
+        Process an event through the charges sub-component.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event to process. Only FLATFIELD events are handled at the moment.
+        """
         # For now only flat-field events, to be updated for e.g. white-target
         if event.trigger.event_type == EventType.FLATFIELD:
             self.chargesComponent(event=event, *args, **kwargs)
 
     def finish(self, *args, **kwargs):
+        """
+        Finalize the HiLo computation.
+
+        Merges charges containers and computes the low gain.
+
+        Returns
+        -------
+        gain_container
+            The gain container with updated low gain values.
+        """
         if self._chargesContainer is None:
             chargesContainers = self.chargesComponent.finish(*args, **kwargs)
             self._chargesContainer = merge_map_ArrayDataContainer(chargesContainers)
@@ -94,6 +134,13 @@ class HiLoComponent(GainNectarCAMComponent):
         return self.__gain_container
 
     def _compute_low_gain(self):
+        """
+        Compute the low gain using the HiLo ratio.
+
+        Uses charges from the high- and low-gain channels in the linear
+        regime to compute the per-pixel HiLo ratio averaged over events,
+        then updates the gain container with the derived low gain.
+        """
         ContainerUtils.add_missing_pixels_to_container(self._chargesContainer)
         charges_hg = self._chargesContainer["charges_hg"]
         charges_lg = self._chargesContainer["charges_lg"]

@@ -25,6 +25,7 @@ from ctapipe.instrument import CameraGeometry
 
 # import categorize_source_data
 from extract_data import categorize_source_data
+from mongodb_explorer import MongoExplorer
 
 from nectarchain.dqm.bokeh_app.logging_config import setup_logger
 from nectarchain.dqm.db_utils import DQMDB
@@ -36,6 +37,23 @@ logger = setup_logger()
 
 
 def get_layout_per_camera(source, runids, camera_code):
+    """Build the per-camera dashboard layout for a given run and camera.
+
+    Parameters
+    ----------
+    source : dict
+        Data source dictionary containing camera and waveform data.
+    runids : list of str
+        Available run identifiers for the run selector widget.
+    camera_code : str
+        Camera code string used to select the relevant data subset.
+
+    Returns
+    -------
+    column
+        A Bokeh column layout containing the run selector and camera display tabs.
+    """
+
     def update(attr, old, new):
         """Callback that refreshes the dashboard whenever the selected run changes.
 
@@ -78,7 +96,9 @@ def get_layout_per_camera(source, runids, camera_code):
         categorized = categorize_source_data(source)
 
         tab_camera_displays = update_camera_displays(
-            categorized["camera_displays"], runid
+            categorized["camera_displays"],
+            runid,
+            waveforms_data=categorized["waveforms"],
         )
         tab_timelines = update_timelines(categorized["timelines"], runid)
         tab_waveforms = update_waveforms(categorized["waveforms"], runid)
@@ -155,7 +175,9 @@ def get_layout_per_camera(source, runids, camera_code):
     requested_at_time = time.time()
     source = get_rundata(db, run_select.value)
     categorized = categorize_source_data(source)
-    displays = make_camera_displays(categorized["camera_displays"], runid)
+    displays = make_camera_displays(
+        categorized["camera_displays"], runid, waveforms_data=categorized["waveforms"]
+    )
     timelines = make_timelines(categorized["timelines"], runid)
     waveforms = make_waveforms(categorized["waveforms"], runid)
     trig_timestamps = make_trigger_timestamps_vs_ids(
@@ -204,10 +226,14 @@ def get_layout_per_camera(source, runids, camera_code):
                     displays[parentkey][childkey][2],
                     displays[parentkey][childkey][3],
                 ),
+                displays[parentkey][childkey][0].selected_pixel_waveform,
             ]
         )
         if len(displays[parentkey][childkey]) == 4
-        else displays[parentkey][childkey][0].figure
+        else column(
+            displays[parentkey][childkey][0].figure,
+            displays[parentkey][childkey][0].selected_pixel_waveform,
+        )
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
@@ -304,6 +330,10 @@ for cam, runs in runs_for_available_cameras.items():
     run_selects_per_camera[cam] = run_select
 
     tab_panels_for_layout.append(TabPanel(child=page_layout, title=f"NectarCAM {cam}"))
+
+run_explorer = MongoExplorer()
+run_explorer.panel.title = "Run Config DB"
+tab_panels_for_layout.append(run_explorer.panel)
 
 tabs_for_layout = Tabs(tabs=tab_panels_for_layout, sizing_mode="scale_width")
 

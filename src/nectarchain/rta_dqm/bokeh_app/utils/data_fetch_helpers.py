@@ -23,11 +23,28 @@ logger = logging.getLogger(__name__)
 
 
 class LatestFilesHandler(FileSystemEventHandler):
+    """Watchdog event handler that keeps a bounded deque of the latest .h5 files.
+
+    Parameters
+    ----------
+    latest_files : collections.deque
+        Deque shared with the caller to which new file paths are appended.
+    n_files : int
+        Maximum number of files to retain in the deque.
+    """
+
     def __init__(self, latest_files, n_files):
         self.latest_files = latest_files
         self.n_files = n_files
 
     def on_closed(self, event):
+        """Append newly closed .h5 files to the latest_files deque.
+
+        Parameters
+        ----------
+        event : watchdog.events.FileClosedEvent
+            Event containing the path of the closed file.
+        """
         if event.is_directory:
             return
 

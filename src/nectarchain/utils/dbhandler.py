@@ -30,31 +30,52 @@ log = logging.getLogger(__name__)
 
 
 class DBInfosFlag(Flag):
+    """Flag enum indicating the granularity of database information.
+
+    Attributes
+    ----------
+    CAMERA : auto
+        Information at the camera level.
+    DRAWER : auto
+        Information at the drawer (module) level.
+    PIXEL : auto
+        Information at the pixel level.
+    """
+
     CAMERA = auto()
     DRAWER = auto()
     PIXEL = auto()
 
 
 class DictInfos:
-    # New entry to the dict can be added by using the [] operator
-    # Once entered, they can be entered by name as they become member of the class
+    """Dictionary-like container that promotes keys to instance attributes.
+
+    New entries can be added via the ``[]`` operator; once entered they
+    become accessible as member attributes.
+    """
+
     def __init__(self, *args, **kwargs):
+        """Initialise the container with an empty internal dictionary."""
         self.infos = dict()
 
     def __setitem__(self, key, value):
+        """Set ``key`` in the internal dict and as an instance attribute."""
         self.infos[key] = value
         setattr(self, key, value)
 
     def __getitem__(self, key):
+        """Return the value associated with *key*."""
         try:
             return self.infos[key]
         except Exception:
             raise AttributeError
 
     def __contains__(self, key):
+        """Return ``True`` if *key* is present in the container."""
         return key in self.infos
 
     def set_time(self, t):
+        """Propagate *t* to all stored value objects that support ``set_time``."""
         for v in self.infos.values():
             try:
                 v.set_time(t)
@@ -63,31 +84,71 @@ class DictInfos:
 
 
 class DBCameraInfos(DictInfos):
+    """Dictionary of table-level information for a single camera telescope."""
+
     def __init__(self, tel, df=None, *args, **kwargs):
+        """Initialise with telescope ID and optional dataframe.
+
+        Parameters
+        ----------
+        tel : int
+            Telescope ID.
+        df : pd.DataFrame or None, optional
+            Associated data.
+        """
         super().__init__(*args, **kwargs)
         self.tel = tel
         self.df = df
 
 
 class DBTableInfos(DictInfos):
+    """Dictionary of column-level information for a single database table."""
+
     def __init__(self, table_name, df=None, *args, **kwargs):
+        """Initialise with table name and optional dataframe.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the database table.
+        df : pd.DataFrame or None, optional
+            Associated data.
+        """
         super().__init__(self, *args, **kwargs)
         self.table_name = table_name
         self.df = df
 
 
 class DBColumnInfos(DictInfos):
+    """Dictionary of information for a single database column."""
+
     def __init__(self, column_name, df=None, *args, **kwargs):
+        """Initialise with column name and optional dataframe.
+
+        Parameters
+        ----------
+        column_name : str
+            Name of the database column.
+        df : pd.DataFrame or None, optional
+            Associated data.
+        """
         super().__init__(self, *args, **kwargs)
         self.column_name = column_name
         self.df = df
 
 
 class CameraArray(np.ndarray):
+    """Subclass of :class:`~numpy.ndarray` carrying information about camera axes.
+
+    Tracks axes whose size matches the number of camera elements (modules
+    or pixels).
+    """
+
     _info_axis = None
     _nElements = -1
 
     def __new__(cls, a):
+        """Create a new ``CameraArray`` by viewing *a* as this subclass."""
         obj = np.asarray(a).view(cls)
         return obj
 
@@ -119,10 +180,12 @@ class CameraArray(np.ndarray):
 
     @property
     def nElements(self):
+        """Number of camera elements (modules or pixels) represented by this array."""
         return self._nElements
 
     @property
     def info_axis(self):
+        """Axis indices whose size equals ``nElements``, auto-guessed if needed."""
         self._guess_axis()
         return self._info_axis
 
@@ -134,6 +197,7 @@ class CameraArray(np.ndarray):
         return super().prod(a, **kwargs)
 
     def _guess_axis(self):
+        """Identify array axes whose size matches ``nElements`` and store them."""
         if self._info_axis is None:
             self._info_axis = list()
         if not self._info_axis:
@@ -148,6 +212,8 @@ class CameraArray(np.ndarray):
 
 
 class ModuleArray(CameraArray):
+    """Array with 265 elements, one per NectarCAM drawer (module)."""
+
     # _info_axis = list()
     _nElements = 265
 
@@ -178,6 +244,8 @@ class ModuleArray(CameraArray):
 
 
 class PixelArray(CameraArray):
+    """Array with 1855 elements, one per NectarCAM pixel."""
+
     # _info_axis = list()
     _nElements = 1855
 
@@ -198,7 +266,14 @@ class PixelArray(CameraArray):
 
 
 class DBCameraElementInfos:
+    """Time-dependent camera-element information with interpolation support.
+
+    Stores a dataframe of per-element values indexed by time and provides
+    interpolation to arbitrary query times.
+    """
+
     def __init__(self, name, orig_df, nElements=None, t_ref=None, verbose=False):
+        """Initialise with a *name*, the original DataFrame and number of elements."""
         self.name = name
         self.nElements = nElements
         self.df = self._reorganize_dataframe(orig_df)
@@ -213,6 +288,7 @@ class DBCameraElementInfos:
         self.table_times = self.df.index.to_numpy()
 
     def _interpolate_data(self, t):
+        """Interpolate stored data at time *t* (datetime-like or astropy time)."""
         dt = (pd.to_datetime(to_datetime(t)) - self.t_ref) / np.timedelta64(1, "s")
         return self.interpolator(dt)
 
@@ -238,23 +314,34 @@ class DBCameraElementInfos:
 
     @property
     def time(self):
+        """Current query time used for interpolation."""
         return self._current_time
 
     @time.setter
     def time(self, t):
+        """Set the current query time; resets interpolation state."""
         if self._current_time != t:
             self._current_time = t
             self.interpolation_done = False
 
     def set_time(self, t):
+        """Set the current evaluation time and reset the interpolation cache.
+
+        Parameters
+        ----------
+        t : float
+            The time value.
+        """
         self.time = t
 
     @property
     def times(self):
+        """All time-stamps stored in the internal dataframe."""
         return self.df.index.to_numpy()
 
     @property
     def datas(self):
+        """All data values stored in the internal dataframe (transposed)."""
         return self.df.to_numpy().T
 
     def _create_interpolator(self):
@@ -270,9 +357,23 @@ class DBCameraElementInfos:
         # for Akima1DInterpolator(x_interp,y_interp,axis=-1)
 
     def _define_t_ref(self):
+        """Return the earliest time-stamp in the dataframe as the reference time."""
         return self.df.index[0]
 
     def _reorganize_dataframe(self, orig_df):
+        """Convert a long-format dataframe into a wide-format time series.
+
+        Parameters
+        ----------
+        orig_df : pd.DataFrame
+            Input dataframe with columns ``drawer``, ``value`` and a
+            time-stamp index.
+
+        Returns
+        -------
+        pd.DataFrame
+            Re-organised dataframe with one column per drawer.
+        """
         # dataframe expected :
         # already filtered for the correct camera
         # expected column : drawer, value
@@ -317,10 +418,20 @@ class DBCameraElementInfos:
 
 
 class DBModuleInfos(DBCameraElementInfos):
+    """Time-dependent information for each of the 265 modules (drawers)."""
+
     def __init__(self, name, *args, **kwargs):
+        """Initialise with the module name.
+
+        Parameters
+        ----------
+        name : str
+            Module identifier.
+        """
         super().__init__(name=name, nElements=265, *args, **kwargs)
 
     def _get_pandas_element_id(self, row):
+        """Extract the module (drawer) index from a DataFrame row."""
         return int(row["drawer"])
 
     def at(self, t):
@@ -353,10 +464,14 @@ class DBModuleInfos(DBCameraElementInfos):
 
 
 class DBPixelInfos(DBCameraElementInfos):
+    """Time-dependent information for each of the 1855 pixels."""
+
     def __init__(self, *args, **kwargs):
+        """Initialise with 1855 pixel elements."""
         super().__init__(nElements=1855, *args, **kwargs)
 
     def _get_pandas_element_id(self, row):
+        """Compute the pixel index from ``drawer`` (module) and ``channel`` columns."""
         val = 7 * row["drawer"] + row["channel"]
         return int(val)
 
@@ -385,10 +500,14 @@ class DBPixelInfos(DBCameraElementInfos):
 
 
 class DBSimpleInfos(DBCameraElementInfos):
+    """Time-dependent information for a single camera-level scalar value."""
+
     def __init__(self, *args, **kwargs):
+        """Initialise with a single element."""
         super().__init__(nElements=1, *args, **kwargs)
 
     def _get_pandas_element_id(self, row):
+        """Always return 0 since there is a single camera-level element."""
         return 0
 
     def at(self, t):
@@ -409,11 +528,39 @@ class DBSimpleInfos(DBCameraElementInfos):
 
     @property
     def datas(self):
+        """All stored data as a 1-D array (single camera-level value)."""
         return super().datas[0]  # self.df.to_numpy().T
 
 
 class SQLiteDB:
+    """Interface to one or more SQLite database files containing camera monitoring data.
+
+    Parameters
+    ----------
+    dbfilename : str or list of str
+        Path (or list of paths) to SQLite database files.
+    tmin : datetime-like, optional
+        Minimum time (UTC) for selecting entries.
+    tmax : datetime-like, optional
+        Maximum time (UTC) for selecting entries.
+    verbose : bool, optional
+        Enable verbose logging.
+    """
+
     def __init__(self, dbfilename, tmin=None, tmax=None, verbose=False, **kwargs):
+        """Initialise the SQLite database interface.
+
+        Parameters
+        ----------
+        dbfilename : str or list of str
+            Path (or list of paths) to SQLite database files.
+        tmin : datetime-like, optional
+            Minimum time (UTC) for selecting entries.
+        tmax : datetime-like, optional
+            Maximum time (UTC) for selecting entries.
+        verbose : bool, optional
+            Enable verbose logging.
+        """
         self.dbfilenames = set()
         self.dbs = dict()
         self.table_infos = dict()
@@ -424,10 +571,12 @@ class SQLiteDB:
 
     @property
     def tmin(self):
+        """Minimum time (UTC) used for selecting entries from the database."""
         return self._tmin
 
     @property
     def tmax(self):
+        """Maximum time (UTC) used for selecting entries from the database."""
         return self._tmax
 
     @tmin.setter
@@ -468,13 +617,16 @@ class SQLiteDB:
         self._load_infos()
 
     def get_table_names(self):
+        """Return the set of table names loaded from the SQLite files."""
         return {t for t in self.table_infos.keys()}
 
     def get_available_tables(self):
+        """Alias for :meth:`get_table_names`."""
         return self.get_table_names()
 
     @staticmethod
     def get_tables_infos_from_sqlitefile(db):
+        """Return ``{table_name: {column_names}}`` for every table in *db*."""
         cursor = db.cursor()
         cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
@@ -488,12 +640,16 @@ class SQLiteDB:
 
     @staticmethod
     def _merge_dict(dict_merge, dict_input):
+        """Merge *dict_input* into *dict_merge*, combining values as sets."""
         for k, v in dict_input.items():
             if k not in dict_merge:
                 dict_merge[k] = set()
             dict_merge[k] |= v
 
     def _get_sqlfile_connection(self, dbfilename):
+        """
+        Open a read-only SQLite connection to *dbfilename*, or ``None`` on failure.
+        """
         db = None
         try:
             sqlite3filename = f"file:{dbfilename}?mode=ro"
@@ -508,6 +664,7 @@ class SQLiteDB:
         return db
 
     def _load_infos(self):
+        """(Re)load table information from all registered SQLite files."""
         # clear infos and sql db as we'll read everything again
         self.table_infos.clear()
         self.dbs.clear()
@@ -525,6 +682,10 @@ class SQLiteDB:
                     log.error(err)
 
     def _aggregate_dataframes(self, df, df_list):
+        """
+        Concatenate *df_list* into *df*, or return the concatenation if *df* is
+        ``None``.
+        """
         if df is None:
             df = pd.concat(df_list)
         else:
@@ -601,6 +762,7 @@ class SQLiteDB:
         return df
 
     def show_available_infos(self):
+        """Log all table names and their columns known from the SQLite files."""
         for table_name, table_info in sorted(self.table_infos.items()):
             log.info(f"Table [{table_name}]:")
             for info in sorted(table_info):
@@ -608,7 +770,20 @@ class SQLiteDB:
 
 
 class DBInfos(DictInfos):
+    """High-level interface to NectarCAM monitoring database information.
+
+    Discovers SQLite files for a given run or time window, loads table
+    metadata, and organises time-dependent information per camera.
+    """
+
     def __init__(self, verbose=False, *args, **kwargs):
+        """Initialise the database information interface.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Enable verbose logging. Passed through to :class:`SQLiteDB`.
+        """
         super().__init__(*args, **kwargs)
         self.tel = dict()
         self._current_time = None
@@ -618,6 +793,20 @@ class DBInfos(DictInfos):
 
     @staticmethod
     def init_from_run(run, path=None, dbpath=None, verbose=False):
+        """Create a :class:`DBInfos` instance from a run number.
+
+        Parameters
+        ----------
+        run : int
+            Run number.
+        path : str or None, optional
+            Path to the run data files.
+        dbpath : str or None, optional
+            Path to the SQLite database files.
+        verbose : bool, optional
+            Enable verbose logging.
+        """
+        # print(dir())
         # print(dir())
         # if "GetFirstLastEventTime" not in dir():
         #    raise NameError("GetFirstLastEvent is not defined.
@@ -636,6 +825,19 @@ class DBInfos(DictInfos):
 
     @staticmethod
     def init_from_time(begin_time, end_time, dbpath=None, verbose=False):
+        """Create a :class:`DBInfos` instance from a time window.
+
+        Parameters
+        ----------
+        begin_time : datetime-like
+            Start time (UTC).
+        end_time : datetime-like
+            End time (UTC).
+        dbpath : str or None, optional
+            Path to the SQLite database files.
+        verbose : bool, optional
+            Enable verbose logging.
+        """
         begin_time = to_datetime(begin_time)
         end_time = to_datetime(end_time)
         t = GetDAQTimeFromTime(begin_time)
@@ -673,12 +875,17 @@ class DBInfos(DictInfos):
         return db_infos
 
     def get_available_tables(self):
+        """Return the set of table names available in the SQLite files."""
         return self.db.get_available_tables()
 
     def show_available_infos(self):
+        """Log all available table names and their columns."""
         self.db.show_available_infos()
 
     def set_time(self, t):
+        """
+        Set the current query time and propagate it to all loaded information objects.
+        """
         t = to_datetime(t)
         super().set_time(t)
         for v in self.tel.values():
@@ -688,11 +895,13 @@ class DBInfos(DictInfos):
                 pass
 
     def show_available_tables(self):
+        """Log all available table names."""
         log.info("Available tables:")
         for t in self.get_available_tables():
             log.info(f"\t{t}")
 
     def show_loaded_infos(self):
+        """Log all loaded information (tables and columns) per camera."""
         log.info("Loaded infos:")
         for k, v in self.infos.items():
             log.info(f"\t{k}")
@@ -707,6 +916,7 @@ class DBInfos(DictInfos):
                     log.info(f"\t\t- {elem}")
 
     def _fix_specific_colname(self, df, table_name):
+        """Apply table-specific column-name fixes (placeholder for known tables)."""
         if table_name == "monitoring_dtc_channels":
             pass
 
@@ -714,12 +924,16 @@ class DBInfos(DictInfos):
     # display(df)
 
     def _fixcolname(self, df):
+        """
+        Normalise column names: ``camera_id`` → ``camera``, ``pixel`` → ``channel``.
+        """
         df.rename(columns={"camera_id": "camera", "pixel": "channel"}, inplace=True)
 
     # def _fixtime(self,df):
     #    df['time'] = pd.to_datetime(df['time'])
 
     def _get_info_flag(self, df):
+        """Determine the :class:`DBInfosFlag` for *df* based on its columns."""
         has_camera = "camera" in df or "camera_id" in df
         has_drawer = "drawer" in df
         has_pixel = "channel" in df or "pixel" in df
@@ -735,6 +949,13 @@ class DBInfos(DictInfos):
         return flag
 
     def connect(self, *args):
+        """Load one or more tables from the database into memory.
+
+        Parameters
+        ----------
+        *args : str
+            Table names to load. Pass ``"*"`` or nothing to load all available tables.
+        """
         # args example "monitoring_channel_currents"
         tables_to_load = set()
         available_tables = self.get_available_tables()
@@ -840,6 +1061,7 @@ class DBInfos(DictInfos):
                 print(f"Problem Loading Table [{table_name}] --> Error: {err}")
 
     def Connect(self, *args):
+        """Alias for :meth:`connect` (provided for backward compatibility)."""
         return self.connect(self, *args)
 
 

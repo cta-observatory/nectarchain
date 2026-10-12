@@ -42,6 +42,13 @@ logging.basicConfig(
 # CLI argument parser
 # ============================================================
 def parse_server_cli():
+    """Parse command-line arguments for the RTA Bokeh application.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments with fields ``test_interface`` and ``output_dir``.
+    """
     parser = argparse.ArgumentParser(
         prog="bokeh_app", description="RTA NectarCAM Bokeh interface"
     )
@@ -117,7 +124,8 @@ def create_app(doc):
         for filename in json_dict["EXAMPLE_DATA_FILES"]:
             filepath = ctapipe.utils.get_dataset_path(
                 filename,
-                url="http://cccta-dataserver.in2p3.fr/data/ctapipe-test-data/v1.1.0",
+                url="https://minio-cta.zeuthen.desy.de/dpps-testdata-public/data/"
+                "nectarcam-test-data",
             )
             shutil.move(filepath, os.path.join(RESOURCE_PATH, filename))
 

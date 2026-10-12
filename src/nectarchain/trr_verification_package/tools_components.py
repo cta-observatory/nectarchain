@@ -65,6 +65,27 @@ class LinearityTestTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
+        """Compute mean charge, standard deviation, and standard error for
+        both high-gain and low-gain channels.
+
+        Parameters
+        ----------
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        mean_charge : list of float
+            Mean charge per channel [HG, LG] in photoelectrons.
+        std_charge : list of float
+            Mean pixel standard deviation per channel.
+        std_err : list of float
+            Standard deviation of pixel standard deviations per channel.
+        npixels : int
+            Number of pixels.
+        """
         output = super().finish(return_output_component=True, *args, **kwargs)
 
         charge_container = output[0].containers[EventType.FLATFIELD]
@@ -117,6 +138,32 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
+        """Compute charge resolution metrics: mean charge, standard deviation,
+        standard error, and resolution for both gain channels.
+
+        Parameters
+        ----------
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Keyword arguments; expects ``gain_file`` for per-pixel ADC-to-PE
+            conversion.
+
+        Returns
+        -------
+        mean_charge : list of float
+            Mean charge per channel [HG, LG] in photoelectrons.
+        std_charge : list of float
+            Mean pixel standard deviation per channel.
+        std_err : list of float
+            Standard deviation of pixel standard deviations per channel.
+        npixels : int
+            Number of pixels.
+        mean_resolution : list of float
+            Mean charge resolution per channel.
+        ratio_hglg : float
+            Ratio of high-gain to low-gain mean charges.
+        """
         output = super().finish(return_output_component=True, *args, **kwargs)
         # print("output ",output,args,kwargs,kwargs["gain_file"])
 
@@ -254,6 +301,28 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, bootstrap=False, *args, **kwargs):
+        """Compute the timing resolution (RMS of ToM) and mean charge per
+        photoelectron.
+
+        Parameters
+        ----------
+        bootstrap : bool, optional
+            If True, use bootstrapping to estimate the RMS error; otherwise
+            use a weighted histogram approach. Defaults to False.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        rms_no_fit : numpy.ndarray
+            RMS of the time-of-maximum per pixel.
+        rms_no_fit_err : numpy.ndarray
+            Uncertainty on the RMS per pixel.
+        mean_charge_pe : float
+            Mean charge in photoelectrons across all events and pixels.
+        """
         output = super().finish(return_output_component=True, *args, **kwargs)
 
         # Default runs use a laser source and apply a subarray trigger
@@ -385,6 +454,32 @@ class ToMPairsTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
+        """Process ToM (time-of-maximum) pairs with transit-time correction
+        and compute pairwise time differences.
+
+        Parameters
+        ----------
+        *args : tuple
+            The first positional argument is expected to be the path to a CSV
+            file containing the transit-time correction lookup table.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        tom_no_fit : numpy.ndarray
+            Uncorrected ToM values.
+        tom_corrected : numpy.ndarray
+            Transit-time corrected ToM values.
+        pixels_id : numpy.ndarray
+            Pixel IDs.
+        dt_no_correction : numpy.ndarray
+            Pairwise ToM differences without correction.
+        dt_corrected : numpy.ndarray
+            Pairwise ToM differences with correction.
+        pixel_pairs : list of tuple
+            List of (i, j) pixel pair indices.
+        """
         output = super().finish(return_output_component=True, *args[1:], **kwargs)
 
         tt_path = args[0]
@@ -465,6 +560,34 @@ class DeadtimeTestTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
+        """Compute deadtime metrics: UCTS timestamps, trigger rates, and
+        deadtime percentage.
+
+        Parameters
+        ----------
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Keyword arguments; expects ``id`` (source identifier) and
+            ``test_type`` (either ``"trr"`` or ``"av"``).
+
+        Returns
+        -------
+        ucts_timestamps : list
+            UCTS timestamps for selected events.
+        ucts_deltat : list
+            Time differences between consecutive UCTS timestamps.
+        event_counter : list
+            UCTS event counter values.
+        busy_counter : list
+            UCTS busy counter values.
+        collected_trigger_rate : astropy.units.Quantity
+            Collected trigger rate.
+        time_tot : astropy.units.Quantity
+            Total acquisition time.
+        deadtime_pc : float
+            Deadtime percentage.
+        """
         id = kwargs.pop("id")
         test_type = kwargs.pop("test_type")
         output = super().finish(return_output_component=True, *args, **kwargs)
@@ -534,6 +657,29 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
     ).tag(config=True)
 
     def finish(self, *args, **kwargs):
+        """Compute the trigger-timing RMS from UCTS timestamps of selected
+        good events.
+
+        Parameters
+        ----------
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        ucts_timestamps : numpy.ndarray
+            UCTS timestamps of good events.
+        delta_t : numpy.ndarray
+            Time differences between consecutive triggers.
+        rms : float
+            Weighted RMS of the trigger time differences.
+        err : float
+            Uncertainty on the RMS.
+        charge_per_run : float
+            Mean charge per event in photoelectrons.
+        """
         output = super().finish(return_output_component=True, *args, **kwargs)
 
         # Default runs use a laser source and apply a subarray trigger

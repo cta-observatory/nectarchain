@@ -10,7 +10,22 @@ __all__ = ["MeanWaveFormsHighLowGain"]
 
 
 class MeanWaveFormsHighLowGain(DQMSummary):
+    """Accumulate and plot mean waveforms for physics and pedestal events.
+
+    Averages waveforms over events and pixels, separated by event
+    type (physics vs. pedestal) and gain channel.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialize mean waveform processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain index (0 for high gain, 1 for low gain).
+        r0 : bool, optional
+            Whether to use r0 waveforms (default False).
+        """
         self.k = gaink
         self.Pix = None
         self.Samp = None
@@ -65,6 +80,17 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         self.wf_list_plot = list(np.arange(1, Samp + 1))
 
     def process_event(self, evt, noped):
+        """Accumulate waveform samples for the current event.
+
+        Separates physics and pedestal events into distinct buffers.
+
+        Parameters
+        ----------
+        evt : ctapipe.io.DataEventContainer
+            The event container.
+        noped : bool
+            Whether to subtract pedestal (unused here).
+        """
         if (
             evt.trigger.event_type == EventType.SKY_PEDESTAL
             or evt.trigger.event_type == EventType.DARK_PEDESTAL
@@ -121,6 +147,21 @@ class MeanWaveFormsHighLowGain(DQMSummary):
         return self.MeanWaveForms_Results_Dict
 
     def plot_results(self, name, fig_path):
+        """Generate individual and combined mean waveform plots.
+
+        Parameters
+        ----------
+        name : str
+            Run name prefix for output filenames.
+        fig_path : str
+            Directory path for saving figure files.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping plot keys to
+            matplotlib figures and their save paths.
+        """
         wf_list = np.array(self.wf_list_plot)
 
         colors = ["blue", "red"]

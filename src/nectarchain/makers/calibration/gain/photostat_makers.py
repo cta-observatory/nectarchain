@@ -22,6 +22,14 @@ __all__ = ["PhotoStatisticNectarCAMCalibrationTool"]
 
 
 class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
+    """Gain calibration tool using the photo-statistic method.
+
+    Estimates the gain from the statistical fluctuations of the signal
+    using separate flat-field and pedestal runs. The flat-field run number
+    is passed as ``run_number`` and the pedestal run number as
+    ``Ped_run_number``.
+    """
+
     # TO DO : IMPLEMENT a MOTHER PHOTOSTAT CLASS WITH ONLY 1 RUN WITH FF AND PEDESTAL
     # INTERLEAVED.
 
@@ -55,9 +63,23 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     ).tag(config=False)
 
     def __init__(self, *args, **kwargs):
+        """Initialize the photo-statistic calibration tool.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent initializer.
+        **kwargs : dict
+            Keyword arguments passed to the parent initializer.
+        """
         super().__init__(*args, **kwargs)
 
     def _init_output_path(self):
+        """Set the output path for photo-statistic calibration results.
+
+        The filename encodes the flat-field and pedestal run numbers,
+        extraction method, and optionally the maximum number of events.
+        """
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
             extractor_kwargs=self.extractor_kwargs,
@@ -79,6 +101,14 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         )
 
     def _load_eventsource(self, FF_run=True):
+        """Load the event source for either the flat-field or pedestal run.
+
+        Parameters
+        ----------
+        FF_run : bool, optional
+            If True (default), load the flat-field run event source.
+            If False, load the pedestal run event source.
+        """
         if FF_run:
             self.log.debug("loading FF event source")
             self.event_source = self.enter_context(
@@ -96,6 +126,21 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         *args,
         **kwargs,
     ):
+        """Run the photo-statistic calibration.
+
+        Processes both the flat-field and pedestal runs. Pre-computed
+        charges are loaded from disk when available; otherwise events are
+        processed sequentially for each run.
+
+        Parameters
+        ----------
+        n_events : int, optional
+            Number of events to process (default is ``np.inf``).
+        *args : tuple
+            Additional positional arguments passed to the parent start.
+        **kwargs : dict
+            Additional keyword arguments passed to the parent start.
+        """
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
             extractor_kwargs=self.extractor_kwargs,
@@ -213,4 +258,15 @@ class PhotoStatisticNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     )
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
+        """Write a container to the output file.
+
+        Delegates to the parent writer after applying the component index.
+
+        Parameters
+        ----------
+        container : Container
+            The ctapipe container to write.
+        index_component : int, optional
+            Index of the component that produced the container (default is 0).
+        """
         super()._write_container(container=container, index_component=index_component)

@@ -115,6 +115,24 @@ def make_histo(charge, all_range, mask_broken_pix, _mask, hist_ma_data):
 
 
 class ChargesComponent(ArrayDataComponent):
+    """Component for extracting and managing charges from NectarCAM waveforms.
+
+    Handles charge extraction from high-gain and low-gain waveforms using
+    configurable extraction methods, pedestal subtraction, and storage of
+    charges, peaks, and associated event data per trigger type.
+
+    Attributes
+    ----------
+    method : Unicode
+        The charge extraction method name.
+    extractor_kwargs : Dict
+        Additional keyword arguments for the charge extractor.
+    pedestal_file : Path
+        Path to an HDF5 file with pedestal calibration coefficients.
+    use_default_pedestal : Bool
+        Whether to fall back to default pedestal values if no file is given.
+    """
+
     method = Unicode(
         default_value="FullWaveformSum",
         help="the charge extraction method",
@@ -140,6 +158,21 @@ class ChargesComponent(ArrayDataComponent):
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """Initialize the ChargesComponent.
+
+        Parameters
+        ----------
+        subarray : SubarrayDescription
+            The subarray description.
+        config : dict or None, optional
+            Configuration dictionary.
+        parent : Component or None, optional
+            Parent component.
+        *args
+            Additional positional arguments passed to the parent.
+        **kwargs
+            Additional keyword arguments passed to the parent.
+        """
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
@@ -152,6 +185,12 @@ class ChargesComponent(ArrayDataComponent):
         self.__peak_lg = {}
 
     def _init_pedestal_arrays(self):
+        """Load pedestal arrays from file or fall back to default values.
+
+        Attempts to load high-gain and low-gain pedestal mean values from the
+        configured ``pedestal_file``. If loading fails and ``use_default_pedestal``
+        is ``True``, sets all pedestals to ``PEDESTAL_DEFAULT``.
+        """
         self.__pedestal_hg = None
         self.__pedestal_lg = None
         pedestal_file_loaded = False
@@ -218,6 +257,21 @@ class ChargesComponent(ArrayDataComponent):
         *args,
         **kwargs,
     ):
+        """Process an event and extract charges from its waveforms.
+
+        Retrieves waveforms via the parent class, subtracts pedestals, applies
+        the configured charge extraction method, and stores the resulting
+        charges and peak positions for both high-gain and low-gain channels.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event data container.
+        *args
+            Additional positional arguments passed to the parent.
+        **kwargs
+            Additional keyword arguments passed to the parent.
+        """
         wfs_hg_tmp, wfs_lg_tmp = super(ChargesComponent, self).__call__(
             event=event, return_wfs=True, *args, **kwargs
         )
@@ -253,6 +307,21 @@ class ChargesComponent(ArrayDataComponent):
 
     @staticmethod
     def _get_extractor_kwargs_from_method_and_kwargs(method: str, kwargs: dict):
+        """Extract keyword arguments relevant to a given charge extraction method.
+
+        Parameters
+        ----------
+        method : str
+            The name of the charge extraction method.
+        kwargs : dict
+            Dictionary of all available keyword arguments.
+
+        Returns
+        -------
+        extractor_kwargs : dict
+            Subset of ``kwargs`` containing only the traits owned by the
+            specified extraction method.
+        """
         extractor_kwargs = {}
         for key in eval(method).class_own_traits().keys():
             if key in kwargs.keys():
@@ -526,6 +595,23 @@ class ChargesComponent(ArrayDataComponent):
     def _create_from_waveforms_looping_eventType(
         waveformsContainers: WaveformsContainers, **kwargs
     ):
+        """Create ChargesContainers for each event type from waveforms.
+
+        Loops over all trigger types present in the input waveforms and
+        delegates to ``create_from_waveforms`` for each one.
+
+        Parameters
+        ----------
+        waveformsContainers : WaveformsContainers
+            Container holding waveforms for each trigger type.
+        **kwargs
+            Additional keyword arguments forwarded to ``create_from_waveforms``.
+
+        Returns
+        -------
+        chargesContainers : ChargesContainers
+            Container holding computed charges for each trigger type.
+        """
         chargesContainers = ChargesContainers()
         for key in waveformsContainers.containers.keys():
             chargesContainers.containers[key] = ChargesComponent.create_from_waveforms(

@@ -15,6 +15,12 @@ __all__ = ["FlatfieldNectarCAMCalibrationTool"]
 
 
 class FlatfieldNectarCAMCalibrationTool(NectarCAMCalibrationTool):
+    """Calibration tool for flat-field data processing.
+
+    Computes flat-field coefficients and relative gains from NectarCAM
+    flat-field runs.
+    """
+
     name = "FlatfieldNectarCAMCalibrationTool"
 
     componentsList = ComponentNameList(
@@ -24,6 +30,11 @@ class FlatfieldNectarCAMCalibrationTool(NectarCAMCalibrationTool):
     ).tag(config=True)
 
     def _init_output_path(self):
+        """Set the output path for flat-field calibration results.
+
+        The filename includes the run number and optionally the maximum
+        number of events.
+        """
         if self.max_events is None:
             filename = f"{self.name}_run{self.run_number}.h5"
         else:

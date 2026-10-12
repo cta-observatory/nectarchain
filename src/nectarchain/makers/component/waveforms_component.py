@@ -21,10 +21,36 @@ __all__ = ["WaveformsComponent"]
 
 
 class WaveformsComponent(ArrayDataComponent):
+    """Component for extracting and storing waveforms from NectarCAM data.
+
+    Organises waveforms by trigger type into separate containers for high-gain
+    and low-gain channels.
+
+    Parameters
+    ----------
+    subarray : SubarrayDescription
+        The subarray description.
+    config : ctapipe.core.Config or None, optional
+        Configuration instance.
+    parent : Component or None, optional
+        Parent component.
+    """
+
     SubComponents = copy.deepcopy(ArrayDataComponent.SubComponents)
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """Initialise the waveforms component.
+
+        Parameters
+        ----------
+        subarray : SubarrayDescription
+            The subarray description.
+        config : ctapipe.core.Config or None, optional
+            Configuration instance.
+        parent : Component or None, optional
+            Parent component.
+        """
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )

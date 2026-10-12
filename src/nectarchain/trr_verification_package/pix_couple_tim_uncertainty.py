@@ -34,7 +34,8 @@ TRANSIT_TIME_CORRECTIONS = get_dataset_path(
     filename=(
         "hv_pmt_tom_correction_laser_measurement_per_pixel_fit_sqrt_hv_newmethod" ".csv"
     ),
-    url="http://cccta-dataserver.in2p3.fr/data/ctapipe-test-data/v1.1.0",
+    url="https://minio-cta.zeuthen.desy.de/dpps-testdata-public/data/"
+    "nectarcam-test-data",
 )
 
 

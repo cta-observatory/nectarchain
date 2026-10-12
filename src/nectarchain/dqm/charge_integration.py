@@ -25,7 +25,22 @@ __all__ = ["ChargeIntegrationHighLowGain"]
 
 
 class ChargeIntegrationHighLowGain(DQMSummary):
+    """Integrate charge from event waveforms using a configurable extractor.
+
+    Accumulates charge and peak-position statistics for both physics
+    and sky-pedestal events, separated by gain channel.
+    """
+
     def __init__(self, gaink, r0=False):
+        """Initialize charge integration processor.
+
+        Parameters
+        ----------
+        gaink : int
+            Gain index (0 for high gain, 1 for low gain).
+        r0 : bool, optional
+            Whether to use r0 waveforms (default False).
+        """
         self.k = gaink
         self.gain_c = "High" if gaink == 0 else "Low"
 
@@ -56,6 +71,22 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         super().__init__(r0)
 
     def configure_for_run(self, path, Pix, Samp, Reader1, **charges_kwargs):
+        """Configure the charge extractor for a new run.
+
+        Parameters
+        ----------
+        path : str
+            Path to the input data file.
+        Pix : int
+            Number of pixels.
+        Samp : int
+            Number of waveform samples.
+        Reader1 : ctapipe_io_nectarcam.NectarCAMEventSource
+            Event reader providing subarray and camera geometry.
+        **charges_kwargs
+            Keyword arguments for charge extraction method and
+            extractor configuration (e.g. method, extractor_kwargs).
+        """
         # define number of pixels and samples
         self.Pix = Pix
         self.Samp = Samp
@@ -96,6 +127,19 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.integrator = GlobalPeakWindowSum(subarray, config=config)
 
     def process_event(self, evt, noped):
+        """Extract charge and peak position for a single event.
+
+        Separates physics and sky-pedestal events into distinct
+        accumulators.
+
+        Parameters
+        ----------
+        evt : ctapipe.io.DataEventContainer
+            The event container.
+        noped : bool
+            If True, subtract the pedestal level computed from the
+            first 20 samples of the waveform.
+        """
         self.pixels = evt.nectarcam.tel[self.tel_id].svc.pixel_ids
         self.pixelBADplot = evt.mon.tel[
             self.tel_id
@@ -187,6 +231,11 @@ class ChargeIntegrationHighLowGain(DQMSummary):
             self.ped_all.append(ped)
 
     def finish_run(self):
+        """Compute final charge and peak-position statistics.
+
+        Calculates average, median, std, and RMS over all accumulated
+        events for both physics and pedestal data.
+        """
         self.peakpos_all = np.array(self.peakpos_all, dtype=float)
         if self.peakpos_all.size:
             self.peakpos_all_stats = {
@@ -241,6 +290,15 @@ class ChargeIntegrationHighLowGain(DQMSummary):
                 }
 
     def get_results(self):
+        """Return the charge integration results dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping stat keys (e.g.
+            CHARGE-INTEGRATION-IMAGE-ALL-AVERAGE-HIGH-GAIN) to the corresponding
+            pixel-wise arrays.
+        """
         if self.counter_evt > 0:
             for k, v in self.image_all_stats.items():
                 self.ChargeInt_Results_Dict[
@@ -282,6 +340,23 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         return self.ChargeInt_Results_Dict
 
     def _plot_camera_image(self, image, title, text, filename, key, fig_path):
+        """Create and save a camera image plot for charge or peak data.
+
+        Parameters
+        ----------
+        image : ndarray
+            Pixel-wise data to display.
+        title : str
+            Plot title.
+        text : str
+            Label text for the colorbar axis.
+        filename : str
+            Output filename.
+        key : str
+            Dictionary key for storing the figure and path.
+        fig_path : str
+            Directory to save the figure file.
+        """
         fig, disp = plt.subplots()
         image[self.pixelBADplot[0]] = 0
         disp = CameraDisplay(geometry=self.camera)
@@ -296,6 +371,21 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         plt.close()
 
     def plot_results(self, name, fig_path):
+        """Generate all charge integration camera images and spectra.
+
+        Parameters
+        ----------
+        name : str
+            Run name prefix for output filenames.
+        fig_path : str
+            Directory path for saving figure files.
+
+        Returns
+        -------
+        tuple of dict
+            (figures_dict, filenames_dict) mapping plot keys to
+            matplotlib figures and their save paths.
+        """
         if self.counter_evt > 0:
             # Charge integration MEAN plot
             image = self.image_all_stats["average"]

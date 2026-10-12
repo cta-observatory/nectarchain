@@ -29,6 +29,12 @@ __all__ = [
 
 
 class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
+    """Gain calibration tool using the SPE-fit method at nominal voltage.
+
+    Fits single-photoelectron spectra from flat-field data acquired at
+    nominal operating voltage to determine the pixel-wise gain.
+    """
+
     name = "FlatFieldSPENominalNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -44,6 +50,19 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
     # ).tag(config=True)
 
     def __init__(self, *args, **kwargs):
+        """Initialize the SPE-fit calibration tool.
+
+        Checks whether previously computed charge files are available on
+        disk to avoid re-processing the same run. Falls back to reloading
+        events if no suitable file is found.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent initializer.
+        **kwargs : dict
+            Keyword arguments passed to the parent initializer.
+        """
         super().__init__(*args, **kwargs)
 
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
@@ -75,6 +94,11 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                 )
 
     def _init_output_path(self):
+        """Set the output path for SPE-fit calibration results.
+
+        The filename encodes run number, extraction method, extractor
+        keyword arguments, and optionally the maximum number of events.
+        """
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
             extractor_kwargs=self.extractor_kwargs,
@@ -106,6 +130,23 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
         *args,
         **kwargs,
     ):
+        """Run the SPE-fit calibration.
+
+        Attempts to load pre-computed charges from disk. If none are found
+        or ``reload_events`` is True, processes events through the event
+        loop.
+
+        Parameters
+        ----------
+        n_events : int, optional
+            Number of events to process (default is ``np.inf``).
+        restart_from_begining : bool, optional
+            If True, restart processing from the beginning (default is False).
+        *args : tuple
+            Additional positional arguments passed to the parent start.
+        **kwargs : dict
+            Additional keyword arguments passed to the parent start.
+        """
         str_extractor_kwargs = CtapipeExtractor.get_extractor_kwargs_str(
             method=self.method,
             extractor_kwargs=self.extractor_kwargs,
@@ -170,12 +211,29 @@ class FlatFieldSPENominalNectarCAMCalibrationTool(GainNectarCAMCalibrationTool):
                     )
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
+        """Write a container to the output file.
+
+        Delegates to the parent writer after applying the component index.
+
+        Parameters
+        ----------
+        container : Container
+            The ctapipe container to write.
+        index_component : int, optional
+            Index of the component that produced the container (default is 0).
+        """
         super()._write_container(container=container, index_component=index_component)
 
 
 class FlatFieldSPEHHVNectarCAMCalibrationTool(
     FlatFieldSPENominalNectarCAMCalibrationTool
 ):
+    """Gain calibration tool using the SPE-fit method at very-high voltage.
+
+    Extends the nominal-voltage SPE fit to data acquired at elevated
+    operating voltage.
+    """
+
     name = "FlatFieldSPEHHVNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -187,6 +245,12 @@ class FlatFieldSPEHHVNectarCAMCalibrationTool(
 class FlatFieldSPEHHVStdNectarCAMCalibrationTool(
     FlatFieldSPENominalNectarCAMCalibrationTool
 ):
+    """Gain calibration tool using the standard SPE-fit at very-high voltage.
+
+    Uses the standard (non-combined) SPE fitting approach on data acquired
+    at very-high operating voltage.
+    """
+
     name = "FlatFieldSPEHHVStdNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -198,6 +262,12 @@ class FlatFieldSPEHHVStdNectarCAMCalibrationTool(
 class FlatFieldSPENominalStdNectarCAMCalibrationTool(
     FlatFieldSPENominalNectarCAMCalibrationTool
 ):
+    """Gain calibration tool using the standard SPE-fit at nominal voltage.
+
+    Uses the standard (non-combined) SPE fitting approach on data acquired
+    at nominal operating voltage.
+    """
+
     name = "FlatFieldSPENominalStdNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -209,6 +279,12 @@ class FlatFieldSPENominalStdNectarCAMCalibrationTool(
 class FlatFieldSPECombinedStdNectarCAMCalibrationTool(
     FlatFieldSPENominalNectarCAMCalibrationTool
 ):
+    """Combined gain calibration tool using the standard SPE-fit.
+
+    Merges results from multiple SPE-fit runs (e.g. nominal and very-high
+    voltage) into a single calibration.
+    """
+
     name = "FlatFieldCombinedStdNectarCAM"
     componentsList = ComponentNameList(
         NectarCAMComponent,
@@ -217,6 +293,11 @@ class FlatFieldSPECombinedStdNectarCAMCalibrationTool(
     ).tag(config=True)
 
     def _init_output_path(self):
+        """Set the output path for the combined SPE-fit calibration.
+
+        The filename includes run numbers for both the nominal and
+        very-high voltage runs.
+        """
         for word in self.SPE_result.stem.split("_"):
             if "run" in word:
                 HHVrun = int(word.split("run")[-1])

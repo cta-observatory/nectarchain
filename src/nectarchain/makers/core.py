@@ -59,6 +59,15 @@ class BaseNectarCAMCalibrationTool(Tool):
 
     @default("provenance_log")
     def _default_provenance_log(self):
+        """Default provenance log file path.
+
+        Returns
+        -------
+        str
+            Path to the provenance log file, constructed from the
+            ``NECTARCHAIN_LOG`` environment variable (fallback: ``/tmp``),
+            the tool name, process ID, and current timestamp.
+        """
         return (
             f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/"
             f"{self.name}_{os.getpid()}_{datetime.now()}.provenance.log"
@@ -66,6 +75,15 @@ class BaseNectarCAMCalibrationTool(Tool):
 
     @default("log_file")
     def _default_log_file(self):
+        """Default log file path.
+
+        Returns
+        -------
+        str
+            Path to the log file, constructed from the ``NECTARCHAIN_LOG``
+            environment variable (fallback: ``/tmp``), the tool name,
+            process ID, and current timestamp.
+        """
         return (
             f"{os.environ.get('NECTARCHAIN_LOG', '/tmp')}/"
             f"{self.name}_{os.getpid()}_{datetime.now()}.log"
@@ -264,6 +282,21 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         return _cls
 
     def __init__(self, *args, **kwargs):
+        """Initialise the tool, validate the camera, and set the output path.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded to the parent ``Tool``.
+        **kwargs
+            Keyword arguments forwarded to the parent ``Tool``.
+
+        Raises
+        ------
+        TraitError
+            If ``camera`` is not in ``ALLOWED_CAMERAS`` and no
+            ``run_file`` is provided.
+        """
         super().__init__(*args, **kwargs)
 
         if self.camera not in ALLOWED_CAMERAS and self.run_file is None:
@@ -273,12 +306,27 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             self._init_output_path()
 
     def _init_output_path(self):
+        """Set the default output path from the environment and run number.
+
+        The path is built as
+        ``<NECTARCAMDATA>/runs/<tool_name>_run<run_number>.h5``,
+        falling back to ``/tmp`` when ``NECTARCAMDATA`` is not set.
+        """
         self.output_path = pathlib.Path(
             f"{os.environ.get('NECTARCAMDATA','/tmp')}/"
             f"runs/{self.name}_run{self.run_number}.h5"
         )
 
     def _load_eventsource(self, *args, **kwargs):
+        """Load the event source via :meth:`load_run` and register it as a context.
+
+        Parameters
+        ----------
+        *args
+            Forwarded to :meth:`load_run`.
+        **kwargs
+            Forwarded to :meth:`load_run`.
+        """
         self.log.debug("loading event source")
         self.event_source = self.enter_context(
             self.load_run(
@@ -291,6 +339,19 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         )
 
     def _get_provided_component_kwargs(self, componentName: str):
+        """Collect configurable-trait values for a component from the tool itself.
+
+        Parameters
+        ----------
+        componentName : str
+            Name of the component (as registered in the component registry).
+
+        Returns
+        -------
+        dict
+            Mapping of trait names to their current values on the tool
+            instance for traits that exist on both the component and the tool.
+        """
         class_name = ComponentUtils.get_class_name_from_ComponentName(componentName)
         component_kwargs = ComponentUtils.get_configurable_traits(class_name)
         output_component_kwargs = {}
@@ -300,6 +361,20 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         return output_component_kwargs
 
     def _init_writer(self, sliced: bool = False, slice_index: int = 0, group_name=None):
+        """Initialise (or re-initialise) the HDF5 table writer.
+
+        Parameters
+        ----------
+        sliced : bool, optional
+            If ``True``, open the file in append mode and write data to a
+            group named ``data_<slice_index>``.
+        slice_index : int, optional
+            Index of the current slice, used to name the output group when
+            *sliced* is ``True``.
+        group_name : str or None, optional
+            Explicit group name. If ``None``, a default is chosen based on
+            the *sliced* flag.
+        """
         if hasattr(self, "writer"):
             self.writer.close()
 
@@ -375,6 +450,26 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             raise err
 
     def setup(self, *args, **kwargs):
+        """Perform full setup of the tool before processing events.
+
+        Validates the run number, loads the event source, constructs the
+        processing components, initialises the HDF5 writer, and resets the
+        event counter.
+
+        Parameters
+        ----------
+        *args
+            Forwarded to :meth:`_setup_eventsource` and
+            :meth:`_setup_components`.
+        **kwargs
+            Forwarded to :meth:`_setup_eventsource` and
+            :meth:`_setup_components`.
+
+        Raises
+        ------
+        Exception
+            If ``run_number`` has not been set (i.e. equals -1).
+        """
         self.log.info("setup of the Tool")
         if self.run_number == -1:
             raise Exception("run_number need to be set up")
@@ -404,9 +499,31 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         # self.advanced = AdvancedComponent(parent=self)
 
     def _setup_eventsource(self, *args, **kwargs):
+        """Load the event source for processing.
+
+        Parameters
+        ----------
+        *args
+            Forwarded to :meth:`_load_eventsource`.
+        **kwargs
+            Forwarded to :meth:`_load_eventsource`.
+        """
         self._load_eventsource(*args, **kwargs)
 
     def _setup_components(self, *args, **kwargs):
+        """Instantiate all processing components listed in ``componentsList``.
+
+        Each component is created via :meth:`Component.from_name` using
+        the event source's subarray and any configurable traits that have
+        been exposed on the tool.
+
+        Parameters
+        ----------
+        *args
+            Forwarded to each component's constructor.
+        **kwargs
+            Forwarded to each component's constructor.
+        """
         self.log.info("setup of components")
         self.components = []
         for componentName in self.componentsList:
@@ -509,6 +626,24 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         return condition
 
     def finish(self, return_output_component=False, *args, **kwargs):
+        """Finish processing: finalise components, close the writer, and stop.
+
+        Parameters
+        ----------
+        return_output_component : bool, optional
+            If ``True``, return the outputs from the component ``finish``
+            calls.
+        *args
+            Forwarded to :meth:`_finish_components`.
+        **kwargs
+            Forwarded to :meth:`_finish_components`.
+
+        Returns
+        -------
+        list or None
+            List of component outputs when *return_output_component* is
+            ``True``, otherwise ``None``.
+        """
         self.log.info("finishing Tool")
 
         output = self._finish_components(*args, **kwargs)
@@ -520,6 +655,20 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
             return output
 
     def _finish_components(self, *args, **kwargs):
+        """Call ``finish`` on every component and write their outputs.
+
+        Parameters
+        ----------
+        *args
+            Forwarded to each component's ``finish`` method.
+        **kwargs
+            Forwarded to each component's ``finish`` method.
+
+        Returns
+        -------
+        list
+            List of outputs returned by each component's ``finish`` call.
+        """
         self.log.info("finishing components and writing to output file")
         output = []
         for component in self.components:
@@ -531,6 +680,23 @@ class EventsLoopNectarCAMCalibrationTool(BaseNectarCAMCalibrationTool):
         return output
 
     def _write_container(self, container: Container, index_component: int = 0) -> None:
+        """Write a component output container to the HDF5 file.
+
+        Parameters
+        ----------
+        container : Container
+            The container to write. Must be a :class:`NectarCAMContainer` or
+            a :class:`TriggerMapContainer`.
+        index_component : int, optional
+            Index of the component, appended to the table name for
+            disambiguation.
+
+        Raises
+        ------
+        TypeError
+            If *container* is neither a :class:`NectarCAMContainer` nor a
+            :class:`TriggerMapContainer`.
+        """
         try:
             container.validate()
             if isinstance(container, NectarCAMContainer):
@@ -632,6 +798,17 @@ class DelimiterLoopNectarCAMCalibrationTool(EventsLoopNectarCAMCalibrationTool):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialise the delimiter-loop calibration tool.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded to the parent
+            :class:`EventsLoopNectarCAMCalibrationTool`.
+        **kwargs
+            Keyword arguments forwarded to the parent
+            :class:`EventsLoopNectarCAMCalibrationTool`.
+        """
         super().__init__(*args, **kwargs)
 
     def split_run(

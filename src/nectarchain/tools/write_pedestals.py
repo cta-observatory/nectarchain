@@ -57,6 +57,12 @@ class PedestalHDF5Writer(Tool):
         self.group_name = None
 
     def setup(self):
+        """
+        Configure the event source, pedestal calculator, and output writer.
+
+        Initialises the EventSource, PedestalCalculator, and HDF5TableWriter
+        from the tool configuration.
+        """
         kwargs = dict(parent=self)
         self.eventsource = EventSource.from_config(**kwargs)
         self.pedestal = PedestalCalculator.from_name(self.calculator_product, **kwargs)
@@ -90,11 +96,19 @@ class PedestalHDF5Writer(Tool):
                 self.writer.write("pedestal", ped_data)
 
     def finish(self):
+        """
+        Register the output file with the provenance system and close the writer.
+        """
         Provenance().add_output_file(self.output_file, role="mon.tel.pedestal")
         self.writer.close()
 
 
 def main():
+    """
+    Entry point for the PedestalHDF5Writer tool.
+
+    Instantiates the tool and runs it via ``tool.run()``.
+    """
     exe = PedestalHDF5Writer()
     exe.run()
 

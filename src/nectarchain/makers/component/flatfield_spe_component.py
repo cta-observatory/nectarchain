@@ -29,6 +29,19 @@ __all__ = [
 
 
 class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
+    """Component for single-pixel SPE fitting using the nominal algorithm on flat-field
+    data.
+
+    Parameters
+    ----------
+    subarray : SubarrayDescription
+        The subarray description.
+    config : ctapipe.core.Config or None, optional
+        Configuration instance.
+    parent : Component or None, optional
+        Parent component.
+    """
+
     SPEfitalgorithm = Unicode(
         "SPEnominalalgorithm",
         help="The Spe fit method to be use",
@@ -82,8 +95,19 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
     # method",
     #                        ).tag(config = True)
 
-    # constructor
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs) -> None:
+        """Initialise the component, splitting kwargs between the charges component
+        and the SPE fit algorithm.
+
+        Parameters
+        ----------
+        subarray : SubarrayDescription
+            The subarray description.
+        config : ctapipe.core.Config or None, optional
+            Configuration instance.
+        parent : Component or None, optional
+            Parent component.
+        """
         chargesComponent_kwargs = {}
         self._SPEfitalgorithm_kwargs = {}
         other_kwargs = {}
@@ -115,9 +139,23 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
         self._chargesContainers = None
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """Process an event by extracting charges via the charges component.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event to process.
+        """
         self.chargesComponent(event=event, *args, **kwargs)
 
     def finish(self, *args, **kwargs):
+        """Finalise processing, merge charges containers, and run the SPE fit.
+
+        Returns
+        -------
+        SPEfitContainer or None
+            The SPE fit results, or None if the charges container was empty.
+        """
         is_empty = False
         if self._chargesContainers is None:
             self._chargesContainers = self.chargesComponent.finish(*args, **kwargs)
@@ -149,6 +187,9 @@ class FlatFieldSingleNominalSPENectarCAMComponent(GainNectarCAMComponent):
 class FlatFieldSingleNominalSPEStdNectarCAMComponent(
     FlatFieldSingleNominalSPENectarCAMComponent
 ):
+    """Component for single-pixel SPE fitting using the nominal standard algorithm
+    on flat-field data."""
+
     SPEfitalgorithm = Unicode(
         "SPEnominalStdalgorithm",
         help="The Spe fit method to be use",
@@ -166,6 +207,9 @@ class FlatFieldSingleNominalSPEStdNectarCAMComponent(
 class FlatFieldSingleHHVSPENectarCAMComponent(
     FlatFieldSingleNominalSPENectarCAMComponent
 ):
+    """Component for single-pixel SPE fitting using the HHV algorithm
+    on flat-field data."""
+
     SPEfitalgorithm = Unicode(
         "SPEHHValgorithm",
         help="The Spe fit method to be use",
@@ -183,6 +227,9 @@ class FlatFieldSingleHHVSPENectarCAMComponent(
 class FlatFieldSingleHHVSPEStdNectarCAMComponent(
     FlatFieldSingleNominalSPENectarCAMComponent
 ):
+    """Component for single-pixel SPE fitting using the HHV standard algorithm
+    on flat-field data."""
+
     SPEfitalgorithm = Unicode(
         "SPEHHVStdalgorithm",
         help="The Spe fit method to be use",
@@ -200,6 +247,9 @@ class FlatFieldSingleHHVSPEStdNectarCAMComponent(
 class FlatFieldCombinedSPEStdNectarCAMComponent(
     FlatFieldSingleNominalSPENectarCAMComponent
 ):
+    """Component for combined-pixel SPE fitting using the standard algorithm
+    on flat-field data."""
+
     SPEfitalgorithm = Unicode(
         "SPECombinedalgorithm",
         help="The Spe fit method to be use",
@@ -214,6 +264,17 @@ class FlatFieldCombinedSPEStdNectarCAMComponent(
     SubComponents.read_only = True
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs) -> None:
+        """Initialise the combined SPE component.
+
+        Parameters
+        ----------
+        subarray : SubarrayDescription
+            The subarray description.
+        config : ctapipe.core.Config or None, optional
+            Configuration instance.
+        parent : Component or None, optional
+            Parent component.
+        """
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )

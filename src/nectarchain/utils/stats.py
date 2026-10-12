@@ -48,6 +48,7 @@ class Stats:
         self._max = np.full(shape, -np.inf)
 
     def __str__(self):
+        """Return a formatted string of the current statistics."""
         infos = ""
         infos += f"mean: {self.mean}" + "\n"
         infos += f"std: {self.stddev}" + "\n"
@@ -58,53 +59,105 @@ class Stats:
         return infos
 
     def __repr__(self):
+        """Return the string representation of the statistics."""
         return self.__str__()
 
     def copy(self):
+        """Create a deep copy of this Stats object.
+
+        Returns
+        -------
+        Stats
+            A deep copy.
+        """
         return deepcopy(self)
 
     def __add__(self, other):
+        """Merge two Stats objects and return a new copy.
+
+        Parameters
+        ----------
+        other : Stats
+            Another Stats object to merge.
+
+        Returns
+        -------
+        Stats
+            The merged copy.
+        """
         r = self.copy()
         r.merge(other)
         return r
 
     def __iadd__(self, other):
+        """Merge another Stats object in-place.
+
+        Parameters
+        ----------
+        other : Stats
+            Another Stats object to merge.
+
+        Returns
+        -------
+        Stats
+            Self after merging.
+        """
         self.merge(other)
         return self
 
     @property
     def shape(self):
+        """tuple: Shape of the accumulator arrays."""
         return self._shape
 
     @property
     def count(self):
+        """np.ndarray: Number of samples per element."""
         return self._count
 
     @property
     def mean(self):
+        """np.ndarray: Mean value per element."""
         return self._m
 
     @property
     def variance(self):
+        """np.ndarray: Variance per element (sample variance, ddof=1)."""
         return self._getvars(ddof=1)
 
     @property
     def stddev(self):
+        """np.ndarray: Standard deviation per element (ddof=1)."""
         return np.sqrt(self._getvars(ddof=1))
 
     @property
     def std(self):
+        """np.ndarray: Alias for stddev."""
         return self.stddev
 
     @property
     def min(self):
+        """np.ndarray: Minimum value per element."""
         return self._min
 
     @property
     def max(self):
+        """np.ndarray: Maximum value per element."""
         return self._max
 
     def get_lowcount_mask(self, mincount=3):
+        """Get a boolean mask for elements with low sample counts.
+
+        Parameters
+        ----------
+        mincount : int, optional
+            Minimum required count.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean mask where count < mincount.
+        """
         return self._count < mincount
 
     def add(self, element, validmask=None):
@@ -169,6 +222,18 @@ class Stats:
         self._max = np.maximum(self._max, other._max)
 
     def _getvars(self, ddof):
+        """Compute variance using Welford's online algorithm.
+
+        Parameters
+        ----------
+        ddof : int
+            Delta degrees of freedom.
+
+        Returns
+        -------
+        np.ndarray
+            Variance array with low-count entries set to NaN.
+        """
         # with warnings.catch_warnings():
         #    warnings.simplefilter("ignore", category=RuntimeWarning)
         variance = self._s / (self._count - ddof)
@@ -183,6 +248,17 @@ class CameraStats(Stats):
     """
 
     def __init__(self, shape=(nc.N_GAINS, nc.N_PIXELS), *args, **kwargs):
+        """Initialize CameraStats.
+
+        Parameters
+        ----------
+        shape : tuple, optional
+            Shape of the accumulator. Defaults to (n_gains, n_pixels).
+        *args
+            Additional positional arguments passed to Stats.
+        **kwargs
+            Additional keyword arguments passed to Stats.
+        """
         super().__init__(shape, *args, **kwargs)
 
 
@@ -206,4 +282,15 @@ class CameraSampleStats(Stats):
     """
 
     def __init__(self, shape=(nc.N_GAINS, nc.N_PIXELS, nc.N_SAMPLES), *args, **kwargs):
+        """Initialize CameraSampleStats.
+
+        Parameters
+        ----------
+        shape : tuple, optional
+            Shape of the accumulator. Defaults to (n_gains, n_pixels, n_samples).
+        *args
+            Additional positional arguments passed to Stats.
+        **kwargs
+            Additional keyword arguments passed to Stats.
+        """
         super().__init__(shape, *args, **kwargs)

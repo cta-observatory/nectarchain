@@ -21,6 +21,18 @@ __all__ = ["PhotoStatisticNectarCAMComponent"]
 
 
 class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
+    """Component for photo-statistic gain estimation using flat-field and pedestal data.
+
+    Parameters
+    ----------
+    subarray : SubarrayDescription
+        The subarray description.
+    config : ctapipe.core.Config or None, optional
+        Configuration instance.
+    parent : Component or None, optional
+        Parent component.
+    """
+
     SPE_result = Path(
         help="the path of the SPE result container computed with very\
             high voltage data",
@@ -44,8 +56,19 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
         help="The pixels id where we want to perform the SPE fit",
     ).tag(config=True)
 
-    # constructor
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs) -> None:
+        """Initialise the component, splitting kwargs between the charges components
+        and the photo-statistic algorithm.
+
+        Parameters
+        ----------
+        subarray : SubarrayDescription
+            The subarray description.
+        config : ctapipe.core.Config or None, optional
+            Configuration instance.
+        parent : Component or None, optional
+            Parent component.
+        """
         chargesComponent_kwargs = {}
         self._PhotoStatAlgorithm_kwargs = {}
         other_kwargs = {}
@@ -93,6 +116,14 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
         )
 
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """Process an event, routing it to the flat-field or pedestal charges component
+        based on the event type.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event to process.
+        """
         if event.trigger.event_type == EventType.FLATFIELD:
             self.FF_chargesComponent(event=event, *args, **kwargs)
         elif event.trigger.event_type in [
@@ -108,6 +139,14 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
             )
 
     def finish(self, *args, **kwargs):
+        """Finalise processing, merge charges containers, and run the photo-statistic
+        algorithm.
+
+        Returns
+        -------
+        PhotostatContainer
+            The photo-statistic results.
+        """
         if self._FF_chargesContainers is None:
             self._FF_chargesContainers = self.FF_chargesComponent.finish(
                 *args, **kwargs
@@ -136,4 +175,12 @@ class PhotoStatisticNectarCAMComponent(GainNectarCAMComponent):
 
     @property
     def coefCharge_FF_Ped(self):
+        """The coefficient relating flat-field and pedestal charges, defined as
+        the ratio of the extraction window width to the number of samples.
+
+        Returns
+        -------
+        float
+            The coefficient.
+        """
         return copy.deepcopy(self.__coefCharge_FF_Ped)

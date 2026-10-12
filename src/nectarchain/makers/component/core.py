@@ -25,6 +25,13 @@ __all__ = [
 
 
 def get_valid_component():
+    """Returns all non-abstract subclasses of NectarCAMComponent.
+
+    Returns
+    -------
+    list
+        A list of non-abstract NectarCAMComponent subclasses.
+    """
     return NectarCAMComponent.non_abstract_subclasses()
 
 
@@ -42,6 +49,26 @@ class NectarCAMComponent(TelescopeComponent):
     ).tag(config=True)
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """Initializes the NectarCAMComponent.
+
+        Parameters
+        ----------
+        subarray : ctapipe.core.SubarrayDescription
+            The subarray description. Must contain exactly one telescope.
+        config : ctapipe.core.Config, optional
+            Configuration object.
+        parent : Component, optional
+            Parent component.
+        *args
+            Additional positional arguments forwarded to TelescopeComponent.
+        **kwargs
+            Additional keyword arguments forwarded to TelescopeComponent.
+
+        Raises
+        ------
+        ValueError
+            If the subarray contains more than one telescope.
+        """
         if len(subarray.tel_ids) != 1:
             msg = "Subarray with more than one telescope is not supported"
             log.error(msg)
@@ -58,52 +85,148 @@ class NectarCAMComponent(TelescopeComponent):
 
     @property
     def tel_id(self):
+        """Returns the telescope ID.
+
+        Returns
+        -------
+        int
+            A deep copy of the telescope ID.
+        """
         return copy.deepcopy(self.__tel_id)
 
     @property
     def camera_name(self):
+        """Returns the camera name.
+
+        Returns
+        -------
+        str
+            A deep copy of the camera name.
+        """
         return copy.deepcopy(self.__camera_name)
 
     @property
     def camera(self):
+        """Returns the camera description.
+
+        Returns
+        -------
+        ctapipe.instrument.CameraDescription
+            A deep copy of the camera description.
+        """
         return copy.deepcopy(self.__camera)
 
     @abstractmethod
     def __call__(self, event: NectarCAMDataContainer, *args, **kwargs):
+        """Process an event. Must be implemented by subclasses.
+
+        Parameters
+        ----------
+        event : NectarCAMDataContainer
+            The event to process.
+        *args
+            Additional positional arguments.
+        **kwargs
+            Additional keyword arguments.
+        """
         pass
 
     @property
     def _pixels_id(self):
+        """Returns the internal pixel IDs array (no copy).
+
+        Returns
+        -------
+        np.ndarray
+            The pixel IDs array.
+        """
         return self.__pixels_id
 
     @property
     def pixels_id(self):
+        """Returns a deep copy of the pixel IDs array.
+
+        Returns
+        -------
+        np.ndarray
+            A deep copy of the pixel IDs array.
+        """
         return copy.deepcopy(self.__pixels_id)
 
     @property
     def _run_number(self):
+        """Returns the internal run number (no copy).
+
+        Returns
+        -------
+        int
+            The run number.
+        """
         return self.__run_number
 
     @property
     def run_number(self):
+        """Returns a deep copy of the run number.
+
+        Returns
+        -------
+        int
+            A deep copy of the run number.
+        """
         return copy.deepcopy(self.__run_number)
 
     @property
     def _npixels(self):
+        """Returns the internal number of pixels (no copy).
+
+        Returns
+        -------
+        int
+            The number of pixels.
+        """
         return self.__npixels
 
     @property
     def npixels(self):
+        """Returns a deep copy of the number of pixels.
+
+        Returns
+        -------
+        int
+            A deep copy of the number of pixels.
+        """
         return copy.deepcopy(self.__npixels)
 
 
 class ArrayDataComponent(NectarCAMComponent):
+    """A NectarCAMComponent that accumulates event data into arrays.
+
+    Stores per-trigger-type data such as event IDs, timestamps, counters,
+    trigger patterns, and broken-pixel flags. Provides methods to retrieve
+    these data as arrays and to merge containers.
+    """
+
     # trigger_list = List(
     #    help="List of trigger(EventType) inside the instance",
     #    default_value=[],
     # ).tag(config=True)
 
     def __init__(self, subarray, config=None, parent=None, *args, **kwargs):
+        """Initializes the ArrayDataComponent.
+
+        Parameters
+        ----------
+        subarray : ctapipe.core.SubarrayDescription
+            The subarray description.
+        config : ctapipe.core.Config, optional
+            Configuration object.
+        parent : Component, optional
+            Parent component.
+        *args
+            Additional positional arguments forwarded to NectarCAMComponent.
+        **kwargs
+            Additional keyword arguments forwarded to NectarCAMComponent.
+        """
         super().__init__(
             subarray=subarray, config=config, parent=parent, *args, **kwargs
         )
@@ -257,6 +380,11 @@ class ArrayDataComponent(NectarCAMComponent):
 
     @abstractmethod
     def finish(self):
+        """Finalize processing. Must be implemented by subclasses.
+
+        This method is called after all events have been processed to
+        perform any final computations or cleanup.
+        """
         pass
 
     @staticmethod
@@ -308,6 +436,22 @@ class ArrayDataComponent(NectarCAMComponent):
     def merge_along_slices(
         containers_generator: Iterable,
     ) -> ArrayDataContainer:
+        """Merges a sequence of ArrayDataContainer objects along the slice axis.
+
+        Iterates over a generator of containers and merges them sequentially
+        by deeply copying the first and then merging subsequent containers
+        per trigger type.
+
+        Parameters
+        ----------
+        containers_generator : Iterable[ArrayDataContainer]
+            An iterable yielding ArrayDataContainer objects to merge.
+
+        Returns
+        -------
+        ArrayDataContainer
+            The merged container.
+        """
         for i, container in enumerate(containers_generator):
             if i == 0:
                 merged_containers = copy.deepcopy(container)

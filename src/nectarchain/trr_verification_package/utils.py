@@ -251,6 +251,17 @@ deadtime_labels = {
 
 
 def get_bad_pixels_list():
+    """Return the list of bad pixel IDs read from the JSON resource file.
+
+    Bad pixels are defined by a combination of individual bad-pixel IDs and
+    entire bad-module pixel ranges.
+
+    Returns
+    -------
+    bad_pix_list : numpy.ndarray or None
+        Unique array of bad pixel IDs, or None if the resource file cannot
+        be read.
+    """
     # List of modules and pixels to be rejected
     MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
     JSON_PATH = os.path.join(MODULE_DIR, "resources", "bad_pix_module.json")
@@ -274,6 +285,19 @@ def get_bad_pixels_list():
 
 
 def get_gain_run(temperature):
+    """Find the gain run number whose temperature is closest to the given
+    value.
+
+    Parameters
+    ----------
+    temperature : float
+        Target temperature in degrees Celsius.
+
+    Returns
+    -------
+    run_no : int
+        Run number corresponding to the closest matching temperature.
+    """
     # Searches for the run number corresponding to the temperature
     # If no runs are taken at that temperature, it will return
     # the run corresponding to closest temperature
@@ -510,19 +534,69 @@ class ExponentialFitter:
     """
 
     def __init__(self, data, bin_edges):
+        """Initialise the ExponentialFitter with data and bin edges.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            The observed data histogram.
+        bin_edges : numpy.ndarray
+            The edges of the histogram bins.
+        """
         self.data = data.copy()
         self.bin_edges = bin_edges.copy()
 
     def compute_expected_distribution(self, norm, loc, scale):
+        """Compute the expected binned exponential distribution.
+
+        Parameters
+        ----------
+        norm : float
+            Normalisation factor.
+        loc : float
+            Location parameter of the exponential distribution.
+        scale : float
+            Scale parameter of the exponential distribution.
+
+        Returns
+        -------
+        numpy.ndarray
+            Expected number of entries per bin.
+        """
         cdf_low = expon.cdf(self.bin_edges[:-1], loc=loc, scale=scale)
         cdf_up = expon.cdf(self.bin_edges[1:], loc=loc, scale=scale)
         delta_cdf = cdf_up - cdf_low
         return norm * delta_cdf
 
     def expected_distribution(self, x):
+        """Return the expected distribution for a given parameter vector.
+
+        Parameters
+        ----------
+        x : list of float
+            Parameter vector [norm, loc, scale].
+
+        Returns
+        -------
+        numpy.ndarray
+            Expected number of entries per bin.
+        """
         return self.compute_expected_distribution(x[0], x[1], x[2])
 
     def compute_minus2loglike(self, x):
+        """Compute the saturated minus-two log-likelihood for a Poisson
+        model with the given exponential parameters.
+
+        Parameters
+        ----------
+        x : list of float
+            Parameter vector [norm, loc, scale].
+
+        Returns
+        -------
+        float
+            Saturated minus-two log-likelihood value.
+        """
         norm = x[0]
         loc = x[1]
         scale = x[2]
