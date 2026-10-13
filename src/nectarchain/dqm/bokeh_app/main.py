@@ -218,40 +218,52 @@ def get_layout_per_camera(source, runids, camera_code):
     # new = runids[1]
     # update_camera_displays(attr, old, new)
     camera_displays = [
-        column(
-            [
-                displays[parentkey][childkey][1],  # RangeSlider
-                row(
-                    displays[parentkey][childkey][0].figure,
-                    displays[parentkey][childkey][2],
-                    displays[parentkey][childkey][3],
-                ),
+        (
+            column(
+                [
+                    column(
+                        displays[parentkey][childkey][4],
+                        # header with title and description
+                        displays[parentkey][childkey][1],  # RangeSlider
+                    ),
+                    row(
+                        displays[parentkey][childkey][0].figure,
+                        displays[parentkey][childkey][2],
+                        displays[parentkey][childkey][3],
+                    ),
+                    displays[parentkey][childkey][0].selected_pixel_waveform,
+                ]
+            )
+            if len(displays[parentkey][childkey]) == 5
+            else column(
+                displays[parentkey][childkey][1],
+                # header with title and description
+                displays[parentkey][childkey][0].figure,
                 displays[parentkey][childkey][0].selected_pixel_waveform,
-            ]
-        )
-        if len(displays[parentkey][childkey]) == 4
-        else column(
-            displays[parentkey][childkey][0].figure,
-            displays[parentkey][childkey][0].selected_pixel_waveform,
+            )
         )
         for parentkey in displays.keys()
         for childkey in displays[parentkey].keys()
     ]
 
     list_timelines = [
-        timelines[parentkey][childkey]
+        column(timelines[parentkey][childkey][1], timelines[parentkey][childkey][0])
         for parentkey in timelines.keys()
         for childkey in timelines[parentkey].keys()
     ]
 
     list_waveforms = [
-        waveforms[parentkey][childkey]
+        column(waveforms[parentkey][childkey][1], waveforms[parentkey][childkey][0])
         for parentkey in waveforms.keys()
         for childkey in waveforms[parentkey].keys()
     ]
 
     list_trig_timestamps = [
-        trig_timestamps[parentkey] for parentkey in trig_timestamps.keys()
+        column(
+            trig_timestamps[parentkey][1],
+            trig_timestamps[parentkey][0],
+        )
+        for parentkey in trig_timestamps.keys()
     ]
 
     layout_camera_displays = column(
