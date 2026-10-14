@@ -139,6 +139,75 @@ def get_rundata(src, runid):
     return run_data
 
 
+def refresh_run_options(
+    db, available_cameras, run_selects, refresh_statuses=None, prev_run_counts=None
+):
+    """Refresh the run options for all camera Select widgets by polling the database.
+
+    This function is called periodically to update the available run list
+    without refreshing the entire application, allowing users to see newly
+    added runs without losing their current work.
+
+    Parameters
+    ----------
+    db : dict-like
+        The database root object (from ZODB) containing all run keys.
+    available_cameras : iterable
+        Iterable of camera codes (strings) to refresh run options for.
+    run_selects : dict
+        Dictionary mapping camera codes to their corresponding Select widgets.
+    refresh_statuses : dict, optional
+        Dictionary mapping camera codes to their corresponding Div widgets
+        for displaying refresh status. If provided, these will be updated with
+        the refresh timestamp. By default None.
+    prev_run_counts : dict, optional
+        Dictionary to cache previous run counts per camera for calculating
+        how many new runs were added. If provided, it will be updated with new counts.
+        By default None.
+
+    Returns
+    -------
+    None
+        Updates the Select widgets' options and refresh status Divs in place.
+    """
+    from datetime import datetime
+
+    all_keys = list(db.keys())
+    refresh_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for cam in available_cameras:
+        # Filter runs for this specific camera
+        runs = [k for k in all_keys if f"NectarCAM{cam}" in k]
+        runs = sorted(runs, reverse=True)
+        run_selects[cam].options = runs
+        new_count = len(runs)
+
+        # Calculate delta from previous count if cache is provided
+        new_runs_since_last = 0
+        if prev_run_counts is not None:
+            prev_count = prev_run_counts.get(cam, new_count)
+            new_runs_since_last = new_count - prev_count
+            prev_run_counts[cam] = new_count  # Update cache for next refresh
+
+        # Update refresh status display if provided
+        if refresh_statuses is not None and cam in refresh_statuses:
+            refresh_statuses[
+                cam
+            ].text = f"""
+            <div style="
+                background-color: moccasin;
+                border-radius: 10px;
+                padding: 10px;
+                width: fit-content;
+                font-size: 14px;
+            ">
+                <p>Runs last refreshed: {refresh_time}</p>
+                <p>Available runs: {new_count}</p>
+                <p>New since last refresh: {new_runs_since_last}</p>
+            </div>
+            """
+
+
 def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
     """Make trigger event timestamps plots
 
