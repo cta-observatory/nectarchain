@@ -40,7 +40,7 @@ class PingPongMonitoring(DQMSummary):
         self.pixel_ids = None
         self.cmap = None
         self.subarray = None
-        self.first_event = None
+        # self.first_event = None
         # self.last_event = None
         self.nchanges = 0
         self.ref_state = None
@@ -86,6 +86,7 @@ class PingPongMonitoring(DQMSummary):
         for i, evt1 in enumerate(Reader1):
             self.run_start1 = evt1.nectarcam.tel[self.tel_id].svc.date
             cell_id = evt1.nectarcam.tel[self.tel_id].evt.first_cell_id
+            # cell_id is compared with 0x400 in binary
             event_id = evt1.index.event_id
             trigger_time = evt1.trigger.time.value
             ping = (cell_id & 0x400).astype(bool)
@@ -97,14 +98,14 @@ class PingPongMonitoring(DQMSummary):
             if event_id == 1 or i == 0:
                 self.ref_parity = evt1.index.event_id % 2
                 self.ref_state = np.array(ping)
-                self.first_event = np.array(ping.view(np.int8))
+                # self.first_event = np.array(ping.view(np.int8))
                 pop1 = self.pixel_ids[ping]
                 pop2 = self.pixel_ids[~ping]
                 if len(pop1) != 0 and len(pop1) != len(self.pixel_ids):
                     mismatches = min([pop1, pop2], key=len)
                     log.warning(
                         f"The first event has some discreptancies"
-                        f" for pixels {mismatches}"
+                        f" for {len(mismatches)} pixels: {mismatches}."
                     )
                     self.change[mismatches] += 1
                     self.event_times.append(trigger_time)
