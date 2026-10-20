@@ -2,6 +2,7 @@ import collections
 import json
 import os
 import re
+from urllib.parse import urlparse
 
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -13,6 +14,7 @@ from bokeh.models import (
     ColumnDataSource,
     CustomJS,
     DatetimeTickFormatter,
+    Div,
     HoverTool,
     Label,
     Node,
@@ -139,6 +141,75 @@ def get_rundata(src, runid):
     return run_data
 
 
+def refresh_run_options(
+    db, available_cameras, run_selects, refresh_statuses=None, prev_run_counts=None
+):
+    """Refresh the run options for all camera Select widgets by polling the database.
+
+    This function is called periodically to update the available run list
+    without refreshing the entire application, allowing users to see newly
+    added runs without losing their current work.
+
+    Parameters
+    ----------
+    db : dict-like
+        The database root object (from ZODB) containing all run keys.
+    available_cameras : iterable
+        Iterable of camera codes (strings) to refresh run options for.
+    run_selects : dict
+        Dictionary mapping camera codes to their corresponding Select widgets.
+    refresh_statuses : dict, optional
+        Dictionary mapping camera codes to their corresponding Div widgets
+        for displaying refresh status. If provided, these will be updated with
+        the refresh timestamp. By default None.
+    prev_run_counts : dict, optional
+        Dictionary to cache previous run counts per camera for calculating
+        how many new runs were added. If provided, it will be updated with new counts.
+        By default None.
+
+    Returns
+    -------
+    None
+        Updates the Select widgets' options and refresh status Divs in place.
+    """
+    from datetime import datetime
+
+    all_keys = list(db.keys())
+    refresh_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for cam in available_cameras:
+        # Filter runs for this specific camera
+        runs = [k for k in all_keys if f"NectarCAM{cam}" in k]
+        runs = sorted(runs, reverse=True)
+        run_selects[cam].options = runs
+        new_count = len(runs)
+
+        # Calculate delta from previous count if cache is provided
+        new_runs_since_last = 0
+        if prev_run_counts is not None:
+            prev_count = prev_run_counts.get(cam, new_count)
+            new_runs_since_last = new_count - prev_count
+            prev_run_counts[cam] = new_count  # Update cache for next refresh
+
+        # Update refresh status display if provided
+        if refresh_statuses is not None and cam in refresh_statuses:
+            refresh_statuses[
+                cam
+            ].text = f"""
+            <div style="
+                background-color: moccasin;
+                border-radius: 10px;
+                padding: 10px;
+                width: fit-content;
+                font-size: 14px;
+            ">
+                <p>Runs last refreshed: {refresh_time}</p>
+                <p>Available runs: {new_count}</p>
+                <p>New since last refresh: {new_runs_since_last}</p>
+            </div>
+            """
+
+
 def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
     """Make trigger event timestamps plots
 
@@ -160,14 +231,15 @@ def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
     """
 
     with open(labels_path, "r", encoding="utf-8") as file:
-        y_axis_labels = json.load(file)["y_axis_labels_trig_timestamps"]
+        labels = json.load(file)
+        y_axis_labels = labels["y_axis_labels_trig_timestamps"]
+        descriptions = labels["descriptions"]
+        urls = labels["processors-urls"]
 
     trig_timestamps = collections.defaultdict(dict)
     for parentkey, data in trigger_events_data.items():
         # TODO: need to understand what we want to do with TRIGGER-EVENTS-WRONG
         logger.info(f"Run id {runid}, preparing plot for {parentkey}")
-
-        trig_timestamps[parentkey] = figure(title=parentkey)
 
         evts_ids = data["IDs"]
         evts_timestamps = data["Timestamps"][np.argsort(evts_ids)]
@@ -175,8 +247,7 @@ def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
         evts_diff_timestamps = np.array([0] + np.diff(evts_timestamps).tolist())
         negative_diff = evts_diff_timestamps < 0
 
-        trig_timestamps[parentkey] = figure(
-            title=parentkey,
+        fig = figure(
             x_range=(np.min(evts_ids), np.max(evts_ids)),
             y_range=(
                 np.min(evts_timestamps * 1000),
@@ -184,7 +255,7 @@ def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
             ),
             # Convert to ms
         )
-        trig_timestamps[parentkey].yaxis.formatter = DatetimeTickFormatter(
+        fig.yaxis.formatter = DatetimeTickFormatter(
             seconds="%H:%M:%S",
             minutes="%H:%M:%S",
             hourmin="%H:%M:%S",
@@ -193,10 +264,10 @@ def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
             months="%H:%M:%S",
             years="%H:%M:%S",
         )
-        trig_timestamps[parentkey].scatter(
+        fig.scatter(
             x=evts_ids, y=evts_timestamps * 1000, size=2, alpha=0.6, color="blue"
         )
-        trig_timestamps[parentkey].scatter(
+        fig.scatter(
             x=evts_ids[negative_diff],
             y=evts_timestamps[negative_diff] * 1000,
             size=4,
@@ -205,22 +276,44 @@ def make_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
             legend_label="# of negative Timestamp[i+1] - Timestamp[i]: "
             + f"{len(evts_timestamps[negative_diff])}",
         )
-        trig_timestamps[parentkey].legend.location = "top_left"
-        trig_timestamps[parentkey].xaxis.axis_label = "Event ID"
+        fig.legend.location = "top_left"
+        fig.xaxis.axis_label = "Event ID"
 
         try:
-            trig_timestamps[parentkey].yaxis.axis_label = y_axis_labels[parentkey]
+            fig.yaxis.axis_label = y_axis_labels[parentkey]
+            description = descriptions[parentkey]
+            url = urls[parentkey]
+            title = parentkey
         except ValueError:
-            trig_timestamps[parentkey].yaxis.axis_label = ""
+            fig.yaxis.axis_label = ""
+            description = ""
+            url = ""
+            title = ""
         except KeyError:
-            trig_timestamps[parentkey].yaxis.axis_label = ""
+            fig.yaxis.axis_label = ""
+            description = ""
+            url = ""
+            title = ""
 
-        trig_timestamps[parentkey].xaxis.axis_label_text_font_size = "12pt"
-        trig_timestamps[parentkey].yaxis.axis_label_text_font_size = "12pt"
-        trig_timestamps[parentkey].xaxis.major_label_text_font_size = "10pt"
-        trig_timestamps[parentkey].yaxis.major_label_text_font_size = "10pt"
-        trig_timestamps[parentkey].xaxis.axis_label_text_font_style = "normal"
-        trig_timestamps[parentkey].yaxis.axis_label_text_font_style = "normal"
+        filename = urlparse(url).path.strip("/").split("/")[-1]
+
+        header = Div(
+            text=(
+                f'<div style="font-size: 13pt; font-weight: bold; background-color: lavenderblush; padding: 6px; border-radius: 4px;">{title}</div>'  # noqa
+                f'<div style="font-size: 11pt; margin-top: 4px; background-color: lavenderblush; padding: 6px; border-radius: 4px;">'  # noqa
+                f'{description},\nextracted by the nectarchain DQM processor: <a href="{url}" target="_blank">{filename}</a></div>'  # noqa
+                f"</div>"
+            )
+        )
+
+        fig.xaxis.axis_label_text_font_size = "12pt"
+        fig.yaxis.axis_label_text_font_size = "12pt"
+        fig.xaxis.major_label_text_font_size = "10pt"
+        fig.yaxis.major_label_text_font_size = "10pt"
+        fig.xaxis.axis_label_text_font_style = "normal"
+        fig.yaxis.axis_label_text_font_style = "normal"
+
+        trig_timestamps[parentkey] = [fig, header]
 
     logger.info(f"Successfully created trigger timestamps plots for run {runid}")
 
@@ -251,7 +344,11 @@ def update_trigger_timestamps_vs_ids(trigger_events_data, runid=None):
     trig_timestamps = make_trigger_timestamps_vs_ids(trigger_events_data, runid)
 
     list_trig_timestamps = [
-        trig_timestamps[parentkey] for parentkey in trig_timestamps.keys()
+        column(
+            trig_timestamps[parentkey][1],
+            trig_timestamps[parentkey][0],
+        )
+        for parentkey in trig_timestamps.keys()
     ]
 
     layout_trig_timestamps = column(
@@ -283,11 +380,14 @@ def make_waveforms(waveforms_data, runid=None):
     Returns
     -------
     dict
-        Nested dictionary containing line plots for the waveforms
+        Nested dictionary containing line plots for the waveforms and their headers
     """
 
     with open(labels_path, "r", encoding="utf-8") as file:
-        y_axis_labels = json.load(file)["y_axis_labels_waveforms"]
+        labels = json.load(file)
+        y_axis_labels = labels["y_axis_labels_waveforms"]
+        descriptions = labels["descriptions"]
+        urls = labels["processors-urls"]
 
     waveforms = collections.defaultdict(dict)
     average_waveforms = waveforms_data["average"]
@@ -407,11 +507,29 @@ def make_waveforms(waveforms_data, runid=None):
             fig.xaxis.axis_label = "Waveform sample number"
             try:
                 fig.yaxis.axis_label = y_axis_labels[parentkey]
+                description = descriptions[parentkey]
+                url = urls[parentkey]
             except ValueError:
                 fig.yaxis.axis_label = ""
+                description = ""
+                url = ""
             except KeyError:
                 fig.yaxis.axis_label = ""
+                description = ""
+                url = ""
 
+            filename = urlparse(url).path.strip("/").split("/")[-1]
+
+            header = Div(
+                text=(
+                    f'<div style="font-size: 13pt; font-weight: bold; background-color: lavenderblush; padding: 6px; border-radius: 4px;">{childkey}</div>'  # noqa
+                    f'<div style="font-size: 11pt; margin-top: 4px; background-color: lavenderblush; padding: 6px; border-radius: 4px;">'  # noqa
+                    f'{description},\nextracted by the nectarchain DQM processor: <a href="{url}" target="_blank">{filename}</a></div>'  # noqa
+                    f"</div>"
+                )
+            )
+
+            fig.title = ""
             fig.xaxis.axis_label_text_font_size = "12pt"
             fig.yaxis.axis_label_text_font_size = "12pt"
             fig.xaxis.major_label_text_font_size = "10pt"
@@ -419,7 +537,8 @@ def make_waveforms(waveforms_data, runid=None):
             fig.xaxis.axis_label_text_font_style = "normal"
             fig.yaxis.axis_label_text_font_style = "normal"
 
-            waveforms[parentkey][childkey] = fig
+            # waveforms[parentkey][childkey] = fig
+            waveforms[parentkey][childkey] = [fig, header]
 
     logger.info(f"Successfully created waveform plots for run {runid}")
 
@@ -450,7 +569,7 @@ def update_waveforms(waveforms_data, runid=None):
     waveforms = make_waveforms(waveforms_data, runid)
 
     list_waveforms = [
-        waveforms[parentkey][childkey]
+        column(waveforms[parentkey][childkey][1], waveforms[parentkey][childkey][0])
         for parentkey in waveforms.keys()
         for childkey in waveforms[parentkey].keys()
     ]
@@ -481,11 +600,14 @@ def make_timelines(timelines_data, runid=None):
     Returns
     -------
     dict
-        Nested dictionary containing line plots for the timelines
+        Nested dictionary containing line plots for the timelines and their headers
     """
 
     with open(labels_path, "r", encoding="utf-8") as file:
-        y_axis_labels = json.load(file)["y_axis_labels_timelines"]
+        labels = json.load(file)
+        y_axis_labels = labels["y_axis_labels_timelines"]
+        descriptions = labels["descriptions"]
+        urls = labels["processors-urls"]
 
     timelines = collections.defaultdict(dict)
     for parentkey, parent_data in timelines_data.items():
@@ -493,31 +615,27 @@ def make_timelines(timelines_data, runid=None):
         for childkey, child_data in parent_data.items():
             logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
             if "CAMERA-TEMPERATURE-TREND" not in childkey:
-                timelines[parentkey][childkey] = figure(title=childkey)
                 evts = np.arange(len(child_data))
-                timelines[parentkey][childkey] = figure(
-                    title=childkey,
+                fig = figure(
                     x_range=(0, np.max(evts) + 50),
                     y_range=(0, 1),
                     # A fraction is plotted:
                     # y-range values are between 0 and 1 because
                 )
-                timelines[parentkey][childkey].line(
+                fig.line(
                     x=evts,
                     y=child_data,
                     line_width=3,
                 )
-                timelines[parentkey][childkey].xaxis.axis_label = "Event number"
+                fig.xaxis.axis_label = "Event number"
             else:
-                timelines[parentkey][childkey] = figure(title=childkey)
                 samples = np.arange(child_data.shape[1]) + 1
                 # shape[1] is the number of samples
                 # shape[0] is the number of drawers
                 # TODO: this samples shall be extracted from the child_data
                 # once the timestamps are exported by the DQM
                 # (see isse #372 on nectarchain)
-                timelines[parentkey][childkey] = figure(
-                    title=childkey,
+                fig = figure(
                     x_range=(samples.min(), samples.max()),
                     y_range=(np.min(child_data) - 1, np.max(child_data) + 1),
                 )
@@ -532,27 +650,49 @@ def make_timelines(timelines_data, runid=None):
                     #         sample=samples,
                     #         value=child_data[nd]
                     # ))
-                    timelines[parentkey][childkey].line(
+                    fig.line(
                         x=samples,
                         y=child_data[nd],
                         line_width=1,
                         alpha=0.7,
                     )
-                timelines[parentkey][childkey].xaxis.axis_label = "Sample number"
+                fig.xaxis.axis_label = "Sample number"
 
         try:
-            timelines[parentkey][childkey].yaxis.axis_label = y_axis_labels[parentkey]
+            fig.yaxis.axis_label = y_axis_labels[parentkey]
+            description = descriptions[parentkey]
+            url = urls[parentkey]
+            title = parentkey
         except ValueError:
-            timelines[parentkey][childkey].yaxis.axis_label = ""
+            fig.yaxis.axis_label = ""
+            description = ""
+            url = ""
+            title = ""
         except KeyError:
-            timelines[parentkey][childkey].yaxis.axis_label = ""
+            fig.yaxis.axis_label = ""
+            description = ""
+            url = ""
+            title = ""
 
-        timelines[parentkey][childkey].xaxis.axis_label_text_font_size = "12pt"
-        timelines[parentkey][childkey].yaxis.axis_label_text_font_size = "12pt"
-        timelines[parentkey][childkey].xaxis.major_label_text_font_size = "10pt"
-        timelines[parentkey][childkey].yaxis.major_label_text_font_size = "10pt"
-        timelines[parentkey][childkey].xaxis.axis_label_text_font_style = "normal"
-        timelines[parentkey][childkey].yaxis.axis_label_text_font_style = "normal"
+        filename = urlparse(url).path.strip("/").split("/")[-1]
+
+        header = Div(
+            text=(
+                f'<div style="font-size: 13pt; font-weight: bold; background-color: lavenderblush; padding: 6px; border-radius: 4px;">{title}</div>'  # noqa
+                f'<div style="font-size: 11pt; margin-top: 4px; background-color: lavenderblush; padding: 6px; border-radius: 4px;">'  # noqa
+                f'{description},\nextracted by the nectarchain DQM processor: <a href="{url}" target="_blank">{filename}</a></div>'  # noqa
+                f"</div>"
+            )
+        )
+
+        fig.xaxis.axis_label_text_font_size = "12pt"
+        fig.yaxis.axis_label_text_font_size = "12pt"
+        fig.xaxis.major_label_text_font_size = "10pt"
+        fig.yaxis.major_label_text_font_size = "10pt"
+        fig.xaxis.axis_label_text_font_style = "normal"
+        fig.yaxis.axis_label_text_font_style = "normal"
+
+        timelines[parentkey][childkey] = [fig, header]
 
     logger.info(f"Successfully created timeline plots for run {runid}")
 
@@ -582,7 +722,7 @@ def update_timelines(timelines_data, runid=None):
     timelines = make_timelines(timelines_data, runid)
 
     list_timelines = [
-        timelines[parentkey][childkey]
+        column(timelines[parentkey][childkey][1], timelines[parentkey][childkey][0])
         for parentkey in timelines.keys()
         for childkey in timelines[parentkey].keys()
     ]
@@ -625,7 +765,7 @@ def make_camera_displays(camera_displays_data, runid, waveforms_data=None):
     for parentkey, parent_data in camera_displays_data.items():
         for childkey in parent_data.keys():
             logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
-            camera_display, range_slider = make_camera_display(
+            camera_display, range_slider, header = make_camera_display(
                 camera_displays_data,
                 parent_key=parentkey,
                 child_key=childkey,
@@ -644,6 +784,9 @@ def make_camera_displays(camera_displays_data, runid, waveforms_data=None):
                     camera_displays_data, parent_key=parentkey, child_key=childkey
                 )
                 displays_to_show.append(camera_pixel_vals_histo)
+
+            if header is not None:
+                displays_to_show.append(header)
 
             displays[parentkey][childkey] = displays_to_show
 
@@ -685,7 +828,11 @@ def update_camera_displays(camera_displays_data, runid=None, waveforms_data=None
         (
             column(
                 [
-                    displays[parentkey][childkey][1],  # RangeSlider
+                    column(
+                        displays[parentkey][childkey][4],
+                        # header with title and description
+                        displays[parentkey][childkey][1],  # RangeSlider
+                    ),
                     row(
                         displays[parentkey][childkey][0].figure,
                         displays[parentkey][childkey][2],
@@ -694,8 +841,10 @@ def update_camera_displays(camera_displays_data, runid=None, waveforms_data=None
                     displays[parentkey][childkey][0].selected_pixel_waveform,
                 ]
             )
-            if len(displays[parentkey][childkey]) == 4
+            if len(displays[parentkey][childkey]) == 5
             else column(
+                displays[parentkey][childkey][1],
+                # header with title and description
                 displays[parentkey][childkey][0].figure,
                 displays[parentkey][childkey][0].selected_pixel_waveform,
             )
@@ -1252,6 +1401,7 @@ def make_camera_display(
           ctapipe.instrument.CameraGeometry
         - bokeh.models.RangeSlider or None: RangeSlider widget for dynamic color range
           control (None for BADPIX displays)
+        - bokeh.models.Div: Div containing the header with title and description
     """
 
     image = np.nan_to_num(camera_displays_data[parent_key][child_key], nan=0.0)
@@ -1299,7 +1449,6 @@ def make_camera_display(
                 max_slider = 1.0
             image[mask_low_gain] = 0.0
 
-    # display = CameraDisplay(geometry=geom)
     display = CameraDisplayNectarCAM(geom)
     try:
         display.image = image
@@ -1347,20 +1496,39 @@ def make_camera_display(
     color_bar.title_text_font_style = "normal"
 
     with open(labels_path, "r", encoding="utf-8") as file:
-        colorbar_labels = json.load(file)["colorbar_labels_camera_display"]
+        labels = json.load(file)
+        colorbar_labels = labels["colorbar_labels_camera_display"]
+        descriptions = labels["descriptions"]
+        urls = labels["processors-urls"]
 
     try:
         color_bar.title = colorbar_labels[parent_key]
         display.colorbar_label = colorbar_labels[parent_key]
+        description = descriptions[parent_key]
+        url = urls[parent_key]
     except ValueError:
         color_bar.title = ""
         display.colorbar_label = ""
+        description = ""
+        url = ""
     except KeyError:
         color_bar.title = ""
         display.colorbar_label = ""
+        description = ""
+        url = ""
 
-    display.figure.title = child_key
-    display.figure_title = child_key
+    filename = urlparse(url).path.strip("/").split("/")[-1]
+
+    header = Div(
+        text=(
+            f'<div style="font-size: 13pt; font-weight: bold; background-color: lavenderblush; padding: 6px; border-radius: 4px;">{child_key}</div>'  # noqa
+            f'<div style="font-size: 11pt; margin-top: 4px; background-color: lavenderblush; padding: 6px; border-radius: 4px;">'  # noqa
+            f'{description},\nextracted by the nectarchain DQM processor: <a href="{url}" target="_blank">{filename}</a></div>'  # noqa
+            f"</div>"
+        )
+    )
+
+    display.figure.title = ""
     display.selected_pixel_waveform = row(sizing_mode="scale_width")
     display.selected_pixel_waveform_plots = []
     display.camera_displays_data = camera_displays_data
@@ -1381,7 +1549,7 @@ def make_camera_display(
 
     display = compile_hover_tool(display=display, camgeom=geom)
 
-    return display, range_slider
+    return display, range_slider, header
 
 
 def set_bad_pixels_cap_value(image):
