@@ -133,20 +133,23 @@ class PingPongMonitoring(DQMSummary):
         expected = self.ref_state if parity == self.ref_parity else ~self.ref_state
 
         self.event_id.append(trigger_id)
-        if not np.array_equal(ping, expected):
+        mask_diff = ping != expected
+
+        if mask_diff.any():
             log.warning(
-                f"Mismatch: Event {trigger_id}, ping={ping[:10]}"
-                f" (expected {expected[:10]}), time={trigger_time}"
+                f"Mismatch: Event {trigger_id}, ping={ping[mask_diff]}"
+                f" (expected {expected[mask_diff]}), time={trigger_time}"
             )
             # Update reference state
             self.ref_state = ping
             self.ref_parity = parity
-            mismatches = np.where(ping != expected)[0]
+            mismatches = np.argwhere(mask_diff)
             self.change[mismatches] += 1
             self.event_times.append(trigger_time)
             self.nchanges += 1
             log.warning(
-                f"Reset reference. Changes incremented at indices: {mismatches[:10]}..."
+                "Reset reference. Changes incremented at indices: "
+                f"{mismatches.flatten()}..."
             )
 
     def finish_run(self):
