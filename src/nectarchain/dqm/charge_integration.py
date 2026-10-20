@@ -161,7 +161,7 @@ class ChargeIntegrationHighLowGain(DQMSummary):
         if self.r0:
             waveform = evt.r0.tel[self.tel_id].waveform[self.k]
         else:
-            # This should accommodate cases were the shape of waveforms is 2D
+            # This should accommodate cases where the shape of waveforms is 2D
             # (1855,60), or 3D (2, 1855, 60) for 2-gain channels or
             # (1, 1855, 60) for single-gain channel
             waveform = evt.r1.tel[self.tel_id].waveform
