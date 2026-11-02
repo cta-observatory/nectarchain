@@ -239,7 +239,7 @@ def main():
     charge = np.zeros((len(runlist), 2))
     std = np.zeros((len(runlist), 2))
     std_err = np.zeros((len(runlist), 2))
-    ratio_hglg = np.zeros(len(runlist))
+    # ratio_hglg = np.zeros(len(runlist))
 
     log.debug(f"Input runlist: {runlist}")
 
@@ -282,7 +282,7 @@ def main():
         tool.start()
         output = tool.finish()
 
-        charge[index], std[index], std_err[index], npixels, ratio_hglg[index] = output
+        charge[index], std[index], std_err[index], _, _ = output
 
     fig, ax = plt.subplots()
     ax.errorbar(
@@ -294,9 +294,13 @@ def main():
         linestyle="",
         label="HG",
     )
+    idx = np.where((charge[:, 0] > 10) & (charge[:, 0] < 200))[0]
+    # Taking values between 10 pe and 200 pe
+    ratio_hg_lg_linear_range = charge[:, 0][idx] / charge[:, 1][idx]
+    log.debug(f"{ratio_hg_lg_linear_range}, {charge[:, 0][idx]},{charge[:, 1][idx]}")
     ax.errorbar(
         intensity,
-        charge[:, 1] * ratio_hglg[5],
+        charge[:, 1] * np.mean(ratio_hg_lg_linear_range),
         color="blue",
         yerr=np.transpose(std_err)[1],
         marker="o",
