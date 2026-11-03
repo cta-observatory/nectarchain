@@ -115,7 +115,7 @@ class TriggerStatistics(DQMSummary):
         self.event_wrong_times = self.event_times[is_wrong]
 
         # Filter by run_start - only keep events after run_start
-        valid = self.event_times > self.run_start
+        valid = self.event_times >= self.run_start
         self.event_id = self.event_id[valid]
         self.event_times = self.event_times[valid]
         self.event_type = self.event_type[valid]
