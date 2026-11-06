@@ -11,6 +11,25 @@ from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.instrument import CameraGeometry
 from ZODB import DB
 
+from nectarchain.dqm.bokeh_app.camera_displays import (
+    CameraDisplayNectarCAM,
+    compile_hover_tool,
+    compile_hover_tool_val_vs_id_or_sample,
+    get_bad_pixels_position,
+    make_camera_displays,
+    set_bad_pixels_cap_value,
+)
+from nectarchain.dqm.bokeh_app.data_retrieval import (
+    get_available_cameras_from_db_keys,
+    get_run_ids_for_camera,
+    get_rundata,
+    refresh_run_options,
+)
+from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
+from nectarchain.dqm.bokeh_app.timelines import make_timelines
+from nectarchain.dqm.bokeh_app.trigger_timestamps import make_trigger_timestamps_vs_ids
+from nectarchain.dqm.bokeh_app.waveforms import make_waveforms
+
 geom = CameraGeometry.from_name("NectarCam-003")
 geom = geom.transform_to(EngineeringCameraFrame())
 
@@ -64,8 +83,6 @@ test_dict["run1"]["mykey2"]["mysubkey2"][10:20] = np.nan
 
 
 def test_set_bad_pixels_cap_value():
-    from nectarchain.dqm.bokeh_app.app_hooks import set_bad_pixels_cap_value
-
     arr = np.array([0.0, 1.2, 0.0, 2.0])
     capped = set_bad_pixels_cap_value(arr.copy())
     assert np.all(capped <= 1.0)
@@ -74,8 +91,6 @@ def test_set_bad_pixels_cap_value():
 
 
 def test_get_bad_pixels_position():
-    from nectarchain.dqm.bokeh_app.app_hooks import get_bad_pixels_position
-
     source = test_dict["run1"]
     image_shape = (geom.n_pixels,)
     mask_high, mask_low = get_bad_pixels_position(source, image_shape)
@@ -90,9 +105,6 @@ def test_get_bad_pixels_position():
 
 
 def test_make_camera_displays():
-    from nectarchain.dqm.bokeh_app.app_hooks import make_camera_displays
-    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
-
     for runid in list(test_dict.keys()):
         categorized = categorize_source_data(test_dict[runid])
         make_camera_displays(
@@ -101,27 +113,18 @@ def test_make_camera_displays():
 
 
 def test_make_timelines():
-    from nectarchain.dqm.bokeh_app.app_hooks import make_timelines
-    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
-
     for runid in list(test_dict.keys()):
         categorized = categorize_source_data(test_dict[runid])
         make_timelines(timelines_data=categorized["timelines"], runid=runid)
 
 
 def test_make_waveforms():
-    from nectarchain.dqm.bokeh_app.app_hooks import make_waveforms
-    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
-
     for runid in list(test_dict.keys()):
         categorized = categorize_source_data(test_dict[runid])
         make_waveforms(waveforms_data=categorized["waveforms"], runid=runid)
 
 
 def test_make_trigger_timestamps_vs_ids():
-    from nectarchain.dqm.bokeh_app.app_hooks import make_trigger_timestamps_vs_ids
-    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
-
     for runid in list(test_dict.keys()):
         categorized = categorize_source_data(test_dict[runid])
         make_trigger_timestamps_vs_ids(
@@ -130,8 +133,6 @@ def test_make_trigger_timestamps_vs_ids():
 
 
 def test_get_run_ids_for_camera():
-    from nectarchain.dqm.bokeh_app.app_hooks import get_run_ids_for_camera
-
     db = DB(None)
     conn = db.open()
     root = conn.root()
@@ -172,8 +173,6 @@ def test_get_run_ids_for_camera():
 
 
 def test_get_available_cameras_from_db_keys():
-    from nectarchain.dqm.bokeh_app.app_hooks import get_available_cameras_from_db_keys
-
     db = DB(None)
     conn = db.open()
     root = conn.root()
@@ -205,8 +204,6 @@ def test_get_available_cameras_from_db_keys():
 
 
 def test_refresh_run_options():
-    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
-
     db = DB(None)
     conn = db.open()
     root = conn.root()
@@ -257,7 +254,6 @@ def test_refresh_run_options():
 
 def test_refresh_run_options_with_new_runs():
     """Test that refresh_run_options correctly picks up newly added runs"""
-    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
 
     db = DB(None)
     conn = db.open()
@@ -296,7 +292,6 @@ def test_refresh_run_options_with_new_runs():
 
 def test_refresh_run_options_with_no_matching_runs():
     """Test refresh_run_options when a camera has no runs"""
-    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
 
     db = DB(None)
     conn = db.open()
@@ -333,8 +328,6 @@ def test_refresh_run_options_with_no_matching_runs():
 def test_refresh_run_options_with_status_display():
     """Test that refresh_run_options updates the refresh status Div"""
     from bokeh.models import Div
-
-    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
 
     db = DB(None)
     conn = db.open()
@@ -376,8 +369,6 @@ def test_refresh_run_options_with_status_display():
 def test_refresh_run_options_with_delta():
     """Test that refresh_run_options correctly shows new runs delta"""
     from bokeh.models import Div
-
-    from nectarchain.dqm.bokeh_app.app_hooks import refresh_run_options
 
     db = DB(None)
     conn = db.open()
@@ -436,15 +427,6 @@ def test_refresh_run_options_with_delta():
 
 
 def test_bokeh(tmp_path):
-    from nectarchain.dqm.bokeh_app.app_hooks import (
-        get_rundata,
-        make_camera_displays,
-        make_timelines,
-        make_trigger_timestamps_vs_ids,
-        make_waveforms,
-    )
-    from nectarchain.dqm.bokeh_app.extract_data import categorize_source_data
-
     db = DB(None)
     conn = db.open()
     root = conn.root()
@@ -569,8 +551,6 @@ def test_bokeh(tmp_path):
 def test_compile_hover_tool():
     from ctapipe.visualization.bokeh import CameraDisplay
 
-    from nectarchain.dqm.bokeh_app.app_hooks import compile_hover_tool
-
     display = CameraDisplay(geometry=geom)
     display.image = np.random.normal(size=geom.n_pixels)
 
@@ -629,10 +609,6 @@ def test_compile_hover_tool():
 
 
 def test_compile_hover_tool_val_vs_id_or_sample():
-    from nectarchain.dqm.bokeh_app.app_hooks import (  # noqa
-        compile_hover_tool_val_vs_id_or_sample,
-    )
-
     fig = figure()
     data_source = ColumnDataSource(
         data=dict(pix_id=np.arange(10), value=np.random.normal(size=10))
@@ -670,7 +646,6 @@ def test_compile_hover_tool_val_vs_id_or_sample():
 
 def test_camera_display_initialization():
     """Test CameraDisplayNectarCAM class initialization"""
-    from nectarchain.dqm.bokeh_app.app_hooks import CameraDisplayNectarCAM
 
     # Create a CameraDisplayNectarCAM instance
     display = CameraDisplayNectarCAM(geometry=geom)
@@ -705,7 +680,6 @@ def test_camera_display_initialization():
 
 def test_camera_display_pixel_picker_callback_no_waveforms():
     """Test pixel_picker_callback when no waveforms_data is available"""
-    from nectarchain.dqm.bokeh_app.app_hooks import CameraDisplayNectarCAM
 
     # Create a CameraDisplayNectarCAM instance
     display = CameraDisplayNectarCAM(geometry=geom)
@@ -719,7 +693,7 @@ def test_camera_display_pixel_picker_callback_no_waveforms():
     # Mock the logger to capture the warning message
     from unittest.mock import patch
 
-    with patch("nectarchain.dqm.bokeh_app.app_hooks.logger") as mock_logger:
+    with patch("nectarchain.dqm.bokeh_app.camera_displays.logger") as mock_logger:
         # Call the pixel picker callback with some pixel indices
         display.pixel_picker_callback("indices", [], [0, 1, 2])
 
@@ -732,8 +706,6 @@ def test_camera_display_pixel_picker_callback_no_waveforms():
 def test_camera_display_pixel_picker_callback_with_waveforms():
     """Test pixel_picker_callback with waveforms_data available"""
     from bokeh.plotting import figure
-
-    from nectarchain.dqm.bokeh_app.app_hooks import CameraDisplayNectarCAM
 
     # Create a CameraDisplayNectarCAM instance
     display = CameraDisplayNectarCAM(geometry=geom)
@@ -770,7 +742,9 @@ def test_camera_display_pixel_picker_callback_with_waveforms():
     }
 
     # Mock the logger to capture info messages
-    with patch("nectarchain.dqm.bokeh_app.app_hooks.logger") as mock_logger, patch(
+    with patch(
+        "nectarchain.dqm.bokeh_app.camera_displays.logger"
+    ) as mock_logger, patch(
         "builtins.open", mock_open(read_data=json.dumps(mock_labels_data))
     ):
         # Call the pixel picker callback with a pixel index
@@ -794,7 +768,6 @@ def test_camera_display_pixel_picker_callback_with_waveforms():
 
 def test_camera_display_pixel_picker_callback_mixed_waveforms():
     """Test pixel_picker_callback with mixed PHY and PED waveforms"""
-    from nectarchain.dqm.bokeh_app.app_hooks import CameraDisplayNectarCAM
 
     # Create a CameraDisplayNectarCAM instance
     display = CameraDisplayNectarCAM(geometry=geom)
@@ -837,7 +810,7 @@ def test_camera_display_pixel_picker_callback_mixed_waveforms():
         }
     }
 
-    with patch("nectarchain.dqm.bokeh_app.app_hooks.logger"), patch(
+    with patch("nectarchain.dqm.bokeh_app.camera_displays.logger"), patch(
         "builtins.open", mock_open(read_data=json.dumps(mock_labels_data))
     ):
         # Call the pixel picker callback
