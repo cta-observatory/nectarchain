@@ -63,13 +63,13 @@ jobs:
             ctapipe-version: "v0.24.0"
             install-method: "pip"
             extra-args: ["codecov"]
-          # macos 15 image, x86-based
+          # macos-15-intel image, x86-based
           - os: "macos-15-intel"
             python-version: "3.11"
             ctapipe-version: "v0.24.0"
             install-method: "mamba"
-          # macos 14 image is arm64 based
-          - os: "macos-14"
+          # macos-15 image is arm64 based
+          - os: "macos-15"
             python-version: "3.11"
             ctapipe-version: "v0.24.0"
             install-method: "mamba"
@@ -91,7 +91,7 @@ jobs:
           sudo apt-get install freeglut3-dev
 
       - name: Install dependencies for Qt on mac-OS
-        if: matrix.os == 'macos-14'
+        if: matrix.os == 'macos-15'
         run: |
           brew install pyqt
       - uses: actions/checkout@v7
@@ -157,7 +157,7 @@ jobs:
           pip install \
              "git+https://github.com/cta-observatory/ctapipe@$CTAPIPE_VERSION"
 
-          if [ "${{ matrix.os }}" == "macos-14" ]; then
+          if [ "${{ matrix.os }}" == "macos-15" ]; then
             # nectarchain installation with pip
             if [ "${{ matrix.install-method }}" == "pip" ]; then
               pip install -e .
@@ -182,7 +182,7 @@ jobs:
           fi
 
       - name: Check mac-os installation
-        if: matrix.os == 'macos-14'
+        if: matrix.os == 'macos-15'
         run: |
           micromamba list -n ci | grep qt
           eval "$(micromamba shell hook --shell=bash)"
