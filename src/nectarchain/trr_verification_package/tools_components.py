@@ -173,15 +173,14 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             Ratio of high-gain to low-gain mean charges.
         """
         output = super().finish(return_output_component=True, *args, **kwargs)
-        # log.info("output ",output,args,kwargs,kwargs["gain_file"])
+        log.debug("output ", output, args, kwargs, kwargs["gain_file"])
 
         charge_container = output[0].containers[EventType.FLATFIELD]
 
         # Read gain
         try:
-            # log.info(kwargs["gain_file"])
             gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
-            # log.info(gain_data)
+            log.debug(gain_data)
             adc_to_pe = gain_data.high_gain[:, 0]
         except Exception:
             adc_to_pe = GAIN_DEFAULT
@@ -195,7 +194,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_lg = charge_container["charges_lg"]
         tom = charge_container["peak_hg"]
         npixels = charge_container["npixels"]
-        # log.info("charge hg ",charge_hg, len(charge_hg), len(charge_hg[0]))
+
         charge_hg = np.array(charge_hg, dtype=float)
         charge_lg = np.array(charge_lg, dtype=float)
 
@@ -211,9 +210,9 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             charge_lg[:, bad_pix] = np.nan
             charge_hg[:, bad_pix] = np.nan
 
-        log.info("adc_to_pe", adc_to_pe)
+        log.debug("adc_to_pe", adc_to_pe)
 
-        # log.info("bad pix list ", bad_pix)
+        log.info("bad pix list ", bad_pix)
 
         charge_lg = np.array(charge_lg)
         charge_hg = np.array(charge_hg)
@@ -227,27 +226,10 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_pe_hg = charge_hg / (adc_to_pe)
         charge_pe_lg = charge_lg / (adc_to_pe)
 
-        # log.info("n_events", n_events)
-
-        """
-        log.info(
-            charge_pe_lg,
-            len(charge_pe_lg),
-            len(charge_pe_hg),
-            np.nanmean(charge_pe_hg, axis=0),
-            np.nanmean(charge_pe_lg, axis=0),
-        )
-        """
-        # log.info("min ", np.min(np.concatenate(charge_pe_lg)),
-        # np.min(np.concatenate(charge_pe_hg)))
-
         ratio_hglg = np.nanmean(np.nanmean(charge_pe_hg / charge_pe_lg, axis=0))
-        log.info("ratio ", ratio_hglg)
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
-            # log.info(channel,charge)
             pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
-            # log.info(pix_mean_charge)
 
             pix_std_charge = np.nanstd(charge, axis=0)
 
@@ -257,9 +239,6 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             mean_charge[channel] = np.nanmean(pix_mean_charge)
 
             mean_resolution[channel] = np.nanmean(pix_resolution)
-
-            # log.info("pix ",npixels,channel,pix_resolution,min(pix_resolution),
-            # max(pix_resolution),np.where(pix_mean_charge<0),max(pix_std_charge))
 
             # mean_res_std[channel]    = np.std(pix_resolution[pix_resolution>-500])
             std_charge[channel] = np.nanmean(pix_std_charge)
