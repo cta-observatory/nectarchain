@@ -212,7 +212,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
 
         log.debug("adc_to_pe", adc_to_pe)
 
-        log.info("bad pix list ", bad_pix)
+        log.debug("bad pix list ", bad_pix)
 
         charge_lg = np.array(charge_lg)
         charge_hg = np.array(charge_hg)
