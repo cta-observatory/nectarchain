@@ -594,7 +594,9 @@ class ObservationTemperaturePipeline:
         plt.close("all")
 
     def plot_deadtime_temperature(self, df_module_filtered):
-        """Plots
+        """
+        Plots
+
         1. Deadtime as function of run temperatures
         2. Relative difference between collected and fitted trigger rates
         3. Deadtime as function of run temperatures and fit to get the slope
@@ -607,6 +609,7 @@ class ObservationTemperaturePipeline:
             to get the slope and intercept of the linear dependence
             of deadtime percentage with temperature,
             only for the runs selected for the fit and the paper
+
         """
 
         def select_runs(runs, trigger_rates, intensities, temperatures):
