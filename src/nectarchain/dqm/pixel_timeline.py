@@ -109,19 +109,16 @@ class PixelTimelineHighLowGain(DQMSummary):
             # count sky peds, event id 2
             self.counter_ped += 1
             self.SumBadPixels_ped.append(bad_count)
-            self.SumBadPixels.append(0)
         elif evt.trigger.event_type == EventType.SUBARRAY:
             # count standard physics stereo events, event id 32
             self.counter_evt += 1
             self.SumBadPixels.append(bad_count)
-            self.SumBadPixels_ped.append(0)
         # TODO: add ids for other event types, e.g., dark pedestals
         # TODO: this else is wrong, we should have a separate counter
         # for other event types, e.g., dark pedestals. It has to be implemented.
         else:
             self.counter_evt += 1
             self.SumBadPixels.append(bad_count)
-            self.SumBadPixels_ped.append(0)
 
         return None
 
