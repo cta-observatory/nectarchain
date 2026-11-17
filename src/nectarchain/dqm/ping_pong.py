@@ -40,7 +40,6 @@ class PingPongMonitoring(DQMSummary):
         self.pixel_ids = None
         self.cmap = None
         self.subarray = None
-        # self.last_event = None
         self.nchanges = 0
         self.ref_state = None
         self.ref_parity = None
@@ -134,20 +133,23 @@ class PingPongMonitoring(DQMSummary):
         expected = self.ref_state if parity == self.ref_parity else ~self.ref_state
 
         self.event_id.append(trigger_id)
-        if not np.array_equal(ping, expected):
+        mask_diff = ping != expected
+
+        if mask_diff.any():
             log.warning(
-                f"Mismatch: Event {trigger_id}, ping={ping[:10]}"
-                f" (expected {expected[:10]}), time={trigger_time}"
+                f"Mismatch: Event {trigger_id}, ping={ping[mask_diff]}"
+                f" (expected {expected[mask_diff]}), time={trigger_time}"
             )
             # Update reference state
             self.ref_state = ping
             self.ref_parity = parity
-            mismatches = np.where(ping != expected)[0]
+            mismatches = np.argwhere(mask_diff)
             self.change[mismatches] += 1
             self.event_times.append(trigger_time)
             self.nchanges += 1
             log.warning(
-                f"Reset reference. Changes incremented at indices: {mismatches[:10]}..."
+                "Reset reference. Changes incremented at indices: "
+                f"{mismatches.flatten()}..."
             )
 
     def finish_run(self):
@@ -196,7 +198,7 @@ class PingPongMonitoring(DQMSummary):
 
         # Handle edge case when there are no changes
         max_change = int(np.max(self.change)) if self.nchanges > 0 else 1
-        bounds = np.linspace(0, max_change, min(int(self.nchanges) + 1, max_change + 1))
+        bounds = np.linspace(0, max_change, min(int(self.nchanges) + 1, 20))
 
         disp.set_limits_minmax(zmin=0, zmax=max_change)
         disp.axes.text(2.0, -0.3, "Number of changes", fontsize=12, rotation=90)
