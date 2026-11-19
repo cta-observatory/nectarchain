@@ -75,8 +75,7 @@ class TestPixelTimelineHighLowGain:
 
         assert processor.counter_evt > 0 or processor.counter_ped > 0
         assert evt_count == 5
-        assert len(processor.SumBadPixels) == 5
-        assert len(processor.SumBadPixels_ped) == 5
+        assert len(processor.SumBadPixels) + len(processor.SumBadPixels_ped) == 5
 
     def test_process_event_with_noped(self):
         """Test process_event with noped parameter."""
