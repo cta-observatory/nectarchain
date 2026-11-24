@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import pickle
 import sys
 from pathlib import Path
 
@@ -663,7 +664,7 @@ class ObservationTemperaturePipeline:
             y_label=r"Minimum Deadtime ($\mu s$)",
             y_lims=(0.7, 0.92),
         ):
-            plt.figure()
+            fig = plt.figure()
             plt.errorbar(
                 x=temperatures,
                 y=dt_or_dt_pc,
@@ -678,6 +679,7 @@ class ObservationTemperaturePipeline:
             plt.ylim(y_lims)
             plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
             plt.grid()
+            return fig
 
         def plot_relative_trigger_difference(
             temperatures,
@@ -686,7 +688,7 @@ class ObservationTemperaturePipeline:
             fitted_trigger_rates_err=None,
             ylims=(-11, 11),
         ):
-            plt.figure()
+            fig = plt.figure()
             collected_trigger_rates = np.array(collected_trigger_rates) / 1000
             fitted_trigger_rates = np.array(fitted_trigger_rates)
             relative = (
@@ -721,7 +723,7 @@ class ObservationTemperaturePipeline:
             plt.xlim(temperatures.min() - 2, temperatures.max() + 2)
             plt.grid()
 
-            return relative
+            return relative, fig
 
         temperatures = np.sort(df_module_filtered["temperatures"].tolist()[0])
         argsorted_temps = np.argsort(df_module_filtered["temperatures"].tolist()[0])
@@ -758,7 +760,7 @@ class ObservationTemperaturePipeline:
         )
 
         # Deadtime [mus] vs Temperature [°C]
-        plot_deadtime_per_temperature(
+        fig = plot_deadtime_per_temperature(
             temperatures=temperatures,
             dt_or_dt_pc=deadtime,
             dt_err_or_dt_pc_err=deadtime_err,
@@ -773,12 +775,18 @@ class ObservationTemperaturePipeline:
                 fontsize=9,
                 color="blue",
             )
-        plot_path = os.path.join(self.output_dir, "deadtime_vs_temperature.png")
+        fig_name = "deadtime_vs_temperature"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         # Relative difference between fitted
         # and collected trigger rates vs Temperature [°C]
-        relative = plot_relative_trigger_difference(
+        relative, fig = plot_relative_trigger_difference(
             temperatures=temperatures,
             collected_trigger_rates=collected_trigger_rates,
             fitted_trigger_rates=fitted_trigger_rates,
@@ -816,9 +824,13 @@ class ObservationTemperaturePipeline:
             fontsize=10,
             color="grey",
         )
-        plot_path = os.path.join(
-            self.output_dir, "relative_trigger_difference_vs_temperature.png"
-        )
+        fig_name = "relative_trigger_difference_vs_temperature"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         # Deadtime [mus] vs Temperature [°C]
@@ -835,7 +847,8 @@ class ObservationTemperaturePipeline:
             * np.mean(selected_temperatures**2)
             / np.var(selected_temperatures)
         )
-        plot_deadtime_per_temperature(
+
+        fig = plot_deadtime_per_temperature(
             temperatures=selected_temperatures,
             dt_or_dt_pc=selected_deadtime,
             dt_err_or_dt_pc_err=selected_deadtime_err,
@@ -858,7 +871,13 @@ class ObservationTemperaturePipeline:
                 boxstyle="round", facecolor="white", edgecolor="black", alpha=0.9
             ),
         )
-        plot_path = os.path.join(self.output_dir, "deadtime_vs_temperature_fit.png")
+        fig_name = "deadtime_vs_temperature_fit"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         # Relative difference between fitted
@@ -907,7 +926,7 @@ class ObservationTemperaturePipeline:
             * np.mean(selected_temperatures**2)
             / np.var(selected_temperatures)
         )
-        plot_deadtime_per_temperature(
+        fig = plot_deadtime_per_temperature(
             temperatures=selected_temperatures,
             dt_or_dt_pc=selected_deadtime_pc,
             dt_err_or_dt_pc_err=selected_error_deadtime_pc,
@@ -932,12 +951,14 @@ class ObservationTemperaturePipeline:
                 boxstyle="round", facecolor="white", edgecolor="black", alpha=0.9
             ),
         )
-        plot_path = os.path.join(
-            self.output_dir, "deadtime_percentage_vs_temperature.png"
-        )
+        fig_name = "deadtime_percentage_vs_temperature"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
-
-        plt.show()
 
 
 def main():
