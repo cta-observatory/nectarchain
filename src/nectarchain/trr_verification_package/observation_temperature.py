@@ -223,7 +223,7 @@ class ObservationTemperaturePipeline:
         # Calibration curves dependent on temperature
         df_nsb0 = df_output[df_output["NSB"] == 0]
 
-        plt.figure()
+        fig = plt.figure()
         for temp_fixed in df_nsb0["temperature"].unique():
             df_nsb_temp = df_nsb0[df_nsb0["temperature"] == temp_fixed]
             ff_v = df_nsb_temp["ff_v"]
@@ -242,12 +242,17 @@ class ObservationTemperaturePipeline:
         plt.ylabel("Charge (p.e)")
         fig_name = "Charge_ff_v_temp"
         plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         # Charge resolution as function of
         # temperature for different FF_voltages and NSBs.
 
-        plt.figure(figsize=(8, 6))
+        fig = plt.figure(figsize=(8, 6))
 
         for i, v_fixed in enumerate(ff_list):
             df_v = df_output[df_output["ff_v"] == v_fixed].sort_values("temperature")
@@ -266,6 +271,11 @@ class ObservationTemperaturePipeline:
         # plt.legend(fontsize=8, ncol=2)
         fig_name = "charge_resolution_T_nsb"
         plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         slope = []
@@ -313,6 +323,11 @@ class ObservationTemperaturePipeline:
         plt.legend(fontsize=8, ncol=4)
         fig_name = "ChargeResolution_T_nsb_paper"
         plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         fig, ax1 = plt.subplots()
@@ -344,6 +359,11 @@ class ObservationTemperaturePipeline:
         fig.tight_layout()
         fig_name = "ChargeResolution_parameters"
         plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
         plt.close("all")
 
@@ -530,6 +550,11 @@ class ObservationTemperaturePipeline:
 
         fig_name = "Linearity_params_temp"
         plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         # PLOT2 : HG/LG as function of different transmissions
@@ -590,6 +615,11 @@ class ObservationTemperaturePipeline:
 
         fig_name = "HGLGRatio_Linearity_temp"
         plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         plt.close("all")
