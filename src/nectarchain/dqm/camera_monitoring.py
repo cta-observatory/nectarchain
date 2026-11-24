@@ -230,9 +230,32 @@ class CameraMonitoring(DQMSummary):
             self.CameraMonitoring_Results_Dict[
                 "CAMERA-TEMPERATURE-STD"
             ] = self.DrawerTemp_std
-            self.CameraMonitoring_Results_Dict[
-                "CAMERA-TEMPERATURE-TREND"
-            ] = self.DrawerTemp_trend
+
+            from astropy.table import Table
+
+            drawer_times = self.DrawerTimes_run.reshape(self.DrawerTemp1_trend.shape)
+            drawer_times = np.tile(
+                np.unique(drawer_times), (self.DrawerTemp_trend.shape[0], 1)
+            )
+
+            drawer_indices = []
+            flat_trends = []
+            flat_timestamps = []
+
+            for i, (trend, times) in enumerate(
+                zip(self.DrawerTemp_trend, drawer_times)
+            ):
+                drawer_indices.extend([i] * len(trend))
+                flat_trends.extend(trend.tolist())
+                flat_timestamps.extend(times.tolist())
+
+            self.CameraMonitoring_Results_Dict["CAMERA-TEMPERATURE-TREND"] = Table(
+                {
+                    "drawer": np.array(drawer_indices),
+                    "trend": np.array(flat_trends, dtype=np.float64),
+                    "timestamp": np.array(flat_timestamps, dtype=np.float64),
+                }
+            )
         except Exception as err:
             log.error(
                 f"Drawer temperature could not be retrieved. Received error "
