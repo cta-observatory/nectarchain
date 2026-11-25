@@ -782,7 +782,6 @@ class ObservationTemperaturePipeline:
             camera=self.camera,
             ids=source_ids,
             output_dir=self.output_dir,
-            temp_output=self.temp_output,
         )
 
         choices = select_runs(
@@ -920,7 +919,7 @@ class ObservationTemperaturePipeline:
         selected_fitted_tr_err = np.array(fitted_trigger_rates_err)[
             list(choices.values())
         ]
-        relative = plot_relative_trigger_difference(
+        relative, fig = plot_relative_trigger_difference(
             temperatures=selected_temperatures,
             collected_trigger_rates=selected_collected_tr,
             fitted_trigger_rates=selected_fitted_tr,
@@ -939,9 +938,13 @@ class ObservationTemperaturePipeline:
             alpha=0.3,
         )
         plt.axhline(0, ls="--", lw=2, color="grey")
-        plot_path = os.path.join(
-            self.output_dir, "relative_trigger_difference_vs_temperature_shaded.png"
-        )
+        fig_name = "relative_trigger_difference_vs_temperature_shaded"
+        plot_path = os.path.join(self.output_dir, f"{fig_name}.png")
+        if self.temp_output:
+            with open(
+                os.path.join(self.temp_output, f"plot_{fig_name}.pkl"), "wb"
+            ) as f:
+                pickle.dump(fig, f)
         plt.savefig(plot_path)
 
         # Deadtime percentage per temperature
