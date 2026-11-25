@@ -34,14 +34,34 @@ Congrats! You now have two VMs with ZODB/ZEO servers with ZRS replication enable
 
 The Bokeh service is launched from the second VM (the one hosting the secondary, read-only database) with:
 ```shell
+export DQM_AUTH_PASSWORD='<SHARED_PASSWORD>'
+export DQM_AUTH_SECRET='<generate with: python -c "import secrets; print(secrets.token_urlsafe(32))">'
 bokeh serve --num-procs $(grep -c ^processor /proc/cpuinfo) \
             --allow-websocket-origin=<SECONDARY_HOST_IP_ADDRESS>:5006 \
             --allow-websocket-origin=<DNS_ALIAS_FOR_SECONDARY_HOST>:5006 \
+            --enable-xsrf-cookies \
+            --auth-module=/opt/cta/nectarchain/src/nectarchain/dqm/bokeh_app/auth.py \
             --show bokeh_app
 ```
 and served on `localhost` on port 5006.
 
 Then, make sure with your local IT team that `<SECONDARY_HOST_IP_ADDRESS>:5006/bokeh_app` is exposed to the web.
+
+### Restricting access to the web app
+
+The web app is protected by a login page backed by a shared NectarCAM user/password, implemented with a Bokeh authentication module (`--auth-module`, cf. `bokeh serve --help`), i.e. `bokeh_app/auth.py` in this repository.
+
+* Access is controlled by a single shared account defined through environment variables:
+  * `DQM_AUTH_USER` (default: `nectar`);
+  * `DQM_AUTH_PASSWORD` (required — this is the shared password to distribute to NectarCAM members);
+  * `DQM_AUTH_SECRET` (required) signs the login session cookies. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and keep it private; changing it invalidates all active sessions.
+* Unauthenticated visitors are redirected to `/login`; after a successful login, a signed, `HttpOnly` session cookie is set, which expires after 12 hours. A logout endpoint is available at `/logout` (exposed to the app as `curdoc().session_context.logout_url`).
+* The Bokeh server will refuse to start if `DQM_AUTH_PASSWORD` or `DQM_AUTH_SECRET` are not defined, so an unprotected server cannot be launched by accident.
+* Bokeh >= 3.1 is required for `--auth-module` support.
+
+For security,
+* serve the web app over HTTPS (e.g. with `--ssl-certfile`/`--ssl-keyfile`, or have your local IT team terminate TLS in front of it), so the password and session cookies are not exchanged in clear;
+* when served over HTTPS, keep `DQM_AUTH_COOKIE_SECURE` at its default of `1`.
 
 ## How to back the database up ?
 
@@ -57,7 +77,7 @@ docker run --rm --volumes-from plone-zeo-zeo-1 -v $(pwd):/backup ubuntu bash -c 
 
 ##  TODO
 
-* Open the access of the web app worldwide, protected with NectarCAM user/password.
+* ~~Open the access of the web app worldwide, protected with NectarCAM user/password.~~ Done: the web app is protected with a shared NectarCAM user/password via a Bokeh authentication module (`bokeh_app/auth.py`), see "Restricting access to the web app" above.
 * ~~Open write access to the DB for worker nodes on DIRAC, presumably using temporary, volatile tokens.~~ For security reasons, the DB should rather not be open in write access to the world. Instead, the revised workflow is the following:
   * Launch DQM jobs on DIRAC when transferring the data from CEA to DIRAC.
   * Instead of *pushing* the DQM output from DIRAC workers to the DQM DB, the primary VM will *pull* them from DIRAC to feed the DB.
