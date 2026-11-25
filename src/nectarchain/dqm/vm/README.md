@@ -52,7 +52,7 @@ Then, make sure with your local IT team that `<SECONDARY_HOST_IP_ADDRESS>:5006/b
 The web app is protected by a login page backed by a shared NectarCAM user/password, implemented with a Bokeh authentication module (`--auth-module`, cf. `bokeh serve --help`), i.e. `bokeh_app/auth.py` in this repository.
 
 * Access is controlled by a single shared account defined through environment variables:
-  * `DQM_AUTH_USER` (default: `nectar`);
+  * `DQM_AUTH_USER` (default: `foo`);
   * `DQM_AUTH_PASSWORD` (required — this is the shared password to distribute to NectarCAM members);
   * `DQM_AUTH_SECRET` (required) signs the login session cookies. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and keep it private; changing it invalidates all active sessions.
 * Unauthenticated visitors are redirected to `/login`; after a successful login, a signed, `HttpOnly` session cookie is set, which expires after 12 hours. A logout endpoint is available at `/logout` (exposed to the app as `curdoc().session_context.logout_url`).

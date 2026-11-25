@@ -24,7 +24,7 @@ Environment variables (required):
                                 python -c "import secrets;
                                 print(secrets.token_urlsafe(32))"
 Optional:
-    DQM_AUTH_USER           shared username (default: "nectarcam")
+    DQM_AUTH_USER           shared username (default: "foo")
     DQM_AUTH_COOKIE_SECURE  whether to set the ``Secure`` flag on the session
                             cookie (default: 1). Set to 0 only when the
                             service is served over plain http, e.g. for local
@@ -43,7 +43,7 @@ import time
 import tornado.escape
 from tornado.web import RequestHandler
 
-USERNAME = os.environ.get("DQM_AUTH_USER", "nectarcam")
+USERNAME = os.environ.get("DQM_AUTH_USER", "foo")
 PASSWORD = os.environ.get("DQM_AUTH_PASSWORD", "")
 SECRET = os.environ.get("DQM_AUTH_SECRET", "")
 COOKIE_SECURE = os.environ.get("DQM_AUTH_COOKIE_SECURE", "1") == "1"
