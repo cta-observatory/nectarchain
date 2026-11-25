@@ -1,13 +1,14 @@
 import collections
 import json
 import os
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import numpy as np
 
 # bokeh imports
 from bokeh.layouts import column
-from bokeh.models import Div, TabPanel
+from bokeh.models import DatetimeTickFormatter, Div, TabPanel
 from bokeh.plotting import figure
 
 from nectarchain.dqm.bokeh_app.logging_config import setup_logger
@@ -48,8 +49,10 @@ def make_timelines(timelines_data, runid=None):
     for parentkey, parent_data in timelines_data.items():
         # parent_data is the dict for this parentkey
         for childkey, child_data in parent_data.items():
-            logger.info(f"Run id {runid}, preparing plot for {parentkey}, {childkey}")
             if "CAMERA-TEMPERATURE-TREND" not in childkey:
+                logger.info(
+                    f"Run id {runid}, " f"preparing plot for {parentkey}, {childkey}"
+                )
                 evts = np.arange(len(child_data))
                 fig = figure(
                     x_range=(0, np.max(evts) + 50),
@@ -63,18 +66,64 @@ def make_timelines(timelines_data, runid=None):
                     line_width=3,
                 )
                 fig.xaxis.axis_label = "Event number"
-            else:
-                samples = np.arange(child_data.shape[1]) + 1
-                # shape[1] is the number of samples
-                # shape[0] is the number of drawers
-                # TODO: this samples shall be extracted from the child_data
-                # once the timestamps are exported by the DQM
-                # (see isse #372 on nectarchain)
-                fig = figure(
-                    x_range=(samples.min(), samples.max()),
-                    y_range=(np.min(child_data) - 1, np.max(child_data) + 1),
+
+        if "CAMERA-TEMPERATURE-TREND" in parentkey:
+            drawer_ids, temp_trends, drawer_ts = [], [], []
+            for childkey, child_data in parent_data.items():
+                logger.info(
+                    f"Run id {runid}, preparing plot for {parentkey}, {childkey}"
                 )
-                for nd in range(child_data.shape[0]):  # loop over drawers
+                if childkey == "trend":
+                    temp_trends = child_data
+                elif childkey == "drawer":
+                    drawer_ids = child_data
+                elif childkey == "timestamp":
+                    drawer_ts = child_data
+
+            try:
+                unique_drawer_ids = np.unique(drawer_ids)
+                number_of_samples = len(unique_drawer_ids)
+                temp_trends_per_drawer = np.reshape(
+                    temp_trends,
+                    shape=(number_of_samples, int(len(drawer_ids) / number_of_samples)),
+                )
+                drawer_ts_per_drawer = (
+                    np.reshape(
+                        drawer_ts,
+                        shape=(
+                            number_of_samples,
+                            int(len(drawer_ids) / number_of_samples),
+                        ),
+                    )
+                    * 1000
+                )
+                # Convert to ms
+
+                first = datetime.fromtimestamp(
+                    drawer_ts_per_drawer.min() / 1000, tz=timezone.utc
+                ).strftime("%H:%M:%S")
+                last = datetime.fromtimestamp(
+                    drawer_ts_per_drawer.max() / 1000, tz=timezone.utc
+                ).strftime("%H:%M:%S")
+
+                fig = figure(
+                    title=f"From {first} to {last} [UTC]",
+                    x_range=(drawer_ts_per_drawer.min(), drawer_ts_per_drawer.max()),
+                    y_range=(
+                        np.min(temp_trends_per_drawer) - 1,
+                        np.max(temp_trends_per_drawer) + 1,
+                    ),
+                )
+                fig.xaxis.formatter = DatetimeTickFormatter(
+                    seconds="%H:%M:%S",
+                    minutes="%H:%M:%S",
+                    hourmin="%H:%M:%S",
+                    hours="%H:%M:%S",
+                    days="%H:%M:%S",
+                    months="%H:%M:%S",
+                    years="%H:%M:%S",
+                )
+                for nd in range(drawer_ts_per_drawer.shape[0]):  # loop over drawers
                     # TODO: this is part of the code that
                     # could be used if we manage to compile the HoverTool
                     # via `compile_hover_tool_val_vs_id_or_sample`
@@ -86,12 +135,23 @@ def make_timelines(timelines_data, runid=None):
                     #         value=child_data[nd]
                     # ))
                     fig.line(
-                        x=samples,
-                        y=child_data[nd],
+                        x=drawer_ts_per_drawer[:][nd],
+                        y=temp_trends_per_drawer[:][nd],
                         line_width=1,
                         alpha=0.7,
                     )
-                fig.xaxis.axis_label = "Sample number"
+                fig.xaxis.axis_label = "Timestamps [UTC]"
+
+            except Exception as e:
+                logger.warning(
+                    f"Caught {type(e).__name__}, creating empty figure. Details: {e}"
+                )
+                fig = figure(
+                    title="No data in the database",
+                    x_range=(0, 1),
+                    y_range=(0, 1),
+                )
+                pass
 
         try:
             fig.yaxis.axis_label = y_axis_labels[parentkey]
