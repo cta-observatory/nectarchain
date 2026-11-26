@@ -162,29 +162,75 @@ class DQMSummary:
                 if arr.ndim == 0:
                     arr = arr.reshape(1)  # Convert scalar to 1D
                 data[name] = arr
-                hdu = fits.BinTableHDU(data)
+                try:
+                    hdu = fits.BinTableHDU(data)
+                except Exception as e:
+                    log.error(f"Failed to create BinTableHDU from 1D array: {e}")
+                    data = Table()
+                    hdu = fits.BinTableHDU(data)
             else:
-                hdu = fits.ImageHDU(arr)
+                try:
+                    hdu = fits.ImageHDU(arr)
+                except Exception as e:
+                    log.error(f"Failed to create ImageHDU from array: {e}")
+                    data = Table()
+                    hdu = fits.BinTableHDU(data)
 
         # sometimes content can be a dict, as from trigger_statistics
         elif isinstance(content, dict):
             try:
                 data[name] = content
             except Exception as e:
-                log.warning(f"{name}: Caught {type(e).__name__}. Details: {e}")
-                data = Table(content)
+                log.warning(
+                    f"Caught {type(e).__name__} when adding dict as column. "
+                    f"Details: {e}"
+                )
+                try:
+                    data = Table(content)
+                except Exception as e2:
+                    log.warning(
+                        f"Caught {type(e2).__name__} when creating Table from dict. "
+                        f"Details: {e2}"
+                    )
+                    # Fallback: create a Table with
+                    # the string representation of the dict
+                    data = Table({name: [str(content)]})
 
-            hdu = fits.BinTableHDU(data)
+            try:
+                hdu = fits.BinTableHDU(data)
+            except Exception as e:
+                log.error(f"Failed to create BinTableHDU from dict: {e}")
+                # Last resort: create an empty HDU
+                data = Table()
+                hdu = fits.BinTableHDU(data)
 
         # Handle astropy Table objects directly
         elif isinstance(content, Table):
             # Content is already a Table, use it as the HDU data
-            hdu = fits.BinTableHDU(content, name=name)
+            try:
+                hdu = fits.BinTableHDU(content, name=name)
+            except Exception as e:
+                log.error(f"Failed to create BinTableHDU from Table: {e}")
+                data = Table()
+                hdu = fits.BinTableHDU(data)
 
         # content can be a float, need to be recast to an array
         else:
-            data = Table(np.array([content]))
-            hdu = fits.BinTableHDU(data)
+            try:
+                data = Table(np.array([content]))
+            except Exception as e:
+                log.warning(
+                    f"Caught {type(e).__name__} when creating Table from scalar. "
+                    f"Details: {e}"
+                )
+                # Fallback: create a Table with the string representation
+                data = Table({name: [str(content)]})
+            try:
+                hdu = fits.BinTableHDU(data)
+            except Exception as e:
+                log.error(f"Failed to create BinTableHDU from scalar: {e}")
+                data = Table()
+                hdu = fits.BinTableHDU(data)
 
         hdu.name = name
         return hdu
@@ -205,7 +251,7 @@ class DQMSummary:
                 try:
                     hdu = self._create_hdu(name, content)
                     hdulist.append(hdu)
-                except TypeError as e:
+                except Exception as e:
                     log.warning(
                         f"Caught {type(e).__name__}, skipping {name}. Details: {e}"
                     )
