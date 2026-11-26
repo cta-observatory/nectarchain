@@ -1,0 +1,46 @@
+# NectarCAM DQM Bokeh web application — systemd service.
+#
+# Install as /etc/systemd/system/dqm-web-app.service, then:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dqm-web-app
+#
+# Before starting, fill in the shared-account settings in
+# /etc/dqm/dqm-web-app.env (see dqm-web-app.env in this directory) and
+# replace the two --allow-websocket-origin entries below with the
+# IP address / DNS alias of this host.
+
+[Unit]
+Description=NectarCAM DQM Bokeh web application
+Documentation=https://github.com/cta-observatory/nectarchain/blob/master/src/nectarchain/dqm/vm/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nectarcam
+Group=cta
+WorkingDirectory=/opt/cta/nectarchain
+# Shared-account settings: DQM_AUTH_USER, DQM_AUTH_PASSWORD, DQM_AUTH_SECRET
+EnvironmentFile=/etc/dqm/dqm-web-app.env
+
+ExecStart=/bin/sh -c 'exec /opt/conda/envs/nectarchain/bin/bokeh serve \
+    --address 0.0.0.0 \
+    --port 5006 \
+    --num-procs "$$(grep -c ^processor /proc/cpuinfo)" \
+    --allow-websocket-origin=<SECONDARY_HOST_IP_ADDRESS>:5006 \
+    --allow-websocket-origin=<DNS_ALIAS_FOR_SECONDARY_HOST>:5006 \
+    --enable-xsrf-cookies \
+    --auth-module=/opt/cta/nectarchain/src/nectarchain/dqm/bokeh_app/auth.py \
+    bokeh_app'
+
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

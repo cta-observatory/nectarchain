@@ -63,6 +63,35 @@ For security,
 * serve the web app over HTTPS (e.g. with `--ssl-certfile`/`--ssl-keyfile`, or have your local IT team terminate TLS in front of it), so the password and session cookies are not exchanged in clear;
 * when served over HTTPS, keep `DQM_AUTH_COOKIE_SECURE` at its default of `1`.
 
+## Running the web app as a systemd service
+
+As an alternative to the manual `bokeh serve` command above, the repository provides a systemd unit and an environment file in this directory:
+
+* `dqm-web-app.service` — launches the Bokeh server (as the `nectarcam` user, from the `nectarchain` mamba environment) at boot, and restarts it on failure;
+* `dqm-web-app.env` — environment file holding the shared-account settings (`DQM_AUTH_USER`, `DQM_AUTH_PASSWORD`, `DQM_AUTH_SECRET`).
+
+Setup:
+
+```shell
+sudo mkdir -p /etc/dqm
+sudo install -m 600 -o nectarcam -g cta dqm-web-app.env /etc/dqm/dqm-web-app.env
+# then edit /etc/dqm/dqm-web-app.env to set the shared password and the
+# cookie-signing secret (DQM_AUTH_SECRET), cf. section above
+sudo install -m 644 dqm-web-app.service /etc/systemd/system/dqm-web-app.service
+# replace the two --allow-websocket-origin entries in the unit file with the
+# IP address / DNS alias of this host
+sudo systemctl daemon-reload
+sudo systemctl enable --now dqm-web-app
+systemctl status dqm-web-app
+journalctl -u dqm-web-app -f   # application logs (Bokeh + auth module)
+```
+
+Notes:
+
+* The service runs the same command as the manual launch, minus `--show` (there is no browser on the VM).
+* The Bokeh application also writes its own rotating logs to `bokeh_app/logs/app.log` (or the directory given by `$NECTARCHAIN_LOG`).
+* To change the password, update `/etc/dqm/dqm-web-app.env` and run `sudo systemctl restart dqm-web-app`.
+
 ## How to back the database up ?
 
 Backups of the DQM ZODB database can be created, from the _primary_ VM, with (cf. e.g. https://docs.docker.com/storage/volumes/#back-up-a-volume):
