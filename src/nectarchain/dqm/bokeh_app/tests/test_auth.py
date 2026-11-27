@@ -69,11 +69,12 @@ def auth_mod():
 
 
 class _FakeRequestHandler:
-    """Minimal stand-in for the Bokeh/Tornado RequestHandler passed to
-    ``get_user``."""
+    """Minimal stand-in for the Bokeh/Tornado RequestHandler passed to the
+    module's hooks."""
 
-    def __init__(self, cookie: str | None = None):
+    def __init__(self, cookie: str | None = None, uri: str = "/bokeh_app/"):
         self._cookie = cookie
+        self.request = type("_Request", (), {"uri": uri})()
 
     def get_cookie(self, name: str) -> str | None:
         return self._cookie
@@ -147,6 +148,50 @@ def test_safe_next(auth_mod, next_url, expected):
     assert auth_mod._safe_next(next_url) == expected
 
 
+# -------------------------------------------------------- path mapping (_to_public)
+@pytest.mark.parametrize(
+    "public_prefix,backend_prefix,path,expected",
+    [
+        # Default, no rewrite: identity mapping.
+        ("/bokeh_app", "/bokeh_app", "/bokeh_app/", "/bokeh_app/"),
+        ("/bokeh_app", "/bokeh_app", "/bokeh_app/run/7", "/bokeh_app/run/7"),
+        # Rewriting proxy: /nectarcam-dqm publicly, /bokeh_app on the backend.
+        (
+            "/nectarcam-dqm",
+            "/bokeh_app",
+            "/bokeh_app/",
+            "/nectarcam-dqm/",
+        ),
+        (
+            "/nectarcam-dqm",
+            "/bokeh_app",
+            "/bokeh_app/run/7",
+            "/nectarcam-dqm/run/7",
+        ),
+        ("/nectarcam-dqm", "/bokeh_app", "/bokeh_app", "/nectarcam-dqm/"),
+        # A request that is already public (or foreign) is left untouched.
+        (
+            "/nectarcam-dqm",
+            "/bokeh_app",
+            "/nectarcam-dqm/run/7",
+            "/nectarcam-dqm/run/7",
+        ),
+        ("/nectarcam-dqm", "/bokeh_app", "/favicon.ico", "/favicon.ico"),
+        # Root-level public prefix.
+        ("/", "/bokeh_app", "/bokeh_app/", "/"),
+        ("/", "/bokeh_app", "/bokeh_app/run/7", "/run/7"),
+    ],
+)
+def test_to_public(public_prefix, backend_prefix, path, expected):
+    module = _load_auth(
+        _default_env(
+            DQM_AUTH_URL_PREFIX=public_prefix,
+            DQM_AUTH_BACKEND_PREFIX=backend_prefix,
+        )
+    )
+    assert module._to_public(path) == expected
+
+
 # --------------------------------------------------- environment handling
 def test_raises_without_password():
     with pytest.raises(RuntimeError, match="DQM_AUTH_PASSWORD"):
@@ -165,20 +210,85 @@ def test_custom_username(auth_mod):
 
 
 # ---------------------------------------------------------- URL prefixing
-def test_default_url_prefix(auth_mod):
-    # Endpoints are served under the app path so that a reverse proxy which
-    # only routes the app subpath can reach them.
+def test_default_prefixes(auth_mod):
+    # Routes are served under the (default) backend prefix, and the login
+    # redirect points to that same prefix when no rewrite is in play.
     assert auth_mod.login_url == "/bokeh_app/login"
     assert auth_mod.logout_url == "/bokeh_app/logout"
+    login = auth_mod.get_login_url(_FakeRequestHandler(uri="/bokeh_app/"))
+    assert login == "/bokeh_app/login?next=%2Fbokeh_app%2F"
 
 
-def test_custom_url_prefix():
+def test_public_prefix_only_in_redirects():
     module = _load_auth(_default_env(DQM_AUTH_URL_PREFIX="/dqm"))
-    assert module.login_url == "/dqm/login"
-    assert module.logout_url == "/dqm/logout"
+    # The routes stay under the backend prefix ...
+    assert module.login_url == "/bokeh_app/login"
+    assert module.logout_url == "/bokeh_app/logout"
+    # ... but browsers are redirected to the public prefix.
+    login = module.get_login_url(_FakeRequestHandler(uri="/bokeh_app/"))
+    assert login == "/dqm/login?next=%2Fdqm%2F"
 
 
-def test_url_prefix_trailing_slash_normalised():
-    module = _load_auth(_default_env(DQM_AUTH_URL_PREFIX="/dqm/"))
-    assert module.login_url == "/dqm/login"
-    assert module.logout_url == "/dqm/logout"
+def test_backend_prefix_only_in_routes():
+    module = _load_auth(_default_env(DQM_AUTH_BACKEND_PREFIX="/be"))
+    assert module.login_url == "/be/login"
+    assert module.logout_url == "/be/logout"
+    login = module.get_login_url(_FakeRequestHandler(uri="/be/"))
+    assert login == "/bokeh_app/login?next=%2Fbokeh_app%2F"
+
+
+def test_split_prefixes_public_and_backend():
+    # The production layout: the app lives at /bokeh_app on the Bokeh
+    # server (what the proxy forwards), while visitors open /nectarcam-dqm.
+    module = _load_auth(
+        _default_env(
+            DQM_AUTH_URL_PREFIX="/nectarcam-dqm",
+            DQM_AUTH_BACKEND_PREFIX="/bokeh_app",
+        )
+    )
+    assert module.login_url == "/bokeh_app/login"
+    assert module.logout_url == "/bokeh_app/logout"
+    login = module.get_login_url(_FakeRequestHandler(uri="/bokeh_app/"))
+    assert login == "/nectarcam-dqm/login?next=%2Fnectarcam-dqm%2F"
+    login = module.get_login_url(_FakeRequestHandler(uri="/bokeh_app/run/7?foo=1"))
+    assert login == "/nectarcam-dqm/login?next=%2Fnectarcam-dqm%2Frun%2F7%3Ffoo%3D1"
+
+
+def test_prefix_trailing_slash_normalised():
+    module = _load_auth(
+        _default_env(
+            DQM_AUTH_URL_PREFIX="/nectarcam-dqm/",
+            DQM_AUTH_BACKEND_PREFIX="/bokeh_app/",
+        )
+    )
+    assert module.login_url == "/bokeh_app/login"
+    assert module.logout_url == "/bokeh_app/logout"
+    login = module.get_login_url(_FakeRequestHandler(uri="/bokeh_app/"))
+    assert login == "/nectarcam-dqm/login?next=%2Fnectarcam-dqm%2F"
+
+
+# --------------------------------------------- integration with bokeh (3.x)
+def test_bokeh_authmodule_accepts_dual_url_providers():
+    """The module must pass Bokeh's provider validation even though it
+    supplies both ``login_url`` and a ``get_login_url()`` function (the
+    module relaxes that specific check at import)."""
+    pytest.importorskip("bokeh")
+    from bokeh.server.auth_provider import AuthModule
+
+    old_environ = dict(os.environ)
+    try:
+        os.environ.update(_default_env())
+        provider = AuthModule(str(AUTH_PATH))
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
+
+    assert provider.login_url == "/bokeh_app/login"
+    assert provider.logout_url == "/bokeh_app/logout"
+    assert callable(provider.get_login_url)
+    assert provider.get_user is not None
+    # Both endpooints are installed at the backend-prefixed URLs.
+    assert provider.endpoints == [
+        ("/bokeh_app/login", provider.login_handler),
+        ("/bokeh_app/logout", provider.logout_handler),
+    ]
