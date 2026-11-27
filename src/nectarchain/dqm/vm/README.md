@@ -55,9 +55,12 @@ The web app is protected by a login page backed by a shared NectarCAM user/passw
   * `DQM_AUTH_USER` (default: `foo`);
   * `DQM_AUTH_PASSWORD` (required — this is the shared password to distribute to NectarCAM members);
   * `DQM_AUTH_SECRET` (required) signs the login session cookies. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and keep it private; changing it invalidates all active sessions.
-* Unauthenticated visitors are redirected to `/login`; after a successful login, a signed, `HttpOnly` session cookie is set, which expires after 12 hours. A logout endpoint is available at `/logout` (exposed to the app as `curdoc().session_context.logout_url`).
+  * `DQM_AUTH_URL_PREFIX` (default: `/bokeh_app`) — the URL path (under a leading `/`) at which the app is reachable. The login and logout endpoints are served under it: e.g. `/bokeh_app/login` and `/bokeh_app/logout` by default. This is what makes authentication work behind reverse proxies that only forward the app subpath (a root-relative `/login` would be 404'd by such a proxy).
+* Unauthenticated visitors are redirected to `${DQM_AUTH_URL_PREFIX}/login`; after a successful login, a signed, `HttpOnly` session cookie is set, which expires after 12 hours. A logout endpoint is available under the same prefix (exposed to the app as `curdoc().session_context.logout_url`).
 * The Bokeh server will refuse to start if `DQM_AUTH_PASSWORD` or `DQM_AUTH_SECRET` are not defined, so an unprotected server cannot be launched by accident.
 * Bokeh >= 3.1 is required for `--auth-module` support.
+
+If the app is served behind a reverse proxy, that proxy must forward `${DQM_AUTH_URL_PREFIX}` — including subpaths such as `/bokeh_app/login` and `/bokeh_app/logout` — to the Bokeh server (port 5006). No root-level proxy rules are required.
 
 For security,
 * serve the web app over HTTPS (e.g. with `--ssl-certfile`/`--ssl-keyfile`, or have your local IT team terminate TLS in front of it), so the password and session cookies are not exchanged in clear;

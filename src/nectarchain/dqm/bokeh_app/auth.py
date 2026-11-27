@@ -10,11 +10,16 @@ Enable at the Bokeh server level with::
         --auth-module=/opt/cta/nectarchain/src/nectarchain/dqm/bokeh_app/auth.py \
         --show bokeh_app
 
-Unauthenticated visitors are redirected to ``/login``; a successful login
+Unauthenticated visitors are redirected to the login page; a successful login
 sets a signed, HttpOnly session cookie and redirects back to the requested
 page. The authenticated username is then made available in the application
-through ``curdoc().session_context.user``, and a ``/logout`` endpoint clears
-the session cookie.
+through ``curdoc().session_context.user``, and a logout endpoint clears the
+session cookie.
+
+The login/logout endpoints are served under ``DQM_AUTH_URL_PREFIX`` (default
+``/bokeh_app``), e.g. ``/bokeh_app/login``. This makes the redirect pass
+through reverse proxies that only route the app subpath; a root-relative
+``/login`` would otherwise be 404'd by such a proxy.
 
 Environment variables (required):
     DQM_AUTH_PASSWORD       shared password for the service (compared against
@@ -25,6 +30,9 @@ Environment variables (required):
                                 print(secrets.token_urlsafe(32))"
 Optional:
     DQM_AUTH_USER           shared username (default: "foo")
+    DQM_AUTH_URL_PREFIX     URL path under which the app is exposed (default:
+                            "/bokeh_app"); the login/logout endpoints are
+                            served under it (see above)
     DQM_AUTH_COOKIE_SECURE  whether to set the ``Secure`` flag on the session
                             cookie (default: 1). Set to 0 only when the
                             service is served over plain http, e.g. for local
@@ -50,6 +58,10 @@ COOKIE_SECURE = os.environ.get("DQM_AUTH_COOKIE_SECURE", "1") == "1"
 
 COOKIE_NAME = "dqm_user"
 COOKIE_MAX_AGE_S = 12 * 60 * 60  # 12 h sessions
+# Path under which the app is exposed. The login/logout endpoints are served
+# under this prefix (e.g. "/bokeh_app/login") so that reverse proxies which
+# only route the app subpath can reach them.
+URL_PREFIX = os.environ.get("DQM_AUTH_URL_PREFIX", "/bokeh_app").rstrip("/")
 
 if not PASSWORD:
     raise RuntimeError("DQM_AUTH_PASSWORD must be set to enable authentication")
@@ -120,7 +132,7 @@ def get_user(request_handler):
     return _get_cookie_user(request_handler.get_cookie(COOKIE_NAME))
 
 
-login_url = "/login"
+login_url = f"{URL_PREFIX}/login"
 
 
 class LoginHandler(RequestHandler):
@@ -145,7 +157,7 @@ class LoginHandler(RequestHandler):
   .error { color: #c0392b; margin-top: 0.8rem; }
   .hint { color: #888; font-size: 0.8rem; text-align: center; margin-top: 1rem; }
 </style></head><body>
-<form action="/login" method="post">
+<form action="@@LOGIN_URL@@" method="post">
   @@XSRF@@
   <h1>NectarCAM Data Quality Monitoring</h1>
   <input type="hidden" name="next" value="@@NEXT@@">
@@ -172,6 +184,7 @@ class LoginHandler(RequestHandler):
         xsrf = self.xsrf_form_html() if self.settings.get("xsrf_cookies") else ""
         page = (
             self._PAGE.replace("@@TITLE@@", "NectarCAM DQM - login")
+            .replace("@@LOGIN_URL@@", tornado.escape.xhtml_escape(login_url))
             .replace("@@XSRF@@", xsrf)
             .replace("@@NEXT@@", next_url)
             .replace("@@USER@@", tornado.escape.xhtml_escape(USERNAME))
@@ -200,10 +213,10 @@ class LoginHandler(RequestHandler):
             )
 
 
-logout_url = "/logout"
+logout_url = f"{URL_PREFIX}/logout"
 
 
 class LogoutHandler(RequestHandler):
     def get(self):
         self.clear_cookie(COOKIE_NAME)
-        self.redirect("/", permanent=False)
+        self.redirect(f"{URL_PREFIX}/", permanent=False)

@@ -162,3 +162,23 @@ def test_custom_username(auth_mod):
     module = _load_auth(_default_env(DQM_AUTH_USER="other_user"))
     assert module.check_credentials("other_user", ENV_PASSWORD) is True
     assert module.check_credentials(ENV_USERNAME, ENV_PASSWORD) is False
+
+
+# ---------------------------------------------------------- URL prefixing
+def test_default_url_prefix(auth_mod):
+    # Endpoints are served under the app path so that a reverse proxy which
+    # only routes the app subpath can reach them.
+    assert auth_mod.login_url == "/bokeh_app/login"
+    assert auth_mod.logout_url == "/bokeh_app/logout"
+
+
+def test_custom_url_prefix():
+    module = _load_auth(_default_env(DQM_AUTH_URL_PREFIX="/dqm"))
+    assert module.login_url == "/dqm/login"
+    assert module.logout_url == "/dqm/logout"
+
+
+def test_url_prefix_trailing_slash_normalised():
+    module = _load_auth(_default_env(DQM_AUTH_URL_PREFIX="/dqm/"))
+    assert module.login_url == "/dqm/login"
+    assert module.logout_url == "/dqm/logout"
