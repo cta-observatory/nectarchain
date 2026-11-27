@@ -230,6 +230,24 @@ def make_pixel_vals_histo(camera_displays_data, parent_key, child_key):
         color="green",
         alpha=0.6,
     )
+    mean_data = np.mean(data_for_hist)
+    std_data = np.std(data_for_hist)
+    median_data = np.median(data_for_hist)
+    histo_values.line(
+        x=mean_data,
+        y=np.linspace(min_val, max_val),
+        line_width=3,
+        color="red",
+        alpha=0.8,
+    )
+    histo_values.harea(
+        x1=mean_data - 2 * std_data,
+        x2=mean_data + 2 * std_data,
+        y=np.linspace(min_val, max_val),
+        color="red",
+        alpha=0.3,
+        legend_label=r"mean +- 2 std dev",
+    )
 
     frame_left = Node(target="frame", symbol="left", offset=5)
     frame_top = Node(target="frame", symbol="top", offset=5)
@@ -238,9 +256,9 @@ def make_pixel_vals_histo(camera_displays_data, parent_key, child_key):
         x=frame_left,
         y=frame_top,
         anchor="top_left",
-        text=f"Mean    = {np.mean(data_for_hist):.2f} \n"
-        + f"Median = {np.median(data_for_hist):.2f} \n"
-        + f"Std       = {np.std(data_for_hist):.2f}",
+        text=f"Mean    = {mean_data:.2f} \n"
+        + f"Median = {median_data:.2f} \n"
+        + f"Std       = {std_data:.2f}",
         padding=10,
         border_radius=5,
         border_line_color="green",
