@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 
@@ -15,6 +16,13 @@ from nectarchain.makers import EventsLoopNectarCAMCalibrationTool
 from nectarchain.makers.component import NectarCAMComponent
 from nectarchain.trr_verification_package.utils import get_bad_pixels_list
 from nectarchain.utils.constants import GAIN_DEFAULT
+
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    level=logging.INFO,
+    handlers=[logging.getLogger("__main__").handlers],
+)
+log = logging.getLogger(__name__)
 
 
 # overriding so we can have maxevents in the path
@@ -165,15 +173,14 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             Ratio of high-gain to low-gain mean charges.
         """
         output = super().finish(return_output_component=True, *args, **kwargs)
-        # print("output ",output,args,kwargs,kwargs["gain_file"])
+        log.debug("output ", output, args, kwargs, kwargs["gain_file"])
 
         charge_container = output[0].containers[EventType.FLATFIELD]
 
         # Read gain
         try:
-            # print(kwargs["gain_file"])
             gain_data = next(SPEfitContainer.from_hdf5(kwargs["gain_file"]))
-            # print(gain_data)
+            log.debug(gain_data)
             adc_to_pe = gain_data.high_gain[:, 0]
         except Exception:
             adc_to_pe = GAIN_DEFAULT
@@ -187,7 +194,7 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_lg = charge_container["charges_lg"]
         tom = charge_container["peak_hg"]
         npixels = charge_container["npixels"]
-        # print("charge hg ",charge_hg, len(charge_hg), len(charge_hg[0]))
+
         charge_hg = np.array(charge_hg, dtype=float)
         charge_lg = np.array(charge_lg, dtype=float)
 
@@ -203,9 +210,9 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             charge_lg[:, bad_pix] = np.nan
             charge_hg[:, bad_pix] = np.nan
 
-        print("adc_to_pe", adc_to_pe)
+        log.debug("adc_to_pe", adc_to_pe)
 
-        # print("bad pix list ", bad_pix)
+        log.debug("bad pix list ", bad_pix)
 
         charge_lg = np.array(charge_lg)
         charge_hg = np.array(charge_hg)
@@ -219,28 +226,10 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         charge_pe_hg = charge_hg / (adc_to_pe)
         charge_pe_lg = charge_lg / (adc_to_pe)
 
-        n_events = len(charge_pe_hg)
-        print("n_events", n_events)
-
-        """
-        print(
-            charge_pe_lg,
-            len(charge_pe_lg),
-            len(charge_pe_hg),
-            np.nanmean(charge_pe_hg, axis=0),
-            np.nanmean(charge_pe_lg, axis=0),
-        )
-        """
-        # print("min ", np.min(np.concatenate(charge_pe_lg)),
-        # np.min(np.concatenate(charge_pe_hg)))
-
         ratio_hglg = np.nanmean(np.nanmean(charge_pe_hg / charge_pe_lg, axis=0))
-        print("ratio ", ratio_hglg)
 
         for channel, charge in enumerate([charge_pe_hg, charge_pe_lg]):
-            # print(channel,charge)
             pix_mean_charge = np.nanmean(charge, axis=0)  # in pe
-            # print(pix_mean_charge)
 
             pix_std_charge = np.nanstd(charge, axis=0)
 
@@ -250,9 +239,6 @@ class ChargeResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
             mean_charge[channel] = np.nanmean(pix_mean_charge)
 
             mean_resolution[channel] = np.nanmean(pix_resolution)
-
-            # print("pix ",npixels,channel,pix_resolution,min(pix_resolution),
-            # max(pix_resolution),np.where(pix_mean_charge<0),max(pix_std_charge))
 
             # mean_res_std[channel]    = np.std(pix_resolution[pix_resolution>-500])
             std_charge[channel] = np.nanmean(pix_std_charge)
@@ -348,8 +334,8 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
         tom_no_fit = np.array(tom_no_fit_all[good_evts]).reshape(
             len(good_evts), npixels
         )
-        # print(tom_no_fit)
-        # print(tom_no_fit)
+        # log.info(tom_no_fit)
+        # log.info(tom_no_fit)
 
         # rms_mu = np.zeros(output[0].npixels)
         rms_no_fit = np.zeros(npixels)
@@ -367,7 +353,7 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                 boot_rms = []
 
                 sample = tom_pos[tom_pos < 32]
-                # print(sample)
+                # log.info(sample)
                 bins = np.linspace(20, 32, 50)
                 hist_values, bin_edges = np.histogram(sample, bins=bins)
 
@@ -375,13 +361,13 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                 bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
                 if bootstrap:
-                    # print(len(sample))
+                    # log.info(len(sample))
                     if len(sample) != 0:
                         for _ in range(1000):
                             bootsample = np.random.choice(
                                 sample, size=int(3 / 4 * (len(sample))), replace=True
                             )
-                            #             print(len(bootsample), bootsample.mean(),
+                            #             log.info(len(bootsample), bootsample.mean(),
                             # bootsample.std())
                             boot_rms.append(bootsample.std())
                             # simulated mean of rms
@@ -391,33 +377,33 @@ class TimingResolutionTestTool(EventsLoopNectarCAMCalibrationTool):
                     else:
                         bootrms_std = 0
                         bootrms_mean = 0
-                    # print(bootrms_std)
+                    # log.info(bootrms_std)
                     err[pix] = bootrms_std
                     rms[pix] = bootrms_mean
 
                 else:
                     try:
                         weighted_mean = np.average(bin_centers, weights=hist_values)
-                        # print("Weighted Mean:", weighted_mean)
+                        # log.info("Weighted Mean:", weighted_mean)
 
                         # Compute weighted variance
                         weighted_variance = np.average(
                             (bin_centers - weighted_mean) ** 2, weights=hist_values
                         )
-                        # print("Weighted Variance:", weighted_variance)
+                        # log.info("Weighted Variance:", weighted_variance)
 
                         # Compute RMS value (Standard deviation)
                         rms[pix] = np.sqrt(weighted_variance)
-                        # print("RMS:", rms[pix])
+                        # log.info("RMS:", rms[pix])
 
                         # Compute the total number of data points (sum of histogram
                         # values, i.e. N)
                         N = np.sum(hist_values)
-                        # print("Total number of events (N):", N)
+                        # log.info("Total number of events (N):", N)
 
                         # Error on the standard deviation
                         err[pix] = rms[pix] / np.sqrt(2 * N)
-                        # print("Error on RMS:", err[pix])
+                        # log.info("Error on RMS:", err[pix])
                     except Exception:
                         # no data
                         rms[pix] = np.nan
@@ -713,25 +699,25 @@ class TriggerTimingTestTool(EventsLoopNectarCAMCalibrationTool):
         # Compute bin centers
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
         weighted_mean = np.average(bin_centers, weights=hist_values)
-        # print("Weighted Mean:", weighted_mean)
+        # log.info("Weighted Mean:", weighted_mean)
 
         # Compute weighted variance
         weighted_variance = np.average(
             (bin_centers - weighted_mean) ** 2, weights=hist_values
         )
-        # print("Weighted Variance:", weighted_variance)
+        # log.info("Weighted Variance:", weighted_variance)
 
         # Compute RMS value (Standard deviation)
         rms = np.sqrt(weighted_variance)
-        # print("RMS:", rms[pix])
+        # log.info("RMS:", rms[pix])
 
         # Compute the total number of data points (sum of histogram values, i.e. N)
         N = np.sum(hist_values)
-        # print("Total number of events (N):", N)
+        # log.info("Total number of events (N):", N)
 
         # Error on the standard deviation
         err = rms / np.sqrt(2 * N)
-        # print("Error on RMS:", err[pix])
+        # log.info("Error on RMS:", err[pix])
 
         # charge per run
         charge_per_run = np.mean(charge_per_event)

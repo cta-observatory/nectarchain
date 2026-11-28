@@ -35,6 +35,7 @@ from nectarchain.trr_verification_package import (
     laser_source_intensity,
     linearity,
     nsb_rate_calibration,
+    observation_temperature,
     pedestal,
     pix_couple_tim_uncertainty,
     pix_tim_uncertainty,
@@ -77,6 +78,7 @@ class TestRunner(QWidget):
         "Pixel Time Uncertainty Test": pix_tim_uncertainty,
         "Time Uncertainty Between Couples of Pixels": pix_couple_tim_uncertainty,
         "Trigger Timing Test": trigger_timing,
+        "Temperature Scan of TRR tests": observation_temperature,
     }
 
     def __init__(self):
